@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {Base} from "../Base.sol";
 import {ReactorConstants} from "../../src/ReactorConstants.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
+import {FullMath} from "v4-core/libraries/FullMath.sol";
 import {LaunchMath} from "../../src/libraries/LaunchMath.sol";
 
 /// @notice Exact CORE_LIQUIDITY_DESIGN.md simulation: $100k genesis ticks + buy walk.
@@ -128,14 +129,16 @@ contract CoreLiquiditySimTest is Base {
     }
 
     function _fdvUsdc6(uint160 sqrtP) internal view returns (uint256) {
-        uint256 q192 = uint256(1) << 192;
         uint256 s = uint256(sqrtP);
-        uint256 supply = ReactorConstants.DEFAULT_SUPPLY;
-        if (address(core) < address(usdc)) {
-            return (supply * s * s) / q192;
-        }
         if (s == 0) return 0;
-        return (supply * q192) / (s * s);
+        uint256 supply = ReactorConstants.DEFAULT_SUPPLY;
+        // FDV = supply * token1/token0 in quote-raw. Avoid s*s overflow via 512-bit mulDiv.
+        if (address(core) < address(usdc)) {
+            uint256 num = FullMath.mulDiv(supply, s, 1 << 96);
+            return FullMath.mulDiv(num, s, 1 << 96);
+        }
+        uint256 inv = FullMath.mulDiv(supply, 1 << 96, s);
+        return FullMath.mulDiv(inv, 1 << 96, s);
     }
 
     function _walkTowardFdv(uint256 target) internal {
