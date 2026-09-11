@@ -59,7 +59,19 @@ pnpm --filter web lint
 pnpm --filter web build
 ```
 
-Slither was **not** installed in the prior environment; if `slither` is absent this pass, say so — do not invent a report.
+Slither: **not installed** in this environment (`which slither` empty). No fabricated static-analysis report.
+
+Frontend: `pnpm exec tsc --noEmit` (target ES2020) and `pnpm lint` passed on `apps/web`. Dev server `http://127.0.0.1:43147` returned HTTP 200 after ABI restore.
+
+Local Anvil redeploy (hardening bytecode; **not** Arc Testnet):
+
+| Contract | Address |
+| --- | --- |
+| Hook | `0x37e9b4b7dF06BbdfE6F7C3bb9F8DE909DB2470Cc` |
+| Factory | `0xB0D4afd8879eD9F52b28595d31B441D079B2Ca07` |
+| FairClaimVault | `0x7B6fCB97Fc1B74e16CBe577054a4426d3487837C` |
+
+Always re-read `factory.hook()` after bytecode changes.
 
 ## Remaining risks / mainnet blockers
 
