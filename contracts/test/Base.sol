@@ -14,6 +14,10 @@ import {ReactorFactory} from "../src/ReactorFactory.sol";
 import {ReactorRouter} from "../src/ReactorRouter.sol";
 import {ReactorLiquidityVault} from "../src/ReactorLiquidityVault.sol";
 import {BuybackVault} from "../src/BuybackVault.sol";
+import {FlywheelVault} from "../src/FlywheelVault.sol";
+import {MarketOracle} from "../src/MarketOracle.sol";
+import {KeeperReserve} from "../src/KeeperReserve.sol";
+import {IFeeSink} from "../src/interfaces/IFeeSink.sol";
 import {QuoteAssetRegistry} from "../src/QuoteAssetRegistry.sol";
 import {TestCORE} from "../src/TestCORE.sol";
 import {MockERC20} from "../src/MockERC20.sol";
@@ -37,6 +41,9 @@ contract Base is Test {
     ReactorRouter public router;
     ReactorHook public hook;
     BuybackVault public buyback;
+    FlywheelVault public flywheel;
+    MarketOracle public oracle;
+    KeeperReserve public keepers;
     ReactorFactory public factory;
 
     address public alice = makeAddr("alice");
@@ -98,10 +105,17 @@ contract Base is Test {
             ReactorConstants.DEFAULT_BUYBACK_THRESHOLD
         );
         hook.bindBuyback(buyback);
+        flywheel = new FlywheelVault(address(hook), address(usdc), address(core), pm, address(router));
+        hook.bindFlywheel(IFeeSink(address(flywheel)));
+        keepers = new KeeperReserve(address(usdc), address(this));
+        keepers.setCaller(address(flywheel), true);
+        keepers.setCaller(address(buyback), true);
 
         factory = new ReactorFactory(pm, hook, router, vault, registry, address(core));
         hook.bindFactory(address(factory));
         vault.bindFactory(address(factory));
+        oracle = new MarketOracle(pm, hook, registry, address(usdc), address(core));
+        flywheel.bind(factory, oracle, keepers);
 
         _seedCorePool();
         _seedHop(address(zec), 100_000e8, 5_000_000e6, zecUsdcKey);

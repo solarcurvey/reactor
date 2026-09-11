@@ -264,13 +264,15 @@ contract SecurityTest is Base {
         assertGt(buyback.accrued(address(usdc)), 0);
         assertGt(buyback.accrued(address(btc)), 0);
 
-        uint256 dead = IERC20Like(address(core)).balanceOf(ReactorConstants.DEAD);
+        uint256 burnedBefore = buyback.lifetimeBurned();
+        uint256 supplyBefore = core.totalSupply();
         buyback.execute(address(usdc));
         vm.warp(block.timestamp + ReactorConstants.BUYBACK_COOLDOWN + 1);
         buyback.execute(address(zec));
         vm.warp(block.timestamp + ReactorConstants.BUYBACK_COOLDOWN + 1);
         buyback.execute(address(btc));
-        assertGt(IERC20Like(address(core)).balanceOf(ReactorConstants.DEAD), dead);
+        assertGt(buyback.lifetimeBurned(), burnedBefore);
+        assertLt(core.totalSupply(), supplyBefore);
     }
 
     function test_fairEarlyClaimerDoesNotSteal() public {

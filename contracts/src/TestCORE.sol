@@ -6,7 +6,7 @@ contract TestCORE {
     string public constant name = "TestCORE";
     string public constant symbol = "CORE";
     uint8 public constant decimals = 18;
-    uint256 public immutable totalSupply;
+    uint256 public totalSupply;
 
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
@@ -40,6 +40,16 @@ contract TestCORE {
         }
         _transfer(from, to, amount);
         return true;
+    }
+
+    function burn(uint256 amount) external {
+        uint256 bal = balanceOf[msg.sender];
+        require(bal >= amount, "BAL");
+        unchecked {
+            balanceOf[msg.sender] = bal - amount;
+            totalSupply -= amount;
+        }
+        emit Transfer(msg.sender, address(0), amount);
     }
 
     function _transfer(address from, address to, uint256 amount) internal {

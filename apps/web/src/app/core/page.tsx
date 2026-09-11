@@ -46,8 +46,9 @@ export default function CorePage() {
         <p className="mt-2 text-xs uppercase tracking-[0.22em] text-amber-200/90">TESTNET · TestCORE</p>
         <h1 className="mt-2 text-3xl font-semibold">Fuel and burn</h1>
         <p className="mt-2 text-sm text-zinc-400">
-          1% of official-pool quote notional accrues here. Size and minOut are protocol-enforced. Permissionless
-          callers cannot set slippage. Failed executes no-op so they never revert a user swap.
+          0.5% of official-pool quote notional accrues here (isolated from the 1% Top-10 flywheel). Size and minOut
+          are protocol-enforced. Permissionless callers cannot set slippage. Failed executes no-op so they never
+          revert a user swap.
         </p>
       </div>
       <div className="space-y-4">

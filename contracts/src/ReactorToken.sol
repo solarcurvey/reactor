@@ -5,37 +5,42 @@ import {ReactorConstants} from "./ReactorConstants.sol";
 import {IERC20MinimalExt} from "./interfaces/IERC20MinimalExt.sol";
 import {IReactorToken} from "./interfaces/IReactorToken.sol";
 
-/// @notice Fixed-supply ERC-20 with O(1) quote-side holder rewards. Zero transfer tax.
+/// @notice Fixed-ish ERC-20 with O(1) magnified dividend-per-share quote rewards.
+/// Dust stays in leftoverMagnified (modulo eligible supply) and is never allocated twice.
 contract ReactorToken is IReactorToken {
+    uint256 internal constant MAG = ReactorConstants.REWARD_MAGNITUDE;
+
     string public name;
     string public symbol;
     uint8 public immutable decimals;
-    uint256 public immutable totalSupply;
+    uint256 public totalSupply;
     address public immutable quoteAsset;
     address public immutable hook;
     address public immutable poolManager;
+    address public immutable factory;
 
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
     mapping(address => bool) public rewardExcluded;
 
-    uint256 public accRewardPerShare;
-    uint256 public leftoverRewards;
+    uint256 public magnifiedDividendPerShare;
+    uint256 public leftoverMagnified;
     uint256 public excludedBalance;
     uint256 public lifetimeRewards;
+    uint256 public lifetimeClaimed;
 
-    /// @dev Last synced `accRewardPerShare` (not `floor(bal * acc / P)`).
-    /// Storing the floor-product let `floor(bal*(acc+Δ)/P) - floor(bal*acc/P)`
-    /// exceed `floor(bal*Δ/P)` by 1 raw per unsynced credit and sum above lifetime.
-    mapping(address => uint256) public rewardDebt;
+    mapping(address => int256) public magnifiedDividendCorrections;
     mapping(address => uint256) public storedRewards;
 
     event Transfer(address indexed from, address indexed to, uint256 amount);
     event Approval(address indexed owner, address indexed spender, uint256 amount);
     event RewardClaimed(address indexed account, address indexed to, uint256 amount);
-    event RewardsCredited(uint256 amount, uint256 accRewardPerShare);
+    event RewardsCredited(uint256 amount, uint256 magnifiedDividendPerShare);
+    event Burned(address indexed account, uint256 amount);
+    event ProtocolExcluded(address indexed account);
 
     error NotHook();
+    error NotAuth();
     error ZeroAddress();
     error Insufficient();
 
@@ -53,7 +58,7 @@ contract ReactorToken is IReactorToken {
         address hook_,
         address poolManager_,
         address liquidityVault,
-        address buybackVault,
+        address flywheelVault,
         address recipient,
         bool excludeRecipient
     ) {
@@ -67,18 +72,29 @@ contract ReactorToken is IReactorToken {
         quoteAsset = quote;
         hook = hook_;
         poolManager = poolManager_;
+        factory = msg.sender;
 
         _exclude(address(0));
         _exclude(ReactorConstants.DEAD);
         _exclude(poolManager_);
         _exclude(liquidityVault);
-        _exclude(buybackVault);
+        if (flywheelVault != address(0)) _exclude(flywheelVault);
         _exclude(address(this));
         if (excludeRecipient) _exclude(recipient);
 
         balanceOf[recipient] = supply;
         if (rewardExcluded[recipient]) excludedBalance += supply;
         emit Transfer(address(0), recipient, supply);
+    }
+
+    function excludeProtocol(address account) external {
+        if (msg.sender != hook && msg.sender != factory) revert NotAuth();
+        if (account == address(0) || rewardExcluded[account]) return;
+        _accrue(account);
+        _exclude(account);
+        excludedBalance += balanceOf[account];
+        magnifiedDividendCorrections[account] = 0;
+        emit ProtocolExcluded(account);
     }
 
     function approve(address spender, uint256 amount) external returns (bool) {
@@ -102,27 +118,36 @@ contract ReactorToken is IReactorToken {
         return true;
     }
 
+    function burn(uint256 amount) external {
+        _accrue(msg.sender);
+        uint256 bal = balanceOf[msg.sender];
+        if (bal < amount) revert Insufficient();
+        unchecked {
+            balanceOf[msg.sender] = bal - amount;
+            totalSupply -= amount;
+        }
+        if (rewardExcluded[msg.sender]) excludedBalance -= amount;
+        _syncCorrection(msg.sender);
+        _flushLeftover();
+        emit Transfer(msg.sender, address(0), amount);
+        emit Burned(msg.sender, amount);
+    }
+
     function creditRewards(uint256 amount) external onlyHook {
         if (amount == 0) return;
         lifetimeRewards += amount;
-        uint256 dist = amount + leftoverRewards;
-        uint256 supply = eligibleSupply();
-        if (supply == 0) {
-            leftoverRewards = dist;
-            emit RewardsCredited(amount, accRewardPerShare);
-            return;
-        }
-        _distributeDist(dist, supply);
-        emit RewardsCredited(amount, accRewardPerShare);
+        _distributeMagnified(amount * MAG);
+        emit RewardsCredited(amount, magnifiedDividendPerShare);
     }
 
     function claimRewards(address to) external returns (uint256) {
         if (to == address(0)) revert ZeroAddress();
         _accrue(msg.sender);
-        _syncDebt(msg.sender);
+        _syncCorrection(msg.sender);
         uint256 amt = storedRewards[msg.sender];
         storedRewards[msg.sender] = 0;
         if (amt > 0) {
+            lifetimeClaimed += amt;
             bool ok = IERC20MinimalExt(quoteAsset).transfer(to, amt);
             require(ok, "XFER");
             emit RewardClaimed(msg.sender, to, amt);
@@ -131,7 +156,19 @@ contract ReactorToken is IReactorToken {
     }
 
     function pendingRewards(address account) public view returns (uint256) {
-        return storedRewards[account] + _unpaid(account);
+        return storedRewards[account] + _withdrawable(account);
+    }
+
+    function leftoverRewards() public view returns (uint256) {
+        return leftoverMagnified / MAG;
+    }
+
+    function accRewardPerShare() external view returns (uint256) {
+        return magnifiedDividendPerShare;
+    }
+
+    function rewardDebt(address) external pure returns (uint256) {
+        return 0;
     }
 
     function eligibleSupply() public view returns (uint256) {
@@ -141,12 +178,8 @@ contract ReactorToken is IReactorToken {
 
     function _transfer(address from, address to, uint256 amount) internal {
         if (to == address(0)) revert ZeroAddress();
-        if (from != to) {
-            _accrue(from);
-            _accrue(to);
-        } else {
-            _accrue(from);
-        }
+        _accrue(from);
+        if (from != to) _accrue(to);
 
         uint256 bal = balanceOf[from];
         if (bal < amount) revert Insufficient();
@@ -161,57 +194,51 @@ contract ReactorToken is IReactorToken {
             excludedBalance += amount;
         }
 
-        if (from != to) {
-            _syncDebt(from);
-            _syncDebt(to);
-        } else {
-            _syncDebt(from);
-        }
+        _syncCorrection(from);
+        if (from != to) _syncCorrection(to);
         _flushLeftover();
         emit Transfer(from, to, amount);
     }
 
-    function _flushLeftover() internal {
-        uint256 dist = leftoverRewards;
+    function _distributeMagnified(uint256 magnifiedAmount) internal {
+        uint256 dist = leftoverMagnified + magnifiedAmount;
         uint256 supply = eligibleSupply();
-        if (dist == 0 || supply == 0) return;
-        _distributeDist(dist, supply);
+        if (supply == 0) {
+            leftoverMagnified = dist;
+            return;
+        }
+        magnifiedDividendPerShare += dist / supply;
+        leftoverMagnified = dist % supply;
     }
 
-    /// @dev Raise `acc` by at most the amount whose combined floor
-    /// `(supply * acc) / P` does not exceed prior assigned + `dist`.
-    /// Naive `acc += (dist * P) / supply` over-assigns because
-    /// `(S * ΣI) / P` can exceed `Σ((S * I) / P)` by 1 raw per credit.
-    function _distributeDist(uint256 dist, uint256 supply) internal {
-        uint256 p = ReactorConstants.REWARD_PRECISION;
-        uint256 oldAssigned = (supply * accRewardPerShare) / p;
-        uint256 increment = (dist * p) / supply;
-        accRewardPerShare += increment;
-        uint256 maxAssigned = oldAssigned + dist;
-        uint256 cap = ((maxAssigned + 1) * p - 1) / supply;
-        if (accRewardPerShare > cap) accRewardPerShare = cap;
-        leftoverRewards = maxAssigned - (supply * accRewardPerShare) / p;
+    function _flushLeftover() internal {
+        if (leftoverMagnified == 0) return;
+        uint256 supply = eligibleSupply();
+        if (supply == 0) return;
+        magnifiedDividendPerShare += leftoverMagnified / supply;
+        leftoverMagnified = leftoverMagnified % supply;
     }
 
     function _accrue(address account) internal {
         if (rewardExcluded[account]) return;
-        uint256 unpaid = _unpaid(account);
+        uint256 unpaid = _withdrawable(account);
         if (unpaid > 0) storedRewards[account] += unpaid;
     }
 
-    function _syncDebt(address account) internal {
+    function _syncCorrection(address account) internal {
         if (rewardExcluded[account]) {
-            rewardDebt[account] = 0;
+            magnifiedDividendCorrections[account] = 0;
             return;
         }
-        rewardDebt[account] = accRewardPerShare;
+        magnifiedDividendCorrections[account] = -int256(magnifiedDividendPerShare * balanceOf[account]);
     }
 
-    function _unpaid(address account) internal view returns (uint256) {
+    function _withdrawable(address account) internal view returns (uint256) {
         if (rewardExcluded[account]) return 0;
-        uint256 userAcc = rewardDebt[account];
-        if (accRewardPerShare <= userAcc) return 0;
-        return (balanceOf[account] * (accRewardPerShare - userAcc)) / ReactorConstants.REWARD_PRECISION;
+        int256 accumulated =
+            int256(magnifiedDividendPerShare * balanceOf[account]) + magnifiedDividendCorrections[account];
+        if (accumulated <= 0) return 0;
+        return uint256(accumulated) / MAG;
     }
 
     function _exclude(address account) internal {

@@ -49,9 +49,10 @@ contract LockAndBuybackTest is Base {
         );
         _buy(alice, ucat, address(usdc), 50_000e6);
         uint256 acc = buyback.accrued(address(usdc));
-        uint256 deadBefore = IERC20Like(address(core)).balanceOf(ReactorConstants.DEAD);
+        uint256 supplyBefore = core.totalSupply();
         buyback.execute(address(usdc));
-        assertGt(IERC20Like(address(core)).balanceOf(ReactorConstants.DEAD), deadBefore);
+        assertLt(core.totalSupply(), supplyBefore);
+        assertGt(buyback.lifetimeBurned(), 0);
         assertLt(buyback.accrued(address(usdc)), acc);
     }
 
@@ -60,9 +61,10 @@ contract LockAndBuybackTest is Base {
         _buy(alice, token, address(zec), 10_000e8);
         uint256 before = buyback.accrued(address(zec));
         assertGt(before, 0);
-        uint256 deadBefore = IERC20Like(address(core)).balanceOf(ReactorConstants.DEAD);
+        uint256 supplyBefore = core.totalSupply();
         buyback.execute(address(zec));
-        assertGt(IERC20Like(address(core)).balanceOf(ReactorConstants.DEAD), deadBefore);
+        assertLt(core.totalSupply(), supplyBefore);
+        assertGt(buyback.lifetimeBurned(), 0);
         assertLt(buyback.accrued(address(zec)), before);
     }
 }

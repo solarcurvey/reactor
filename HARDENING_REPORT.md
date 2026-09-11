@@ -20,7 +20,8 @@ UI and docs center **CHOOSE WHAT YOUR TOKEN EARNS** / **WHAT SHOULD YOUR TOKEN E
 | Partial fills | **FIXED** | Exact-in `paid < want` → `IncompleteFill`. `test_partialFillRejectedAtInstantEdge` |
 | Fair ≠ CCA | **FIXED** | Renamed Batch Fair Launch; `auctionBps==5000` locked. `test_fairAuctionBpsLockedAndPriceContinuity` |
 | Fair reward ownership | **FIXED** | `FairClaimVault` eligible holder + O(1) `settleClaim`. `test_fairEarlyClaimerDoesNotSteal` |
-| Reward accounting + stateful campaign | **FIXED (debt formula) / MITIGATED (campaign)** | `rewardDebt` is now last synced `accRewardPerShare`, not `floor(bal*acc/P)`. Campaign slack **1 raw**. **Do not call this production-invariant-complete.** |
+| Reward accounting + stateful campaign | **FIXED** | Magnified DPS + corrections. Legacy over-assign reproduced in `RewardSolvency.t.sol`. Campaign has **no +1 slack**. Dust carries in `leftoverMagnified`. |
+| 3.5% split | **SHIPPED** | 2% holders / 1% flywheel / 0.5% CORE. Pots isolated. CORE never Top-10. |
 
 ## Security tests (mapped)
 

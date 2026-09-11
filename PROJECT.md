@@ -7,7 +7,7 @@
 - **Secondary:** Launch markets that pay holders.
 - **Display:** REACTOR / Built on Arc
 
-Launch a normal ERC-20 into an Official REACTOR Pool (Uniswap v4, 0% LP fee, REACTOR hook). Every official swap charges **3% of quote notional** in the quote asset: **2%** to holders, **1%** to the CORE buyback-and-burn vault.
+Launch a normal ERC-20 into an Official REACTOR Pool (Uniswap v4, 0% LP fee, REACTOR hook). Every official swap charges **3.5% of quote notional** in the quote asset: **2%** holders, **1%** Top-10 flywheel, **0.5%** CORE buy+burn.
 
 This repository is the V1 MVP: contracts, tests, indexer, and consumer web app.
 

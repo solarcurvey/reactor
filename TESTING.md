@@ -24,7 +24,8 @@ slither contracts/src --exclude-dependencies || true
 
 | Area | File | Asserts |
 | --- | --- | --- |
-| Fee 3% → 2/1 | `test/unit/FeeInvariant.t.sol` | holders+buyback = 3% floor split |
+| Fee 3.5% → 2/1/0.5 | `test/unit/FeeInvariant.t.sol` | holders+flywheel+core = 3.5% floor split |
+| Reward solvency | `test/invariant/RewardSolvency.t.sol` | legacy over-assigns; magnified DPS never does |
 | No transfer tax | `test/unit/Token.t.sol` | send X, receive X |
 | Reward solvency | invariant + unit | token quote + hook pending ≥ outstanding (acc-snapshot debt; 1-raw campaign slack) |
 | Reward persistence | unit | accrue, transfer to 0, still claimable |
