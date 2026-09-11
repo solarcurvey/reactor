@@ -14,7 +14,7 @@ Guardian is immutable. Keeper is replaceable by Guardian.
 | `ReactorGuardian` | `setAdapter` | Reviewed routing adapters. V1 has no `setHook`. |
 | `QuoteAssetRegistry` | `bindFactory` | One-time |
 | `QuoteAssetRegistry` | `setUsdc` | One-time (same address may be re-set) |
-| `QuoteAssetRegistry` | `register` / `setEnabled` / `setIcon` / `setBuybackRoute` | External quotes |
+| `QuoteAssetRegistry` | `register` / `setEnabled` / `setIcon` / `setBuybackRoute` / **`setUsdPegOne`** | External quotes. Stablecoins category is not $1 |
 | `ReactorFactory` | `bindCurve` | One-time |
 | `ReactorHook` | `bindFactory` / `bindBuyback` / `bindFlywheel` / `bindCurve` / `bindSelfBurn` / `bindCoreVault` | One-time each |
 | `CoreVesting` | `activateLaunch` | One-time T0 freeze when constructed with `t0=0` |
@@ -29,12 +29,12 @@ Guardian is immutable. Keeper is replaceable by Guardian.
 
 | Contract | Function | Notes |
 | --- | --- | --- |
-| `FlywheelVault` | `settleQuote` | Quote → USDC; Keeper `minOut` + per-hop `minOut` |
+| `FlywheelVault` | `settleQuote` | Quote → USDC; returns `usdcReceived`; Keeper sim minOut |
 | `FlywheelVault` | `submitEpoch` | Structural Top-10 only |
-| `FlywheelVault` | `executeTop10Buyback` | Requires `minTargetOut` |
+| `FlywheelVault` | `executeTop10Buyback` | Returns `targetBought`; requires realistic `minTargetOut` |
 | `FlywheelVault` | `rollEpoch` | After finalize |
-| `BuybackVault` | `execute` / `executeCoreBuyback` | Requires `minOut` > 0; burns via `burn()` |
-| `SelfBurnVault` | `execute` | Requires `minTargetOut` > 0; chunk + cooldown |
+| `BuybackVault` | `execute` / `executeCoreBuyback` | Returns `coreBought`; `minOut` > 1 in production; `burn()` |
+| `SelfBurnVault` | `execute` | Returns `burnedAmount`; `minTargetOut` > 1 in production |
 
 ## One-time address assignment (no first-caller-wins)
 

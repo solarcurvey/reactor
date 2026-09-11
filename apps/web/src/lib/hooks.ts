@@ -19,6 +19,7 @@ export type QuoteAsset = {
   categoryLabel: string;
   enabled: boolean;
   exists: boolean;
+  usdPegOne?: boolean;
 };
 
 export type LaunchToken = {
@@ -79,11 +80,13 @@ async function readQuotes(client: NonNullable<ReturnType<typeof usePublicClient>
       enabled: boolean;
       exists: boolean;
       buybackRouteEnabled?: boolean;
+      usdPegOne?: boolean;
     };
     if (!asset.enabled) continue;
     if (asset.buybackRouteEnabled === false) continue;
     out.push({
       ...asset,
+      usdPegOne: Boolean(asset.usdPegOne) || asset.symbol === "USDC",
       categoryLabel: CATEGORY_LABELS[asset.category] ?? "Other",
     });
   }
@@ -365,7 +368,18 @@ export function useSwapSeries(token?: string) {
     queryKey: ["swaps", token],
     enabled: !!token,
     queryFn: async () => {
-      const empty: { t: number; notional: string; holders: string; buyback: string; flywheel?: string; coreAmt?: string; sqrtPrice?: string }[] = [];
+      const empty: {
+        t: number;
+        ts?: number;
+        notional: string;
+        holders: string;
+        buyback: string;
+        flywheel?: string;
+        coreAmt?: string;
+        sqrtPrice?: string;
+        px?: string;
+        source?: string;
+      }[] = [];
       const fixtures = [
         { t: 1, notional: "1000000000", holders: "20000000", buyback: "15000000", flywheel: "10000000", coreAmt: "5000000", sqrtPrice: "79228162514264337593543950336" },
         { t: 2, notional: "2000000000", holders: "40000000", buyback: "30000000", flywheel: "20000000", coreAmt: "10000000", sqrtPrice: "85000000000000000000000000000" },

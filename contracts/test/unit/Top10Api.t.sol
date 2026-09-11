@@ -5,7 +5,7 @@ import {Base} from "../Base.sol";
 import {ReactorFactory} from "../../src/ReactorFactory.sol";
 import {Top10Ranker} from "../../src/libraries/Top10Ranker.sol";
 
-/// @notice §43 offchain ranker + onchain structural submit.
+/// @notice Offchain ranker + onchain structural submit. Material vs irrelevant inactivity.
 contract Top10ApiTest is Base {
     function _tok(string memory s) internal returns (address token) {
         (token,) = factory.instantLaunch(
@@ -28,15 +28,7 @@ contract Top10ApiTest is Base {
 
     function test_43_skipUngraduated() public {
         address token = _tok("U");
-        Top10Ranker.Candidate memory c = Top10Ranker.Candidate({
-            token: token,
-            graduated: false,
-            isCore: false,
-            markUsdc: 400_000e6,
-            markOk: true
-        });
-        Top10Ranker.Candidate[] memory arr = new Top10Ranker.Candidate[](1);
-        arr[0] = c;
+        Top10Ranker.Candidate[] memory arr = _one(token, false, false, 400_000e6, true);
         (address[] memory t, uint256[] memory w, bool pause) = Top10Ranker.rank(arr, 250_000e6);
         assertEq(t.length, 0);
         assertEq(w.length, 0);
@@ -44,34 +36,58 @@ contract Top10ApiTest is Base {
     }
 
     function test_43_skipCore() public {
-        Top10Ranker.Candidate memory c = Top10Ranker.Candidate({
-            token: address(core),
-            graduated: true,
-            isCore: true,
-            markUsdc: 9_000_000e6,
-            markOk: true
-        });
-        Top10Ranker.Candidate[] memory arr = new Top10Ranker.Candidate[](1);
-        arr[0] = c;
-        (address[] memory t,,) = Top10Ranker.rank(arr, 250_000e6);
+        Top10Ranker.Candidate[] memory arr = _one(address(core), true, true, 9_000_000e6, true);
+        (address[] memory t,, bool pause) = Top10Ranker.rank(arr, 250_000e6);
         assertEq(t.length, 0);
+        assertFalse(pause);
     }
 
-    function test_43_skipUnreliableNeverGuess() public {
-        address token = _tok("X");
+    function test_irrelevantInactivityDoesNotPause() public {
+        address token = _tok("DEAD");
         _fillAndGraduate(alice, token);
-        Top10Ranker.Candidate memory c = Top10Ranker.Candidate({
-            token: token,
-            graduated: true,
-            isCore: false,
-            markUsdc: 0,
-            markOk: false
-        });
+        Top10Ranker.Candidate memory c = Top10Ranker.cand(token, true, false, 0, false);
+        c.tradeCount = 1;
+        c.lastGoodMarkUsdc = 12_000e6;
+        c.liquidityUsdc = 800e6;
         Top10Ranker.Candidate[] memory arr = new Top10Ranker.Candidate[](1);
         arr[0] = c;
         (address[] memory t,, bool pause) = Top10Ranker.rank(arr, 250_000e6);
         assertEq(t.length, 0);
-        assertTrue(pause, "unreliable mark pauses epoch rather than guessing");
+        assertFalse(pause, "dead low-value graduate must not freeze the epoch");
+    }
+
+    function test_materialUnvaluedPausesEvenIfOthersQualify() public {
+        address a = _tok("LIVE");
+        address b = _tok("MAT");
+        _fillAndGraduate(alice, a);
+        _fillAndGraduate(alice, b);
+        Top10Ranker.Candidate[] memory arr = new Top10Ranker.Candidate[](2);
+        arr[0] = Top10Ranker.cand(a, true, false, 400_000e6, true);
+        arr[1] = Top10Ranker.cand(b, true, false, 0, false);
+        arr[1].lastGoodMarkUsdc = 500_000e6;
+        arr[1].priorRanked = true;
+        (address[] memory t,, bool pause) = Top10Ranker.rank(arr, 250_000e6);
+        assertEq(t.length, 0);
+        assertTrue(pause, "material candidate without a mark pauses the epoch");
+    }
+
+    function test_thousandsOfInactiveMarketsDoNotFreeze() public {
+        address live = _tok("Q");
+        _fillAndGraduate(alice, live);
+        uint256 n = 2000;
+        Top10Ranker.Candidate[] memory arr = new Top10Ranker.Candidate[](n + 1);
+        arr[0] = Top10Ranker.cand(live, true, false, 400_000e6, true);
+        for (uint256 i; i < n; i++) {
+            arr[i + 1] = Top10Ranker.cand(address(uint160(0xB0000 + i)), true, false, 0, false);
+            arr[i + 1].tradeCount = i % 3;
+            arr[i + 1].lastGoodMarkUsdc = 1_000e6 + (i % 50) * 1e6;
+            arr[i + 1].liquidityUsdc = 100e6;
+        }
+        (address[] memory t, uint256[] memory w, bool pause) = Top10Ranker.rank(arr, 250_000e6);
+        assertFalse(pause);
+        assertEq(t.length, 1);
+        assertEq(t[0], live);
+        assertEq(w[0], 10_000);
     }
 
     function test_43_weightsSum100Percent() public {
@@ -80,8 +96,8 @@ contract Top10ApiTest is Base {
         _fillAndGraduate(alice, a);
         _fillAndGraduate(alice, b);
         Top10Ranker.Candidate[] memory arr = new Top10Ranker.Candidate[](2);
-        arr[0] = Top10Ranker.Candidate({token: a, graduated: true, isCore: false, markUsdc: 400_000e6, markOk: true});
-        arr[1] = Top10Ranker.Candidate({token: b, graduated: true, isCore: false, markUsdc: 100_000e6, markOk: true});
+        arr[0] = Top10Ranker.cand(a, true, false, 400_000e6, true);
+        arr[1] = Top10Ranker.cand(b, true, false, 100_000e6, true);
         (address[] memory t, uint256[] memory w, bool pause) = Top10Ranker.rank(arr, 250_000e6);
         assertEq(t.length, 1, "B is below $250k floor");
         assertEq(t[0], a);
@@ -98,8 +114,8 @@ contract Top10ApiTest is Base {
         _fillAndGraduate(alice, a);
         _fillAndGraduate(alice, b);
         Top10Ranker.Candidate[] memory arr = new Top10Ranker.Candidate[](2);
-        arr[0] = Top10Ranker.Candidate({token: a, graduated: true, isCore: false, markUsdc: 600_000e6, markOk: true});
-        arr[1] = Top10Ranker.Candidate({token: b, graduated: true, isCore: false, markUsdc: 400_000e6, markOk: true});
+        arr[0] = Top10Ranker.cand(a, true, false, 600_000e6, true);
+        arr[1] = Top10Ranker.cand(b, true, false, 400_000e6, true);
         (address[] memory t, uint256[] memory w,) = Top10Ranker.rank(arr, 250_000e6);
         assertEq(t.length, 2);
         uint256 sum = w[0] + w[1];
@@ -137,6 +153,6 @@ contract Top10ApiTest is Base {
         returns (Top10Ranker.Candidate[] memory arr)
     {
         arr = new Top10Ranker.Candidate[](1);
-        arr[0] = Top10Ranker.Candidate({token: token, graduated: graduated, isCore: isCore, markUsdc: mark, markOk: ok});
+        arr[0] = Top10Ranker.cand(token, graduated, isCore, mark, ok);
     }
 }

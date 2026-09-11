@@ -8,6 +8,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { erc20, router, token as tokenC, curve, userRoute } from "@/lib/contracts";
 import { officialPoolKey, buyZeroForOne, hooklessHopKey, encodePoolKey } from "@/lib/pool";
+import { planRoute } from "../../../../packages/reactor/src/routes.ts";
 import { feeSplit, formatUnitsSafe, parseUnitsSafe } from "@/lib/utils";
 import type { LaunchToken } from "@/lib/hooks";
 import { addresses } from "@/lib/addresses";
@@ -35,17 +36,44 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   function usdcHops() {
     const adapter = addresses.V4Adapter;
     if (!adapter) return [];
+    const tokenIn = side === "buy" ? addresses.USDC : t.quote;
+    const tokenOut = side === "buy" ? t.quote : addresses.USDC;
     const key = hooklessHopKey(addresses.USDC, t.quote);
-    return [
-      {
-        adapter,
-        tokenIn: side === "buy" ? addresses.USDC : t.quote,
-        tokenOut: side === "buy" ? t.quote : addresses.USDC,
-        minOut: 1n,
-        data: encodePoolKey(key),
-      },
-    ];
+    const data = encodePoolKey(key);
+    try {
+      const planned = planRoute(
+        tokenIn,
+        tokenOut,
+        [
+          {
+            from: addresses.USDC,
+            to: t.quote,
+            adapter,
+            kind: "user",
+            data,
+            usable: true,
+          },
+          {
+            from: t.quote,
+            to: addresses.USDC,
+            adapter,
+            kind: "user",
+            data,
+            usable: true,
+          },
+        ],
+        new Map([
+          [addresses.USDC.toLowerCase(), { token: addresses.USDC, symbol: "USDC", enabled: true, usdPegOne: true }],
+          [t.quote.toLowerCase(), { token: t.quote, symbol: t.quoteSymbol ?? "Q", enabled: true }],
+        ]),
+        { protocol: false, adapters: new Set([adapter.toLowerCase()]) },
+      );
+      return planned.hops.map((h) => ({ ...h, minOut: 1n }));
+    } catch {
+      return [];
+    }
   }
+  const routePreview = usdcRoute ? usdcHops() : [];
   const split = feeSplit(parsed);
 
   async function refreshQuote() {
@@ -242,6 +270,22 @@ export function TradePanel({ t }: { t: LaunchToken }) {
           {quotedOut === null ? "—" : `${formatUnitsSafe(quotedOut, outDec, 6)} ${outSym}`}
           {quotedOut !== null && Date.now() - quotedAt > QUOTE_TTL_MS ? " (stale)" : ""}
         </p>
+        <p>
+          Stage: {t.bonding && !t.marketLive ? "bonding InstantCurve" : t.marketLive ? "graduated v4" : "not live"} ·
+          3.5% final economics (2 / 1 / 0.5)
+        </p>
+        {usdcRoute && (
+          <p className="font-mono text-[11px] text-zinc-500">
+            Route {routePreview.length ? routePreview.map((h) => `${h.tokenIn.slice(0, 6)}→${h.tokenOut.slice(0, 6)}`).join(" · ") : "unroutable"}
+          </p>
+        )}
+        {quotedOut !== null && (
+          <p>
+            Min received @ {slippage}%:{" "}
+            {formatUnitsSafe((quotedOut * (10_000n - BigInt(Math.max(1, Math.floor(Number(slippage || "1") * 100))))) / 10_000n, outDec, 6)}{" "}
+            {outSym}
+          </p>
+        )}
       </div>
       <div className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
         Slippage

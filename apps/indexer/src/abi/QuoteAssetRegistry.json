@@ -80,6 +80,11 @@
         "name": "reactorNative",
         "type": "bool",
         "internalType": "bool"
+      },
+      {
+        "name": "usdPegOne",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -230,6 +235,11 @@
             "name": "reactorNative",
             "type": "bool",
             "internalType": "bool"
+          },
+          {
+            "name": "usdPegOne",
+            "type": "bool",
+            "internalType": "bool"
           }
         ]
       }
@@ -258,6 +268,25 @@
   {
     "type": "function",
     "name": "isReactorNative",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isUsdPegOne",
     "inputs": [
       {
         "name": "token",
@@ -420,6 +449,24 @@
   },
   {
     "type": "function",
+    "name": "setUsdPegOne",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "peg",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "setUsdc",
     "inputs": [
       {
@@ -525,6 +572,25 @@
       },
       {
         "name": "enabled",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UsdPegOneSet",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "usdPegOne",
         "type": "bool",
         "indexed": false,
         "internalType": "bool"

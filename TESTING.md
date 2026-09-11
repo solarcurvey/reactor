@@ -14,12 +14,21 @@ forge test --match-path test/attack/* -vv
 forge test --match-path test/integration/* -vv
 ```
 
-Web ranker / market-data (no RPC):
+Web ranker / market-data / keeper / valuation (no RPC):
 
 ```bash
+KEEPER_TEST=1 pnpm --filter indexer test
 npx --yes tsx apps/web/src/lib/top10.test.ts
 npx --yes tsx apps/web/src/lib/marketdata.test.ts
 ```
+
+Authoritative current-architecture walk (Foundry, no live chain):
+
+```bash
+forge test --match-path test/integration/CurrentArchitecture.t.sol -vv
+```
+
+Live Anvil probe (needs deploy): `pnpm --filter indexer e2e`
 
 Static analysis (optional, when slither is installed):
 
@@ -55,7 +64,7 @@ Every row is implemented in-repo. Re-run the matching file after any curve / fee
 | 39.20 | Non-$1 without sig reverts | same |
 | 39.21 | Expired / replay / wrong factory / quote / decimals / tampered / zero / chain | same |
 | 39.22 | Old signer after rotation; Keeper rotate ≠ signer rotate | same |
-| 39.23 | Nonce / quarantine | same |
+| 39.23 | Unique digest replay / concurrent same-quote / quarantine (no serial nonce) | same |
 | 39.43 | Signed `virtualQuote0` initializes the curve; USDC/ZEC/WBTC/native same USD geometry | `LaunchPricing.t.sol` |
 | 39.44 | ProtocolV4Adapter nested settle creates zero new 2/1/0.5; user trade pays 3.5% | `ProtocolSettlement.t.sol` |
 | 39.45 | UserRoute USDC path while bonding | `UserRoute.t.sol` |
@@ -132,6 +141,31 @@ pnpm --filter indexer watchdog
 | Frontrun binds | `test/attack/FrontrunBind.t.sol` |
 | Launch pricing | `test/attack/LaunchPricing.t.sol` |
 | Routing deltas / hooks | `test/attack/RoutingDeltas.t.sol` |
+
+## Final-pass regressions (user list)
+
+| # | Requirement | Proof |
+| --- | --- | --- |
+| 1 | Vault execute returns burned/core/target/usdc | `KeeperReturns.t.sol` |
+| 2 | Keeper minOut > dust | `keeper.minout.test.ts`, `KeeperMinOut.t.sol` |
+| 3 | Low sim blocks tx | `conservativeMinOut` throws ≤1 |
+| 4 | Dynamic quote buckets | `keeper.ts` `discoverQuotes` |
+| 5 | Nested settle + nested Top-10 fee-exempt | `ProtocolSettlement.t.sol` |
+| 6 | Historical swap timestamps | `indexer.persist.test.ts` |
+| 7 | Indexer restart pool maps | same |
+| 8 | Inactive low-value does not freeze | `Top10Api.t.sol` thousands inactive |
+| 9 | Material candidate freezes | same |
+| 10 | External spot does not control mark | VWAP window + `fuseExternalUsd6` |
+| 11 | Nested ValuationEngine + cycle reject | `valuation.test.ts` |
+| 12 | EURC not $1 | `LaunchPricing.t.sol` |
+| 13 | Only usdPegOne bypass | Factory + registry |
+| 14 | Concurrent auths + no replay | `LaunchPricing.t.sol` |
+| 15 | Bonding nested USDC buy/sell | `UserRoute.t.sol` |
+| 16 | Keeper LOCAL + ARC_TESTNET | `keeper.ts` modes; 5042 disabled |
+| 17 | No double-exec on ambiguous RPC | `submitOnce` |
+| 18 | Protocol-exempt reentrancy blocked | `ProtocolExemptReentrancy.t.sol` |
+| 19 | Safe genesis payload | `SafeGenesis.t.sol`, `VerifyGenesis.s.sol` |
+| 20 | Deployer no post-genesis privilege | same |
 
 ## Arc smoke
 

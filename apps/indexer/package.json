@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "start": "tsx src/index.ts",
-    "demo": "tsx src/e2e-demo.ts",
+    "demo": "tsx src/e2e-current-architecture.ts",
+    "e2e": "tsx src/e2e-current-architecture.ts",
+    "test": "KEEPER_TEST=1 tsx src/keeper.minout.test.ts && tsx src/indexer.persist.test.ts && tsx ../../packages/reactor/src/routes.test.ts && tsx ../../packages/reactor/src/valuation.test.ts",
     "keeper": "tsx src/keeper.ts",
     "keeper:once": "KEEPER_ONCE=1 tsx src/keeper.ts",
     "watchdog": "tsx src/watchdog.ts",

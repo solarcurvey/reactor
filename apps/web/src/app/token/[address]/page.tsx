@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge } from "@/components/ui/badge";
@@ -10,11 +11,41 @@ import { useCoreStats, useSwapSeries, useTokenByAddress } from "@/lib/hooks";
 import { explorerAddress, formatUnitsSafe, priceFromSqrtX96, shortAddress } from "@/lib/utils";
 import { addresses } from "@/lib/addresses";
 
+const INTERVALS = [
+  { id: "1m", sec: 60 },
+  { id: "5m", sec: 300 },
+  { id: "1h", sec: 3600 },
+  { id: "4h", sec: 14400 },
+  { id: "1d", sec: 86400 },
+] as const;
+
 export default function TokenPage() {
   const { address } = useParams<{ address: `0x${string}` }>();
   const { data: t, isLoading } = useTokenByAddress(address);
   const { data: series } = useSwapSeries(address);
   const { data: core } = useCoreStats();
+  const [interval, setInterval] = useState<(typeof INTERVALS)[number]["id"]>("5m");
+  const sec = INTERVALS.find((x) => x.id === interval)?.sec ?? 300;
+  const chart = useMemo(() => {
+    if (!t) return [];
+    const tokenIs0 = t.token.toLowerCase() < t.quote.toLowerCase();
+    const pts: { t: number; price: number }[] = [];
+    for (const s of series ?? []) {
+      const ts = Number(s.ts ?? s.t ?? 0);
+      let price = 0;
+      if (s.sqrtPrice && s.sqrtPrice !== "0") {
+        price = priceFromSqrtX96(BigInt(s.sqrtPrice), tokenIs0, t.decimals, t.quoteDecimals ?? 18);
+      } else if (s.px && s.px !== "0") {
+        price = Number(s.px) / 1e18;
+      }
+      if (!(price > 0) || !(ts > 0)) continue;
+      const bucket = Math.floor(ts / sec) * sec;
+      const last = pts[pts.length - 1];
+      if (!last || last.t !== bucket) pts.push({ t: bucket, price });
+      else last.price = price;
+    }
+    return pts;
+  }, [series, t, sec]);
 
   if (isLoading) return <p className="text-sm text-zinc-500">Loading token…</p>;
   if (!t) {
@@ -28,15 +59,6 @@ export default function TokenPage() {
       </div>
     );
   }
-
-  const tokenIs0 = t.token.toLowerCase() < t.quote.toLowerCase();
-  const chart = (series ?? []).map((s, i) => {
-    const sqrt = s.sqrtPrice ? BigInt(s.sqrtPrice) : 0n;
-    return {
-      i,
-      price: priceFromSqrtX96(sqrt, tokenIs0, t.decimals, t.quoteDecimals ?? 18),
-    };
-  });
 
   return (
     <div>
@@ -67,14 +89,32 @@ export default function TokenPage() {
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.35fr_0.85fr]">
         <Card className="h-64 p-2 sm:h-72">
+          <div className="flex items-center justify-between px-2 pt-1">
+            <span className="text-[10px] uppercase tracking-wider text-zinc-500">
+              PRICE · bonding→v4 · chain time
+            </span>
+            <div className="flex gap-1">
+              {INTERVALS.map((x) => (
+                <button
+                  key={x.id}
+                  onClick={() => setInterval(x.id)}
+                  className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${
+                    interval === x.id ? "bg-white text-zinc-950" : "bg-white/5 text-zinc-400"
+                  }`}
+                >
+                  {x.id}
+                </button>
+              ))}
+            </div>
+          </div>
           {chart.length === 0 ? (
-            <div className="grid h-full place-items-center text-sm text-zinc-500">
+            <div className="grid h-[calc(100%-1.5rem)] place-items-center text-sm text-zinc-500">
               No indexed swaps yet. Trades still settle onchain.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="90%">
               <AreaChart data={chart}>
-                <XAxis dataKey="i" hide />
+                <XAxis dataKey="t" hide />
                 <YAxis hide />
                 <Tooltip
                   contentStyle={{ background: "#121418", border: "1px solid #222" }}

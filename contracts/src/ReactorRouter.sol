@@ -18,6 +18,7 @@ contract ReactorRouter is IUnlockCallback {
 
     mapping(address => bool) public protocolVault;
     uint256 public protocolExempt;
+    uint256 private reentrancyLock;
 
     error NotManager();
     error Slippage();
@@ -30,6 +31,14 @@ contract ReactorRouter is IUnlockCallback {
     error NotGuardian();
     error Sealed();
     error WalletExemptForbidden();
+    error Reentrant();
+
+    modifier nonReentrant() {
+        if (reentrancyLock == 1) revert Reentrant();
+        reentrancyLock = 1;
+        _;
+        reentrancyLock = 0;
+    }
 
     event ProtocolVaultSet(address indexed vault, bool allowed);
     event ProtocolVaultsSealed();
@@ -57,15 +66,20 @@ contract ReactorRouter is IUnlockCallback {
     /// @param amountSpecified must be negative (exact in). Exact-out is disabled in V1.
     function swap(PoolKey calldata key, bool zeroForOne, int256 amountSpecified, uint256 minOut, address recipient)
         external
+        nonReentrant
         returns (uint256 amountOut)
     {
+        if (protocolExempt != 0) revert WalletExemptForbidden();
         return _swap(msg.sender, key, zeroForOne, amountSpecified, minOut, recipient);
     }
 
-    /// @notice Self-burn / Top-10 / CORE vaults only. Sets a transient latch the hook reads.
-    /// Users calling `swap` never set `protocolExempt`. Revert rolls the latch back.
+    /// @notice Self-burn / Top-10 / CORE vaults only. Sets a storage latch the hook reads.
+    /// `nonReentrant` blocks ERC-20 / unlock callbacks from riding the exempt window
+    /// for a fee-free user `swap` or nested `protocolSwap`. Revert rolls the latch back.
+    /// Codex audit target: latch + lock pairing — see AUDIT_HANDOFF.
     function protocolSwap(PoolKey calldata key, bool zeroForOne, int256 amountSpecified, uint256 minOut, address recipient)
         external
+        nonReentrant
         returns (uint256 amountOut)
     {
         if (!protocolVault[msg.sender]) revert NotVault();
@@ -96,6 +110,7 @@ contract ReactorRouter is IUnlockCallback {
 
     function addLiquidity(PoolKey calldata key, int24 tickLower, int24 tickUpper, int256 liquidityDelta)
         external
+        nonReentrant
         returns (BalanceDelta delta)
     {
         bytes memory ret = poolManager.unlock(

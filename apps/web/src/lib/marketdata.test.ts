@@ -13,18 +13,26 @@ function assert(cond: unknown, msg: string) {
 
 {
   const { rows, pauseEpoch } = rankTop10([
-    { token: "0x1", graduated: true, isCore: false, markUsdc: 0n, markOk: false },
+    { token: "0x1", graduated: true, isCore: false, markUsdc: 0n, markOk: false, lastGoodMarkUsdc: 400_000n * 1_000_000n },
     { token: "0x2", graduated: false, isCore: false, markUsdc: 9_000_000n * 1_000_000n, markOk: true },
   ]);
-  assert(rows.length === 0 && pauseEpoch, "unreliable-only set must pause, never guess");
+  assert(rows.length === 0 && pauseEpoch, "material unreliable-only set must pause, never guess");
 }
 
 {
   const { rows, pauseEpoch } = rankTop10([
     { token: "0x1", graduated: true, isCore: false, markUsdc: 400_000n * 1_000_000n, markOk: true },
-    { token: "0x2", graduated: true, isCore: false, markUsdc: 0n, markOk: false },
+    { token: "0x2", graduated: true, isCore: false, markUsdc: 0n, markOk: false, priorRanked: true },
   ]);
   assert(rows.length === 0 && pauseEpoch, "material unvalued graduate pauses the epoch");
+}
+
+{
+  const { rows, pauseEpoch } = rankTop10([
+    { token: "0x1", graduated: true, isCore: false, markUsdc: 400_000n * 1_000_000n, markOk: true },
+    { token: "0x2", graduated: true, isCore: false, markUsdc: 0n, markOk: false, tradeCount: 1, lastGoodMarkUsdc: 8_000n * 1_000_000n },
+  ]);
+  assert(rows.length === 1 && !pauseEpoch, "irrelevant inactivity must not freeze");
 }
 
 {

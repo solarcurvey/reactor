@@ -97,7 +97,12 @@ contract FlywheelVault {
     }
 
     /// @notice Keeper converts this vault's quote bucket to USDC. Hops optional when quote == USDC.
-    function settleQuote(address quote, RouteGuard.Hop[] calldata hops, uint256 minOut) external onlyKeeper nonReentrant {
+    function settleQuote(address quote, RouteGuard.Hop[] calldata hops, uint256 minOut)
+        external
+        onlyKeeper
+        nonReentrant
+        returns (uint256 usdcReceived)
+    {
         if (minOut == 0 && quote != usdc) revert Bad();
         uint256 amt = quoteAccrued[quote];
         uint256 bal = IERC20MinimalExt(quote).balanceOf(address(this));
@@ -116,6 +121,7 @@ contract FlywheelVault {
         uint256 got = RouteExec.run(auth, hops, quote, usdc, amt, quote == usdc ? amt : minOut);
         usdcPot += got;
         lastSettleAt[quote] = uint64(block.timestamp);
+        usdcReceived = got;
         emit QuoteSettled(quote, got);
     }
 
@@ -160,6 +166,7 @@ contract FlywheelVault {
         external
         onlyKeeper
         nonReentrant
+        returns (uint256 targetBought)
     {
         if (minTargetOut == 0) revert Bad();
         if (!epochFinalized) revert Bad();
@@ -181,6 +188,7 @@ contract FlywheelVault {
         bought[epoch][token] = true;
         usdcPot -= share;
         uint256 burned = _buyAndBurn(token, share, hops, minTargetOut);
+        targetBought = burned;
         emit Top10Buy(epoch, token, share, burned);
     }
 

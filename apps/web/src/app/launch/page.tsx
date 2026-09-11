@@ -30,21 +30,23 @@ export default function LaunchPage() {
 
   const selected = quotes?.find((q) => q.token.toLowerCase() === quote.toLowerCase());
 
-  async function maybePricing(quoteAddr: `0x${string}`, category: number, symbol: string) {
-    if (symbol === "USDC" || category === 4) return null;
+  async function maybePricing(quoteAddr: `0x${string}`, usdPegOne: boolean | undefined) {
+    if (usdPegOne) return null;
     const res = await fetch("/api/launch-pricing", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ quote: quoteAddr }),
+      body: JSON.stringify({ quote: quoteAddr, creator: address }),
     });
     const body = (await res.json()) as {
       needsAuth?: boolean;
       auth?: {
         factory: `0x${string}`;
+        creator: `0x${string}`;
         quote: `0x${string}`;
         quoteDecimals: number;
         virtualQuote0: string;
-        nonce: string;
+        curveConfig: `0x${string}`;
+        salt: `0x${string}`;
         deadline: string;
       };
       signature?: `0x${string}`;
@@ -56,10 +58,12 @@ export default function LaunchPage() {
     return {
       auth: {
         factory: body.auth.factory,
+        creator: body.auth.creator,
         quote: body.auth.quote,
         quoteDecimals: body.auth.quoteDecimals,
         virtualQuote0: BigInt(body.auth.virtualQuote0),
-        nonce: BigInt(body.auth.nonce),
+        curveConfig: body.auth.curveConfig,
+        salt: body.auth.salt,
         deadline: BigInt(body.auth.deadline),
       },
       signature: body.signature,
@@ -88,7 +92,7 @@ export default function LaunchPage() {
         telegram: "",
       };
       if (path === "instant") {
-        const priced = await maybePricing(selected.token, selected.category, selected.symbol);
+        const priced = await maybePricing(selected.token, selected.usdPegOne);
         if (params.devBuyQuote > 0n) {
           const allowance = (await client.readContract({
             address: selected.token,
@@ -207,9 +211,26 @@ export default function LaunchPage() {
         </div>
         <div>
           <label htmlFor="launch-image" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-500">
-            Image URL
+            Image
           </label>
-          <Input id="launch-image" name="image" placeholder="Image URL" value={image} onChange={(e) => setImage(e.target.value)} />
+          <input
+            id="launch-image-file"
+            type="file"
+            accept="image/*"
+            className="mb-2 block w-full text-[12px] text-zinc-400"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => setImage(String(reader.result ?? ""));
+              reader.readAsDataURL(file);
+            }}
+          />
+          <Input id="launch-image" name="image" placeholder="or paste image URL" value={image.startsWith("data:") ? "" : image} onChange={(e) => setImage(e.target.value)} />
+          {image && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={image} alt="" className="mt-2 h-16 w-16 rounded-lg object-cover" />
+          )}
         </div>
         <div>
           <label htmlFor="launch-description" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-500">

@@ -174,9 +174,17 @@ contract Deploy is Script {
         a.router.sealProtocolVaults();
         a.userRouter = new UserRouteExecutor(a.auth, a.hook, IReactorSwapper(address(a.router)), a.curve, address(a.usdc));
         _verifyGenesis(a);
-        _tinyBuyback(a);
-        a.auth.pauseLaunches(false);
-        a.vesting.activateLaunch();
+        bool safeGenesis = vm.envOr("SAFE_GENESIS", false);
+        if (safeGenesis) {
+            require(a.auth.guardian() != deployer, "SAFE_MUST_BE_GUARDIAN");
+            require(a.auth.launchesPaused(), "LAUNCHES_MUST_STAY_PAUSED");
+            require(a.core.balanceOf(deployer) == 0, "DEPLOYER_CORE");
+            // Safe enables launches + activateLaunch in a later batch. Never EOA-then-transfer.
+        } else {
+            _tinyBuyback(a);
+            a.auth.pauseLaunches(false);
+            a.vesting.activateLaunch();
+        }
     }
 
     function _verifyGenesis(Addresses memory a) internal view {

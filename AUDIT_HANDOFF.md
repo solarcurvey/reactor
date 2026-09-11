@@ -2,22 +2,25 @@
 
 **This software has not been audited.** Treat every contract as hostile-unreviewed. Do not deploy to Arc Mainnet (5042). No production claim. No Arc Public Testnet claim.
 
-**This pass (audit amendment):** ready-curve freeze, Keeper `minTargetOut` (no hardcoded 1/0), Guardian-only one-time binds, signed launch pricing, terminal fees on executed gross only, Rewards genesis → SelfBurn when `eligible==0`, hop balance deltas + hookless/REACTOR/approved hooks, Keeper blast radius, on-chain Top-10 discovery + Keeper daemon + independent watchdog, `UserRouteExecutor` (not a vault), CORE `burn()` only, dead V1 `MarketOracle` / `KeeperReserve` deleted.
+**This pass (final Grok completion):** vaults return real outputs; Keeper simulate→minOut (never 0/1); protocolExempt + router `nonReentrant`; usdPegOne-only $1; unique launch-auth digest (no serial nonce); Top-10 material vs irrelevant inactivity; RoutePlanner + ValuationEngine; indexer chain timestamps + durable pool maps; Safe genesis verify.
 
 ## Codex focus (this amendment)
 
 | Area | What to read | Attack tests |
 | --- | --- | --- |
-| Routing | `RouteGuard`, `RouteExec`, `UniswapV4Adapter` | `test/attack/RoutingDeltas.t.sol`, `KeeperMinOut.t.sol` |
-| Vaults | `FlywheelVault`, `BuybackVault`, `SelfBurnVault` — isolated pots, chunk/cooldown, `minOut` | `BlastRadius.t.sol`, `Top10Security.t.sol` |
-| Keeper | Designated only; `KEEPER_MODEL.md`; daemon does **not** broadcast | `GuardianP0.t.sol` |
-| Guardian | Immutable; `setKeeper` / `setPricingSigner` / pauses / adapters. No `setHook`. | `FrontrunBind.t.sol`, `PRIVILEGE_MAP.md` |
+| Router / adapters | `ReactorRouter` `swap`/`protocolSwap`/`addLiquidity` `nonReentrant`; `protocolExempt` latch | **`ProtocolExemptReentrancy.t.sol` (named malicious callback)** |
+| Protocol exemption | Only sealed vaults + `ProtocolV4Adapter.protocolSwap`. User `swap` reverts `WalletExemptForbidden` if latch set | same + `ProtocolSettlement.t.sol` |
+| Vault isolation | `FlywheelVault`, `BuybackVault`, `SelfBurnVault` — isolated pots, chunk/cooldown, returned amounts | `BlastRadius.t.sol`, `KeeperReturns.t.sol` |
+| Keeper compromise | Designated only; `KEEPER_MODEL.md`; modes DRY_RUN/LOCAL/ARC_TESTNET; 5042 hard-disabled; no key logs | `GuardianP0.t.sol`, `keeper.ts` |
+| Guardian | Immutable Safe in production; `setKeeper` / `setPricingSigner` / `setUsdPegOne` / pauses / adapters. No `setHook`. Never EOA-then-transfer | `SafeGenesis.t.sol`, `FrontrunBind.t.sol` |
 | Rewards | Magnified DPS; genesis `eligible==0` → 2% SelfBurn (not first-holder rebate) | `RewardCampaign.t.sol`, `Token.t.sol` |
-| Curve / ready | `_buy`/`_sell` revert `ReadyLocked`; `graduate` requires `ready` + revalidate | `CurveFreeze.t.sol` |
-| Fees | Terminal / partial: fee on **executed gross** only; refund unexecuted + unearned fee | `CurveFreeze.t.sol`, `Curve.t.sol` |
-| Signed pricing | EIP-712 `LaunchPricingAuthorization`; no onchain ZEC/USD oracle | `LaunchPricing.t.sol` |
-| Nested quotes | Offchain discovery depth 3, cycle set, fail closed; $250k floor | `apps/web/src/lib/marketdata.ts` |
-| User router | `UserRouteExecutor` — USDC↔token, official final/first leg, `minFinalOut`+deadline; cannot be a protocol vault | `UserRoute.t.sol` |
+| Curve / ready / graduation | `_buy`/`_sell` revert `ReadyLocked`; `graduate` requires `ready` + revalidate | `CurveFreeze.t.sol` |
+| Signed pricing | Unique digest: factory+creator+quote+virtualQuote0+curveConfig+salt+deadline+chain. No `pricingNonce` | `LaunchPricing.t.sol` concurrent + replay |
+| Nested quotes | RoutePlanner max 3; ValuationEngine recursive; cycle reject; only usdPegOne is $1 | `valuation.test.ts`, `NativeQuote.t.sol` |
+| CORE vest / genesis | 1B; 100M vest 30d cliff + 300d linear; 900M locked; never Top-10 | `CoreGenesis.t.sol`, `CoreLiquiditySim.t.sol` |
+| Indexer / Top-10 | `block.timestamp` only; durable poolId→token; material vs irrelevant inactivity | `indexer.persist.test.ts`, `Top10Api.t.sol` |
+| User routes | `UserRouteExecutor` + shared RoutePlanner; bonding nested USDC + graduated v4 | `UserRoute.t.sol` |
+| Routing deltas | `RouteGuard`, `RouteExec`, adapters | `RoutingDeltas.t.sol`, `KeeperMinOut.t.sol` |
 
 ## Overview
 
@@ -91,13 +94,13 @@ Exploit: `test/attack/CurveFreeze.t.sol` — buy to threshold → ready → sell
 
 ## Signed launch pricing
 
-Non-$1 quotes (not USDC / not `Stablecoins`) require `instantLaunchPriced` / `launchStandardPriced` / `launchAndBuyPriced` with EIP-712 `LaunchPricingAuthorization`:
+Only **usdPegOne** quotes (Guardian flag; initially canonical USDC) may use unsigned Instant geometry. Category.Stablecoins is **not** $1. EURC, ZEC, WBTC, native quotes require `instantLaunchPriced` / `launchStandardPriced` / `launchAndBuyPriced` with EIP-712 `LaunchPricingAuthorization`:
 
-`factory, quote, quoteDecimals, virtualQuote0, nonce, deadline, chainId`
+`factory, creator, quote, quoteDecimals, virtualQuote0, curveConfig, salt, deadline` + `chainId` in the digest.
 
-Signer is `ReactorGuardian.pricingSigner` (starts as Keeper; Guardian may rotate). Domain is the factory. Replay via `usedPricing` + per-quote `pricingNonce`. **No onchain ZEC/USD oracle** — the signature attests protocol curve constants for that quote’s decimals.
+Signer is `ReactorGuardian.pricingSigner` (starts as Keeper; Guardian may rotate). Domain is the factory. Replay via `usedPricing[digest]=true`. **No per-quote serial nonce** — concurrent same-quote launches use unique `salt`. TTL ≤ 30 minutes. Creator must be `msg.sender`. **No onchain ZEC/USD oracle** — the signature attests protocol curve constants for that quote’s decimals. ValuationEngine (offchain, multi-source + Arc sanity) produces `virtualQuote0`; if unreliable that quote launch is disabled.
 
-Attack tests: expired / replay / wrong chain (in-message) / factory / quote / params / decimals / old signer after rotation / nonce / quarantine.
+Attack tests: expired / replay / wrong chain / factory / quote / creator / params / decimals / old signer after rotation / zero salt / concurrent / quarantine.
 
 Local UI: `POST /api/launch-pricing` signs with `PRICING_SIGNER_PK` (Anvil #0 fallback). Operational, not trustless.
 
@@ -133,9 +136,10 @@ Every hop: real balance deltas in and out; next hop uses **actual** out, not ada
 
 - Graduated only; skip CORE
 - Supply after burns (`totalSupply`)
-- Official `extsload` slot0 sqrtPrice
-- External quote → USD via hookless USDC hop or recursive native quotes
-- Depth 3, cycle set, **$250k** floor, fail closed (pause epoch — never guess)
+- Official 10–15m VWAP/TWAP-like from indexed official trades (**chain `block.timestamp`**, never `Date.now()`)
+- External quote USD: offchain multi-source + Arc sanity + staleness/deviation (`fuseExternalUsd6`). No onchain oracle
+- Depth 3, cycle set, **$250k** floor
+- Fail-closed **only** for MATERIAL uncertainty (prior ranked, last-good ≥ floor, liquidity, window volume). Thousands of dead low-value graduates with &lt;3 trades do **not** freeze the epoch
 
 Keeper daemon (`apps/indexer/src/keeper.ts`) polls the API, writes a heartbeat, **logs** intended `submitEpoch` — it does not broadcast in this repo. Independent watchdog (`apps/indexer/src/watchdog.ts`) fail-closes on stale / pause.
 
@@ -213,13 +217,15 @@ forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0.1:8545 --broadc
 4. Keeper sandwich despite `minTargetOut` (operational key + quote-to-exec latency)
 5. Registry listing a hostile quote
 6. Pricing-signer compromise authorizing a non-$1 curve with a wrong `virtualQuote0` (operational; no onchain USD oracle)
-7. Offchain Top-10 / 10–15m VWAP window bugs (fail-closed if a graduated candidate is unvalued)
+7. Offchain Top-10 / 10–15m VWAP window bugs (fail-closed only when a **material** candidate is unvalued)
+8. **Codex: protocolExempt reentrancy** — latch + `nonReentrant` + `WalletExemptForbidden`. Named malicious token callback in `ProtocolExemptReentrancy.t.sol`
+9. Intermediate nested-hop floors: last hop / vault `minOut` is sim-derived; per-hop quoter is residual
 
 ## §43 Self-audit (this pass)
 
 | Check | Result |
 | --- | --- |
-| Signed `virtualQuote0` initializes InstantCurve | Yes — Factory passes verified auth; stables unsigned USDC-6 geometry |
+| Signed `virtualQuote0` initializes InstantCurve | Yes — Factory passes verified auth; **usdPegOne only** unsigned |
 | USD-equivalent geometry USDC/ZEC/WBTC/native | `LaunchPricing.t.sol` |
 | Protocol nested settle fee-exempt | `ProtocolV4Adapter` + `ProtocolSettlement.t.sol` |
 | User hops still pay 3.5% | same |

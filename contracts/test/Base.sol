@@ -301,14 +301,24 @@ contract Base is Test {
         view
         returns (LaunchPricing.Auth memory a, bytes memory sig)
     {
+        return _priceAuthFor(address(this), quote, vq0);
+    }
+
+    function _priceAuthFor(address creator, address quote, uint256 vq0)
+        internal
+        view
+        returns (LaunchPricing.Auth memory a, bytes memory sig)
+    {
         uint8 dec = IERC20Like(quote).decimals();
         a = LaunchPricing.Auth({
             factory: address(factory),
+            creator: creator,
             quote: quote,
             quoteDecimals: dec,
             virtualQuote0: vq0,
-            nonce: factory.pricingNonce(quote),
-            deadline: block.timestamp + 1 hours
+            curveConfig: LaunchPricing.INSTANT_CURVE_V1,
+            salt: keccak256(abi.encode(quote, vq0, creator, block.timestamp, gasleft())),
+            deadline: block.timestamp + 15 minutes
         });
         bytes32 digest = LaunchPricing.digest(factory.pricingDomain(), a);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, digest);
