@@ -20,13 +20,37 @@ UI and docs center **CHOOSE WHAT YOUR TOKEN EARNS** / **WHAT SHOULD YOUR TOKEN E
 | Partial fills | **FIXED** | Exact-in `paid < want` → `IncompleteFill`. `test_partialFillRejectedAtInstantEdge` |
 | Fair ≠ CCA | **FIXED** | Renamed Batch Fair Launch; `auctionBps==5000` locked. `test_fairAuctionBpsLockedAndPriceContinuity` |
 | Fair reward ownership | **FIXED** | `FairClaimVault` eligible holder + O(1) `settleClaim`. `test_fairEarlyClaimerDoesNotSteal` |
-| Reward accounting + stateful campaign | **MITIGATED** | Unit tests remain unit tests. `RewardCampaign.t.sol` is handler-based. Solvency asserted with 1000-raw slack (credit-before-settle + floor math). **Do not call this production-invariant-complete.** |
+| Reward accounting + stateful campaign | **MITIGATED** | Unit tests remain unit tests. `RewardCampaign.t.sol` is handler-based. Solvency slack tightened **1000 → 32 raw** after measuring gaps of 2 and 9 (see below). **Do not call this production-invariant-complete.** |
 
 ## Security tests (mapped)
 
 Cross-quote flush, init frontrun, minOut=0, manipulated CORE spot, stale/cooldown ref, route unavailable, malicious quote, 6/8/18 decimals + multi-market, exact-in buy/sell, partial fill, slippage, hopping, transfer before/after fee, historic theft, double claim, wrong-pool/fake token/fake quote flush, fair early claimer, price discontinuity (auction Bps + sqrt from bids), repeat finalize, flash liquidity (negative lock), buyback reentrancy guard, quote→USDC→CORE hop, simultaneous ZCAT/GIGA/MEME — see `test/attack/Security.t.sol`, `CrossQuoteFlush.t.sol`, `Attacks.t.sol`, `Launches.t.sol`, `LockAndBuyback.t.sol`.
 
 Stateful campaign: `forge test --match-path test/invariant/RewardCampaign.t.sol` (default 64 runs / depth 32).
+
+## Reward solvency slack (Codex / residual)
+
+`RewardCampaign` previously used `assertLe(outstanding, backing + 1_000)` after `+1` and `+8` failed. Those failures were:
+
+| Slack tried | Counterexample | Gap (outstanding − backing) |
+| --- | --- | --- |
+| +1 | `500080 > 500078` | **2 raw** |
+| +8 | `62359078 > 62359077` | **9 raw** |
+
+**+1000 was not justified.** There is no 1000-unit hole. The gap is floor math:
+
+- `PRECISION = 1e27`. `increment = (dist * PRECISION) / eligibleSupply` (floor).
+- `leftover = dist - (increment * supply) / PRECISION` (the complementary remainder, ≥ 0).
+- Holder pending uses `floor(bal * acc / PRECISION) - debt`.
+- After each credit, `floor(bal * (acc+inc) / P) - floor(bal * acc / P)` can exceed `inc * bal / P` by **1 raw per holder**.
+- Campaign outstanding = alice+bob+carol+fairVault pending + leftover. Backing = token quote balance + `hook.pendingTokenRewards` (credit is booked before ERC-20 lands).
+
+Net observed excess is **2–9 raw**, not 1000. Slack is now **32 raw** (`SOLVENCY_SLACK_RAW`) with:
+
+- `test_floorMathSlackIsFewRawUnits` — 400 tiny credits, odd supply, transfers + claim
+- `test_swapPathRewardSlackIsFewRawUnits` — 36 buy/sell/flush/claim cycles on a live pool
+
+**Residual risk for Codex:** the 32-raw bound is a **measured test ceiling**, not a proof. Phantom wei scales with (eligible holders × credits) in the worst case (`floor(x+y) ≤ floor(x)+floor(y)+1`). A later claimer can be short by a few wei if earlier claimers take the rounded-up pending. This is not an unbounded drain of user deposits (credits still equal lifetime 1:1). Shared-quote `_flush` caps 6909 at `pendingToken + pendingBuyback` for the flushed token; another token’s 6909 is not part of this slack. **Do not treat 32 as production-invariant-complete.**
 
 ## Original review findings
 
@@ -59,7 +83,20 @@ pnpm --filter web lint
 pnpm --filter web build
 ```
 
-Slither: **not installed** in this environment (`which slither` empty). No fabricated static-analysis report.
+Slither: see **Static analysis (Slither)** below.
+
+## Static analysis (Slither)
+
+Install: `pip install slither-analyzer` (0.11.6 available in this environment: `~/.local/bin/slither`).
+
+Command (from `contracts/`):
+
+```bash
+export PATH="$PATH:$HOME/.local/bin:$HOME/.foundry/bin"
+slither src --exclude-dependencies --filter-paths lib
+```
+
+**Status:** run pending this commit; results will be appended in the follow-up commit if the analyzer completes.
 
 Frontend: `pnpm exec tsc --noEmit` (target ES2020) and `pnpm lint` passed on `apps/web`. Dev server `http://127.0.0.1:43147` returned HTTP 200 after ABI restore.
 
@@ -79,7 +116,7 @@ Always re-read `factory.hook()` after bytecode changes.
 
 - Uniswap v4-core BUSL, non-production until June 2027; **no official v4 PoolManager on Arc Testnet** at last probe.
 - Buyback reference is last-good spot, not a multi-block TWAP. First observation can be manipulated if the CORE pool is thin.
-- Shared-quote 6909 flush + credit-before-physical-settle leaves raw-unit slack (campaign slack 1000).
+- Shared-quote 6909 flush + credit-before-physical-settle + per-holder reward floors leave a few raw units of slack (campaign slack **32**, measured max gap 9; previously widened to 1000 without math — tightened).
 - Hook CREATE2 address moves when hook bytecode changes — always read `factory.hook()`.
 - Frontend quotes via `simulateContract` (needs the wallet to have balances/allowance).
 - No audit, no formal verification, no mainnet guardian, no pause (by design) — **hostile capital will try to steal or lock assets.**
