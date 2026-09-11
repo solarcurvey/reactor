@@ -31,7 +31,11 @@ export default function FairPage() {
   });
 
   const launch = tokens?.find((t) => t.fairId === fairId);
-  const row = fl ? unwrapFair(fl) : REVIEW_FIXTURES && fairId === 1n ? FIXTURE_FAIR : null;
+  const chainRow = fl ? unwrapFair(fl) : null;
+  const row =
+    REVIEW_FIXTURES && fairId === 1n && (!chainRow || chainRow.startTime === 0n)
+      ? FIXTURE_FAIR
+      : chainRow;
   if (!row && !isError) return <p className="text-sm text-zinc-500">Loading Batch Fair Launch…</p>;
   if (!row) {
     return (

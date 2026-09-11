@@ -31,7 +31,7 @@ export function Wordmark({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-2.5">
       <ReactorMark className="h-8 w-8" />
-      <div className="leading-none">
+      <div className="hidden leading-none sm:block">
         <div className="text-[15px] font-semibold tracking-[0.22em] text-white">REACTOR</div>
         {!compact && (
           <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-zinc-400">Built on Arc</div>

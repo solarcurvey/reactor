@@ -12,6 +12,9 @@ apps/web/.next/
 contracts/out/
 contracts/cache/
 contracts/broadcast/
+contracts/slither-out.txt
+contracts/slither-report.json
+apps/web/test-results/
 # Uniswap + forge libs are reinstalled via `forge install` (pinned in DECISIONS.md)
 contracts/lib/
 .idea/

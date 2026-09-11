@@ -37,8 +37,9 @@ Addresses land in `deployments/local.json` after the demo script.
 1. **Choose a quote** — Instant (market live immediately) or **Batch Fair Launch** (pro-rata timed sale → migrate). Not Uniswap CCA.
 2. Trade **exact-in** on the Official REACTOR Pool. The UI simulates, applies slippage, and submits a **nonzero minOut**. Incomplete fills revert.
 3. Claim holder rewards in the quote asset — no staking.
-4. Permissionless CORE buyback. Callers cannot set minOut; the protocol enforces TWAP-style reference, cooldown, chunk, and reserve.
-5. Transfer launch tokens with **zero tax**; rewards persist.
+4. Permissionless CORE buyback (`execute` / `executeCoreBuyback`). Callers cannot set minOut.
+5. THE REACTOR (`/reactor`) — 1% Top-10 flywheel. TWAP mcap floor $250k. CORE never ranks.
+6. Transfer launch tokens with **zero tax**; rewards persist.
 
 ## Network
 
@@ -57,7 +58,7 @@ We **do not claim Arc Testnet success** unless transactions appear on [testnet.a
 | --- | --- |
 | `PROJECT.md` | Product scope |
 | `ARCHITECTURE.md` | Modules and trust boundaries |
-| `ECONOMICS.md` | Immutable 2/1 split, eligibility |
+| `ECONOMICS.md` | Immutable 2 / 1 / 0.5 split, flywheel, eligibility |
 | `DECISIONS.md` | ADRs + primary-source research |
 | `THREAT_MODEL.md` | Attacks and residual risk |
 | `TESTING.md` | How to test |

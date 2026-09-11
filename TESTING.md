@@ -24,6 +24,8 @@ slither contracts/src --exclude-dependencies || true
 
 | Area | File | Asserts |
 | --- | --- | --- |
+| Top-10 / keepers / routing | `test/attack/Top10Security.t.sol` | spot vs TWAP, double finalize/exec/bounty, #11=0, <10 split, zero accumulate, FDV bounds, CORE skip, buckets |
+| Top-10 + CORE E2E burns | `test/integration/Top10E2E.t.sol` | `totalSupply` decreases after `executeTop10Buyback` / `executeCoreBuyback` |
 | Fee 3.5% → 2/1/0.5 | `test/unit/FeeInvariant.t.sol` | holders+flywheel+core = 3.5% floor split |
 | Reward solvency | `test/invariant/RewardSolvency.t.sol` | legacy over-assigns; magnified DPS never does |
 | No transfer tax | `test/unit/Token.t.sol` | send X, receive X |

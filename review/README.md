@@ -1,47 +1,27 @@
-# REACTOR Visual Review - Complete
+# REACTOR visual review (density pass)
 
-## Files Delivered
+Captured from the running app (Playwright, `CAPTURE=1`, review fixtures on `:43149`). Viewports **1440×900** and **390×844**. These are **not** homepage reuse.
 
-### Desktop Screenshots (1440x900)
-- ✅ `home-1440.png` - Home page with "Choose what your token earns." hero
-- ✅ `launch-1440.png` - Launch flow at step 2 "What should your token earn?"
-- ✅ `instant-1440.png` - Launch form (note: /instant route returns 404)
-- ✅ `fair-1440.png` - Batch Fair Launch auction interface
-- ✅ `token-1440.png` - Home page token grid (empty state)
-- ✅ `rewards-1440.png` - Rewards page
-- ✅ `core-1440.png` - CORE "Fuel and burn" dashboard
+| Surface | 1440 | 390 |
+| --- | --- | --- |
+| Home (dense table) | `home-1440.png` | `home-390.png` |
+| Launch · Earn step | `launch-1440.png` | `launch-390.png` |
+| Launch Instant confirm (FDV 25000) | `instant-1440.png` | `instant-390.png` |
+| Launch Fair confirm | `fair-launch-1440.png` | `fair-launch-390.png` |
+| Token detail (ZCAT + ticket) | `token-1440.png` | `token-390.png` |
+| Trade board | `trade-1440.png` | `trade-390.png` |
+| Rewards | `rewards-1440.png` | `rewards-390.png` |
+| THE REACTOR | `reactor-1440.png` | `reactor-390.png` |
+| CORE | `core-1440.png` | `core-390.png` |
+| Fair live | `fair-1440.png` | `fair-390.png` |
+| Wallet (disconnected + connected sample) | `wallet-1440.png` | `wallet-390.png` |
 
-### Mobile Screenshots (390x844)
-- ✅ `home-390.png` - Home page mobile view
-- ✅ `launch-390.png` - Launch flow mobile view
-- ✅ `instant-390.png` - Launch form mobile view
-- ✅ `fair-390.png` - Fair launch mobile view
-- ✅ `token-390.png` - Token grid mobile view
-- ✅ `rewards-390.png` - Rewards mobile view
-- ✅ `core-390.png` - CORE mobile view
+Review fixtures (`NEXT_PUBLIC_REVIEW_FIXTURES=1`) populate the board when the factory is empty. Banner says so. Live Anvil data replaces them when present.
 
-### Documentation
-- ✅ `VISUAL_NOTES.md` - Detailed visual review findings
-- ✅ `README.md` - This file
+## Review notes
 
-## Key Confirmations ✓
-
-1. **Home hero text:** "Choose what your token earns." ✓
-2. **Launch flow:** Successfully navigated to "What should your token earn?" step ✓
-3. **CORE page:** Shows "TESTNET - TESTCORE" header ✓
-4. **CORE page:** Displays "approx min CORE 0" (no minimum CORE output) ✓
-
-## Visual Issues Found
-
-**None.** No CSS bugs, overflow issues, unreadable text, or broken layouts detected.
-
-## Notes
-
-- **/instant route:** Returns 404. Instant mode is likely part of the /launch flow (step 3: MODE selection), not a standalone page. Screenshots show launch form as fallback.
-- **Token page:** No tokens exist yet, so captured home page token grid showing empty state.
-- **Responsive design:** All pages render correctly at both viewport sizes.
-
-## Review Status
-
-**✅ COMPLETE** - All 14 screenshots captured and visual review documented.
-
+- Home is a **table** (token / earns / mode / supply / rewards). Distinct from token detail (chart + buy/sell ticket).
+- Instant confirm shows USDC FDV **$10k–$50k** and default **25000**.
+- `/reactor` ranks #1–#4 in fixtures; copy states #11 gets zero and Instant FDV is not a rank.
+- Mobile: wordmark text hidden; Trade/Rewards links hidden; table drops Mode/Supply/Rewards columns.
+- Wallet page shows live disconnected state plus a labeled connected sample.
