@@ -166,6 +166,7 @@ contract RewardCampaignTest is Base {
                 + ReactorToken(token).leftoverRewards();
             uint256 backing = IERC20Like(quote).balanceOf(token) + hook.pendingTokenRewards(token);
             // Magnified DPS: leftover is unassigned carry-forward, never allocated twice.
+            // No +1 / +N slack. outstanding must be conserved against physical backing.
             assertLe(outstanding, backing);
             assertLe(outstanding, ReactorToken(token).lifetimeRewards());
         }

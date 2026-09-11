@@ -26,7 +26,8 @@ test.describe("review screenshots", () => {
 
     await page.goto("/launch");
     await expect(page.getByRole("heading", { name: /Ignite a market/i })).toBeVisible();
-    await expect(page.getByText(/Starting FDV|Continue|creator FDV/i)).toHaveCount(0);
+    await expect(page.locator('input[type="range"]')).toHaveCount(0);
+    await expect(page.getByText(/Starting FDV/i)).toHaveCount(0);
     await page.getByLabel("Name").fill("Neon");
     await page.getByLabel("Ticker").fill("NEON");
     await page.getByText("USDC", { exact: true }).first().click();
@@ -58,6 +59,16 @@ test.describe("review screenshots", () => {
     await expect(page.getByRole("heading", { name: /^CORE$/ })).toBeVisible();
     await expect(page.getByText(/never Top-10|not Instant/i).first()).toBeVisible();
     await both(page, "core");
+
+    const bonding = process.env.BONDING_TOKEN;
+    if (bonding) {
+      await page.goto(`/token/${bonding}`);
+      await expect(page.getByRole("heading", { name: /Neon/i })).toBeVisible();
+      await expect(page.getByText(/bonded|Bonding/i).first()).toBeVisible();
+      await expect(page.locator('input[type="range"]')).toHaveCount(0);
+      await expect(page.getByText(/Starting FDV/i)).toHaveCount(0);
+      await both(page, "token-bonding");
+    }
 
     await page.goto("/quote/USDC");
     await expect(page.getByRole("heading", { name: /USDC ecosystem/i })).toBeVisible();

@@ -8,7 +8,10 @@
     "start": "tsx src/index.ts",
     "demo": "tsx src/e2e-demo.ts",
     "keeper": "tsx src/keeper.ts",
-    "watchdog": "tsx src/watchdog.ts"
+    "keeper:once": "KEEPER_ONCE=1 tsx src/keeper.ts",
+    "watchdog": "tsx src/watchdog.ts",
+    "watchdog:once": "WATCHDOG_ONCE=1 tsx src/watchdog.ts",
+    "seed-bonding": "tsx src/seed-bonding.ts"
   },
   "dependencies": {
     "viem": "^2.56.3"

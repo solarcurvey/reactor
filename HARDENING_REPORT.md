@@ -57,12 +57,12 @@ Last claimer reverts or is short when the view sum exceeds physical quote.
 - `_distributeDist` caps `acc` so `(S * acc) / P ≤ priorAssigned + dist` (leftover holds the remainder).
 - `rewardDebt` is last synced `accRewardPerShare`; unpaid is `floor(bal * (acc - userAcc) / P)`.
 
-Isolated fixture expects **0** over-assignment. Swap path / campaign keep **+1 raw** for credit-before-ERC-20.
+Isolated fixture, swap path, and campaign assert **0** over-assignment (`outstanding <= backing`). Leftover magnified remainder is unassigned carry-forward, not slack.
 
 ### Residual risk for Codex
 
 - View `rewardDebt(address)` is now an acc snapshot, not `floor(bal*acc/P)`. No mainnet; ABI selector unchanged.
-- +1 campaign slack is still a test bound, not a proof. Shared-quote `_flush` caps 6909 at `pendingToken + pendingBuyback` for the flushed token — not part of this debt bug.
+- Campaign invariant is `outstanding <= backing` with **no slack**. That is a Foundry campaign bound (64 runs / depth 32), not a formal proof. Shared-quote `_flush` caps 6909 at `pendingToken + pendingBuyback` for the flushed token — not part of this debt bug.
 - Leftover + per-account floors can still leave **dust a last claimer cannot take** (transfer reverts if `stored > token quote balance`). Not an unbounded drain of other holders’ principal.
 - **Do not call this production-invariant-complete.**
 
@@ -157,7 +157,7 @@ Always re-read `factory.hook()` after bytecode changes.
 
 - Uniswap v4-core BUSL, non-production until June 2027; **no official v4 PoolManager on Arc Testnet** at last probe.
 - Buyback reference is last-good spot, not a multi-block TWAP. First observation can be manipulated if the CORE pool is thin.
-- Reward debt is acc-snapshot (fixed over-assignment). Campaign slack **1 raw**. Last claimer can still be short leftover dust. Previously +1000 was an unjustified widen.
+- Reward debt is acc-snapshot (fixed over-assignment). Campaign asserts `outstanding <= backing` with no slack. Last claimer can still be short leftover dust. Previously +1000 was an unjustified widen.
 - Hook CREATE2 address moves when hook bytecode changes — always read `factory.hook()`.
 - Frontend quotes via `simulateContract` (needs the wallet to have balances/allowance).
 - No audit, no formal verification, no mainnet guardian, no pause (by design) — **hostile capital will try to steal or lock assets.**

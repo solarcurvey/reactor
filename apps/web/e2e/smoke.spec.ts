@@ -8,7 +8,7 @@ test("home renders explore and ignite", async ({ page }) => {
 
 test("core dashboard reads onchain or shows error", async ({ page }) => {
   await page.goto("/core");
-  await expect(page.getByRole("heading", { name: /Fuel and burn/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^CORE$/ })).toBeVisible();
 });
 
 test("reactor flywheel page", async ({ page }) => {

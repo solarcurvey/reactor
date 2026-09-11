@@ -95,8 +95,7 @@ contract TokenTest is Base {
         assertEq(ReactorToken(token).lifetimeRewards(), 20e6);
     }
 
-    /// @notice Swap-path check that outstanding−backing stays in the few-raw range
-    /// that justified tightening campaign slack from 1000 → 32.
+    /// @notice Swap-path check: outstanding ≤ backing with no slack.
     function test_swapPathRewardSlackIsFewRawUnits() public {
         address token = _instantZcat(50_000e8);
         address fair = address(factory.fairVault());

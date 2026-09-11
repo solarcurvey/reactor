@@ -66,7 +66,7 @@ Every row is implemented in-repo. Re-run the matching file after any curve / fee
 | 39.31 | CORE `burn()` only (no dead-address) | `BuybackVault._burn`, `Top10E2E.t.sol` |
 | 28.xx | CORE genesis 35 cases | `test/unit/CoreGenesis.t.sol` |
 | 29.xx | CORE stateful invariants | `test/invariant/CoreInvariant.t.sol` |
-| 39.32 | UserRoute `minFinalOut` + deadline; not a vault | `UserRoute.t.sol` |
+| 39.32 | UserRoute `minQuoteOut` + `minFinalOut` + deadline; sandwich reverts; not a vault | `UserRoute.t.sol` |
 | 39.33 | Top-10 structural: no CORE, no dupes, ≤10, weights 100% | `Top10Security.t.sol`, `Top10Api.t.sol` |
 | 39.34 | Fee 3.5% → 2/1/0.5 | `FeeInvariant.t.sol` |
 | 39.35 | No transfer tax | `Token.t.sol` |
@@ -82,11 +82,11 @@ Every row is implemented in-repo. Re-run the matching file after any curve / fee
 
 | Suite | Command | Bound |
 | --- | --- | --- |
-| Reward campaign (magnified DPS, leftover, debt) | `forge test --match-path test/invariant/RewardCampaign.t.sol` | default 64 runs / 2048 calls; **+1 raw** slack only |
+| Reward campaign (magnified DPS, leftover, debt) | `forge test --match-path test/invariant/RewardCampaign.t.sol` | default 64 runs / 2048 calls; `outstanding <= backing` **no slack** |
 | Reward solvency (legacy vs magnified) | `test/invariant/RewardSolvency.t.sol` | unit + invariant |
 | Fee fuzz / flush fuzz | `test/fuzz/FeeFuzz.t.sol`, `FlushFuzz.t.sol` | dust / overflow |
 
-**Do not** treat `FeeInvariant.t.sol` or `test/invariant/Rewards.t.sol` as the stateful campaign. Campaign slack is **+1 raw**, not +1000. See `HARDENING_REPORT.md`.
+**Do not** treat `FeeInvariant.t.sol` or `test/invariant/Rewards.t.sol` as the stateful campaign. Campaign asserts `outstanding <= backing` with no slack. See `HARDENING_REPORT.md`.
 
 Not claimed as a proof: routing graph, nested USD marks, or Keeper liveness.
 
