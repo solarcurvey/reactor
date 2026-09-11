@@ -32,6 +32,8 @@ contract SelfBurnVault {
 
     error NotAuth();
     error Reentrant();
+    error MinOutRequired();
+    error Bad();
 
     modifier nonReentrant() {
         if (lock == 1) revert Reentrant();
@@ -57,20 +59,21 @@ contract SelfBurnVault {
         emit SelfBurnAccrued(token, quote, amount);
     }
 
-    function execute(address token) external nonReentrant {
+    function execute(address token, uint256 minTargetOut) external nonReentrant {
         auth.requireKeeper(msg.sender);
+        if (minTargetOut == 0) revert MinOutRequired();
         uint256 amt = accrued[token];
         address quote = quoteOf[token];
-        if (quote == address(0) || amt == 0) return;
+        if (quote == address(0) || amt == 0) revert Bad();
         uint256 bal = IERC20MinimalExt(quote).balanceOf(address(this));
         if (bal < amt) amt = bal;
-        if (amt < ReactorConstants.DEFAULT_SETTLE_THRESHOLD) return;
+        if (amt < ReactorConstants.DEFAULT_SETTLE_THRESHOLD) revert Bad();
         accrued[token] -= amt;
         uint256 burned;
         (address t, address q, bool live) = ReactorHook(hook).marketOfToken(token);
         if (live && t == token) {
             IERC20MinimalExt(quote).approve(address(router), amt);
-            uint256 got = router.protocolSwap(
+            burned = router.protocolSwap(
                 PoolKey({
                     currency0: Currency.wrap(token < quote ? token : quote),
                     currency1: Currency.wrap(token < quote ? quote : token),
@@ -80,21 +83,19 @@ contract SelfBurnVault {
                 }),
                 quote < token,
                 -int256(amt),
-                1,
+                minTargetOut,
                 address(this)
             );
             IERC20MinimalExt(quote).approve(address(router), 0);
-            burned = got;
         } else {
             IERC20MinimalExt(quote).approve(address(curve), amt);
-            burned = curve.buyExempt(token, amt, 1);
+            burned = curve.buyExempt(token, amt, minTargetOut);
             IERC20MinimalExt(quote).approve(address(curve), 0);
         }
         q;
-        if (burned > 0) {
-            ReactorToken(token).burn(burned);
-            lifetimeBurned += burned;
-        }
+        if (burned < minTargetOut) revert MinOutRequired();
+        ReactorToken(token).burn(burned);
+        lifetimeBurned += burned;
         emit SelfBurnExecuted(token, amt, burned);
     }
 }

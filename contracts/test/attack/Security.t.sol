@@ -21,13 +21,13 @@ import {LiquidityAmounts} from "../../src/libraries/LiquidityAmounts.sol";
 contract SecurityTest is Base {
     function test_initFrontrun_maliciousBinderFails() public {
         vm.prank(alice);
-        vm.expectRevert(ReactorHook.NotOwner.selector);
+        vm.expectRevert(ReactorHook.NotGuardian.selector);
         hook.bindFactory(alice);
         vm.prank(alice);
-        vm.expectRevert(ReactorHook.NotOwner.selector);
+        vm.expectRevert(ReactorHook.NotGuardian.selector);
         hook.bindBuyback(BuybackVault(alice));
         vm.prank(alice);
-        vm.expectRevert(ReactorLiquidityVault.NotOwner.selector);
+        vm.expectRevert(ReactorLiquidityVault.NotGuardian.selector);
         vault.bindFactory(alice);
 
         vm.expectRevert(ReactorHook.AlreadyBound.selector);

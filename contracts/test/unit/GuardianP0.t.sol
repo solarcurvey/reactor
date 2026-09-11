@@ -133,6 +133,7 @@ contract GuardianP0Test is Base {
                 adapter: address(v4Adapter),
                 tokenIn: address(uint160(i + 1)),
                 tokenOut: address(uint160(i + 2)),
+                minOut: 1,
                 data: ""
             });
         }
@@ -143,9 +144,9 @@ contract GuardianP0Test is Base {
 
     function test_42_11_threeHopsAllowedStructurally() public {
         RouteGuard.Hop[] memory hops = new RouteGuard.Hop[](3);
-        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(zec), tokenOut: address(btc), data: abi.encode(zecUsdcKey)});
-        hops[1] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(btc), tokenOut: address(usdc), data: abi.encode(btcUsdcKey)});
-        hops[2] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(usdc), tokenOut: address(core), data: abi.encode(coreKey)});
+        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(zec), tokenOut: address(btc), minOut: 1, data: abi.encode(zecUsdcKey)});
+        hops[1] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(btc), tokenOut: address(usdc), minOut: 1, data: abi.encode(btcUsdcKey)});
+        hops[2] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(usdc), tokenOut: address(core), minOut: 1, data: abi.encode(coreKey)});
         // Path is structurally valid (≤3, no cycle) but pool data won't match — revert is BadPool, not TooManyHops.
         vm.prank(keeper);
         vm.expectRevert();
@@ -154,8 +155,8 @@ contract GuardianP0Test is Base {
 
     function test_42_12_cycleRejected() public {
         RouteGuard.Hop[] memory hops = new RouteGuard.Hop[](2);
-        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(zec), tokenOut: address(usdc), data: ""});
-        hops[1] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(usdc), tokenOut: address(zec), data: ""});
+        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(zec), tokenOut: address(usdc), minOut: 1, data: ""});
+        hops[1] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(usdc), tokenOut: address(zec), minOut: 1, data: ""});
         vm.prank(keeper);
         vm.expectRevert();
         flywheel.settleQuote(address(zec), hops, 1);
@@ -163,8 +164,8 @@ contract GuardianP0Test is Base {
 
     function test_42_13_duplicateAssetRejected() public {
         RouteGuard.Hop[] memory hops = new RouteGuard.Hop[](2);
-        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(zec), tokenOut: address(usdc), data: ""});
-        hops[1] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(usdc), tokenOut: address(usdc), data: ""});
+        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(zec), tokenOut: address(usdc), minOut: 1, data: ""});
+        hops[1] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(usdc), tokenOut: address(usdc), minOut: 1, data: ""});
         vm.prank(keeper);
         vm.expectRevert();
         flywheel.settleQuote(address(zec), hops, 1);
@@ -497,7 +498,7 @@ contract GuardianP0Test is Base {
         // factory.bindCurve (one-shot).
         // Keeper-only: flywheel.settleQuote / submitEpoch / executeTop10Buyback / rollEpoch,
         // buyback.execute, selfBurn.execute.
-        // Bootstrap-only (sealed): router.setProtocolVault, hook binds, vault.bindFactory.
+        // Guardian one-time binds (sealed after deploy): router.setProtocolVault, hook binds, vault.bindFactory.
         assertEq(auth.guardian(), guardian);
         assertEq(auth.keeper(), keeper);
         assertTrue(router.protocolVaultsSealed());

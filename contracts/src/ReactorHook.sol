@@ -43,7 +43,6 @@ contract ReactorHook is IHooks, IUnlockCallback {
     ISelfBurnSink public selfBurn;
     address public factory;
     address public curve;
-    address public immutable bootstrap;
     ReactorGuardian public immutable auth;
 
     struct OfficialMarket {
@@ -78,7 +77,7 @@ contract ReactorHook is IHooks, IUnlockCallback {
     error CoreForbidden();
     error QuoteMismatch();
     error UnknownLaunch();
-    error NotOwner();
+    error NotGuardian();
 
     modifier onlyPoolManager() {
         if (msg.sender != address(poolManager)) revert NotPoolManager();
@@ -90,14 +89,12 @@ contract ReactorHook is IHooks, IUnlockCallback {
         QuoteAssetRegistry registry_,
         address core_,
         address liquidityVault_,
-        address bootstrap_,
         ReactorGuardian auth_
     ) {
         poolManager = manager_;
         registry = registry_;
         core = core_;
         liquidityVault = liquidityVault_;
-        bootstrap = bootstrap_ == address(0) ? msg.sender : bootstrap_;
         auth = auth_;
         Hooks.validateHookPermissions(
             this,
@@ -121,35 +118,35 @@ contract ReactorHook is IHooks, IUnlockCallback {
     }
 
     function bindFactory(address factory_) external {
-        if (msg.sender != bootstrap) revert NotOwner();
+        if (msg.sender != auth.guardian()) revert NotGuardian();
         if (factory != address(0)) revert AlreadyBound();
         if (factory_ == address(0)) revert NotFactory();
         factory = factory_;
     }
 
     function bindBuyback(BuybackVault vault_) external {
-        if (msg.sender != bootstrap) revert NotOwner();
+        if (msg.sender != auth.guardian()) revert NotGuardian();
         if (address(buybackVault) != address(0)) revert AlreadyBound();
         if (address(vault_) == address(0)) revert NotFactory();
         buybackVault = vault_;
     }
 
     function bindFlywheel(IFeeSink vault_) external {
-        if (msg.sender != bootstrap) revert NotOwner();
+        if (msg.sender != auth.guardian()) revert NotGuardian();
         if (address(flywheelVault) != address(0)) revert AlreadyBound();
         if (address(vault_) == address(0)) revert NotFactory();
         flywheelVault = vault_;
     }
 
     function bindCurve(address curve_) external {
-        if (msg.sender != bootstrap) revert NotOwner();
+        if (msg.sender != auth.guardian()) revert NotGuardian();
         if (curve != address(0)) revert AlreadyBound();
         if (curve_ == address(0)) revert NotFactory();
         curve = curve_;
     }
 
     function bindSelfBurn(address vault_) external {
-        if (msg.sender != bootstrap) revert NotOwner();
+        if (msg.sender != auth.guardian()) revert NotGuardian();
         if (address(selfBurn) != address(0)) revert AlreadyBound();
         if (vault_ == address(0)) revert NotFactory();
         selfBurn = ISelfBurnSink(vault_);

@@ -80,8 +80,8 @@ contract Deploy is Script {
         a.zec.mint(deployer, 1_000_000e8);
         a.btc.mint(deployer, 21_000e8);
         a.nvda.mint(deployer, 1_000_000 ether);
-        a.vault = new ReactorLiquidityVault(a.pm);
-        a.router = new ReactorRouter(a.pm);
+        a.vault = new ReactorLiquidityVault(a.pm, a.auth);
+        a.router = new ReactorRouter(a.pm, a.auth);
         a.v4Adapter = new UniswapV4Adapter(IReactorSwapper(address(a.router)));
         a.routes = new RoutingRegistry(a.auth);
     }
@@ -116,9 +116,9 @@ contract Deploy is Script {
             create2,
             flags,
             type(ReactorHook).creationCode,
-            abi.encode(a.pm, a.registry, address(a.core), address(a.vault), deployer, a.auth)
+            abi.encode(a.pm, a.registry, address(a.core), address(a.vault), a.auth)
         );
-        a.hook = new ReactorHook{salt: salt}(a.pm, a.registry, address(a.core), address(a.vault), deployer, a.auth);
+        a.hook = new ReactorHook{salt: salt}(a.pm, a.registry, address(a.core), address(a.vault), a.auth);
         require(address(a.hook) == hookAddr, "HOOK");
         a.buyback = new BuybackVault(
             a.auth,

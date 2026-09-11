@@ -11,6 +11,7 @@ library RouteGuard {
         address adapter;
         address tokenIn;
         address tokenOut;
+        uint256 minOut;
         bytes data;
     }
 

@@ -97,8 +97,8 @@ contract Base is Test {
         registry.setBuybackRoute(address(zec), true, true);
         registry.setBuybackRoute(address(btc), true, true);
 
-        vault = new ReactorLiquidityVault(pm);
-        router = new ReactorRouter(pm);
+        vault = new ReactorLiquidityVault(pm, auth);
+        router = new ReactorRouter(pm, auth);
         v4Adapter = new UniswapV4Adapter(IReactorSwapper(address(router)));
         routes = new RoutingRegistry(auth);
         auth.setAdapter(address(v4Adapter), true);
@@ -107,9 +107,9 @@ contract Base is Test {
             Hooks.BEFORE_INITIALIZE_FLAG | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG
                 | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG
         );
-        bytes memory ctor = abi.encode(pm, registry, address(core), address(vault), address(this), auth);
+        bytes memory ctor = abi.encode(pm, registry, address(core), address(vault), auth);
         (address hookAddr, bytes32 salt) = HookMiner.find(address(this), flags, type(ReactorHook).creationCode, ctor);
-        hook = new ReactorHook{salt: salt}(pm, registry, address(core), address(vault), address(this), auth);
+        hook = new ReactorHook{salt: salt}(pm, registry, address(core), address(vault), auth);
         require(address(hook) == hookAddr, "hook salt");
 
         buyback = new BuybackVault(
@@ -212,7 +212,9 @@ contract Base is Test {
         returns (RouteGuard.Hop[] memory hops)
     {
         hops = new RouteGuard.Hop[](1);
-        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: tokenIn, tokenOut: tokenOut, data: abi.encode(key)});
+        hops[0] = RouteGuard.Hop({
+            adapter: address(v4Adapter), tokenIn: tokenIn, tokenOut: tokenOut, minOut: 1, data: abi.encode(key)
+        });
     }
 
     function _twoHops(address a, address b, PoolKey memory keyAb, address c, PoolKey memory keyBc)
@@ -221,8 +223,8 @@ contract Base is Test {
         returns (RouteGuard.Hop[] memory hops)
     {
         hops = new RouteGuard.Hop[](2);
-        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: a, tokenOut: b, data: abi.encode(keyAb)});
-        hops[1] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: b, tokenOut: c, data: abi.encode(keyBc)});
+        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: a, tokenOut: b, minOut: 1, data: abi.encode(keyAb)});
+        hops[1] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: b, tokenOut: c, minOut: 1, data: abi.encode(keyBc)});
     }
 
     function _emptyHops() internal pure returns (RouteGuard.Hop[] memory hops) {
@@ -253,7 +255,7 @@ contract Base is Test {
 
     function _keeperSelfBurn(address token) internal {
         vm.prank(keeper);
-        selfBurn.execute(token);
+        selfBurn.execute(token, 1);
     }
 
     function _submitTop10(address token) internal {
