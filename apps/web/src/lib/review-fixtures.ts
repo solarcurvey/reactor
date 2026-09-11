@@ -33,6 +33,9 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     quoteSymbol: "ZEC",
     quoteDecimals: 8,
     lifetimeRewards: 115_646_517_17n,
+    priceQuoteX18: (2n * 10n ** 16n).toString(),
+    fdvUsd6: (412_000n * 1_000_000n).toString(),
+    volume24hUsd6: (88_000n * 1_000_000n).toString(),
   },
   {
     token: GIGA,
@@ -56,6 +59,9 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     quoteSymbol: "USDC",
     quoteDecimals: 6,
     lifetimeRewards: 200_000_000n,
+    priceQuoteX18: (381n * 10n ** 15n).toString(),
+    fdvUsd6: (381_000n * 1_000_000n).toString(),
+    volume24hUsd6: (42_000n * 1_000_000n).toString(),
   },
   {
     token: FCAT,

@@ -7,6 +7,7 @@
     "indexer": "pnpm --filter indexer dev",
     "demo": "pnpm --filter indexer demo",
     "test:web": "pnpm --filter web test",
-    "test:lib": "pnpm --filter indexer test && tsx apps/web/src/lib/top10.test.ts && tsx apps/web/src/lib/marketdata.test.ts"
+    "test:lib": "pnpm --filter indexer test && tsx apps/web/src/lib/top10.test.ts && tsx apps/web/src/lib/marketdata.test.ts",
+    "signer": "pnpm --filter indexer signer"
   }
 }

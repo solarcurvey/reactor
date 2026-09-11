@@ -24,10 +24,11 @@ cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0
 
 # Apps
 pnpm install
-pnpm --filter indexer dev
-pnpm --filter web dev          # http://127.0.0.1:43147
+pnpm --filter indexer dev             # http://127.0.0.1:43148  Postgres if DATABASE_URL, else SQLite
+REACTOR_ENV=LOCAL pnpm --filter indexer signer   # isolated pricing signer :43149
+pnpm --filter web dev                 # http://127.0.0.1:43147
 # optional — local Anvil only (KEEPER_MODE=LOCAL|DRY_RUN|ARC_TESTNET; mainnet disabled)
-pnpm --filter indexer keeper          # or keeper:once
+pnpm --filter indexer keeper          # Postgres jobs + advisory lock
 pnpm --filter indexer watchdog        # independent heartbeat + on-chain epoch check
 ```
 
@@ -42,8 +43,9 @@ Addresses land in `deployments/local.json` after the demo script.
 3. Claim holder rewards in the quote asset — no staking.
 4. Designated Keeper settles flywheel quote→USDC, submits Top-10 epochs, and runs CORE / SelfBurn buy+burn through approved adapters. Each job takes a **chunk** (20%) + cooldown and a Keeper-supplied `minOut` — not the whole pot, not `minOut=1`.
 5. THE REACTOR (`/reactor`) — 1% Top-10. API **discovers** graduated markets on-chain (official prices, nested quote/USD, $250k floor, fail closed). Contracts check structure only. CORE never ranks. Not a trustless oracle.
-6. Only **usdPegOne** quotes (initially canonical USDC) skip signed pricing. EURC and the Stablecoins category are **not** $1. Everyone else needs a unique short-lived `LaunchPricingAuthorization` digest (creator + quote + virtualQuote0 + curve + salt + expiry + chain). Concurrent same-quote launches are allowed. No serial nonce. No onchain ZEC/USD oracle.
+6. Only **usdPegOne** quotes (initially canonical USDC) skip signed pricing. EURC and the Stablecoins category are **not** $1. Everyone else needs a unique short-lived `LaunchPricingAuthorization` digest signed by the **isolated pricing signer** (never a raw key in Next). Concurrent same-quote launches are allowed. No serial nonce. No onchain ZEC/USD oracle.
 7. Transfer launch tokens with **zero tax**; rewards persist. When Rewards `eligibleSupply==0`, the 2% goes to SelfBurn (not the first holder).
+8. Homepage is the indexer `GET /markets` board (pagination/filter/sort, live SSE). Trade tickets come from `POST /quote` — nested official 3.5% legs are listed separately.
 
 ## Network
 
