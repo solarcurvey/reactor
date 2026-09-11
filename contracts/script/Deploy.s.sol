@@ -82,7 +82,6 @@ contract Deploy is Script {
         a.nvda.mint(deployer, 1_000_000 ether);
         a.vault = new ReactorLiquidityVault(a.pm, a.auth);
         a.router = new ReactorRouter(a.pm, a.auth);
-        a.v4Adapter = new UniswapV4Adapter(IReactorSwapper(address(a.router)));
         a.routes = new RoutingRegistry(a.auth);
     }
 
@@ -103,7 +102,6 @@ contract Deploy is Script {
         a.registry.setBuybackRoute(address(a.usdc), true, false);
         a.registry.setBuybackRoute(address(a.zec), true, true);
         a.registry.setBuybackRoute(address(a.btc), true, true);
-        a.auth.setAdapter(address(a.v4Adapter), true);
     }
 
     function _bind(Addresses memory a, address deployer) internal {
@@ -120,6 +118,8 @@ contract Deploy is Script {
         );
         a.hook = new ReactorHook{salt: salt}(a.pm, a.registry, address(a.core), address(a.vault), a.auth);
         require(address(a.hook) == hookAddr, "HOOK");
+        a.v4Adapter = new UniswapV4Adapter(IReactorSwapper(address(a.router)), a.auth, address(a.hook));
+        a.auth.setAdapter(address(a.v4Adapter), true);
         a.buyback = new BuybackVault(
             a.auth,
             address(a.core),

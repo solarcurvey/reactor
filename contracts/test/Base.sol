@@ -32,6 +32,9 @@ import {UniswapV4Adapter} from "../src/adapters/UniswapV4Adapter.sol";
 import {RoutingRegistry} from "../src/RoutingRegistry.sol";
 import {RouteGuard} from "../src/libraries/RouteGuard.sol";
 import {IReactorSwapper} from "../src/interfaces/IReactorSwapper.sol";
+import {LaunchPricing} from "../src/libraries/LaunchPricing.sol";
+import {CurveMath} from "../src/libraries/CurveMath.sol";
+import {UserRouteExecutor} from "../src/UserRouteExecutor.sol";
 
 contract Base is Test {
     using StateLibrary for PoolManager;
@@ -53,9 +56,12 @@ contract Base is Test {
     ReactorGuardian public auth;
     UniswapV4Adapter public v4Adapter;
     RoutingRegistry public routes;
+    UserRouteExecutor public userRouter;
 
     address public guardian;
     address public keeper;
+    uint256 internal pricingPk;
+    address public pricingSigner;
     address public alice = makeAddr("alice");
     address public bob = makeAddr("bob");
     address public carol = makeAddr("carol");
@@ -67,7 +73,10 @@ contract Base is Test {
     function setUp() public virtual {
         guardian = address(this);
         keeper = makeAddr("keeper");
+        pricingPk = 0xA11CE;
+        pricingSigner = vm.addr(pricingPk);
         auth = new ReactorGuardian(guardian, keeper);
+        auth.setPricingSigner(pricingSigner);
 
         pm = new PoolManager(address(this));
         registry = new QuoteAssetRegistry(auth);
@@ -99,9 +108,7 @@ contract Base is Test {
 
         vault = new ReactorLiquidityVault(pm, auth);
         router = new ReactorRouter(pm, auth);
-        v4Adapter = new UniswapV4Adapter(IReactorSwapper(address(router)));
         routes = new RoutingRegistry(auth);
-        auth.setAdapter(address(v4Adapter), true);
 
         uint160 flags = uint160(
             Hooks.BEFORE_INITIALIZE_FLAG | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG
@@ -111,6 +118,9 @@ contract Base is Test {
         (address hookAddr, bytes32 salt) = HookMiner.find(address(this), flags, type(ReactorHook).creationCode, ctor);
         hook = new ReactorHook{salt: salt}(pm, registry, address(core), address(vault), auth);
         require(address(hook) == hookAddr, "hook salt");
+
+        v4Adapter = new UniswapV4Adapter(IReactorSwapper(address(router)), auth, address(hook));
+        auth.setAdapter(address(v4Adapter), true);
 
         buyback = new BuybackVault(
             auth,
@@ -142,6 +152,7 @@ contract Base is Test {
         router.setProtocolVault(address(flywheel), true);
         router.setProtocolVault(address(buyback), true);
         router.sealProtocolVaults();
+        userRouter = new UserRouteExecutor(auth, hook, IReactorSwapper(address(router)), address(usdc));
 
         _seedCorePool();
         _seedHop(address(zec), 100_000e8, 5_000_000e6, zecUsdcKey);
@@ -232,13 +243,18 @@ contract Base is Test {
     }
 
     function _keeperSettle(address quote) internal {
-        vm.prank(keeper);
-        if (quote == address(usdc)) {
-            flywheel.settleQuote(quote, _emptyHops(), 0);
-        } else if (quote == address(zec)) {
-            flywheel.settleQuote(quote, _hop(address(zec), address(usdc), zecUsdcKey), 1);
-        } else {
-            flywheel.settleQuote(quote, _hop(quote, address(usdc), btcUsdcKey), 1);
+        for (uint256 i; i < 48; i++) {
+            uint256 acc = flywheel.quoteAccrued(quote);
+            if (acc < ReactorConstants.DEFAULT_SETTLE_THRESHOLD) break;
+            if (i > 0) vm.warp(block.timestamp + ReactorConstants.KEEPER_COOLDOWN);
+            vm.prank(keeper);
+            if (quote == address(usdc)) {
+                flywheel.settleQuote(quote, _emptyHops(), 0);
+            } else if (quote == address(zec)) {
+                flywheel.settleQuote(quote, _hop(address(zec), address(usdc), zecUsdcKey), 1);
+            } else {
+                flywheel.settleQuote(quote, _hop(quote, address(usdc), btcUsdcKey), 1);
+            }
         }
     }
 
@@ -254,8 +270,42 @@ contract Base is Test {
     }
 
     function _keeperSelfBurn(address token) internal {
-        vm.prank(keeper);
-        selfBurn.execute(token, 1);
+        for (uint256 i; i < 48; i++) {
+            uint256 acc = selfBurn.accrued(token);
+            if (acc < ReactorConstants.DEFAULT_SETTLE_THRESHOLD) break;
+            if (i > 0) vm.warp(block.timestamp + ReactorConstants.KEEPER_COOLDOWN);
+            vm.prank(keeper);
+            selfBurn.execute(token, 1);
+        }
+    }
+
+    function _priceAuth(address quote) internal view returns (LaunchPricing.Auth memory a, bytes memory sig) {
+        uint8 dec = IERC20Like(quote).decimals();
+        uint256 vq0 = CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, dec);
+        a = LaunchPricing.Auth({
+            factory: address(factory),
+            quote: quote,
+            quoteDecimals: dec,
+            virtualQuote0: vq0,
+            nonce: factory.pricingNonce(quote),
+            deadline: block.timestamp + 1 hours
+        });
+        bytes32 digest = LaunchPricing.digest(factory.pricingDomain(), a);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, digest);
+        sig = abi.encodePacked(r, s, v);
+    }
+
+    function _instantPriced(ReactorFactory.InstantParams memory p, bool rewards)
+        internal
+        returns (address token)
+    {
+        if (p.quote == address(usdc)) {
+            (token,) = rewards ? factory.instantLaunch(p) : factory.launchStandard(p);
+            return token;
+        }
+        (LaunchPricing.Auth memory a, bytes memory sig) = _priceAuth(p.quote);
+        if (rewards) (token,) = factory.instantLaunchPriced(p, a, sig);
+        else (token,) = factory.launchStandardPriced(p, a, sig);
     }
 
     function _submitTop10(address token) internal {
@@ -269,7 +319,7 @@ contract Base is Test {
     }
 
     function _instantZcat(uint256 fdv) internal returns (address token) {
-        (token,) = factory.instantLaunch(
+        token = _instantPriced(
             ReactorFactory.InstantParams({
                 name: "Zcash Cat",
                 symbol: "ZCAT",
@@ -283,7 +333,8 @@ contract Base is Test {
                 website: "https://reactor.local",
                 twitter: "",
                 telegram: ""
-            })
+            }),
+            true
         );
     }
 
@@ -373,5 +424,6 @@ interface IERC20Like {
     function approve(address, uint256) external returns (bool);
     function balanceOf(address) external view returns (uint256);
     function transfer(address, address) external returns (bool);
+    function decimals() external view returns (uint8);
 }
 

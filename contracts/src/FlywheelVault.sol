@@ -106,6 +106,12 @@ contract FlywheelVault {
         if (lastSettleAt[quote] != 0 && block.timestamp < lastSettleAt[quote] + ReactorConstants.KEEPER_COOLDOWN) {
             revert Bad();
         }
+        uint256 chunk = (amt * ReactorConstants.MAX_CHUNK_BPS) / ReactorConstants.BPS_DENOMINATOR;
+        if (chunk == 0) chunk = amt;
+        if (
+            chunk >= ReactorConstants.DEFAULT_SETTLE_THRESHOLD && amt > chunk
+                && amt - chunk >= ReactorConstants.DEFAULT_SETTLE_THRESHOLD
+        ) amt = chunk;
         quoteAccrued[quote] -= amt;
         uint256 got = RouteExec.run(auth, hops, quote, usdc, amt, quote == usdc ? amt : minOut);
         usdcPot += got;

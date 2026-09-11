@@ -57,9 +57,9 @@ contract CurveTest is Base {
         assertLe(out, ReactorConstants.DEV_BUY_MAX_TOKENS);
         assertEq(curve.devBoughtOf(token), out);
         assertEq(ReactorToken(token).balanceOf(alice) + ReactorToken(token).balanceOf(address(curve)), 1_000_000_000 ether);
-        uint256 ownFee = pay * 200 / 10_000;
-        assertLe(ReactorToken(token).pendingRewards(alice), ownFee);
-        assertGt(ReactorToken(token).lifetimeRewards(), 0);
+        assertEq(ReactorToken(token).pendingRewards(alice), 0);
+        assertEq(ReactorToken(token).lifetimeRewards(), 0);
+        assertGt(selfBurn.accrued(token), 0);
     }
 
     function test_devBuyOverFivePercentReverts() public {
@@ -85,13 +85,12 @@ contract CurveTest is Base {
         usdc.approve(address(factory), pay);
         (address token,, uint256 out) = factory.launchAndBuy(_params("GEN", "GEN", address(usdc), pay), true, 1);
         vm.stopPrank();
-        // Fees credited before tokens are delivered. Creator may receive leftover
-        // flushed on delivery (their own buy) but never a prior DPS.
-        uint256 genesisFee = pay * 200 / 10_000;
-        assertLe(ReactorToken(token).pendingRewards(alice), genesisFee);
+        // Zero-eligible Rewards fee goes to SelfBurn — not leftover rebate to first holder.
+        assertEq(ReactorToken(token).pendingRewards(alice), 0);
+        assertEq(ReactorToken(token).lifetimeRewards(), 0);
+        assertGt(selfBurn.accrued(token), 0);
         _buy(bob, token, address(usdc), 200e6);
-        uint256 aliceAfter = ReactorToken(token).pendingRewards(alice);
-        assertLt(aliceAfter, ReactorToken(token).lifetimeRewards());
+        assertGt(ReactorToken(token).lifetimeRewards(), 0);
         out;
     }
 
@@ -189,8 +188,7 @@ contract CurveTest is Base {
         q18.mint(address(this), 1_000_000 ether);
         registry.register(address(q18), "Q18", "Q18", 18, "", QuoteAssetRegistry.Category.Stocks, address(0));
         registry.setBuybackRoute(address(q18), true, true);
-        vm.prank(alice);
-        (address token,) = factory.instantLaunch(_params("P18", "P18", address(q18), 0));
+        address token = _instantPriced(_params("P18", "P18", address(q18), 0), true);
         _assertContinuity(token, address(q18));
     }
 

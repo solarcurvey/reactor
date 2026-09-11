@@ -23,6 +23,8 @@ import {SelfBurnVault} from "./SelfBurnVault.sol";
 import {FlywheelVault} from "./FlywheelVault.sol";
 import {BuybackVault} from "./BuybackVault.sol";
 import {ReactorGuardian} from "./ReactorGuardian.sol";
+import {LaunchPricing} from "./libraries/LaunchPricing.sol";
+import {CurveMath} from "./libraries/CurveMath.sol";
 
 contract ReactorFactory {
     using StateLibrary for IPoolManager;
@@ -39,6 +41,9 @@ contract ReactorFactory {
     InstantCurve public curve;
     SelfBurnVault public selfBurn;
     mapping(address => bool) public standardMode;
+    mapping(bytes32 => bool) public usedPricing;
+    mapping(address => uint256) public pricingNonce;
+    bytes32 public immutable pricingDomain;
 
     uint256 public launchCount;
 
@@ -119,6 +124,7 @@ contract ReactorFactory {
     error NotCurve();
     error CurveUnbound();
     error LaunchesArePaused();
+    error NeedPricingAuth();
 
     constructor(
         IPoolManager manager_,
@@ -137,6 +143,15 @@ contract ReactorFactory {
         core = core_;
         auth = auth_;
         fairVault = new FairClaimVault(address(this));
+        pricingDomain = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256("REACTOR"),
+                keccak256("1"),
+                block.chainid,
+                address(this)
+            )
+        );
     }
 
     function bindCurve(InstantCurve curve_, SelfBurnVault selfBurn_) external {
@@ -192,13 +207,29 @@ contract ReactorFactory {
     /// @notice Rewards Instant. Protocol owns supply/decimals/curve/FDV. Optional `devBuyQuote`.
     function instantLaunch(InstantParams calldata p) external returns (address token, PoolId poolId) {
         auth.requireLaunchesOpen();
-        (token, poolId,) = _instantLaunch(p, true, p.devBuyQuote, 1);
+        (token, poolId,) = _instantLaunch(p, true, p.devBuyQuote, 1, _emptyAuth(), "");
+    }
+
+    function instantLaunchPriced(InstantParams calldata p, LaunchPricing.Auth calldata a, bytes calldata sig)
+        external
+        returns (address token, PoolId poolId)
+    {
+        auth.requireLaunchesOpen();
+        (token, poolId,) = _instantLaunch(p, true, p.devBuyQuote, 1, a, sig);
     }
 
     /// @notice Standard Instant (2% buy+burn). Same curve constants as Rewards.
     function launchStandard(InstantParams calldata p) external returns (address token, PoolId poolId) {
         auth.requireLaunchesOpen();
-        (token, poolId,) = _instantLaunch(p, false, p.devBuyQuote, 1);
+        (token, poolId,) = _instantLaunch(p, false, p.devBuyQuote, 1, _emptyAuth(), "");
+    }
+
+    function launchStandardPriced(InstantParams calldata p, LaunchPricing.Auth calldata a, bytes calldata sig)
+        external
+        returns (address token, PoolId poolId)
+    {
+        auth.requireLaunchesOpen();
+        (token, poolId,) = _instantLaunch(p, false, p.devBuyQuote, 1, a, sig);
     }
 
     /// @notice Atomic create + curve init + optional creator purchase (full 3.5%). Reverts if token-out > 5%.
@@ -207,15 +238,39 @@ contract ReactorFactory {
         returns (address token, PoolId poolId, uint256 tokensOut)
     {
         auth.requireLaunchesOpen();
-        return _instantLaunch(p, rewards, p.devBuyQuote, minOut);
+        return _instantLaunch(p, rewards, p.devBuyQuote, minOut, _emptyAuth(), "");
     }
 
-    function _instantLaunch(InstantParams calldata p, bool rewards, uint256 quoteIn, uint256 minOut)
-        internal
-        returns (address token, PoolId poolId, uint256 tokensOut)
-    {
+    function launchAndBuyPriced(
+        InstantParams calldata p,
+        bool rewards,
+        uint256 minOut,
+        LaunchPricing.Auth calldata a,
+        bytes calldata sig
+    ) external returns (address token, PoolId poolId, uint256 tokensOut) {
+        auth.requireLaunchesOpen();
+        return _instantLaunch(p, rewards, p.devBuyQuote, minOut, a, sig);
+    }
+
+    function _emptyAuth() internal pure returns (LaunchPricing.Auth memory a) {}
+
+    function _dollarStable(address quote) internal view returns (bool) {
+        if (quote == registry.usdc()) return true;
+        QuoteAssetRegistry.QuoteAsset memory q = registry.get(quote);
+        return q.exists && q.category == QuoteAssetRegistry.Category.Stablecoins;
+    }
+
+    function _instantLaunch(
+        InstantParams calldata p,
+        bool rewards,
+        uint256 quoteIn,
+        uint256 minOut,
+        LaunchPricing.Auth memory a,
+        bytes memory sig
+    ) internal returns (address token, PoolId poolId, uint256 tokensOut) {
         if (address(curve) == address(0)) revert CurveUnbound();
         if (!registry.canLaunch(p.quote)) revert BuybackRouteRequired();
+        _checkPricing(p.quote, a, sig);
         if (p.quote == core) revert CoreForbidden();
         uint256 supply = ReactorConstants.DEFAULT_SUPPLY;
         uint8 dec = ReactorConstants.DEFAULT_DECIMALS;
@@ -438,6 +493,21 @@ contract ReactorFactory {
 
     function allTokensLength() external view returns (uint256) {
         return allTokens.length;
+    }
+
+    function _checkPricing(address quote, LaunchPricing.Auth memory a, bytes memory sig) internal {
+        if (_dollarStable(quote)) return;
+        if (sig.length == 0) revert NeedPricingAuth();
+        if (!registry.isEnabled(quote)) revert LaunchPricing.Quarantined();
+        uint8 qdec = IERC20MinimalExt(quote).decimals();
+        uint256 vq0 = CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, qdec);
+        if (a.nonce != pricingNonce[quote]) revert LaunchPricing.Replay();
+        LaunchPricing.verify(auth, pricingDomain, address(this), quote, qdec, vq0, a, sig, usedPricing);
+        pricingNonce[quote] += 1;
+    }
+
+    function expectedVirtualQuote0(address quote) external view returns (uint256) {
+        return CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, IERC20MinimalExt(quote).decimals());
     }
 
     function _validateLaunch(address quote, uint256 supply, uint8, uint256) internal view {

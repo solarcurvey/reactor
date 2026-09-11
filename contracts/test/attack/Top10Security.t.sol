@@ -175,7 +175,7 @@ contract Top10SecurityTest is Base {
         if (curve.graduatedOf(token)) hook.flush(token);
         assertEq(flywheel.quoteAccrued(address(zec)), f);
         assertEq(buyback.accrued(address(zec)), c);
-        assertGe(zec.balanceOf(token), h);
+        assertEq(selfBurn.accrued(token), h);
     }
 
     function test_weightsMustSum100Percent() public {

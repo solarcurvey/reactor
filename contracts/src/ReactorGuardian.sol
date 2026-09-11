@@ -6,18 +6,22 @@ pragma solidity ^0.8.26;
 contract ReactorGuardian {
     address public immutable guardian;
     address public keeper;
+    address public pricingSigner;
 
     bool public launchesPaused;
     bool public keeperPaused;
     bool public tradingPaused;
 
     mapping(address => bool) public adapterApproved;
+    mapping(address => bool) public hookApproved;
 
     event KeeperReplaced(address indexed previous, address indexed next);
+    event PricingSignerReplaced(address indexed previous, address indexed next);
     event LaunchesPause(bool paused);
     event KeeperPause(bool paused);
     event TradingPause(bool paused);
     event AdapterSet(address indexed adapter, bool approved);
+    event HookSet(address indexed hook, bool approved);
 
     error NotGuardian();
     error ZeroAddress();
@@ -31,6 +35,13 @@ contract ReactorGuardian {
         if (guardian_ == address(0) || keeper_ == address(0)) revert ZeroAddress();
         guardian = guardian_;
         keeper = keeper_;
+        pricingSigner = keeper_;
+    }
+
+    function setPricingSigner(address next) external onlyGuardian {
+        if (next == address(0)) revert ZeroAddress();
+        emit PricingSignerReplaced(pricingSigner, next);
+        pricingSigner = next;
     }
 
     function setKeeper(address next) external onlyGuardian {
@@ -58,6 +69,11 @@ contract ReactorGuardian {
         if (adapter == address(0)) revert ZeroAddress();
         adapterApproved[adapter] = approved;
         emit AdapterSet(adapter, approved);
+    }
+
+    function setHook(address hook, bool approved) external onlyGuardian {
+        hookApproved[hook] = approved;
+        emit HookSet(hook, approved);
     }
 
     function requireKeeper(address caller) external view {

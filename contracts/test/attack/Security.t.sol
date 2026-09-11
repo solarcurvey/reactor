@@ -242,7 +242,7 @@ contract SecurityTest is Base {
                 telegram: ""
             })
         );
-        (address meme,) = factory.instantLaunch(
+        address meme = _instantPriced(
             ReactorFactory.InstantParams({
                 name: "MEME",
                 symbol: "MEME",
@@ -256,7 +256,8 @@ contract SecurityTest is Base {
                 website: "",
                 twitter: "",
                 telegram: ""
-            })
+            }),
+            true
         );
 
         _buy(alice, zcat, address(zec), 4_000e8);
