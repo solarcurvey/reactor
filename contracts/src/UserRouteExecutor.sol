@@ -62,15 +62,18 @@ contract UserRouteExecutor {
     }
 
     /// @notice token → official pool → quote → optional hops → USDC.
+    /// @param minQuoteOut Floor on the official first-leg (quote units). Not a 1-wei protocol default.
+    /// @param minFinalOut Floor on the USDC exit. Intermediate hop floors are caller-supplied on `hops`.
     function sell(
         address token,
         uint256 tokenIn,
         RouteGuard.Hop[] calldata hops,
+        uint256 minQuoteOut,
         uint256 minFinalOut,
         uint256 deadline
     ) external returns (uint256 usdcOut) {
         if (block.timestamp > deadline) revert Expired();
-        if (minFinalOut == 0 || tokenIn == 0) revert MinOutRequired();
+        if (minFinalOut == 0 || minQuoteOut == 0 || tokenIn == 0) revert MinOutRequired();
         _assertNotVault(msg.sender);
         (address t, address quote, bool live) = hook.marketOfToken(token);
         if (!live || t != token) revert Bad();
@@ -78,7 +81,7 @@ contract UserRouteExecutor {
         IERC20MinimalExt(token).transferFrom(msg.sender, address(this), tokenIn);
         PoolKey memory key = _official(token, quote);
         IERC20MinimalExt(token).approve(address(router), tokenIn);
-        uint256 quoteOut = router.swap(key, token < quote, -int256(tokenIn), 1, address(this));
+        uint256 quoteOut = router.swap(key, token < quote, -int256(tokenIn), minQuoteOut, address(this));
         IERC20MinimalExt(token).approve(address(router), 0);
 
         if (quote == usdc) {

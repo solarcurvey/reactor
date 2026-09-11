@@ -30,7 +30,7 @@ contract UserRouteTest is Base {
         uint256 out = userRouter.buy(token, 200e6, _emptyHops(), 1, block.timestamp + 60);
         assertGt(out, 0);
         ReactorToken(token).approve(address(userRouter), out / 2);
-        uint256 usdcOut = userRouter.sell(token, out / 2, _emptyHops(), 1, block.timestamp + 60);
+        uint256 usdcOut = userRouter.sell(token, out / 2, _emptyHops(), 1, 1, block.timestamp + 60);
         assertGt(usdcOut, 0);
         vm.stopPrank();
     }
@@ -88,5 +88,114 @@ contract UserRouteTest is Base {
     function test_cannotMarkUserAsVault() public view {
         assertFalse(router.protocolVault(address(userRouter)));
         assertFalse(router.protocolVault(bob));
+    }
+
+    function test_sellMinQuoteOutZeroReverts() public {
+        (address token,) = factory.instantLaunch(
+            ReactorFactory.InstantParams({
+                name: "ZQ",
+                symbol: "ZQ",
+                decimals: 18,
+                supply: 0,
+                quote: address(usdc),
+                fdvQuoteRaw: 0,
+                devBuyQuote: 0,
+                image: "",
+                description: "",
+                website: "",
+                twitter: "",
+                telegram: ""
+            })
+        );
+        _fillAndGraduate(alice, token);
+        vm.startPrank(bob);
+        usdc.approve(address(userRouter), 50e6);
+        uint256 out = userRouter.buy(token, 50e6, _emptyHops(), 1, block.timestamp + 60);
+        ReactorToken(token).approve(address(userRouter), out);
+        vm.expectRevert(UserRouteExecutor.MinOutRequired.selector);
+        userRouter.sell(token, out, _emptyHops(), 0, 1, block.timestamp + 60);
+        vm.stopPrank();
+    }
+
+    function test_sellSandwichOnOfficialPoolReverts() public {
+        (address token,) = factory.instantLaunch(
+            ReactorFactory.InstantParams({
+                name: "SW",
+                symbol: "SW",
+                decimals: 18,
+                supply: 0,
+                quote: address(usdc),
+                fdvQuoteRaw: 0,
+                devBuyQuote: 0,
+                image: "",
+                description: "",
+                website: "",
+                twitter: "",
+                telegram: ""
+            })
+        );
+        _fillAndGraduate(alice, token);
+
+        vm.startPrank(bob);
+        usdc.approve(address(userRouter), 200e6);
+        uint256 bought = userRouter.buy(token, 200e6, _emptyHops(), 1, block.timestamp + 60);
+        vm.stopPrank();
+
+        uint256 snap = vm.snapshotState();
+        vm.startPrank(bob);
+        ReactorToken(token).approve(address(userRouter), bought);
+        uint256 honest = userRouter.sell(token, bought, _emptyHops(), 1, 1, block.timestamp + 60);
+        vm.stopPrank();
+        vm.revertToState(snap);
+
+        uint256 minOut = (honest * 99) / 100;
+        assertGt(minOut, 1);
+
+        uint256 dump = ReactorToken(token).balanceOf(alice) / 2;
+        _sell(alice, token, address(usdc), dump);
+
+        vm.startPrank(bob);
+        ReactorToken(token).approve(address(userRouter), bought);
+        vm.expectRevert();
+        userRouter.sell(token, bought, _emptyHops(), minOut, minOut, block.timestamp + 60);
+        vm.stopPrank();
+    }
+
+    function test_buySandwichOnOfficialPoolReverts() public {
+        (address token,) = factory.instantLaunch(
+            ReactorFactory.InstantParams({
+                name: "BW",
+                symbol: "BW",
+                decimals: 18,
+                supply: 0,
+                quote: address(usdc),
+                fdvQuoteRaw: 0,
+                devBuyQuote: 0,
+                image: "",
+                description: "",
+                website: "",
+                twitter: "",
+                telegram: ""
+            })
+        );
+        _fillAndGraduate(alice, token);
+
+        uint256 snap = vm.snapshotState();
+        vm.startPrank(bob);
+        usdc.approve(address(userRouter), 50e6);
+        uint256 honest = userRouter.buy(token, 50e6, _emptyHops(), 1, block.timestamp + 60);
+        vm.stopPrank();
+        vm.revertToState(snap);
+
+        uint256 minOut = (honest * 99) / 100;
+        assertGt(minOut, 1);
+
+        _buy(alice, token, address(usdc), 20_000e6);
+
+        vm.startPrank(bob);
+        usdc.approve(address(userRouter), 50e6);
+        vm.expectRevert();
+        userRouter.buy(token, 50e6, _emptyHops(), minOut, block.timestamp + 60);
+        vm.stopPrank();
     }
 }

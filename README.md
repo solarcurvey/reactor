@@ -26,9 +26,9 @@ cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0
 pnpm install
 pnpm --filter indexer dev
 pnpm --filter web dev          # http://127.0.0.1:43147
-# optional
-pnpm --filter indexer keeper
-pnpm --filter indexer watchdog
+# optional — local Anvil only: keeper broadcasts submitEpoch when the API is confident
+pnpm --filter indexer keeper          # or keeper:once
+pnpm --filter indexer watchdog        # independent heartbeat + on-chain epoch check
 ```
 
 Open `http://127.0.0.1:43147`. Connect a wallet to **chain 5042002** (Anvil). Import anvil account 0 if needed.

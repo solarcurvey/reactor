@@ -1,15 +1,13 @@
-# Visual notes — 2026-09-11 density pass
+# Visual notes — current UI (2026-09-11)
 
-Reviewed the Playwright PNGs after capture. Fixes applied, then recaptured.
+Recaptured at 1440 and 390 against live Anvil 5042002. No review-fixture FDV slider.
 
-| Issue | Fix |
+| Surface | Notes |
 | --- | --- |
-| Token-detail used to be a homepage screenshot | Dedicated `/token/0x1111…0001` with chart + ticket |
-| Empty token chart under fixtures | Swap-series falls back to fixture prints when indexer is empty |
-| Fair live showed epoch-0 / 1970 dates | Review path uses `FIXTURE_FAIR` when chain row is zero |
-| Instant FDV default 80000 (out of USDC range) | Default **25000**, range hint on confirm |
-| Mobile nav clipped wallet / mid-links | Icon-only mark on xs; hide Trade/Rewards; wallet `shrink-0` |
-| Mobile home table overflow | Drop Mode/Supply/Rewards columns under `sm`/`md` |
-| VOLT fixture mcap $210k (below floor) | Set to $290k |
+| Home | Neon bonding row from chain. Empty-state copy gone. |
+| Launch | Compact Instant form. No range / Starting FDV control. Protocol owns FDV. |
+| CORE | Genesis copy, vesting T0, burned via `burn()`. |
+| THE REACTOR | Offchain ranks / not a trustless oracle. Fail-closed with no $250k names. |
+| Bonding token | `/token/0xBf5A…` Neon ~1.6% bonded. No FDV knobs. |
 
-Residual: fixture ranks are labeled review, not live TWAP. Chart is a 3-print stub, not a professional terminal.
+Stale `instant-*.png` / fixture `token-*.png` removed.

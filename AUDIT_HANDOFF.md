@@ -164,19 +164,19 @@ There is no Ownable, admin, bootstrap, or first-caller-wins `bindFactory`.
 ## Limitations
 
 - Official router is exact-in first. Exact-out exists at the hook but is less tested in the UI.
-- UserRoute official sell first-leg uses a 1-wei floor; user protection is `minFinalOut` on the USDC exit.
+- UserRoute `sell` takes caller `minQuoteOut` on the official first-leg and `minFinalOut` on the USDC exit. Intermediate hop floors are caller-supplied (`RouteExec` rejects 0). Sandwich of the official pool reverts when those floors are set from a quote (`UserRoute.t.sol`).
 - `launchAndBuy` unsigned path still uses internal curve `minOut=1` then checks the user `minOut` after.
 - No TWAP on buyback; Keeper sets slippage.
 - Fair launch is CCA-inspired, not the Uniswap CCA factory (ADR-002).
 - Instant is not Uniswap InstantLaunchStrategy (ADR-001).
 - Local demo uses mock USDC-6, not Arc native gas USDC.
-- Keeper daemon does not submit txs in this repo (operator must wire a key).
+- Keeper daemon submits `submitEpoch` on local Anvil 5042002 when the API is confident (Anvil #0 key). Other chains refuse broadcast unless `KEEPER_PRIVATE_KEY` is set. Watchdog reads heartbeat **and** on-chain `epochFinalized`.
 
 ## Invariants (test-backed)
 
 1. `holders + flywheel + core == floor-split 3.5%` (or SelfBurn in place of holders)
 2. Transfer amount in == amount out
-3. Token quote balance ≥ outstanding rewards (after flush; campaign +1 raw slack)
+3. Token quote balance ≥ outstanding rewards (after flush; no campaign slack)
 4. Past rewards persist at zero balance
 5. New holders do not inherit past accumulator
 6. PoolManager / vault / dead / zero excluded
