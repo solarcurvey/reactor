@@ -12,6 +12,7 @@ import {IERC20MinimalExt} from "./interfaces/IERC20MinimalExt.sol";
 /// @notice Immutable official-LP owner. No withdraw, no upgrade, no admin sweep.
 contract ReactorLiquidityVault is IUnlockCallback {
     IPoolManager public immutable poolManager;
+    address public immutable owner;
     address public factory;
 
     mapping(PoolId => bool) public locked;
@@ -25,6 +26,7 @@ contract ReactorLiquidityVault is IUnlockCallback {
     error NotManager();
     error AlreadyBound();
     error WithdrawDisabled();
+    error NotOwner();
 
     modifier onlyFactory() {
         if (msg.sender != factory) revert NotFactory();
@@ -33,9 +35,11 @@ contract ReactorLiquidityVault is IUnlockCallback {
 
     constructor(IPoolManager manager_) {
         poolManager = manager_;
+        owner = msg.sender;
     }
 
     function bindFactory(address factory_) external {
+        if (msg.sender != owner) revert NotOwner();
         if (factory != address(0)) revert AlreadyBound();
         if (factory_ == address(0)) revert NotFactory();
         factory = factory_;
@@ -66,10 +70,7 @@ contract ReactorLiquidityVault is IUnlockCallback {
         (BalanceDelta delta,) = poolManager.modifyLiquidity(
             key,
             IPoolManager.ModifyLiquidityParams({
-                tickLower: tickLower,
-                tickUpper: tickUpper,
-                liquidityDelta: liquidityDelta,
-                salt: bytes32(0)
+                tickLower: tickLower, tickUpper: tickUpper, liquidityDelta: liquidityDelta, salt: bytes32(0)
             }),
             ""
         );

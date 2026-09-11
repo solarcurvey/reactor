@@ -22,4 +22,11 @@ library ReactorConstants {
     address internal constant DEAD = 0x000000000000000000000000000000000000dEaD;
 
     uint256 internal constant DEFAULT_BUYBACK_THRESHOLD = 1e4; // 0.01 USDC-6 or tiny 18-dec
+
+    /// @notice Testnet buyback safety (documented in ECONOMICS.md / HARDENING_REPORT.md).
+    uint16 internal constant BUYBACK_MAX_IMPACT_BPS = 300;
+    uint16 internal constant BUYBACK_MAX_CHUNK_BPS = 2_000;
+    uint16 internal constant BUYBACK_MIN_RESERVE_BPS = 1_000;
+    uint16 internal constant BUYBACK_MAX_REF_DEV_BPS = 1_500;
+    uint64 internal constant BUYBACK_COOLDOWN = 5 minutes;
 }

@@ -1,7 +1,7 @@
 # REACTOR
 
 **Launch. Reflect. Burn.**  
-Launch markets that pay holders.
+**Choose what your token earns.** Launch markets that pay holders in the quote you pick.
 
 Permissionless token launchpad for **Arc**. Official REACTOR pools are Uniswap v4 markets with a **0% LP fee** and a **3% quote-side protocol charge** (2% holders / 1% CORE buyback-and-burn). Built on Arc.
 
@@ -34,10 +34,10 @@ Addresses land in `deployments/local.json` after the demo script.
 
 ## What you can do
 
-1. **IGNITE TOKEN** — Instant (market live immediately) or Fair (time-boxed bids → migrate).
-2. Trade on the **Official REACTOR Pool** (all-in quotes include the 3% quote fee).
+1. **Choose a quote** — Instant (market live immediately) or **Batch Fair Launch** (pro-rata timed sale → migrate). Not Uniswap CCA.
+2. Trade **exact-in** on the Official REACTOR Pool. The UI simulates, applies slippage, and submits a **nonzero minOut**. Incomplete fills revert.
 3. Claim holder rewards in the quote asset — no staking.
-4. Permissionless CORE buyback once the vault threshold is met.
+4. Permissionless CORE buyback. Callers cannot set minOut; the protocol enforces TWAP-style reference, cooldown, chunk, and reserve.
 5. Transfer launch tokens with **zero tax**; rewards persist.
 
 ## Network
@@ -65,6 +65,9 @@ We **do not claim Arc Testnet success** unless transactions appear on [testnet.a
 | `AUDIT_HANDOFF.md` | Hostile-reader brief |
 | `AGENTS.md` | Invariants for future agents |
 | `BUILD_REPORT.md` | Evidence for this build |
+| `COMPETITIVE_REVIEW.md` | Dated public-source review |
+| `FUTURE.md` | Explicitly not built |
+| `HARDENING_REPORT.md` | P0/P1 findings and proof |
 
 ## License
 

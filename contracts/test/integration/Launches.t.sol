@@ -86,32 +86,7 @@ contract LaunchesTest is Base {
         uint256 before = buyback.lifetimeAccrued();
         usdc.approve(address(router), 1_000e6);
         bool zfo = address(usdc) < address(core);
-        router.swap(coreKey, zfo, -int256(1_000e6), 0, address(this));
+        router.swap(coreKey, zfo, -int256(1_000e6), 1, address(this));
         assertEq(buyback.lifetimeAccrued(), before);
-    }
-
-    function _buy(address who, address token, address quote, uint256 amountIn) internal {
-        address c0 = token < quote ? token : quote;
-        _approveRouter(who, quote, amountIn);
-        vm.prank(who);
-        router.swap(_key(token, quote), quote == c0, -int256(amountIn), 0, who);
-    }
-
-    function _sell(address who, address token, address quote, uint256 amountIn) internal {
-        address c0 = token < quote ? token : quote;
-        vm.prank(who);
-        ReactorToken(token).approve(address(router), amountIn);
-        vm.prank(who);
-        router.swap(_key(token, quote), token == c0, -int256(amountIn), 0, who);
-    }
-
-    function _key(address token, address quote) internal view returns (PoolKey memory key) {
-        key = PoolKey({
-            currency0: Currency.wrap(token < quote ? token : quote),
-            currency1: Currency.wrap(token < quote ? quote : token),
-            fee: 0,
-            tickSpacing: 60,
-            hooks: IHooks(address(hook))
-        });
     }
 }

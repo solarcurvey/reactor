@@ -28,6 +28,7 @@ contract ReactorHook is IHooks, IUnlockCallback {
     address public immutable liquidityVault;
     BuybackVault public buybackVault;
     address public factory;
+    address public immutable owner;
 
     struct OfficialMarket {
         address token;
@@ -36,11 +37,14 @@ contract ReactorHook is IHooks, IUnlockCallback {
     }
 
     mapping(PoolId => OfficialMarket) public official;
+    mapping(address => OfficialMarket) public marketOfToken;
     mapping(address => uint256) public pendingTokenRewards;
     mapping(address => uint256) public pendingBuyback;
 
     event OfficialPoolCreated(PoolId indexed poolId, address indexed token, address indexed quote);
-    event SwapFeeAccrued(PoolId indexed poolId, address indexed quote, uint256 holders, uint256 buyback, uint256 notional);
+    event SwapFeeAccrued(
+        PoolId indexed poolId, address indexed quote, uint256 holders, uint256 buyback, uint256 notional
+    );
 
     error NotPoolManager();
     error NotFactory();
@@ -48,6 +52,9 @@ contract ReactorHook is IHooks, IUnlockCallback {
     error HookNotImplemented();
     error InvalidPool();
     error CoreForbidden();
+    error QuoteMismatch();
+    error UnknownLaunch();
+    error NotOwner();
 
     modifier onlyPoolManager() {
         if (msg.sender != address(poolManager)) revert NotPoolManager();
@@ -58,12 +65,14 @@ contract ReactorHook is IHooks, IUnlockCallback {
         IPoolManager manager_,
         QuoteAssetRegistry registry_,
         address core_,
-        address liquidityVault_
+        address liquidityVault_,
+        address owner_
     ) {
         poolManager = manager_;
         registry = registry_;
         core = core_;
         liquidityVault = liquidityVault_;
+        owner = owner_ == address(0) ? msg.sender : owner_;
         Hooks.validateHookPermissions(
             this,
             Hooks.Permissions({
@@ -86,12 +95,14 @@ contract ReactorHook is IHooks, IUnlockCallback {
     }
 
     function bindFactory(address factory_) external {
+        if (msg.sender != owner) revert NotOwner();
         if (factory != address(0)) revert AlreadyBound();
         if (factory_ == address(0)) revert NotFactory();
         factory = factory_;
     }
 
     function bindBuyback(BuybackVault vault_) external {
+        if (msg.sender != owner) revert NotOwner();
         if (address(buybackVault) != address(0)) revert AlreadyBound();
         if (address(vault_) == address(0)) revert NotFactory();
         buybackVault = vault_;
@@ -136,7 +147,9 @@ contract ReactorHook is IHooks, IUnlockCallback {
         address quote = registry.isEnabled(c0) ? c0 : c1;
         address token = quote == c0 ? c1 : c0;
         PoolId id = key.toId();
-        official[id] = OfficialMarket({token: token, quote: quote, exists: true});
+        OfficialMarket memory m = OfficialMarket({token: token, quote: quote, exists: true});
+        official[id] = m;
+        marketOfToken[token] = m;
         emit OfficialPoolCreated(id, token, quote);
         return IHooks.afterInitialize.selector;
     }
@@ -169,12 +182,13 @@ contract ReactorHook is IHooks, IUnlockCallback {
         return (IHooks.beforeSwap.selector, toBeforeSwapDelta(int128(int256(fee)), 0), 0);
     }
 
-    function afterSwap(address, PoolKey calldata key, IPoolManager.SwapParams calldata params, BalanceDelta delta, bytes calldata)
-        external
-        override
-        onlyPoolManager
-        returns (bytes4, int128)
-    {
+    function afterSwap(
+        address,
+        PoolKey calldata key,
+        IPoolManager.SwapParams calldata params,
+        BalanceDelta delta,
+        bytes calldata
+    ) external override onlyPoolManager returns (bytes4, int128) {
         OfficialMarket memory m = official[key.toId()];
         if (!m.exists) return (IHooks.afterSwap.selector, 0);
 
@@ -208,9 +222,25 @@ contract ReactorHook is IHooks, IUnlockCallback {
         emit SwapFeeAccrued(id, m.quote, holders, buyback, notional);
     }
 
-    /// @notice Convert ERC-6909 fee claims to ERC-20. Must run after the swap unlock completes.
-    function flush(address quote, address token) external {
+    /// @notice Convert fee claims for a launch token. Quote is derived from official state.
+    function flush(address token) public {
+        OfficialMarket memory m = marketOfToken[token];
+        if (!m.exists) revert UnknownLaunch();
+        _flush(m.quote, token);
+    }
+
+    /// @notice Two-arg form kept so callers can be explicit. Reverts on cross-quote pairing.
+    function flush(address quote, address token) public {
+        OfficialMarket memory m = marketOfToken[token];
+        if (!m.exists) revert UnknownLaunch();
+        if (quote != m.quote) revert QuoteMismatch();
+        _flush(quote, token);
+    }
+
+    function _flush(address quote, address token) internal {
+        uint256 need = pendingTokenRewards[token] + pendingBuyback[quote];
         uint256 claimAmt = poolManager.balanceOf(address(this), uint256(uint160(quote)));
+        if (need > 0 && claimAmt > need) claimAmt = need;
         if (claimAmt > 0) {
             poolManager.unlock(abi.encode(quote, claimAmt));
         }
@@ -262,11 +292,12 @@ contract ReactorHook is IHooks, IUnlockCallback {
         revert HookNotImplemented();
     }
 
-    function beforeRemoveLiquidity(address, PoolKey calldata, IPoolManager.ModifyLiquidityParams calldata, bytes calldata)
-        external
-        pure
-        returns (bytes4)
-    {
+    function beforeRemoveLiquidity(
+        address,
+        PoolKey calldata,
+        IPoolManager.ModifyLiquidityParams calldata,
+        bytes calldata
+    ) external pure returns (bytes4) {
         revert HookNotImplemented();
     }
 

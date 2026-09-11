@@ -22,24 +22,30 @@ import {ReactorConstants} from "../src/ReactorConstants.sol";
 import {HookMiner} from "../src/libraries/HookMiner.sol";
 import {LaunchMath} from "../src/libraries/LaunchMath.sol";
 import {LiquidityAmounts} from "../src/libraries/LiquidityAmounts.sol";
+import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
 
 contract Base is Test {
-    PoolManager internal pm;
-    QuoteAssetRegistry internal registry;
-    TestCORE internal core;
-    MockERC20 internal usdc;
-    MockERC20 internal zec;
-    ReactorLiquidityVault internal vault;
-    ReactorRouter internal router;
-    ReactorHook internal hook;
-    BuybackVault internal buyback;
-    ReactorFactory internal factory;
+    using StateLibrary for PoolManager;
+    using StateLibrary for IPoolManager;
+    PoolManager public pm;
+    QuoteAssetRegistry public registry;
+    TestCORE public core;
+    MockERC20 public usdc;
+    MockERC20 public zec;
+    MockERC20 public btc;
+    ReactorLiquidityVault public vault;
+    ReactorRouter public router;
+    ReactorHook public hook;
+    BuybackVault public buyback;
+    ReactorFactory public factory;
 
-    address internal alice = makeAddr("alice");
-    address internal bob = makeAddr("bob");
-    address internal carol = makeAddr("carol");
+    address public alice = makeAddr("alice");
+    address public bob = makeAddr("bob");
+    address public carol = makeAddr("carol");
 
     PoolKey internal coreKey;
+    PoolKey internal zecUsdcKey;
+    PoolKey internal btcUsdcKey;
 
     function setUp() public virtual {
         pm = new PoolManager(address(this));
@@ -47,18 +53,28 @@ contract Base is Test {
         core = new TestCORE(1_000_000_000 ether, address(this));
         usdc = new MockERC20("USD Coin", "USDC", 6, 0, address(this));
         zec = new MockERC20("Mock ZEC", "ZEC", 8, 0, address(this));
+        btc = new MockERC20("Mock BTC", "BTC", 8, 0, address(this));
 
         usdc.mint(address(this), 1_000_000_000e6);
         zec.mint(address(this), 1_000_000e8);
+        btc.mint(address(this), 21_000e8);
         usdc.mint(alice, 10_000_000e6);
         usdc.mint(bob, 10_000_000e6);
         usdc.mint(carol, 10_000_000e6);
         zec.mint(alice, 100_000e8);
         zec.mint(bob, 100_000e8);
         zec.mint(carol, 100_000e8);
+        btc.mint(alice, 100e8);
+        btc.mint(bob, 100e8);
+        btc.mint(carol, 100e8);
 
+        registry.setUsdc(address(usdc));
         registry.register(address(usdc), "USDC", "USD Coin", 6, "", QuoteAssetRegistry.Category.Stablecoins, address(0));
         registry.register(address(zec), "ZEC", "Mock ZEC", 8, "", QuoteAssetRegistry.Category.Crypto, address(0));
+        registry.register(address(btc), "BTC", "Mock BTC", 8, "", QuoteAssetRegistry.Category.Crypto, address(0));
+        registry.setBuybackRoute(address(usdc), true, false);
+        registry.setBuybackRoute(address(zec), true, true);
+        registry.setBuybackRoute(address(btc), true, true);
 
         vault = new ReactorLiquidityVault(pm);
         router = new ReactorRouter(pm);
@@ -67,14 +83,19 @@ contract Base is Test {
             Hooks.BEFORE_INITIALIZE_FLAG | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG
                 | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG
         );
-        bytes memory ctor = abi.encode(pm, registry, address(core), address(vault));
-        (address hookAddr, bytes32 salt) =
-            HookMiner.find(address(this), flags, type(ReactorHook).creationCode, ctor);
-        hook = new ReactorHook{salt: salt}(pm, registry, address(core), address(vault));
+        bytes memory ctor = abi.encode(pm, registry, address(core), address(vault), address(this));
+        (address hookAddr, bytes32 salt) = HookMiner.find(address(this), flags, type(ReactorHook).creationCode, ctor);
+        hook = new ReactorHook{salt: salt}(pm, registry, address(core), address(vault), address(this));
         require(address(hook) == hookAddr, "hook salt");
 
         buyback = new BuybackVault(
-            address(core), address(hook), pm, address(router), ReactorConstants.DEFAULT_BUYBACK_THRESHOLD
+            address(core),
+            address(hook),
+            address(usdc),
+            pm,
+            address(router),
+            registry,
+            ReactorConstants.DEFAULT_BUYBACK_THRESHOLD
         );
         hook.bindBuyback(buyback);
 
@@ -83,6 +104,10 @@ contract Base is Test {
         vault.bindFactory(address(factory));
 
         _seedCorePool();
+        _seedHop(address(zec), 100_000e8, 5_000_000e6, zecUsdcKey);
+        _seedHop(address(btc), 100e8, 6_000_000e6, btcUsdcKey);
+        buyback.configureHopRoute(address(zec), zecUsdcKey);
+        buyback.configureHopRoute(address(btc), btcUsdcKey);
     }
 
     function _seedCorePool() internal {
@@ -101,19 +126,47 @@ contract Base is Test {
             address(core) < address(usdc) ? usdcAmt : coreAmt, address(core) < address(usdc) ? coreAmt : usdcAmt
         );
         pm.initialize(coreKey, sqrtP);
-        int24 lo = TickMath.minUsableTick(60);
-        int24 hi = TickMath.maxUsableTick(60);
-        uint128 liq = LiquidityAmounts.getLiquidityForAmounts(
-            sqrtP,
-            TickMath.getSqrtPriceAtTick(lo),
-            TickMath.getSqrtPriceAtTick(hi),
+        _addFullRange(
+            coreKey,
             address(core) < address(usdc) ? coreAmt : usdcAmt,
             address(core) < address(usdc) ? usdcAmt : coreAmt
         );
-        core.approve(address(router), type(uint256).max);
-        usdc.approve(address(router), type(uint256).max);
-        router.addLiquidity(coreKey, lo, hi, int256(uint256(liq)));
-        buyback.configureRoute(coreKey);
+        buyback.configureCoreRoute(coreKey);
+    }
+
+    function _seedHop(address quote, uint256 quoteAmt, uint256 usdcAmt, PoolKey storage key) internal {
+        address a = quote < address(usdc) ? quote : address(usdc);
+        address b = quote < address(usdc) ? address(usdc) : quote;
+        key.currency0 = Currency.wrap(a);
+        key.currency1 = Currency.wrap(b);
+        key.fee = 3000;
+        key.tickSpacing = 60;
+        key.hooks = IHooks(address(0));
+        uint160 sqrtP = LaunchMath.encodeSqrtPriceX96(
+            quote < address(usdc) ? usdcAmt : quoteAmt, quote < address(usdc) ? quoteAmt : usdcAmt
+        );
+        pm.initialize(key, sqrtP);
+        _addFullRange(key, quote < address(usdc) ? quoteAmt : usdcAmt, quote < address(usdc) ? usdcAmt : quoteAmt);
+    }
+
+    function _addFullRange(PoolKey memory key, uint256 amt0, uint256 amt1) internal {
+        int24 lo = TickMath.minUsableTick(60);
+        int24 hi = TickMath.maxUsableTick(60);
+        (uint160 sqrtP,,,) = _slot0(key);
+        uint128 liq = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtP, TickMath.getSqrtPriceAtTick(lo), TickMath.getSqrtPriceAtTick(hi), amt0, amt1
+        );
+        IERC20Like(Currency.unwrap(key.currency0)).approve(address(router), type(uint256).max);
+        IERC20Like(Currency.unwrap(key.currency1)).approve(address(router), type(uint256).max);
+        router.addLiquidity(key, lo, hi, int256(uint256(liq)));
+    }
+
+    function _slot0(PoolKey memory key)
+        internal
+        view
+        returns (uint160 sqrtP, int24 tick, uint24 protocolFee, uint24 lpFee)
+    {
+        (sqrtP, tick, protocolFee, lpFee) = pm.getSlot0(key.toId());
     }
 
     function _instantZcat(uint256 fdv) internal returns (address token) {
@@ -138,6 +191,31 @@ contract Base is Test {
     function _approveRouter(address who, address token, uint256 amt) internal {
         vm.prank(who);
         IERC20Like(token).approve(address(router), amt);
+    }
+
+    function _key(address token, address quote) internal view returns (PoolKey memory key) {
+        key = PoolKey({
+            currency0: Currency.wrap(token < quote ? token : quote),
+            currency1: Currency.wrap(token < quote ? quote : token),
+            fee: 0,
+            tickSpacing: 60,
+            hooks: IHooks(address(hook))
+        });
+    }
+
+    function _buy(address who, address token, address quote, uint256 amountIn) public returns (uint256 outAmt) {
+        address c0 = token < quote ? token : quote;
+        _approveRouter(who, quote, amountIn);
+        vm.prank(who);
+        outAmt = router.swap(_key(token, quote), quote == c0, -int256(amountIn), 1, who);
+    }
+
+    function _sell(address who, address token, address quote, uint256 amountIn) public returns (uint256 outAmt) {
+        address c0 = token < quote ? token : quote;
+        vm.prank(who);
+        ReactorToken(token).approve(address(router), amountIn);
+        vm.prank(who);
+        outAmt = router.swap(_key(token, quote), token == c0, -int256(amountIn), 1, who);
     }
 }
 

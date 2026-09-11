@@ -99,8 +99,8 @@ export default function LaunchPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <p className="text-xs uppercase tracking-[0.22em] text-cyan-200/80">Ignite</p>
-      <h1 className="mt-2 text-3xl font-semibold">Launch a market</h1>
+      <p className="text-xs uppercase tracking-[0.22em] text-cyan-200/80">Choose what your token earns</p>
+      <h1 className="mt-2 text-3xl font-semibold">What should your token earn?</h1>
       <div className="mt-4 flex gap-2 text-xs uppercase tracking-wider text-zinc-500">
         {STEPS.map((s, i) => (
           <span key={s} className={i === step ? "text-cyan-200" : ""}>
@@ -133,21 +133,34 @@ export default function LaunchPage() {
             Holders earn the quote asset from official-pool volume. Pick the asset your market is priced in. Only
             curated quotes are shown.
           </p>
-          <div className="mt-4 grid gap-2">
-            {(quotes ?? []).map((q) => (
-              <button
-                key={q.token}
-                onClick={() => setQuote(q.token)}
-                className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left ${
-                  quote === q.token ? "border-cyan-300/50 bg-cyan-300/10" : "border-white/8 bg-black/20"
-                }`}
-              >
-                <span>
-                  <span className="font-medium">{q.symbol}</span>
-                  <span className="ml-2 text-xs text-zinc-500">{q.name}</span>
-                </span>
-                <span className="text-[11px] uppercase tracking-wider text-zinc-500">{q.categoryLabel}</span>
-              </button>
+          <div className="mt-4 space-y-4">
+            {Object.entries(
+              (quotes ?? []).reduce<Record<string, typeof quotes>>((acc, q) => {
+                const k = q.categoryLabel;
+                (acc[k] ??= []).push(q);
+                return acc;
+              }, {}),
+            ).map(([cat, qs]) => (
+              <div key={cat}>
+                <div className="mb-2 text-[11px] uppercase tracking-wider text-zinc-500">{cat}</div>
+                <div className="grid gap-2">
+                  {(qs ?? []).map((q) => (
+                    <button
+                      key={q.token}
+                      onClick={() => setQuote(q.token)}
+                      className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left ${
+                        quote === q.token ? "border-cyan-300/50 bg-cyan-300/10" : "border-white/8 bg-black/20"
+                      }`}
+                    >
+                      <span>
+                        <span className="font-medium">{q.symbol}</span>
+                        <span className="ml-2 text-xs text-zinc-500">{q.name}</span>
+                      </span>
+                      <span className="text-[11px] uppercase tracking-wider text-amber-200/80">TEST ASSET</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
             {!quotes?.length && <p className="text-sm text-zinc-500">Loading quote registry…</p>}
           </div>
@@ -174,10 +187,11 @@ export default function LaunchPage() {
               mode === "fair" ? "border-cyan-300/50 bg-cyan-300/10" : "border-white/8 bg-black/20"
             }`}
           >
-            <div className="text-xs uppercase tracking-wider text-cyan-200">Fair</div>
-            <div className="mt-1 font-medium">Bid, then migrate</div>
+            <div className="text-xs uppercase tracking-wider text-cyan-200">Batch Fair Launch</div>
+            <div className="mt-1 font-medium">Pro-rata timed sale — not Uniswap CCA</div>
             <p className="mt-2 text-sm text-zinc-400">
-              Time-boxed auction, 0% REACTOR charge. After finalize, one migration to the official hooked pool.
+              50/50 hard-locked: half to bidders, half locked as official LP. 0% REACTOR charge during the sale.
+              Clearing price becomes the official pool start price.
             </p>
           </button>
         </div>
@@ -187,7 +201,7 @@ export default function LaunchPage() {
         <Card className="mt-6 space-y-3 p-5 text-sm">
           <Row k="Name" v={`${name} ($${symbol.toUpperCase()})`} />
           <Row k="Quote" v={selected ? `${selected.symbol} · ${selected.categoryLabel}` : "—"} />
-          <Row k="Mode" v={mode === "instant" ? "Instant launch" : "Fair launch"} />
+          <Row k="Mode" v={mode === "instant" ? "Instant launch" : "Batch Fair Launch"} />
           <Row k="Supply" v="1,000,000,000 · 18 decimals · mint once" />
           <Row k="Official pool" v="0% LP fee · 3% quote charge (2% holders / 1% CORE)" />
           <Row k="Liquidity" v="Locked in ReactorLiquidityVault — no withdraw" />

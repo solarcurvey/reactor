@@ -1,431 +1,81 @@
-[
-  {
-    "type": "constructor",
-    "inputs": [
-      {
-        "name": "core_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "hook_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "manager_",
-        "type": "address",
-        "internalType": "contract IPoolManager"
-      },
-      {
-        "name": "router_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "threshold_",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "accrue",
-    "inputs": [
-      {
-        "name": "quote",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "accrued",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "configurator",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "configureRoute",
-    "inputs": [
-      {
-        "name": "key",
-        "type": "tuple",
-        "internalType": "struct PoolKey",
-        "components": [
-          {
-            "name": "currency0",
-            "type": "address",
-            "internalType": "Currency"
-          },
-          {
-            "name": "currency1",
-            "type": "address",
-            "internalType": "Currency"
-          },
-          {
-            "name": "fee",
-            "type": "uint24",
-            "internalType": "uint24"
-          },
-          {
-            "name": "tickSpacing",
-            "type": "int24",
-            "internalType": "int24"
-          },
-          {
-            "name": "hooks",
-            "type": "address",
-            "internalType": "contract IHooks"
-          }
-        ]
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "core",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "corePoolKey",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "currency0",
-        "type": "address",
-        "internalType": "Currency"
-      },
-      {
-        "name": "currency1",
-        "type": "address",
-        "internalType": "Currency"
-      },
-      {
-        "name": "fee",
-        "type": "uint24",
-        "internalType": "uint24"
-      },
-      {
-        "name": "tickSpacing",
-        "type": "int24",
-        "internalType": "int24"
-      },
-      {
-        "name": "hooks",
-        "type": "address",
-        "internalType": "contract IHooks"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "coreQuote",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "execute",
-    "inputs": [
-      {
-        "name": "quote",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "minCoreOut",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "deadline",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "executeLock",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "hook",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "lifetimeAccrued",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "lifetimeBurned",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "poolManager",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IPoolManager"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "routeSet",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "router",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IReactorSwapper"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "threshold",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "event",
-    "name": "BuybackAccrued",
-    "inputs": [
-      {
-        "name": "quote",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "BuybackExecuted",
-    "inputs": [
-      {
-        "name": "quote",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "quoteIn",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "coreOut",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "caller",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "COREBurned",
-    "inputs": [
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "RouteConfigured",
-    "inputs": [
-      {
-        "name": "quote",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      },
-      {
-        "name": "poolId",
-        "type": "bytes32",
-        "indexed": false,
-        "internalType": "PoolId"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "error",
-    "name": "BadRoute",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "BelowThreshold",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "Expired",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NotHook",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "Reentrant",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "RouteUnset",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "Slippage",
-    "inputs": []
-  }
-]
+
+╭-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------╮
+| Type        | Signature                                                                                       | Selector                                                           |
++====================================================================================================================================================================================+
+| event       | BuybackAccrued(address,uint256)                                                                 | 0x41b5a4134db43f77ffea1f3b3b47a9ba0e8f7f031e5610c95bdd2e66484145df |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| event       | BuybackExecuted(address,uint256,uint256,address)                                                | 0xa21cae16502e3c2dc10737f5e4521300d0565b9f9e37dd73a9bcd2650ab8d46f |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| event       | BuybackSkipped(address,BuybackVault.Safety)                                                     | 0xfd9bef6f9302d9a9fced0a5f272694d134b6a2d00768afb40e69c1c6651695ec |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| event       | COREBurned(uint256)                                                                             | 0x904de2ad97f170772038556aea22ce277d84a7d45b02b810ca68189033d66c2e |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| event       | CoreRouteConfigured(PoolId)                                                                     | 0x4339a557a77bdb2d7715ef3515dc1a231d779de89074baa0b4295e09e4427b8c |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| event       | HopRouteConfigured(address,PoolId)                                                              | 0xef0f3995249db051fd79d8ab4e9182dda4c668ede2f462b4afb38c66c879b665 |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | AlreadySet()                                                                                    | 0xa741a045                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | BadRoute()                                                                                      | 0xc4c321d1                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | NotHook()                                                                                       | 0xc72cfc38                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | Reentrant()                                                                                     | 0xed3ba6a6                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | accrue(address,uint256) nonpayable                                                              | 0x937bba0c                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | accrued(address) view returns (uint256)                                                         | 0xb148440f                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | configurator() view returns (address)                                                           | 0x2b507df8                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | configureCoreRoute(PoolKey) nonpayable                                                          | 0x6bbf67d9                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | configureHopRoute(address,PoolKey) nonpayable                                                   | 0xee3ac4ce                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | core() view returns (address)                                                                   | 0xf2f4eb26                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | corePoolKey() view returns (Currency,Currency,uint24,int24,IHooks)                              | 0x70d89051                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | coreRefSqrt() view returns (uint160)                                                            | 0xab058153                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | coreRefUpdated() view returns (uint64)                                                          | 0xb5bd3345                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | coreRouteSet() view returns (bool)                                                              | 0x6530c012                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | execute(address) nonpayable                                                                     | 0x4b64e492                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | executeLock() view returns (uint256)                                                            | 0x01f4011d                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | hook() view returns (address)                                                                   | 0x7f5a7c7b                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | hopPool(address) view returns (Currency,Currency,uint24,int24,IHooks)                           | 0x8ded4fa9                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | hopRefSqrt(address) view returns (uint160)                                                      | 0xce483a22                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | hopSet(address) view returns (bool)                                                             | 0xeb2ba85a                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | lastExecuteAt(address) view returns (uint64)                                                    | 0xbd8340b5                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | lifetimeAccrued() view returns (uint256)                                                        | 0x378426a8                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | lifetimeBurned() view returns (uint256)                                                         | 0x1eedc93c                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | lifetimePurchased() view returns (uint256)                                                      | 0x5575ae78                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | nextEligibleAt(address) view returns (uint64)                                                   | 0x82399637                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | poolManager() view returns (IPoolManager)                                                       | 0xdc4c90d3                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | preview(address) view returns (uint256,uint256,BuybackVault.Safety)                             | 0x13a69df9                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | registry() view returns (QuoteAssetRegistry)                                                    | 0x7b103999                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | router() view returns (IReactorSwapper)                                                         | 0xf887ea40                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | threshold() view returns (uint256)                                                              | 0x42cde4e8                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | usdc() view returns (address)                                                                   | 0x3e413bee                                                         |
+|-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| constructor | constructor(address,address,address,IPoolManager,address,QuoteAssetRegistry,uint256) nonpayable |                                                                    |
+╰-------------+-------------------------------------------------------------------------------------------------+--------------------------------------------------------------------╯
+

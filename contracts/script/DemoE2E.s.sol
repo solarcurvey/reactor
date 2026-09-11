@@ -14,7 +14,8 @@ import {IHooks} from "v4-core/interfaces/IHooks.sol";
 /// @notice Post-deploy economic loop. Reads addresses from env.
 contract DemoE2E is Script {
     function run() external {
-        uint256 pk = vm.envOr("DEPLOYER_PK", uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80));
+        uint256 pk =
+            vm.envOr("DEPLOYER_PK", uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80));
         address factoryAddr = vm.envAddress("FACTORY");
         address routerAddr = vm.envAddress("ROUTER");
         address buybackAddr = vm.envAddress("BUYBACK");
@@ -117,7 +118,7 @@ contract DemoE2E is Script {
         // pay quote: zeroForOne if quote is token0
         zfo = quote < token;
         IERC20Like(quote).approve(address(router), amt);
-        router.swap(key, zfo, -int256(amt), 0, who);
+        router.swap(key, zfo, -int256(amt), 1, who);
     }
 
     function _sell(ReactorRouter router, address hook, address token, address quote, uint256 amt, address who)
@@ -125,7 +126,7 @@ contract DemoE2E is Script {
     {
         PoolKey memory key = _key(hook, token, quote);
         bool zfo = token < quote;
-        router.swap(key, zfo, -int256(amt), 0, who);
+        router.swap(key, zfo, -int256(amt), 1, who);
     }
 
     function _key(address hook, address token, address quote) internal pure returns (PoolKey memory key) {

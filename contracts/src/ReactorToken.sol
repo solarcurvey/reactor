@@ -51,7 +51,8 @@ contract ReactorToken is IReactorToken {
         address poolManager_,
         address liquidityVault,
         address buybackVault,
-        address recipient
+        address recipient,
+        bool excludeRecipient
     ) {
         if (quote == address(0) || hook_ == address(0) || poolManager_ == address(0) || recipient == address(0)) {
             revert ZeroAddress();
@@ -70,7 +71,7 @@ contract ReactorToken is IReactorToken {
         _exclude(liquidityVault);
         _exclude(buybackVault);
         _exclude(address(this));
-        _exclude(recipient);
+        if (excludeRecipient) _exclude(recipient);
 
         balanceOf[recipient] = supply;
         if (rewardExcluded[recipient]) excludedBalance += supply;
@@ -100,11 +101,6 @@ contract ReactorToken is IReactorToken {
 
     function creditRewards(uint256 amount) external onlyHook {
         if (amount == 0) return;
-        uint256 received = IERC20MinimalExt(quoteAsset).balanceOf(address(this));
-        // Solvency floor: we already expect `amount` to have been transferred in.
-        if (received < lifetimeRewards + leftoverRewards + amount) {
-            // allow exact-credit if hook transferred first
-        }
         lifetimeRewards += amount;
         uint256 dist = amount + leftoverRewards;
         uint256 supply = eligibleSupply();

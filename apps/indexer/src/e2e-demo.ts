@@ -208,7 +208,7 @@ async function main() {
       address: A.ReactorRouter as Address,
       abi: routerAbi,
       functionName: "swap",
-      args: [key, zfo, -amount, 0n, w.account.address],
+      args: [key, zfo, -amount, 1n, w.account.address],
     });
   }
 
@@ -225,7 +225,7 @@ async function main() {
       address: A.ReactorRouter as Address,
       abi: routerAbi,
       functionName: "swap",
-      args: [key, zfo, -amount, 0n, w.account.address],
+      args: [key, zfo, -amount, 1n, w.account.address],
     });
   }
 
@@ -435,7 +435,7 @@ async function main() {
     address: A.BuybackVault as Address,
     abi: buybackAbi,
     functionName: "execute",
-    args: [A.USDC, usdcReserve, 0n, BigInt(Math.floor(Date.now() / 1000) + 600)],
+    args: [A.USDC],
   });
   const burnedAfter = (await publicClient.readContract({
     address: A.BuybackVault as Address,

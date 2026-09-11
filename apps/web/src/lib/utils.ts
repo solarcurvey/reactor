@@ -40,6 +40,21 @@ export function explorerTx(hash: string) {
   return `${base}/tx/${hash}`;
 }
 
+/** Quote per 1 token from Uniswap v4 sqrtPriceX96. */
+export function priceFromSqrtX96(
+  sqrtPriceX96: bigint,
+  tokenIsCurrency0: boolean,
+  tokenDecimals: number,
+  quoteDecimals: number,
+): number {
+  if (sqrtPriceX96 === 0n) return 0;
+  const sqrt = Number(sqrtPriceX96) / 2 ** 96;
+  const raw = sqrt * sqrt;
+  const adj = 10 ** (tokenDecimals - quoteDecimals);
+  const token1PerToken0 = raw * adj;
+  return tokenIsCurrency0 ? token1PerToken0 : token1PerToken0 === 0 ? 0 : 1 / token1PerToken0;
+}
+
 export function explorerAddress(addr: string) {
   const base = process.env.NEXT_PUBLIC_EXPLORER_URL ?? "https://testnet.arcscan.app";
   return `${base}/address/${addr}`;

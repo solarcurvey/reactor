@@ -8,7 +8,8 @@ export PATH="$PATH:$HOME/.foundry/bin"
 
 forge test -vv
 forge test --fuzz-runs 256
-forge test --match-contract Invariant -vv
+forge test --match-path test/invariant/RewardCampaign.t.sol -vv
+# Do not treat test/unit/FeeInvariant.t.sol or test/invariant/Rewards.t.sol as stateful invariants.
 forge test --match-path test/attack/* -vv
 forge test --match-path test/integration/* -vv
 ```

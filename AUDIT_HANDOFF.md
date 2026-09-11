@@ -10,7 +10,8 @@ REACTOR launches fixed-supply ERC-20s into Official REACTOR Pools: Uniswap v4 po
 
 | Contract | Path | Notes |
 | --- | --- | --- |
-| `ReactorFactory` | `contracts/src/ReactorFactory.sol` | Instant + Fair launch, metadata |
+| `ReactorFactory` | `contracts/src/ReactorFactory.sol` | Instant + Batch Fair Launch, metadata |
+| `FairClaimVault` | `contracts/src/FairClaimVault.sol` | Eligible holder of unclaimed auction tokens |
 | `ReactorHook` | `contracts/src/ReactorHook.sol` | Official identity + fee |
 | `ReactorToken` | `contracts/src/ReactorToken.sol` | ERC-20 + O(1) rewards |
 | `ReactorRouter` | `contracts/src/ReactorRouter.sol` | Unlock swaps / liquidity |

@@ -24,18 +24,24 @@ export function TokenCard({ t }: { t: LaunchToken }) {
             </div>
           </div>
           {t.marketLive ? (
-            <Badge>Official REACTOR Pool</Badge>
+            <Badge>Official pool</Badge>
           ) : (
-            <Badge className="border-amber-300/30 bg-amber-300/10 text-amber-100">Fair auction</Badge>
+            <Badge className="border-amber-300/30 bg-amber-300/10 text-amber-100">Batch Fair</Badge>
           )}
         </div>
-        <p className="mt-3 line-clamp-2 text-sm text-zinc-400">
-          {t.description || "No description."}
-        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-cyan-300/10 px-2 py-0.5 text-[11px] uppercase tracking-wider text-cyan-100">
+            Earns {t.quoteSymbol ?? "quote"}
+          </span>
+          <span className="text-[11px] uppercase tracking-wider text-zinc-500">
+            2% of official volume → holders in {t.quoteSymbol ?? "quote"}
+          </span>
+        </div>
+        <p className="mt-3 line-clamp-2 text-sm text-zinc-400">{t.description || "No description."}</p>
         <div className="mt-4 flex justify-between text-[11px] uppercase tracking-wider text-zinc-500">
-          <span>Quote {t.quoteSymbol ?? "—"}</span>
+          <span>TEST ASSET quote</span>
           <span>
-            Rewards {formatUnitsSafe(t.lifetimeRewards ?? 0n, t.quoteDecimals ?? 18, 3)} {t.quoteSymbol}
+            Lifetime {formatUnitsSafe(t.lifetimeRewards ?? 0n, t.quoteDecimals ?? 18, 3)} {t.quoteSymbol}
           </span>
         </div>
       </Card>

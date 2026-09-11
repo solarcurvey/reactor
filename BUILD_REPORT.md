@@ -1,7 +1,7 @@
 # BUILD REPORT — REACTOR local Arc-compatible MVP
 
-**Status:** Complete economic loop verified on **local Anvil chain 5042002**.  
-**Arc Public Testnet:** not claimed. RPC `https://rpc.testnet.arc.io` is live and was probed; Uniswap v4 PoolManager is **absent**, so this build deploys official v4-core locally (BUSL non-production).
+**Status:** Hardening pass on the existing repo. Prior MVP loop was local Anvil 5042002. Hook bytecode changed — **re-read `factory.hook()` after redeploy**.  
+**Arc Public Testnet:** still not claimed. See `HARDENING_REPORT.md`.
 
 Evidence file: `deployments/e2e-evidence.json`  
 Run at: 2026-09-11T00:37:56Z
@@ -11,7 +11,7 @@ Run at: 2026-09-11T00:37:56Z
 | Slice | Location |
 | --- | --- |
 | Instant launch (v4 from trade #1, 0% LP, hooked) | `ReactorFactory.instantLaunch` |
-| Fair launch (bids → finalize once → official pool) | `ReactorFactory` CCA-inspired adapter |
+| Batch Fair Launch (pro-rata timed sale, not CCA) | `ReactorFactory` + `FairClaimVault` |
 | Holder rewards (O(1), no staking, persist on transfer) | `ReactorToken` |
 | CORE buyback-and-burn (accrue, permissionless execute) | `BuybackVault` + hookless CORE/USDC |
 | Consumer UI | `apps/web` @ `http://127.0.0.1:43147` |

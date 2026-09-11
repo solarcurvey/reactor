@@ -14,7 +14,17 @@ contract RewardsInvariantTest is Test {
         address c = makeAddr("c");
 
         ReactorToken token = new ReactorToken(
-            "T", "T", 18, 1_000_000 ether, address(quote), hook, makeAddr("pm"), makeAddr("vault"), makeAddr("bb"), a
+            "T",
+            "T",
+            18,
+            1_000_000 ether,
+            address(quote),
+            hook,
+            makeAddr("pm"),
+            makeAddr("vault"),
+            makeAddr("bb"),
+            a,
+            false
         );
 
         quote.mint(address(token), 1_000e6);
@@ -31,7 +41,8 @@ contract RewardsInvariantTest is Test {
 
         vm.prank(a);
         token.claimRewards(a);
-        outstanding = token.pendingRewards(a) + token.pendingRewards(b) + token.pendingRewards(c) + token.leftoverRewards();
+        outstanding =
+            token.pendingRewards(a) + token.pendingRewards(b) + token.pendingRewards(c) + token.leftoverRewards();
         assertLe(outstanding, quote.balanceOf(address(token)));
     }
 }

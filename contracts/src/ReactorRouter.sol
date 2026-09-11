@@ -9,7 +9,7 @@ import {BalanceDelta} from "v4-core/types/BalanceDelta.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {IERC20MinimalExt} from "./interfaces/IERC20MinimalExt.sol";
 
-/// @notice Unlock-callback router for official (and hookless CORE) swaps.
+/// @notice Unlock-callback router. V1 swaps are exact-input only with a nonzero minOut.
 contract ReactorRouter is IUnlockCallback {
     IPoolManager public immutable poolManager;
 
@@ -17,21 +17,28 @@ contract ReactorRouter is IUnlockCallback {
     error Slippage();
     error ZeroAmount();
     error FlushFailed(bytes data);
+    error ExactOutDisabled();
+    error MinOutRequired();
+    error IncompleteFill();
 
     constructor(IPoolManager manager_) {
         poolManager = manager_;
     }
 
-    /// @param amountSpecified negative = exact in, positive = exact out
+    /// @param amountSpecified must be negative (exact in). Exact-out is disabled in V1.
     function swap(PoolKey calldata key, bool zeroForOne, int256 amountSpecified, uint256 minOut, address recipient)
         external
         returns (uint256 amountOut)
     {
         if (amountSpecified == 0) revert ZeroAmount();
-        bytes memory ret =
-            poolManager.unlock(abi.encode(uint8(0), msg.sender, recipient, key, zeroForOne, amountSpecified, minOut, int24(0), int24(0), int256(0)));
+        if (amountSpecified > 0) revert ExactOutDisabled();
+        if (minOut == 0) revert MinOutRequired();
+        bytes memory ret = poolManager.unlock(
+            abi.encode(
+                uint8(0), msg.sender, recipient, key, zeroForOne, amountSpecified, minOut, int24(0), int24(0), int256(0)
+            )
+        );
         amountOut = abi.decode(ret, (uint256));
-        // Flush after unlock so the hook can take ERC-6909 claims as locker.
         _flushHook(key);
     }
 
@@ -40,7 +47,18 @@ contract ReactorRouter is IUnlockCallback {
         returns (BalanceDelta delta)
     {
         bytes memory ret = poolManager.unlock(
-            abi.encode(uint8(1), msg.sender, msg.sender, key, false, int256(0), uint256(0), tickLower, tickUpper, liquidityDelta)
+            abi.encode(
+                uint8(1),
+                msg.sender,
+                msg.sender,
+                key,
+                false,
+                int256(0),
+                uint256(0),
+                tickLower,
+                tickUpper,
+                liquidityDelta
+            )
         );
         delta = abi.decode(ret, (BalanceDelta));
     }
@@ -89,6 +107,12 @@ contract ReactorRouter is IUnlockCallback {
         _handle(key.currency0, payer, recipient, delta.amount0());
         _handle(key.currency1, payer, recipient, delta.amount1());
 
+        int128 inDelta = zeroForOne ? delta.amount0() : delta.amount1();
+        if (inDelta >= 0) revert Slippage();
+        uint256 paid = uint256(uint128(-inDelta));
+        uint256 want = uint256(-amountSpecified);
+        if (paid < want) revert IncompleteFill();
+
         uint256 outAmt;
         if (zeroForOne) {
             if (delta.amount1() < 0) revert Slippage();
@@ -106,10 +130,10 @@ contract ReactorRouter is IUnlockCallback {
         if (h == address(0)) return;
         address c0 = Currency.unwrap(key.currency0);
         address c1 = Currency.unwrap(key.currency1);
-        (bool ok, bytes memory err) = h.call(abi.encodeWithSignature("flush(address,address)", c0, c1));
-        if (!ok) revert FlushFailed(err);
-        (ok, err) = h.call(abi.encodeWithSignature("flush(address,address)", c1, c0));
-        if (!ok) revert FlushFailed(err);
+        // Canonical flush(token). One of the two currencies is the launch token.
+        (bool ok0,) = h.call(abi.encodeWithSignature("flush(address)", c0));
+        (bool ok1,) = h.call(abi.encodeWithSignature("flush(address)", c1));
+        if (!ok0 && !ok1) revert FlushFailed(bytes("flush"));
     }
 
     function _handle(Currency currency, address payer, address recipient, int128 amount) internal {

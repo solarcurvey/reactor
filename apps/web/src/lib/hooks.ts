@@ -71,8 +71,10 @@ async function readQuotes(client: NonNullable<ReturnType<typeof usePublicClient>
       usdOracle: `0x${string}`;
       enabled: boolean;
       exists: boolean;
+      buybackRouteEnabled?: boolean;
     };
     if (!asset.enabled) continue;
+    if (asset.buybackRouteEnabled === false) continue;
     out.push({
       ...asset,
       categoryLabel: CATEGORY_LABELS[asset.category] ?? "Other",
@@ -232,23 +234,37 @@ export function useCoreStats() {
     queryKey: ["core-stats"],
     enabled: !!client,
     queryFn: async () => {
-      const [supply, burnedBal, accruedUsdc, lifetimeAccrued, lifetimeBurned, threshold] = await Promise.all([
-        client!.readContract({ ...core, functionName: "totalSupply" }) as Promise<bigint>,
-        client!.readContract({
-          ...core,
-          functionName: "balanceOf",
-          args: ["0x000000000000000000000000000000000000dEaD"],
-        }) as Promise<bigint>,
-        client!.readContract({
-          ...buyback,
-          functionName: "accrued",
-          args: [addresses.USDC],
-        }) as Promise<bigint>,
-        client!.readContract({ ...buyback, functionName: "lifetimeAccrued" }) as Promise<bigint>,
-        client!.readContract({ ...buyback, functionName: "lifetimeBurned" }) as Promise<bigint>,
-        client!.readContract({ ...buyback, functionName: "threshold" }) as Promise<bigint>,
-      ]);
-      return { supply, burnedBal, accruedUsdc, lifetimeAccrued, lifetimeBurned, threshold };
+      const [supply, burnedBal, accruedUsdc, lifetimeAccrued, lifetimeBurned, threshold, purchased, preview] =
+        await Promise.all([
+          client!.readContract({ ...core, functionName: "totalSupply" }) as Promise<bigint>,
+          client!.readContract({
+            ...core,
+            functionName: "balanceOf",
+            args: ["0x000000000000000000000000000000000000dEaD"],
+          }) as Promise<bigint>,
+          client!.readContract({
+            ...buyback,
+            functionName: "accrued",
+            args: [addresses.USDC],
+          }) as Promise<bigint>,
+          client!.readContract({ ...buyback, functionName: "lifetimeAccrued" }) as Promise<bigint>,
+          client!.readContract({ ...buyback, functionName: "lifetimeBurned" }) as Promise<bigint>,
+          client!.readContract({ ...buyback, functionName: "threshold" }) as Promise<bigint>,
+          client!.readContract({ ...buyback, functionName: "lifetimePurchased" }) as Promise<bigint>,
+          client!.readContract({
+            ...buyback,
+            functionName: "preview",
+            args: [addresses.USDC],
+          }) as Promise<{ amount?: bigint; minCoreOut?: bigint; reason?: number } | readonly [bigint, bigint, number]>,
+        ]);
+      const prev = Array.isArray(preview)
+        ? { amount: preview[0], minCoreOut: preview[1], reason: Number(preview[2]) }
+        : {
+            amount: preview.amount ?? 0n,
+            minCoreOut: preview.minCoreOut ?? 0n,
+            reason: Number(preview.reason ?? 0),
+          };
+      return { supply, burnedBal, accruedUsdc, lifetimeAccrued, lifetimeBurned, threshold, purchased, preview: prev };
     },
     refetchInterval: 8_000,
   });
@@ -272,8 +288,8 @@ export function useSwapSeries(token?: string) {
     enabled: !!token,
     queryFn: async () => {
       const res = await fetch(`${INDEXER_URL}/swaps/${token}`).catch(() => null);
-      if (!res?.ok) return [] as { t: number; notional: string; holders: string; buyback: string }[];
-      return (await res.json()) as { t: number; notional: string; holders: string; buyback: string }[];
+      if (!res?.ok) return [] as { t: number; notional: string; holders: string; buyback: string; sqrtPrice?: string }[];
+      return (await res.json()) as { t: number; notional: string; holders: string; buyback: string; sqrtPrice?: string }[];
     },
     refetchInterval: 8_000,
   });

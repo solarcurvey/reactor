@@ -12,6 +12,7 @@ import {ReactorToken} from "./ReactorToken.sol";
 import {ReactorHook} from "./ReactorHook.sol";
 import {ReactorRouter} from "./ReactorRouter.sol";
 import {ReactorLiquidityVault} from "./ReactorLiquidityVault.sol";
+import {FairClaimVault} from "./FairClaimVault.sol";
 import {QuoteAssetRegistry} from "./QuoteAssetRegistry.sol";
 import {ReactorConstants} from "./ReactorConstants.sol";
 import {LaunchMath} from "./libraries/LaunchMath.sol";
@@ -25,6 +26,7 @@ contract ReactorFactory {
     ReactorHook public immutable hook;
     ReactorRouter public immutable router;
     ReactorLiquidityVault public immutable vault;
+    FairClaimVault public immutable fairVault;
     QuoteAssetRegistry public immutable registry;
     address public immutable core;
 
@@ -79,9 +81,9 @@ contract ReactorFactory {
     event TokenCreated(address indexed token, address indexed creator, string name, string symbol, uint256 supply);
     event LaunchCreated(address indexed token, LaunchMode mode, address indexed quote);
     event InstantMarketOpened(address indexed token, PoolId indexed poolId, uint256 fdvQuoteRaw, uint256 devBuy);
-    event FairLaunchCreated(uint256 indexed fairId, address indexed token, uint64 startTime, uint64 endTime);
+    event BatchFairLaunchCreated(uint256 indexed fairId, address indexed token, uint64 startTime, uint64 endTime);
     event FairBid(uint256 indexed fairId, address indexed bidder, uint256 amount, uint256 totalBids);
-    event FairLaunchFinalized(uint256 indexed fairId, uint256 totalBids, uint256 auctionTokens);
+    event BatchFairLaunchFinalized(uint256 indexed fairId, uint256 totalBids, uint256 auctionTokens);
     event OfficialPoolCreated(address indexed token, PoolId indexed poolId, LaunchMode mode);
     event MetadataSet(address indexed token, string image, string description);
 
@@ -94,6 +96,8 @@ contract ReactorFactory {
     error AlreadyMigrated();
     error NothingToClaim();
     error CoreForbidden();
+    error AuctionBpsLocked();
+    error BuybackRouteRequired();
 
     constructor(
         IPoolManager manager_,
@@ -109,6 +113,7 @@ contract ReactorFactory {
         vault = vault_;
         registry = registry_;
         core = core_;
+        fairVault = new FairClaimVault(address(this));
     }
 
     struct InstantParams {
@@ -133,7 +138,17 @@ contract ReactorFactory {
 
         token = address(
             new ReactorToken(
-                p.name, p.symbol, dec, supply, p.quote, address(hook), address(poolManager), address(vault), address(0), address(vault)
+                p.name,
+                p.symbol,
+                dec,
+                supply,
+                p.quote,
+                address(hook),
+                address(poolManager),
+                address(vault),
+                address(0),
+                address(vault),
+                true
             )
         );
         _setMeta(token, p.image, p.description, p.website, p.twitter, p.telegram);
@@ -167,7 +182,7 @@ contract ReactorFactory {
             IERC20MinimalExt(p.quote).transferFrom(msg.sender, address(this), p.devBuyQuote);
             IERC20MinimalExt(p.quote).approve(address(router), p.devBuyQuote);
             bool zfo = p.quote < token;
-            router.swap(key, zfo, -int256(p.devBuyQuote), 0, msg.sender);
+            router.swap(key, zfo, -int256(p.devBuyQuote), 1, msg.sender);
         }
     }
 
@@ -188,13 +203,13 @@ contract ReactorFactory {
     }
 
     function createFairLaunch(FairParams calldata p) external returns (address token, uint256 fairId) {
-        if (!registry.isEnabled(p.quote)) revert BadQuote();
+        if (!registry.canLaunch(p.quote)) revert BuybackRouteRequired();
         if (p.quote == core) revert CoreForbidden();
         uint256 supply = p.supply == 0 ? ReactorConstants.DEFAULT_SUPPLY : p.supply;
         uint8 dec = p.decimals == 0 ? ReactorConstants.DEFAULT_DECIMALS : p.decimals;
         uint64 duration = p.duration == 0 ? ReactorConstants.DEFAULT_FAIR_DURATION : p.duration;
         uint16 auctionBps = p.auctionBps == 0 ? ReactorConstants.DEFAULT_AUCTION_BPS : p.auctionBps;
-        if (auctionBps >= ReactorConstants.BPS_DENOMINATOR) revert BadParams();
+        if (auctionBps != ReactorConstants.DEFAULT_AUCTION_BPS) revert AuctionBpsLocked();
 
         token = address(
             new ReactorToken(
@@ -207,7 +222,8 @@ contract ReactorFactory {
                 address(poolManager),
                 address(vault),
                 address(0),
-                address(this)
+                address(fairVault),
+                false
             )
         );
         _setMeta(token, p.image, p.description, p.website, p.twitter, p.telegram);
@@ -241,7 +257,7 @@ contract ReactorFactory {
         });
         allTokens.push(token);
         emit LaunchCreated(token, LaunchMode.Fair, p.quote);
-        emit FairLaunchCreated(fairId, token, uint64(block.timestamp), uint64(block.timestamp + duration));
+        emit BatchFairLaunchCreated(fairId, token, uint64(block.timestamp), uint64(block.timestamp + duration));
     }
 
     function bid(uint256 fairId, uint256 amount) external {
@@ -261,10 +277,9 @@ contract ReactorFactory {
         if (fl.finalized) revert AlreadyFinalized();
         if (block.timestamp < fl.endTime) revert AuctionOpen();
         fl.finalized = true;
-        emit FairLaunchFinalized(fairId, fl.totalBids, fl.auctionTokens);
+        emit BatchFairLaunchFinalized(fairId, fl.totalBids, fl.auctionTokens);
 
         if (fl.totalBids < fl.minRaise || fl.totalBids == 0) {
-            // Refund path: mark migrated with no official pool; bidders reclaim quote via claimRefund
             fl.migrated = true;
             return PoolId.wrap(bytes32(0));
         }
@@ -275,6 +290,7 @@ contract ReactorFactory {
         address token = fl.token;
         address quote = fl.quote;
         PoolKey memory key = _poolKey(token, quote);
+        // Official pool opens at the auction clearing price: FDV of locked LP tokens = total bids.
         uint160 sqrtP = LaunchMath.sqrtPriceFromFdv(token, quote, fl.lpTokens, fl.totalBids);
         poolManager.initialize(key, sqrtP);
         poolId = key.toId();
@@ -296,7 +312,7 @@ contract ReactorFactory {
             sqrtNow, TickMath.getSqrtPriceAtTick(lo), TickMath.getSqrtPriceAtTick(hi), amt0, amt1
         );
 
-        IERC20MinimalExt(token).transfer(address(vault), fl.lpTokens);
+        fairVault.pullTo(token, address(vault), fl.lpTokens);
         IERC20MinimalExt(quote).transfer(address(vault), fl.totalBids);
         vault.lockLiquidity(key, lo, hi, int256(uint256(liq)));
 
@@ -312,14 +328,15 @@ contract ReactorFactory {
         uint256 bidAmt = bids[fairId][msg.sender];
         if (bidAmt == 0) revert NothingToClaim();
         claimed[fairId][msg.sender] = true;
+        address dest = to == address(0) ? msg.sender : to;
 
         if (fl.totalBids == 0 || fl.totalBids < fl.minRaise) {
-            IERC20MinimalExt(fl.quote).transfer(to == address(0) ? msg.sender : to, bidAmt);
+            IERC20MinimalExt(fl.quote).transfer(dest, bidAmt);
             return bidAmt;
         }
         amount = (bidAmt * fl.auctionTokens) / fl.totalBids;
         if (amount == 0) revert NothingToClaim();
-        IERC20MinimalExt(fl.token).transfer(to == address(0) ? msg.sender : to, amount);
+        fairVault.settleClaim(fl.token, fl.quote, amount, dest);
     }
 
     function setMetadata(
@@ -339,7 +356,7 @@ contract ReactorFactory {
     }
 
     function _validateLaunch(address quote, uint256 supply, uint8, uint256 fdv) internal view {
-        if (!registry.isEnabled(quote)) revert BadQuote();
+        if (!registry.canLaunch(quote)) revert BuybackRouteRequired();
         if (quote == core) revert CoreForbidden();
         if (fdv == 0) revert BadParams();
         if (supply == 1) revert BadParams();
