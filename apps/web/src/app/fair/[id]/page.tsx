@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { parseUnitsSafe, formatUnitsSafe } from "@/lib/utils";
 import { unwrapFair, useLaunchTokens } from "@/lib/hooks";
+import { FIXTURE_FAIR, REVIEW_FIXTURES } from "@/lib/review-fixtures";
 
 export default function FairPage() {
   const { id } = useParams<{ id: string }>();
@@ -23,15 +24,23 @@ export default function FairPage() {
   const [amount, setAmount] = useState("100");
   const [error, setError] = useState<string | null>(null);
 
-  const { data: fl, refetch } = useReadContract({
+  const { data: fl, refetch, isError } = useReadContract({
     ...factory,
     functionName: "fairs",
     args: [fairId],
   });
 
   const launch = tokens?.find((t) => t.fairId === fairId);
-  if (!fl) return <p className="text-sm text-zinc-500">Loading Batch Fair Launch…</p>;
-  const row = unwrapFair(fl);
+  const row = fl ? unwrapFair(fl) : REVIEW_FIXTURES && fairId === 1n ? FIXTURE_FAIR : null;
+  if (!row && !isError) return <p className="text-sm text-zinc-500">Loading Batch Fair Launch…</p>;
+  if (!row) {
+    return (
+      <div>
+        <h1 className="text-2xl font-semibold">Fair launch not found</h1>
+        <p className="mt-2 text-sm text-zinc-500">This auction id is not on the connected factory.</p>
+      </div>
+    );
+  }
   const { token, quote, startTime: start, endTime: end, minRaise, totalBids, finalized, migrated } = row;
   const qdec = launch?.quoteDecimals ?? 8;
   const qsym = launch?.quoteSymbol ?? "QUOTE";
@@ -97,29 +106,40 @@ export default function FairPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold">{launch?.name ?? "Batch Fair Launch"}</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold">{launch?.name ?? "Batch Fair Launch"}</h1>
         {migrated ? <Badge>Market live</Badge> : finalized ? <Badge>Finalized</Badge> : <Badge>Auction open</Badge>}
       </div>
-      <p className="mt-2 text-sm text-zinc-400">
-        Batch Fair Launch — a pro-rata timed sale, not Uniswap CCA. 0% REACTOR charge until the official pool
-        opens at the auction clearing price.
+      <p className="mt-1 text-[13px] text-zinc-400">
+        Pro-rata timed sale, not Uniswap CCA. 0% REACTOR charge until the official pool opens.
       </p>
-      <Card className="mt-6 space-y-2 p-5 text-sm">
-        <Row k="Token" v={token} />
-        <Row k="Bids" v={`${formatUnitsSafe(totalBids, qdec, 4)} ${qsym}`} />
-        <Row k="Min raise" v={formatUnitsSafe(minRaise, qdec, 4)} />
-        <Row k="Window" v={`${new Date(Number(start) * 1000).toLocaleString()} → ${new Date(Number(end) * 1000).toLocaleString()}`} />
-      </Card>
+      <div className="mt-4 grid grid-cols-2 gap-2 text-[13px]">
+        <Card className="p-3">
+          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Bids</div>
+          <div className="font-mono text-white">
+            {formatUnitsSafe(totalBids, qdec, 4)} {qsym}
+          </div>
+        </Card>
+        <Card className="p-3">
+          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Min raise</div>
+          <div className="font-mono text-white">{formatUnitsSafe(minRaise, qdec, 4)}</div>
+        </Card>
+      </div>
+      <p className="mt-2 font-mono text-[11px] text-zinc-500">
+        {new Date(Number(start) * 1000).toLocaleString()} → {new Date(Number(end) * 1000).toLocaleString()}
+      </p>
+      <p className="mt-1 break-all font-mono text-[11px] text-zinc-600">{token}</p>
       {!finalized && (
-        <Card className="mt-4 space-y-3 p-5">
+        <Card className="mt-4 space-y-2 p-4">
           <Input value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <Button className="w-full" onClick={bid} disabled={!isConnected || isPending}>
-            Place bid
-          </Button>
-          <Button className="w-full" variant="outline" onClick={finalize} disabled={isPending}>
-            Finalize (after end)
-          </Button>
+          <div className="flex gap-2">
+            <Button className="flex-1" onClick={bid} disabled={!isConnected || isPending}>
+              Place bid
+            </Button>
+            <Button className="flex-1" variant="outline" onClick={finalize} disabled={isPending}>
+              Finalize
+            </Button>
+          </div>
         </Card>
       )}
       {finalized && (
@@ -135,15 +155,6 @@ export default function FairPage() {
         </div>
       )}
       {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
-    </div>
-  );
-}
-
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="flex justify-between gap-3 border-b border-white/6 py-2">
-      <span className="text-zinc-500">{k}</span>
-      <span className="break-all text-right font-mono text-xs text-zinc-200">{v}</span>
     </div>
   );
 }

@@ -56,7 +56,8 @@ contract MarketOracle {
     }
 
     /// @return mcapUsdc6 TWAP mcap in USDC-6 units; ok false if unsafe / no oracle path.
-    function twapMcapUsdc(address token) public view returns (uint256 mcapUsdc6, bool ok) {
+    /// @dev Virtual so tests can inject TWAP without a production seed/inject function.
+    function twapMcapUsdc(address token) public view virtual returns (uint256 mcapUsdc6, bool ok) {
         if (token == core) return (0, false);
         (address t, address quote, bool exists) = _market(token);
         if (!exists || t != token) return (0, false);

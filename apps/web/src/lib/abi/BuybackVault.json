@@ -275,6 +275,19 @@
   },
   {
     "type": "function",
+    "name": "executeCoreBuyback",
+    "inputs": [
+      {
+        "name": "quote",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "executeLock",
     "inputs": [],
     "outputs": [

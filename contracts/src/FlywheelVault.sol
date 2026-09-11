@@ -114,6 +114,10 @@ contract FlywheelVault {
     }
 
     function finalizeEpoch() external nonReentrant {
+        if (epochFinalized) {
+            emit Skipped(address(0), "finalized");
+            return;
+        }
         if (block.timestamp < uint256(epochStart) + ReactorConstants.EPOCH_LENGTH) {
             emit Skipped(address(0), "epoch");
             return;
@@ -122,16 +126,31 @@ contract FlywheelVault {
         delete weights;
         weightSum = 0;
         uint256 n = factory.allTokensLength();
-        uint256 filled;
-        for (uint256 i; i < n && filled < 10; i++) {
+        address[] memory cand = new address[](n);
+        uint256[] memory caps = new uint256[](n);
+        uint256 m;
+        for (uint256 i; i < n; i++) {
             address token = factory.allTokens(i);
             if (token == core) continue;
             (uint256 mcap, bool ok) = oracle.twapMcapUsdc(token);
             if (!ok || mcap < ReactorConstants.TOP10_MCAP_FLOOR_USDC) continue;
-            ranked[filled] = token;
-            weights[filled] = mcap;
-            weightSum += mcap;
-            filled++;
+            cand[m] = token;
+            caps[m] = mcap;
+            m++;
+        }
+        for (uint256 a; a < m; a++) {
+            uint256 best = a;
+            for (uint256 b = a + 1; b < m; b++) {
+                if (caps[b] > caps[best]) best = b;
+            }
+            (cand[a], cand[best]) = (cand[best], cand[a]);
+            (caps[a], caps[best]) = (caps[best], caps[a]);
+        }
+        uint256 filled = m > 10 ? 10 : m;
+        for (uint256 i; i < filled; i++) {
+            ranked[i] = cand[i];
+            weights[i] = caps[i];
+            weightSum += caps[i];
         }
         epochFinalized = true;
         emit EpochFinalized(epoch, filled, usdcPot);

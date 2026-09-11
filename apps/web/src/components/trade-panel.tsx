@@ -117,8 +117,8 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   const outSym = side === "buy" ? t.symbol : t.quoteSymbol;
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex rounded-full bg-black/30 p-1">
+    <Card className="p-4">
+      <div className="mb-3 flex rounded-full bg-black/30 p-1">
         {(["buy", "sell"] as const).map((s) => (
           <button
             key={s}
@@ -149,12 +149,12 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       <div className="mt-3 space-y-1 text-xs text-zinc-400">
         {side === "buy" ? (
           <p>
-            Est. fee {formatUnitsSafe(split.fee, quoteDec, 6)} {t.quoteSymbol} →{" "}
-            {formatUnitsSafe(split.holders, quoteDec, 6)} holders / {formatUnitsSafe(split.buyback, quoteDec, 6)} CORE
-            fuel
+            Est. {formatUnitsSafe(split.fee, quoteDec, 6)} {t.quoteSymbol} ·{" "}
+            {formatUnitsSafe(split.holders, quoteDec, 6)} holders / {formatUnitsSafe(split.flywheel, quoteDec, 6)}{" "}
+            flywheel / {formatUnitsSafe(split.core, quoteDec, 6)} CORE
           </p>
         ) : (
-          <p>You receive quote after the 3.5% charge on quote notional. No token transfer tax.</p>
+          <p>You receive quote after the 3.5% charge (2/1/0.5). No token transfer tax.</p>
         )}
         <p>
           Quoted out:{" "}
@@ -217,12 +217,12 @@ export function RewardsModule({ t }: { t: LaunchToken }) {
   }
 
   return (
-    <Card className="p-5">
-      <div className="text-xs uppercase tracking-[0.16em] text-zinc-500">Holder rewards</div>
-      <p className="mt-1 text-sm text-zinc-300">
-        2% of official-pool quote volume, claimable without staking. Transfers are tax-free; rewards stay with you.
+    <Card className="p-4">
+      <div className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">Holder rewards</div>
+      <p className="mt-1 text-[13px] text-zinc-400">
+        2% of official-pool quote volume. No staking. Transfers are tax-free.
       </p>
-      <p className="mt-3 font-mono text-2xl text-white">
+      <p className="mt-2 font-mono text-xl text-white">
         {pending === null ? "—" : formatUnitsSafe(pending, t.quoteDecimals ?? 18, 6)}{" "}
         <span className="text-base text-zinc-500">{t.quoteSymbol}</span>
       </p>

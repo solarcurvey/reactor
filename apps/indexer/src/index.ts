@@ -29,14 +29,18 @@ db.exec(`
     quote TEXT,
     holders TEXT,
     buyback TEXT,
+    flywheel TEXT,
+    coreAmt TEXT,
     notional TEXT,
     sqrtPrice TEXT
   );
 `);
-try {
-  db.exec("ALTER TABLE swaps ADD COLUMN sqrtPrice TEXT");
-} catch {
-  /* already present */
+for (const col of ["sqrtPrice", "flywheel", "coreAmt"]) {
+  try {
+    db.exec(`ALTER TABLE swaps ADD COLUMN ${col} TEXT`);
+  } catch {
+    /* already present */
+  }
 }
 
 const client = createPublicClient({
@@ -46,6 +50,7 @@ const client = createPublicClient({
 const factory = deployment.addresses.ReactorFactory as `0x${string}`;
 const hook = deployment.addresses.ReactorHook as `0x${string}`;
 const buyback = deployment.addresses.BuybackVault as `0x${string}`;
+const flywheel = (deployment.addresses as { FlywheelVault?: string }).FlywheelVault as `0x${string}` | undefined;
 const poolManager = (deployment.addresses as { PoolManager?: string }).PoolManager as `0x${string}` | undefined;
 
 const events = [
@@ -56,11 +61,16 @@ const events = [
   parseAbiItem("event BatchFairLaunchFinalized(uint256 indexed fairId, uint256 totalBids, uint256 auctionTokens)"),
   parseAbiItem("event Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint24 fee)"),
   parseAbiItem("event OfficialPoolCreated(address indexed token, bytes32 indexed poolId, uint8 mode)"),
-  parseAbiItem("event SwapFeeAccrued(bytes32 indexed poolId, address indexed quote, uint256 holders, uint256 buyback, uint256 notional)"),
+  parseAbiItem("event SwapFeeAccrued(bytes32 indexed poolId, address indexed quote, uint256 holders, uint256 flywheel, uint256 coreAmt, uint256 notional)"),
   parseAbiItem("event RewardClaimed(address indexed account, address indexed to, uint256 amount)"),
   parseAbiItem("event BuybackAccrued(address indexed quote, uint256 amount)"),
   parseAbiItem("event BuybackExecuted(address indexed quote, uint256 quoteIn, uint256 coreOut, address indexed caller)"),
   parseAbiItem("event COREBurned(uint256 amount)"),
+  parseAbiItem("event FlywheelAccrued(address indexed quote, uint256 amount)"),
+  parseAbiItem("event QuoteSettled(address indexed quote, uint256 usdcIn)"),
+  parseAbiItem("event EpochFinalized(uint256 indexed epoch, uint256 n, uint256 pot)"),
+  parseAbiItem("event Top10Buy(uint256 indexed epoch, address indexed token, uint256 usdcIn, uint256 burned)"),
+  parseAbiItem("event Skipped(address indexed target, string reason)"),
 ];
 
 function lastBlock(): bigint {
@@ -81,15 +91,21 @@ async function tick() {
   if (from > head) return;
   const to = head - from > 2000n ? from + 2000n : head;
 
+  const watch = [factory, hook, buyback];
+  if (flywheel) watch.push(flywheel);
+  if (poolManager) watch.push(poolManager);
+
   const logs = await client.getLogs({
-    address: poolManager ? [factory, hook, buyback, poolManager] : [factory, hook, buyback],
+    address: watch,
     events,
     fromBlock: from,
     toBlock: to,
   });
 
   const insertEv = db.prepare("INSERT INTO events(block,tx,name,token,payload) VALUES(?,?,?,?,?)");
-  const insertSw = db.prepare("INSERT INTO swaps(block,tx,token,quote,holders,buyback,notional,sqrtPrice) VALUES(?,?,?,?,?,?,?,?)");
+  const insertSw = db.prepare(
+    "INSERT INTO swaps(block,tx,token,quote,holders,buyback,flywheel,coreAmt,notional,sqrtPrice) VALUES(?,?,?,?,?,?,?,?,?,?)",
+  );
   const lastSqrt = new Map<string, string>();
 
   for (const log of logs) {
@@ -102,16 +118,26 @@ async function tick() {
     if (name === "Swap" && args.id && args.sqrtPriceX96) {
       lastSqrt.set(String(args.id), String(args.sqrtPriceX96));
     }
-    insertEv.run(Number(log.blockNumber), log.transactionHash, name, token, JSON.stringify(args, (_, v) => (typeof v === "bigint" ? v.toString() : v)));
+    insertEv.run(
+      Number(log.blockNumber),
+      log.transactionHash,
+      name,
+      token,
+      JSON.stringify(args, (_, v) => (typeof v === "bigint" ? v.toString() : v)),
+    );
     if (name === "SwapFeeAccrued") {
       const poolId = String(args.poolId ?? "");
+      const fly = String(args.flywheel ?? "0");
+      const coreAmt = String(args.coreAmt ?? "0");
       insertSw.run(
         Number(log.blockNumber),
         log.transactionHash,
         tokenByPool.get(poolId) ?? "",
         String(args.quote ?? ""),
         String(args.holders ?? "0"),
-        String(args.buyback ?? "0"),
+        String(args.buyback ?? fly),
+        fly,
+        coreAmt,
         String(args.notional ?? "0"),
         lastSqrt.get(poolId) ?? "",
       );
@@ -142,10 +168,19 @@ const server = createServer((req, res) => {
     res.end(JSON.stringify(rows));
     return;
   }
+  if (url.pathname === "/reactor") {
+    const rows = db
+      .prepare("SELECT * FROM events WHERE name IN ('FlywheelAccrued','QuoteSettled','EpochFinalized','Top10Buy','Skipped','COREBurned','BuybackExecuted') ORDER BY id DESC LIMIT 80")
+      .all();
+    res.end(JSON.stringify({ events: rows }));
+    return;
+  }
   const swapMatch = url.pathname.match(/^\/swaps\/(0x[a-fA-F0-9]{40})$/);
   if (swapMatch) {
     const rows = db
-      .prepare("SELECT block as t, notional, holders, buyback, tx, sqrtPrice FROM swaps WHERE lower(token)=lower(?) ORDER BY id ASC")
+      .prepare(
+        "SELECT block as t, notional, holders, buyback, flywheel, coreAmt, tx, sqrtPrice FROM swaps WHERE lower(token)=lower(?) ORDER BY id ASC",
+      )
       .all(swapMatch[1]);
     res.end(JSON.stringify(rows));
     return;

@@ -138,6 +138,11 @@ contract BuybackVault {
         emit BuybackAccrued(quote, amount);
     }
 
+    /// @notice Alias used by keepers / UI. Same as execute.
+    function executeCoreBuyback(address quote) external {
+        this.execute(quote);
+    }
+
     /// @notice Permissionless. Size and minOut are protocol-computed. Never reverts on price/route failure.
     function execute(address quote) external nonReentrant {
         (uint256 amount, uint256 minCore, Safety s) = preview(quote);

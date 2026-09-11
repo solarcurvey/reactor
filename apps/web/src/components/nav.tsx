@@ -7,8 +7,10 @@ import { WalletButton } from "./wallet-button";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/", label: "Explore" },
+  { href: "/", label: "Discover" },
   { href: "/launch", label: "Ignite" },
+  { href: "/trade", label: "Trade" },
+  { href: "/reactor", label: "Reactor" },
   { href: "/rewards", label: "Rewards" },
   { href: "/core", label: "CORE" },
 ];
@@ -28,7 +30,8 @@ export function Nav() {
               href={l.href}
               className={cn(
                 "rounded-full px-3 py-1.5 text-zinc-400 hover:text-white",
-                path === l.href && "bg-white/8 text-white",
+                (l.href === "/" ? path === "/" : path === l.href || path.startsWith(`${l.href}/`)) &&
+                  "bg-white/8 text-white",
               )}
             >
               {l.label}
