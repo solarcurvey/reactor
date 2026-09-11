@@ -13,6 +13,9 @@ export const DOCS: { slug: string; title: string; group: string; file: string }[
   { slug: "sdk", title: "SDK", group: "Builders", file: "sdk.md" },
   { slug: "events", title: "Events", group: "Builders", file: "events.md" },
   { slug: "deployments", title: "Deployments", group: "Builders", file: "deployments.md" },
+  { slug: "versioning", title: "Versioning", group: "Reference", file: "versioning.md" },
+  { slug: "changelog", title: "Changelog", group: "Reference", file: "changelog.md" },
+  { slug: "policy", title: "Docs policy", group: "Reference", file: "policy.md" },
   { slug: "faq", title: "FAQ", group: "Reference", file: "faq.md" },
   { slug: "glossary", title: "Glossary", group: "Reference", file: "glossary.md" },
 ];

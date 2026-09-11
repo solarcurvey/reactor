@@ -4,6 +4,18 @@ import { DOCS, slugify } from "./docs-nav";
 
 export { DOCS, slugify };
 
+export type ProtocolVersion = {
+  protocolVersion: string;
+  factoryVersion: number;
+  factoryVersionLabel: string;
+  releaseTag: string;
+};
+
+export function loadProtocolVersion(): ProtocolVersion {
+  const p = join(docsRoot(), "version.json");
+  return JSON.parse(readFileSync(p, "utf8")) as ProtocolVersion;
+}
+
 export function docsRoot(): string {
   const candidates = [
     join(process.cwd(), "docs"),
@@ -27,6 +39,7 @@ export function loadDoc(slug: string): { title: string; markdown: string } | nul
 export function headings(md: string): { id: string; text: string; level: number }[] {
   const out: { id: string; text: string; level: number }[] = [];
   for (const line of md.split("\n")) {
+    if (line.startsWith("<!--")) continue;
     const m = /^(#{2,3})\s+(.+)$/.exec(line);
     if (!m) continue;
     const text = m[2]!.replace(/[`*]/g, "");

@@ -27,6 +27,8 @@ Partner key: `x-partner-key`. Ops: `x-ops-token` (not on public nav).
 
 Index both `OfficialPoolCreated` forms (factory: token/poolId/mode; hook: poolId/token/quote), `LaunchAuthorized`, `TickerClaimed`. Identity key for trades: `chainId + txHash + logIndex`.
 
-## Deployments
+## Deployments and versions
 
-See [deployments](/docs/deployments). Production accepts **verified** Arc v4 addresses only — do not hardcode a PoolManager until it is verified on that chain. Mainnet (5042) is disabled.
+Protocol release is semver in `docs/version.json` (now **0.1.0**). Factory **V1** is immutable and is not that number. See [versioning](/docs/versioning) and [deployments](/docs/deployments).
+
+Production accepts **verified** Arc v4 addresses only — do not hardcode a PoolManager until it is verified on that chain. Mainnet (5042) is disabled. Never invent mainnet addresses.

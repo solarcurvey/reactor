@@ -12,3 +12,5 @@
 | RouteGraph | Proven venues only |
 | Guardian | Immutable security Safe |
 | Keeper | Designated maintenance key |
+| Protocol release | Semver of the overall REACTOR software (`docs/version.json`, now 0.1.0) |
+| Factory version | Immutable on-chain factory label (V1 stays V1) |

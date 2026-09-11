@@ -1,0 +1,72 @@
+# Contributing to REACTOR
+
+This repository is **not audited**. Do not deploy to Arc Mainnet (5042). Do not claim the product is audited or trustless.
+
+## Documentation is mandatory
+
+Any change to the following **must** update the corresponding docs **in the same commit / same agent run**. Code-only or “docs later” is not acceptable.
+
+| If you change… | You must update… |
+| --- | --- |
+| Contracts / ABI / events | `AUDIT_HANDOFF.md`, `/docs` events/api, `ARCHITECTURE.md` as needed |
+| Tokenomics / fees / supply / Dev Buy / curve | `ECONOMICS.md`, `CURVE_DESIGN.md`, `/docs/fees`, `/docs/curve`, `/docs/index`, `docs:check` still green |
+| Factory behavior or versioning | `FACTORY_VERSIONING.md`, `/docs/versioning`, `docs/version.json` factory fields **only if** Solidity `FACTORY_VERSION` changed (a new factory, not a protocol patch) |
+| Guardian / Keeper powers | `GUARDIAN_MODEL.md`, `KEEPER_MODEL.md`, `PRIVILEGE_MAP.md`, `/docs/guardian` |
+| Routing / adapters / minOut | `ARCHITECTURE.md`, `KEEPER_MODEL.md`, `/docs` builders/fees |
+| Launch admission / signer / ticker rules | `LAUNCH_ADMISSION.md`, `TICKER_REGISTRY.md`, `/docs/tickers`, `/docs/creators` |
+| API behavior | `/docs/api`, `/docs/builders` |
+| SDK interfaces | `/docs/sdk`, `packages/sdk` |
+| CORE genesis / vest / book | `CORE_GENESIS.md`, `CORE_LIQUIDITY_DESIGN.md`, `/docs/core` |
+| Backend trust assumptions | `THREAT_MODEL.md`, `/docs/index` (Trust), `AUDIT_HANDOFF.md` |
+| User-facing behavior | matching `/docs` audience page + `UX_REFERENCE.md` if UX |
+| Deployed addresses / chain / verification | `deployments/registry.json` + `pnpm docs:gen` (never invent mainnet addresses) |
+| Protocol release identity | `docs/version.json`, `CHANGELOG.md`, git tag, `pnpm docs:gen` |
+
+Also update `BUILD_REPORT.md` for the pass you are shipping, and `AUDIT_HANDOFF.md` when the auditor-facing surface moved.
+
+Policy page (in-app): [`/docs/policy`](docs/policy.md).
+
+## Versions
+
+Two numbers, different jobs:
+
+1. **Protocol release** — semver in `docs/version.json` (`protocolVersion`). Single source of truth. Root `package.json` `version` must match. Generated docs come from this file.
+2. **Factory version** — `ReactorFactory.FACTORY_VERSION`. Immutable. **V1 stays V1 forever.**
+
+A protocol `0.1.1` / `0.2.0` bump does not rewrite Factory V1. A different 3.5% split is Factory V2.
+
+### Production release checklist
+
+1. Bump `docs/version.json` (`protocolVersion`, `releaseTag` = `v` + version, `releaseDate`).
+2. Add `## [X.Y.Z] - YYYY-MM-DD` to `CHANGELOG.md`.
+3. `pnpm docs:gen` then `pnpm docs:check`.
+4. Commit docs + version + changelog **with** the code.
+5. Annotated tag: `git tag -a vX.Y.Z -m "REACTOR protocol X.Y.Z"` and push the tag.
+6. Never move or reuse a tag. Factory versions are not tags.
+
+`0.1.0` (`v0.1.0`) is the first baseline (this tree). There was no prior changelog.
+
+## CI drift
+
+`pnpm docs:check` (also run from `pnpm test:lib` and `.github/workflows/docs-sync.yml`) **must fail** when generated constants, deployment tables, or version labels have drifted from code/config:
+
+- Fee bps vs 3.5% / 2% holders / 1% / 0.5% copy
+- Default supply (1B) and Dev Buy cap (5%)
+- Ticker lock (24h) in Solidity and `ticker.ts`
+- Factory version labels vs `FACTORY_VERSION`
+- Protocol semver vs `package.json` / CHANGELOG / generated pages
+- `deployments/local.json` vs web + indexer copies
+- Stale `docs/versioning.md`, `docs/deployments.md`, `docs/changelog.md`
+- A mainnet (5042) address appearing in generated tables
+
+Do not “fix” a red check by editing generated markdown. Edit `docs/version.json` / `deployments/registry.json` / the Solidity source and regenerate.
+
+## Engineering rules
+
+See `AGENTS.md`. Security > cleverness. Do not change tokenomics to make a test pass. Do not deploy mainnet.
+
+```bash
+pnpm docs:check          # version + constants + deployments
+pnpm test:lib            # indexer + web unit + docs:check
+cd contracts && forge test
+```

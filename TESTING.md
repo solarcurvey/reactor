@@ -20,8 +20,11 @@ Web ranker / market-data / keeper / valuation / indexer schema (no RPC):
 pnpm --filter indexer test
 npx --yes tsx apps/web/src/lib/top10.test.ts
 npx --yes tsx apps/web/src/lib/marketdata.test.ts
+pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
 pnpm --filter web test          # Playwright smoke + interactive
 ```
+
+`pnpm docs:check` (and `.github/workflows/docs-sync.yml`) **must fail** when generated constants, `docs/version.json`, Factory labels, or deployment tables have drifted from Solidity/config. Do not edit generated `docs/versioning.md` / `docs/deployments.md` / `docs/changelog.md` by hand — run `pnpm docs:gen`.
 
 Authoritative current-architecture walk (Foundry, no live chain):
 

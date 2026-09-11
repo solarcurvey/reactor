@@ -7,6 +7,8 @@ Token launchpad for **Arc**. Official REACTOR pools are Uniswap v4 markets with 
 
 > This repository is **not audited**. Do not deploy to Arc Mainnet (chain 5042).
 
+Protocol release **0.1.0** (`v0.1.0`). Factory **V1** (`FACTORY_VERSION = 1`, immutable). Source of truth: `docs/version.json`. Changelog: `CHANGELOG.md`. Docs policy: `CONTRIBUTING.md`.
+
 ## Quick start (local Arc-compatible demo)
 
 ```bash
@@ -63,11 +65,19 @@ We **do not claim Arc Testnet success** unless transactions appear on [testnet.a
 
 In-app docs: [`/docs`](http://127.0.0.1:43147/docs) (sidebar, search, TOC). Source: `docs/`. `llms.txt` at `/llms.txt`.
 
+```bash
+pnpm docs:check   # fail on fee / supply / Dev Buy / ticker lock / factory / version / deployment drift
+pnpm docs:gen     # regenerate versioning + deployments + changelog pages from config
+```
+
 ## Protocol notes
 
 | File | Contents |
 | --- | --- |
 | `TICKER_REGISTRY.md` | Global ticker lock + normalize |
+| `CONTRIBUTING.md` | Docs-mandatory policy + release/tag rules |
+| `CHANGELOG.md` | Production protocol releases (baseline 0.1.0) |
+| `docs/version.json` | Protocol semver source of truth |
 | `FACTORY_VERSIONING.md` | Immutable factories; new launches only |
 | `LAUNCH_ADMISSION.md` | EIP-712 + Turnstile + throttle |
 | `CORE_GENESIS.md` | CORE 10/90 genesis, vesting, 2.5/1.0 book |

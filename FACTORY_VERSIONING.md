@@ -2,6 +2,8 @@
 
 Factories are **immutable**. Guardian authorizes and deprecates versions for **new launches only**.
 
+This is **not** the REACTOR protocol semver. Protocol release **0.1.0** lives in `docs/version.json`. Factory **V1 stays V1 forever** even when the protocol release moves to 0.1.1 or 0.2.0. See `/docs/versioning`.
+
 ## Rules
 
 1. Each factory address has one version number, set at `authorizeFactory(factory, version)`.

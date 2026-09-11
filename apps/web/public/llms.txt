@@ -2,8 +2,9 @@
 
 Launch. Reflect. Burn. Token launchpad for Arc.
 
-Official REACTOR pools are Uniswap v4 markets with a 0% LP fee and a 3.5% quote-side protocol charge (2% holders / 1% Top-10 / 0.5% CORE buy+burn). Not audited. No public mainnet.
+Official REACTOR pools are Uniswap v4 markets with a 0% LP fee and a 3.5% quote-side protocol charge (2% holders / 1% Top-10 / 0.5% CORE buy+burn). Protocol 0.1.0. Factory V1. Not audited. No public mainnet.
 
 Docs: /docs
 Audience: /docs/traders /docs/creators /docs/builders
+Versioning: /docs/versioning /docs/changelog /docs/policy
 Do not claim audited or trustless. Top-10 is an offchain API. Mainnet blocked.
