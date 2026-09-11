@@ -4,7 +4,6 @@ import {
   http,
   parseAbi,
   encodeFunctionData,
-  encodeAbiParameters,
   type Hex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -13,9 +12,10 @@ import { dirname } from "node:path";
 import { defineChain } from "viem";
 import { hostname } from "node:os";
 import deployment from "./deployment.json" with { type: "json" };
-import { planRoute, type MarketEdge, type QuoteMeta, type Hop } from "../../../packages/reactor/src/routes.ts";
+import { type QuoteMeta, type Hop } from "../../../packages/reactor/src/routes.ts";
 import { openStore, type Store } from "./db.ts";
 import { assertKeySeparation, saveJob } from "./keeper-jobs.ts";
+import { planFeeExemptRoute, syncOfficialFactoryVenues } from "./route-graph.ts";
 
 /**
  * Designated Keeper daemon.
@@ -165,9 +165,20 @@ async function loadState(): Promise<KeeperState> {
   }
 }
 
+function jobKind(id: string): string {
+  if (id.startsWith("settle:")) return "MAINTENANCE_SETTLEMENT";
+  if (id.startsWith("top10:")) return "TOP10_BUY";
+  if (id.startsWith("selfburn:")) return "SELFBURN";
+  if (id.startsWith("core:")) return "CORE_BUYBACK";
+  if (id.startsWith("grad:")) return "GRADUATE";
+  if (id.startsWith("epoch:")) return "EPOCH_SUBMIT";
+  if (id.startsWith("roll:")) return "EPOCH_ROLL";
+  return "keeper";
+}
+
 async function saveState(s: KeeperState) {
   if (jobStore) {
-    for (const [id, job] of Object.entries(s.jobs)) await saveJob(jobStore, id, job);
+    for (const [id, job] of Object.entries(s.jobs)) await saveJob(jobStore, id, job, jobKind(id));
     return;
   }
   mkdirSync(dirname(STATE), { recursive: true });
@@ -184,25 +195,6 @@ export function conservativeMinOut(simOut: bigint, slipBps = SLIP_BPS): bigint {
   const v = (simOut * (10_000n - slipBps)) / 10_000n;
   if (v <= 1n) throw new Error(`weak minOut from sim ${simOut}`);
   return v;
-}
-
-function poolKeyBytes(a: `0x${string}`, b: `0x${string}`, fee: number, hooks: `0x${string}`): Hex {
-  const [c0, c1] = a.toLowerCase() < b.toLowerCase() ? [a, b] : [b, a];
-  return encodeAbiParameters(
-    [
-      {
-        type: "tuple",
-        components: [
-          { name: "currency0", type: "address" },
-          { name: "currency1", type: "address" },
-          { name: "fee", type: "uint24" },
-          { name: "tickSpacing", type: "int24" },
-          { name: "hooks", type: "address" },
-        ],
-      },
-    ],
-    [{ currency0: c0, currency1: c1, fee, tickSpacing: 60, hooks }],
-  );
 }
 
 function canBroadcast(chainId: number): { ok: boolean; reason?: string } {
@@ -334,74 +326,46 @@ async function discoverQuotes(): Promise<{
   return { quotes, metas, usdc };
 }
 
-async function discoverEdges(metas: Map<string, QuoteMeta>, usdc: `0x${string}`): Promise<MarketEdge[]> {
-  const edges: MarketEdge[] = [];
+async function syncLiveOfficialVenues() {
+  if (!jobStore) return;
   const protocol = (addrs.ProtocolV4Adapter ?? addrs.V4Adapter) as `0x${string}` | undefined;
   const user = (addrs.V4Adapter ?? addrs.UniswapV4Adapter) as `0x${string}` | undefined;
   const hook = (addrs.ReactorHook ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
   const factory = addrs.ReactorFactory as `0x${string}` | undefined;
-  if (!protocol) return edges;
-
-  /* hopViaUsdc edges are only loaded from durable proven venues — never invented here. */
-  if (jobStore) {
-    const rows = await jobStore.all<{ token_in: string; token_out: string; adapter: string; kind: string; data: string }>(
-      "SELECT token_in, token_out, adapter, kind, data FROM route_venues WHERE exists_onchain=1 AND approved=1",
-    );
-    for (const r of rows) {
-      edges.push({
-        from: r.token_in,
-        to: r.token_out,
-        adapter: r.adapter,
-        kind: r.kind as MarketEdge["kind"],
-        data: r.data as `0x${string}`,
-        usable: true,
-      });
-    }
+  if (!protocol || !factory) return;
+  const venues: Array<{ token: string; quote: string; protocol: string; user?: string; hook: string; poolId?: string }> = [];
+  const len = Number(await client.readContract({ address: factory, abi: factoryAbi, functionName: "allTokensLength" }));
+  for (let i = 0; i < len; i++) {
+    const token = (await client.readContract({
+      address: factory,
+      abi: factoryAbi,
+      functionName: "allTokens",
+      args: [BigInt(i)],
+    })) as `0x${string}`;
+    const info = (await client.readContract({
+      address: factory,
+      abi: factoryAbi,
+      functionName: "tokenInfo",
+      args: [token],
+    })) as readonly unknown[];
+    const quote = String(info[1]);
+    const live = Boolean(info[5]);
+    if (!live) continue;
+    venues.push({
+      token,
+      quote,
+      protocol,
+      user,
+      hook,
+      poolId: String(info[4] ?? ""),
+    });
   }
-
-  if (factory) {
-    const len = Number(await client.readContract({ address: factory, abi: factoryAbi, functionName: "allTokensLength" }));
-    for (let i = 0; i < len; i++) {
-      const token = (await client.readContract({
-        address: factory,
-        abi: factoryAbi,
-        functionName: "allTokens",
-        args: [BigInt(i)],
-      })) as `0x${string}`;
-      const info = (await client.readContract({
-        address: factory,
-        abi: factoryAbi,
-        functionName: "tokenInfo",
-        args: [token],
-      })) as readonly unknown[];
-      const quote = String(info[1]) as `0x${string}`;
-      const live = Boolean(info[5]);
-      if (!live) continue;
-      edges.push({
-        from: quote,
-        to: token,
-        adapter: protocol,
-        kind: "protocol",
-        data: poolKeyBytes(token, quote, 0, hook),
-        usable: true,
-      });
-      edges.push({
-        from: token,
-        to: quote,
-        adapter: protocol,
-        kind: "protocol",
-        data: poolKeyBytes(token, quote, 0, hook),
-        usable: true,
-      });
-    }
-  }
-  return edges;
+  await syncOfficialFactoryVenues(jobStore, venues);
 }
 
-function hopsOrEmpty(tokenIn: `0x${string}`, tokenOut: `0x${string}`, edges: MarketEdge[], metas: Map<string, QuoteMeta>, adapters: Set<string>): Hop[] {
-  if (tokenIn.toLowerCase() === tokenOut.toLowerCase()) return [];
-  const planned = planRoute(tokenIn, tokenOut, edges, metas, { protocol: true, adapters });
-  // Probe hops use minOut=1 only inside simulateContract. Production hops are stamped after sim.
+async function hopsOrEmpty(tokenIn: `0x${string}`, tokenOut: `0x${string}`, adapters: Set<string>): Promise<Hop[]> {
+  if (!jobStore) throw new Error("keeper RouteGraph store required");
+  const planned = await planFeeExemptRoute(jobStore, tokenIn, tokenOut, adapters);
   return planned.hops.map((h) => ({ ...h, minOut: 1n }));
 }
 
@@ -543,8 +507,8 @@ async function tick() {
     }
   };
 
-  const { quotes, metas, usdc } = await discoverQuotes();
-  const edges = await discoverEdges(metas, usdc);
+  const { quotes, usdc } = await discoverQuotes();
+  await syncLiveOfficialVenues();
   const protocol = (addrs.ProtocolV4Adapter ?? addrs.V4Adapter) as `0x${string}` | undefined;
   const adapters = new Set<string>();
   if (protocol) adapters.add(protocol.toLowerCase());
@@ -624,7 +588,7 @@ async function tick() {
       if (acc < THRESHOLD && bal < THRESHOLD) continue;
       let hops: Hop[] = [];
       try {
-        hops = hopsOrEmpty(q, usdc, edges, metas, adapters);
+        hops = await hopsOrEmpty(q, usdc, adapters);
       } catch (e) {
         writeBeat({ ok: false, reason: `no settle route ${q}: ${e}`, jobs });
         continue;
@@ -672,7 +636,7 @@ async function tick() {
       if (acc < THRESHOLD) continue;
       let hops: Hop[] = [];
       try {
-        hops = hopsOrEmpty(q, usdc, edges, metas, adapters);
+        hops = await hopsOrEmpty(q, usdc, adapters);
       } catch {
         continue;
       }
@@ -770,7 +734,7 @@ async function tick() {
           const quote = mkt[1] as `0x${string}`;
           if (quote && quote.toLowerCase() !== usdc.toLowerCase()) {
             try {
-              hops = hopsOrEmpty(usdc, quote, edges, metas, adapters);
+              hops = await hopsOrEmpty(usdc, quote, adapters);
             } catch {
               continue;
             }
