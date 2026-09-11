@@ -19,6 +19,7 @@ export type Deployment = {
     ReactorHook: `0x${string}`;
     BuybackVault: `0x${string}`;
     ReactorFactory: `0x${string}`;
+    FairClaimVault?: `0x${string}`;
   };
   hookFlags: string;
   v4Core: string;
