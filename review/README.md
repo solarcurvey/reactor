@@ -15,6 +15,8 @@ Captured from the running local app (Playwright, `CAPTURE=1`) against **current*
 | Fair live | `fair-1440.png` | `fair-390.png` |
 | Wallet | `wallet-1440.png` | `wallet-390.png` |
 | Quote USDC / ZEC | `quote-usdc-*.png` / `quote-zec-*.png` |
+| Token terminal (USDC nested) | `token-terminal-1440.png` | `token-terminal-390.png` |
+| Internal ops | `ops-1440.png` | `ops-390.png` |
 
 ```bash
 pnpm --filter indexer seed-bonding   # writes BONDING_TOKEN

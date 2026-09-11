@@ -85,5 +85,14 @@ test.describe("review screenshots", () => {
     await page.goto("/fair/1");
     await expect(page.locator("h1").first()).toBeVisible();
     await both(page, "fair");
+
+    await page.goto("/ops");
+    await expect(page.getByRole("heading", { name: /^Ops$/ })).toBeVisible();
+    await both(page, "ops");
+
+    await page.goto("/token/0x1111111111111111111111111111111111110001");
+    await expect(page.getByRole("heading", { name: /Zcash Cat/i })).toBeVisible();
+    await expect(page.getByText(/Pay USDC \(nested route/i)).toBeVisible();
+    await both(page, "token-terminal");
   });
 });
