@@ -47,3 +47,32 @@ export function poolId(key: PoolKey): `0x${string}` {
 export function buyZeroForOne(token: `0x${string}`, quote: `0x${string}`) {
   return quote.toLowerCase() < token.toLowerCase();
 }
+
+export function hooklessHopKey(a: `0x${string}`, b: `0x${string}`): PoolKey {
+  const [currency0, currency1] = a.toLowerCase() < b.toLowerCase() ? [a, b] : [b, a];
+  return {
+    currency0,
+    currency1,
+    fee: 3000,
+    tickSpacing: 60,
+    hooks: "0x0000000000000000000000000000000000000000",
+  };
+}
+
+export function encodePoolKey(key: PoolKey): `0x${string}` {
+  return encodeAbiParameters(
+    [
+      {
+        type: "tuple",
+        components: [
+          { name: "currency0", type: "address" },
+          { name: "currency1", type: "address" },
+          { name: "fee", type: "uint24" },
+          { name: "tickSpacing", type: "int24" },
+          { name: "hooks", type: "address" },
+        ],
+      },
+    ],
+    [key],
+  );
+}

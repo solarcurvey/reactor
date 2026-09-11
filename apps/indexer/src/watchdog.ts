@@ -8,9 +8,11 @@ const STALE_MS = Number(process.env.WATCHDOG_STALE_MS ?? 5 * 60 * 1000);
 const INTERVAL = Number(process.env.WATCHDOG_INTERVAL_MS ?? 30_000);
 const RPC = process.env.NEXT_PUBLIC_RPC_URL ?? deployment.rpc;
 
+const MAINNET_CHAIN = 5042;
 const flywheelAbi = parseAbi([
   "function epoch() view returns (uint256)",
   "function epochFinalized() view returns (bool)",
+  "function usdcPot() view returns (uint256)",
 ]);
 
 const chain = defineChain({
@@ -31,6 +33,8 @@ type Beat = {
   ts?: number;
   reason?: string;
   n?: number;
+  mode?: string;
+  jobs?: string[];
 };
 
 async function check(): Promise<boolean> {
@@ -55,10 +59,21 @@ async function check(): Promise<boolean> {
     return false;
   }
 
+  const chainId = await client.getChainId();
+  if (chainId === MAINNET_CHAIN) {
+    console.error("watchdog FAIL closed — mainnet disabled");
+    return false;
+  }
+
   const [epoch, finalized] = await Promise.all([
     client.readContract({ address: flywheel, abi: flywheelAbi, functionName: "epoch" }),
     client.readContract({ address: flywheel, abi: flywheelAbi, functionName: "epochFinalized" }),
   ]);
+
+  if (beat.jobs?.some((j) => j.includes("ambiguous"))) {
+    console.error("watchdog FAIL closed — keeper reported ambiguous RPC");
+    return false;
+  }
 
   if (beat.submitted) {
     if (!finalized) {

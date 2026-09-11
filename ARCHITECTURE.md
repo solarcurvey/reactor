@@ -19,7 +19,8 @@
 | `InstantCurve` | No | Curve inventory + economic quote | Bonding curve; graduates to locked v4 |
 | `SelfBurnVault` | No | Standard-mode 2% quote | Keeper market-buy + burn |
 | `FlywheelVault` | No | Quote / USDC pot | Keeper settle + API-submitted Top-10 |
-| `UniswapV4Adapter` | No | Transient hop | Hookless / official / approved hooks; vaults approve it, never the Keeper EOA |
+| `UniswapV4Adapter` | No | Transient hop | User hops; fees apply; hookless or official REACTOR hook only |
+| `ProtocolV4Adapter` | No | Transient hop | Protocol vaults only; `protocolSwap` fee-exempt; not Keeper EOA, not UserRoute |
 | `UserRouteExecutor` | No | Transient user funds | USDC↔token official-leg router; not a protocol vault |
 | `ReactorFactory` | No | None during idle | Instant + Batch Fair Launch, priced non-$1 init, metadata, events |
 | `FairClaimVault` | No | Unclaimed auction tokens + their quote slice | O(1) eligible holder for Batch Fair |
@@ -72,7 +73,7 @@ Pre-graduation Instant trades settle on `InstantCurve` (same 3.5% quote split). 
 
 | Actor | Can |
 | --- | --- |
-| Guardian | Pause launches / Keeper / trading; replace Keeper; add or quarantine **external** quotes; add or disable reviewed adapters. Cannot withdraw, redirect pots, change 3.5% or 2/1/0.5, set Top-10, mint, upgrade. See `GUARDIAN_MODEL.md`. |
+| Guardian | Pause launches / Keeper / trading; replace Keeper; add or quarantine **external** quotes; add or disable reviewed adapters. No `setHook`. Cannot withdraw, redirect pots, change 3.5% or 2/1/0.5, set Top-10, mint, upgrade. See `GUARDIAN_MODEL.md`. |
 | Keeper | Scoped settle / SelfBurn / Top-10 submit+buy / CORE buy+burn through approved adapters. Cannot config or withdraw. See `KEEPER_MODEL.md`. |
 | Anyone | Launch (if open), bid, trade (if open), claim, graduate a ready curve |
 | Hook | Credit rewards and vaults; cannot change CORE or fee BPS |

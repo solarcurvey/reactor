@@ -3,24 +3,25 @@ import { createPublicClient, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { arcLocal } from "@/lib/chain";
 import { addresses } from "@/lib/addresses";
+import { fdvQuoteRaw, readSqrtPriceX96 } from "@/lib/marketdata";
+import { poolId } from "@/lib/pool";
 
 /**
  * Short-lived EIP-712 LaunchPricingAuthorization for non-$1 quotes.
- * Local fallback: Anvil account 0 (same as default Deploy keeper / pricingSigner).
+ * Computes virtualQuote0 so start FDV is ~$5k USD-equivalent from the hop book.
  * Not an onchain ZEC/USD oracle.
  */
 const ANVIL0 = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" as const;
 
 const factoryAbi = parseAbi([
   "function pricingNonce(address) view returns (uint256)",
-  "function expectedVirtualQuote0(address) view returns (uint256)",
-  "function usdc() view returns (address)",
+  "function virtualQuote0ForUsd(address quote, uint256 quoteUsd6) view returns (uint256)",
 ]);
 
 const erc20Abi = parseAbi(["function decimals() view returns (uint8)"]);
 const registryAbi = parseAbi([
   "function usdc() view returns (address)",
-  "function get(address) view returns (address token, string symbol, string name, uint8 decimals, string icon, uint8 category, address usdOracle, bool enabled, bool exists, bool rewardsEnabled, bool buybackRouteEnabled, bool hopViaUsdc, bool reactorNative)",
+  "function get(address) view returns (address token, string symbol, string name, uint8 decimals, string icon, uint8 category, bool enabled, bool exists, bool rewardsEnabled, bool buybackRouteEnabled, bool hopViaUsdc, bool reactorNative)",
 ]);
 
 export async function POST(req: Request) {
@@ -48,15 +49,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ needsAuth: false, reason: "Stablecoins category — unsigned Instant is allowed" });
     }
 
-    const [nonce, virtualQuote0, quoteDecimals] = await Promise.all([
+    const quoteDecimals = Number(
+      await client.readContract({ address: quote, abi: erc20Abi, functionName: "decimals" }),
+    );
+    const quoteUsd6 = await hopQuoteUsd6(client, quote, quoteDecimals);
+    if (quoteUsd6 === 0n) {
+      return NextResponse.json(
+        { error: "cannot price quote — no hop book, fail closed", needsAuth: true },
+        { status: 422 },
+      );
+    }
+
+    const [nonce, virtualQuote0] = await Promise.all([
       client.readContract({ address: addresses.ReactorFactory, abi: factoryAbi, functionName: "pricingNonce", args: [quote] }),
       client.readContract({
         address: addresses.ReactorFactory,
         abi: factoryAbi,
-        functionName: "expectedVirtualQuote0",
-        args: [quote],
+        functionName: "virtualQuote0ForUsd",
+        args: [quote, quoteUsd6],
       }),
-      client.readContract({ address: quote, abi: erc20Abi, functionName: "decimals" }),
     ]);
 
     const pk = (process.env.PRICING_SIGNER_PK ?? ANVIL0) as `0x${string}`;
@@ -66,7 +77,7 @@ export async function POST(req: Request) {
     const auth = {
       factory: addresses.ReactorFactory,
       quote,
-      quoteDecimals: Number(quoteDecimals),
+      quoteDecimals,
       virtualQuote0: virtualQuote0.toString(),
       nonce: nonce.toString(),
       deadline: deadline.toString(),
@@ -94,7 +105,7 @@ export async function POST(req: Request) {
       message: {
         factory: addresses.ReactorFactory,
         quote,
-        quoteDecimals: Number(quoteDecimals),
+        quoteDecimals,
         virtualQuote0,
         nonce,
         deadline,
@@ -107,8 +118,9 @@ export async function POST(req: Request) {
       auth,
       signature,
       signer: account.address,
+      quoteUsd6: quoteUsd6.toString(),
       ttlSec: 300,
-      trust: "Operational Keeper / launch-pricing signer. Not an onchain USD oracle.",
+      trust: "Operational Keeper / launch-pricing signer. Not an onchain USD oracle. virtualQuote0 targets ~$5k start FDV.",
     });
   } catch (e) {
     return NextResponse.json(
@@ -116,4 +128,25 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
+}
+
+async function hopQuoteUsd6(
+  client: ReturnType<typeof createPublicClient>,
+  quote: `0x${string}`,
+  qDec: number,
+): Promise<bigint> {
+  const usdc = addresses.USDC;
+  const [c0, c1] = quote.toLowerCase() < usdc.toLowerCase() ? [quote, usdc] : [usdc, quote];
+  const hop = {
+    currency0: c0 as `0x${string}`,
+    currency1: c1 as `0x${string}`,
+    fee: 3000,
+    tickSpacing: 60,
+    hooks: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+  };
+  const sqrt = await readSqrtPriceX96(client, poolId(hop));
+  if (!sqrt) return 0n;
+  const quoteIs0 = quote.toLowerCase() < usdc.toLowerCase();
+  const one = 10n ** BigInt(qDec);
+  return fdvQuoteRaw(sqrt, one, quoteIs0);
 }

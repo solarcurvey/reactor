@@ -49,14 +49,14 @@ Guardrails:
 - Recipient is the vault (then burn, for buybacks)
 - Adapter must be approved
 - **Real balance deltas** per hop; next hop uses actual out (lying adapters fail)
-- v4 hops: hookless, official REACTOR hook, or Guardian-approved hooks only
+- v4 hops: hookless or official REACTOR hook only (`UniswapV4Adapter` user fees; `ProtocolV4Adapter` protocol-exempt)
 - No cross-bucket spend
 - Reentrancy lock
 - ≤ 3 hops, no cycles, no duplicate assets
 - Cooldown / 20% chunk (`MAX_CHUNK_BPS`) / no replay of the same Top-10 slot
 - Keeper supplies `minTargetOut` / per-hop `minOut` — **never** hardcoded 1 or 0 on maintenance buys
 
-Daemon: `apps/indexer/src/keeper.ts` polls `/api/reactor/top10` (on-chain discovery, not env JSON) and writes a heartbeat. It does **not** broadcast in this repo. `apps/indexer/src/watchdog.ts` is an independent fail-closed process on a separate heartbeat file.
+Daemon: `apps/indexer/src/keeper.ts` — SelfBurn, Flywheel settle, CORE settle, epoch publish, Top-10 exec, CORE burn, optional graduate assist. Simulate → minOut → submit → receipt → reconcile. Idempotent job IDs. Modes `DRY_RUN` / `LOCAL` / `ARC_TESTNET`. Mainnet 5042 disabled. Ambiguous RPC does not double-exec. `apps/indexer/src/watchdog.ts` is an independent fail-closed process.
 
 Fee exemption is only via the sealed executor contracts (SelfBurn, Flywheel, Buyback) calling `protocolSwap` / `buyExempt`. The Keeper EOA is never allowlisted.
 

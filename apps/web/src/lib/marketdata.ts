@@ -3,6 +3,11 @@ import { addresses } from "./addresses";
 import { factory, token as tokenC, erc20 } from "./contracts";
 import { officialPoolKey, poolId } from "./pool";
 import { rankTop10, TOP10_FLOOR_USDC, type RankCandidate } from "./top10";
+import { INDEXER_URL } from "./chain";
+
+/** 12 minutes — middle of the frozen 10–15m VWAP/TWAP window. */
+export const MARK_WINDOW_SEC = 12 * 60;
+export const MIN_VWAP_SAMPLES = 3;
 
 const POOLS_SLOT = 6n;
 const MAX_QUOTE_DEPTH = 3;
@@ -37,6 +42,40 @@ export function fdvQuoteRaw(sqrt: bigint, supply: bigint, tokenIs0: boolean): bi
   return tokenIs0 ? (supply * sqrt * sqrt) / Q192 : (supply * Q192) / (sqrt * sqrt);
 }
 
+export type TradeSample = { notional: bigint; sqrtPrice: bigint; ts: number };
+
+/** Volume-weighted FDV in quote raw from indexed trades. Fail closed on thin windows. */
+export function vwapFdvQuoteRaw(samples: TradeSample[], supply: bigint, tokenIs0: boolean, nowSec: number, windowSec = MARK_WINDOW_SEC): { fdv: bigint; ok: boolean } {
+  const from = nowSec - windowSec;
+  const inWin = samples.filter((s) => s.ts >= from && s.sqrtPrice > 0n && s.notional > 0n);
+  if (inWin.length < MIN_VWAP_SAMPLES || supply === 0n) return { fdv: 0n, ok: false };
+  let num = 0n;
+  let den = 0n;
+  for (const s of inWin) {
+    const fdv = fdvQuoteRaw(s.sqrtPrice, supply, tokenIs0);
+    if (fdv === 0n) continue;
+    num += fdv * s.notional;
+    den += s.notional;
+  }
+  if (den === 0n) return { fdv: 0n, ok: false };
+  return { fdv: num / den, ok: true };
+}
+
+async function fetchIndexedTrades(token: string): Promise<TradeSample[]> {
+  try {
+    const res = await fetch(`${INDEXER_URL}/swaps/${token}`);
+    if (!res.ok) return [];
+    const rows = (await res.json()) as Array<{ t?: number; ts?: number; notional?: string; sqrtPrice?: string; block?: number }>;
+    return rows.map((r) => ({
+      notional: BigInt(r.notional ?? "0"),
+      sqrtPrice: BigInt(r.sqrtPrice ?? "0"),
+      ts: Number(r.ts ?? r.t ?? r.block ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function discoverTop10(client: PublicClient): Promise<{
   rows: ReturnType<typeof rankTop10>["rows"];
   pauseEpoch: boolean;
@@ -48,6 +87,7 @@ export async function discoverTop10(client: PublicClient): Promise<{
   const len = Number((await client.readContract({ ...factory, functionName: "allTokensLength" })) as bigint);
   const quoteUsd = new Map<string, { usd6: bigint; ok: boolean }>();
   quoteUsd.set(usdc, { usd6: 1_000_000n, ok: true });
+  const nowSec = Math.floor(Date.now() / 1000);
 
   const cands: RankCandidate[] = [];
   for (let i = 0; i < len; i++) {
@@ -64,7 +104,7 @@ export async function discoverTop10(client: PublicClient): Promise<{
     let markUsdc = 0n;
     let markOk = false;
     if (live && !isCore) {
-      const resolved = await resolveMarkUsdc(client, token, quote, quoteUsd, 0, new Set());
+      const resolved = await resolveMarkUsdc(client, token, quote, quoteUsd, 0, new Set(), nowSec);
       markUsdc = resolved.markUsdc;
       markOk = resolved.ok;
     }
@@ -74,16 +114,16 @@ export async function discoverTop10(client: PublicClient): Promise<{
     cands.push({ token, symbol, quote, graduated: live, isCore, markUsdc, markOk });
   }
 
-  const { rows, pauseEpoch } = rankTop10(cands, TOP10_FLOOR_USDC);
+  const ranked = rankTop10(cands, TOP10_FLOOR_USDC);
   return {
-    rows,
-    pauseEpoch,
+    rows: ranked.rows,
+    pauseEpoch: ranked.pauseEpoch,
     candidates: cands.length,
-    reason: pauseEpoch
-      ? "unreliable mark — skip token / pause epoch, never guess"
-      : rows.length === 0
-        ? "no graduated names with a defensible mark ≥ $250k"
-        : "operational ranks from on-chain discovery (~5 min)",
+    reason: ranked.pauseEpoch
+      ? ranked.pauseReason ?? "unreliable mark — pause epoch, never guess"
+      : ranked.rows.length === 0
+        ? "no graduated names with a defensible 10–15m VWAP ≥ $250k"
+        : "operational ranks from indexed 12m VWAP + on-chain discovery (~5 min)",
   };
 }
 
@@ -94,6 +134,7 @@ async function resolveMarkUsdc(
   cache: Map<string, { usd6: bigint; ok: boolean }>,
   depth: number,
   stack: Set<string>,
+  nowSec: number,
 ): Promise<{ markUsdc: bigint; ok: boolean }> {
   if (depth > MAX_QUOTE_DEPTH) return { markUsdc: 0n, ok: false };
   const tKey = token.toLowerCase();
@@ -102,17 +143,17 @@ async function resolveMarkUsdc(
 
   const supply = (await client.readContract({ address: token, abi: tokenC.abi, functionName: "totalSupply" }).catch(() => 0n)) as bigint;
   const quoteDec = Number((await client.readContract({ address: quote, abi: erc20.abi, functionName: "decimals" }).catch(() => 18)) as number);
-  const key = officialPoolKey(token, quote);
-  const id = poolId(key);
-  const sqrt = await readSqrtPriceX96(client, id);
-  if (!sqrt || supply === 0n) {
+  const tokenIs0 = token.toLowerCase() < quote.toLowerCase();
+  const trades = await fetchIndexedTrades(token);
+  const vwap = vwapFdvQuoteRaw(trades, supply, tokenIs0, nowSec);
+  // No single-block sqrtPrice fallback — fail closed if the 10–15m window is thin.
+  if (!vwap.ok) {
     stack.delete(tKey);
     return { markUsdc: 0n, ok: false };
   }
-  const tokenIs0 = token.toLowerCase() < quote.toLowerCase();
-  const fdvQuote = fdvQuoteRaw(sqrt, supply, tokenIs0);
+  const fdvQuote = vwap.fdv;
 
-  const qUsd = await quoteToUsd6(client, quote, cache, depth, stack);
+  const qUsd = await quoteToUsd6(client, quote, cache, depth, stack, nowSec);
   stack.delete(tKey);
   if (!qUsd.ok) return { markUsdc: 0n, ok: false };
   const markUsdc = (fdvQuote * qUsd.usd6) / 10n ** BigInt(quoteDec);
@@ -125,6 +166,7 @@ async function quoteToUsd6(
   cache: Map<string, { usd6: bigint; ok: boolean }>,
   depth: number,
   stack: Set<string>,
+  nowSec: number,
 ): Promise<{ usd6: bigint; ok: boolean }> {
   const q = quote.toLowerCase();
   const hit = cache.get(q);
@@ -164,7 +206,7 @@ async function quoteToUsd6(
     const parentQuote = String(info[1]) as `0x${string}`;
     const live = Boolean(info[5]);
     if (live) {
-      const nested = await resolveMarkUsdc(client, quote as `0x${string}`, parentQuote, cache, depth + 1, stack);
+      const nested = await resolveMarkUsdc(client, quote as `0x${string}`, parentQuote, cache, depth + 1, stack, nowSec);
       if (nested.ok) {
         const supply = (await client.readContract({ address: quote, abi: tokenC.abi, functionName: "totalSupply" })) as bigint;
         const dec = Number((await client.readContract({ address: quote, abi: tokenC.abi, functionName: "decimals" })) as number);

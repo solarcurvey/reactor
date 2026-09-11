@@ -22,7 +22,7 @@ Simulation date: 2026-09-11. Target: **~$5,000 starting FDV** on USDC-6. 3.5% qu
 | Dev buy cap | **5% of supply by token out** = `50_000_000e18` |
 | Fee | 3.5% quote, **not** graduation liquidity |
 
-Other quotes inherit the same *whole-token* virtual quote (`Q₀ * 10^qdec / 10^6`). USD FDV then equals `$5,000 × quote_usd`. That is **quote-USD drift** (e.g. ZEC @ $40 → start FDV ~$200k). No oracle rescale in V1.
+USDC / listed stables use that USDC-6 `Q₀` unsigned. Non-$1 quotes (ZEC / WBTC / native 18) take Factory-verified signed `LaunchPricingAuthorization.virtualQuote0` as the curve’s `virtualQuote`. The pricing signer computes `virtualQuote0ForUsd(supply, qdec, quoteUsd6)` so start FDV is **~$5k USD-equivalent**. Same USD buy size → same token-out geometry. Not an onchain ZEC/USD oracle.
 
 ## Prices (USDC)
 

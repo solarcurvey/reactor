@@ -1493,6 +1493,30 @@
     "stateMutability": "view"
   },
   {
+    "type": "function",
+    "name": "virtualQuote0ForUsd",
+    "inputs": [
+      {
+        "name": "quote",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "quoteUsd6",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "type": "event",
     "name": "BatchFairLaunchCreated",
     "inputs": [

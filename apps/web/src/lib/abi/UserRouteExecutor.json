@@ -18,6 +18,11 @@
         "internalType": "contract IReactorSwapper"
       },
       {
+        "name": "curve_",
+        "type": "address",
+        "internalType": "contract InstantCurve"
+      },
+      {
         "name": "usdc_",
         "type": "address",
         "internalType": "address"
@@ -106,6 +111,19 @@
   },
   {
     "type": "function",
+    "name": "curve",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract InstantCurve"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "hook",
     "inputs": [],
     "outputs": [
@@ -175,6 +193,11 @@
             "internalType": "bytes"
           }
         ]
+      },
+      {
+        "name": "minQuoteOut",
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
         "name": "minFinalOut",
