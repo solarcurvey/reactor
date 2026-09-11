@@ -58,7 +58,24 @@ const flywheelAbi = parseAbi([
   `function executeTop10Buyback(address token, ${hopTuple} hops, uint256 minTargetOut) returns (uint256 targetBought)`,
   "function rollEpoch()",
   "function bought(uint256,address) view returns (bool)",
+  "function ranked(uint256) view returns (address)",
+  "function weights(uint256) view returns (uint256)",
 ]);
+
+/** Execute FROZEN onchain epoch members. Never re-query a later API set mid-epoch. */
+export function frozenEpochTargets(
+  onchain: Array<{ token: string; weightBps: number }>,
+  latestApi: Array<{ token: string; weightBps: number }>,
+): Array<{ token: string; weightBps: number }> {
+  if (onchain.length === 0) return [];
+  const frozen = onchain.filter((r) => r.token && r.token !== "0x0000000000000000000000000000000000000000");
+  const apiSet = new Set(latestApi.map((r) => r.token.toLowerCase()));
+  const drifted = frozen.some((r) => !apiSet.has(r.token.toLowerCase()));
+  if (drifted) {
+    /* keep frozen A/B/C even if API now says A/D/E */
+  }
+  return frozen;
+}
 const selfBurnAbi = parseAbi([
   "function accrued(address) view returns (uint256)",
   "function quoteOf(address) view returns (address)",
@@ -268,6 +285,7 @@ async function discoverQuotes(): Promise<{
         quarantined: exists && !enabled,
         usdPegOne: Boolean(g[12]),
         reactorNative: Boolean(g[11]),
+        hopViaUsdc: Boolean(g[10]),
       });
       if (exists) quotes.push(token);
     }
@@ -309,6 +327,7 @@ async function discoverEdges(metas: Map<string, QuoteMeta>, usdc: `0x${string}`)
     if (m.quarantined) continue;
     const token = m.token as `0x${string}`;
     if (m.reactorNative) continue;
+    if (!m.hopViaUsdc) continue;
     edges.push({
       from: token,
       to: usdc,
@@ -713,8 +732,23 @@ async function tick() {
         return;
       }
     } else {
+      const onchainRows: Array<{ token: string; weightBps: number }> = [];
+      for (let i = 0; i < 10; i++) {
+        const t = (await client.readContract({
+          address: flywheel,
+          abi: flywheelAbi,
+          functionName: "ranked",
+          args: [BigInt(i)],
+        })) as `0x${string}`;
+        if (!t || t === "0x0000000000000000000000000000000000000000") continue;
+        const w = Number(
+          await client.readContract({ address: flywheel, abi: flywheelAbi, functionName: "weights", args: [BigInt(i)] }),
+        );
+        onchainRows.push({ token: t, weightBps: w });
+      }
+      const targets = frozenEpochTargets(onchainRows, body.rows);
       const hook = addrs.ReactorHook as `0x${string}` | undefined;
-      for (const row of body.rows) {
+      for (const row of targets) {
         const bought = await client.readContract({
           address: flywheel,
           abi: flywheelAbi,
@@ -780,7 +814,7 @@ async function tick() {
       }
       const pot = (await client.readContract({ address: flywheel, abi: flywheelAbi, functionName: "usdcPot" })) as bigint;
       const allBought = await Promise.all(
-        body.rows.map((r) =>
+        targets.map((r) =>
           client.readContract({
             address: flywheel,
             abi: flywheelAbi,

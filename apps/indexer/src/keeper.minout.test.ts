@@ -1,4 +1,4 @@
-import { conservativeMinOut, stampHopMinOuts, stampProductionHops } from "./keeper.ts";
+import { conservativeMinOut, stampHopMinOuts, stampProductionHops, frozenEpochTargets } from "./keeper.ts";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -79,6 +79,22 @@ function assert(cond: unknown, msg: string) {
     9_850n,
   );
   assert(one[0]!.minOut === 9_850n, "single hop ok");
+}
+
+{
+  const frozen = frozenEpochTargets(
+    [
+      { token: "0xA", weightBps: 4000 },
+      { token: "0xB", weightBps: 3500 },
+      { token: "0xC", weightBps: 2500 },
+    ],
+    [
+      { token: "0xA", weightBps: 4000 },
+      { token: "0xD", weightBps: 3500 },
+      { token: "0xE", weightBps: 2500 },
+    ],
+  );
+  assert(frozen.map((x) => x.token).join(",") === "0xA,0xB,0xC", "epoch1 A/B/C must not become API A/D/E");
 }
 
 console.log("keeper minOut tests ok");

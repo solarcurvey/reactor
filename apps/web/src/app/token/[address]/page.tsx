@@ -31,12 +31,13 @@ export default function TokenPage() {
     const tokenIs0 = t.token.toLowerCase() < t.quote.toLowerCase();
     const pts: { t: number; price: number }[] = [];
     for (const s of series ?? []) {
-      const ts = Number(s.ts ?? s.t ?? 0);
+      const row = s as { t?: number; ts?: number; sqrtPrice?: string; px?: string };
+      const ts = Number(row.ts ?? row.t ?? 0);
       let price = 0;
-      if (s.sqrtPrice && s.sqrtPrice !== "0") {
-        price = priceFromSqrtX96(BigInt(s.sqrtPrice), tokenIs0, t.decimals, t.quoteDecimals ?? 18);
-      } else if (s.px && s.px !== "0") {
-        price = Number(s.px) / 1e18;
+      if (row.sqrtPrice && row.sqrtPrice !== "0") {
+        price = priceFromSqrtX96(BigInt(row.sqrtPrice), tokenIs0, t.decimals, t.quoteDecimals ?? 18);
+      } else if (row.px && row.px !== "0") {
+        price = Number(row.px) / 1e18;
       }
       if (!(price > 0) || !(ts > 0)) continue;
       const bucket = Math.floor(ts / sec) * sec;

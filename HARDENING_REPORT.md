@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-11. **Not production ready. Not audited. No Arc Public Testnet or mainnet claim.**
 
-Repo continued in place (HEAD started at `4d26bfe`). Cross-quote flush was **reproduced before the fix** (`test_reproduce_crossQuoteFlush_succeedsToday` on the two-arg API). After the fix that historical path reverts; the lock is `test_exploit_flushUsdcIntoZcat_mustRevert`.
+Repo continued in place (this pass started at `844255e`). Public `InstantCurve.buyPrefunded` was **reproduced before the fix** (`test_reproduce_buyPrefunded_drainsAliceQuote` on HEAD 844255e: attacker with 0 ZEC minted ZCAT and inflated `realQuote` against Alice's inventory). After the fix that selector is gone; the lock is `BuyPrefundedDrain.t.sol`.
 
 ## Differentiation shipped
 
@@ -22,6 +22,8 @@ UI and docs center **CHOOSE WHAT YOUR TOKEN EARNS** / **WHAT SHOULD YOUR TOKEN E
 | Fair reward ownership | **FIXED** | `FairClaimVault` eligible holder + O(1) `settleClaim`. `test_fairEarlyClaimerDoesNotSteal` |
 | Reward accounting + stateful campaign | **FIXED** | Magnified DPS + corrections. Legacy over-assign reproduced in `RewardSolvency.t.sol`. Campaign has **no +1 slack**. Dust carries in `leftoverMagnified`. |
 | 3.5% split | **SHIPPED** | 2% holders / 1% flywheel / 0.5% CORE. Pots isolated. CORE never Top-10. |
+| Public buyPrefunded drain | **FIXED** | Deleted. `buyRouted` pulls from bound `UserRouteExecutor` via `transferFrom` + this-call balance proof. No prefunded flag. Factory DevBuy and `buyWithUsdc` also pull/measure. `BuyPrefundedDrain.t.sol` |
+| Production Guardian Safe | **SHIPPED** | Constructor starts `launchesPaused`. `SAFE_GENESIS` deploys constructors only. Safe MultiSend (`SafeGenesisBatch.s.sol`) then `VerifyGenesis`. Deployer ≠ Guardian. `SafeGenesis.t.sol` |
 
 ## Security tests (mapped)
 
@@ -124,6 +126,23 @@ No fabricated “clean” report. High/medium are mostly style (ignored ERC-20 b
 Frontend: `pnpm exec tsc --noEmit` (target ES2020) and `pnpm lint` passed on `apps/web`. Dev server `http://127.0.0.1:43147` returned HTTP 200 after ABI restore.
 
 Visual review (1440×900 and 390×844) is in `review/`. Instant is a **single compact form** — no creator FDV slider, no multi-step wizard. Token page shows bonding % vs Official v4. `/reactor` is THE REACTOR (on-chain discovery API). Quote ecosystem pages at `/quote/{symbol}`.
+
+## Repo-wide custody / skip-transfer search (this pass)
+
+Searched: `prefunded`, `alreadyTransferred`, `prepaid`, `skipTransfer`, `transferAlreadyDone`, `creditFromBalance`, `consumeBalance`, `depositThenCall`.
+
+| Location | Verdict |
+| --- | --- |
+| `InstantCurve.buyPrefunded` + `_buy(..., prefunded)` | **DELETED**. Replaced by `buyRouted` + `_pullQuote` |
+| `InstantCurve.launchDevBuy` | **HARDENED**. Factory approves; curve pulls + custody proof |
+| `InstantCurve.buyWithUsdc` | **HARDENED**. Measures this-call quote balance increase after hop |
+| `UserRouteExecutor.buy` | **HARDENED**. Approves curve; no pre-transfer of quote |
+| `ReactorFactory` DevBuy | **HARDENED**. Pull to factory, approve curve, no push-to-curve |
+| `ReactorLiquidityVault` "tokens already sit here" | Graduation lock only — not a public buy |
+| `FairClaimVault` "quote already" | Pro-rata claim of auction proceeds — not a skip-transfer buy |
+| Adapters / router / CORE | All `transferFrom` the caller |
+
+No remaining public trust-by-prefunding entrypoint.
 
 ## Audit amendment (this pass)
 

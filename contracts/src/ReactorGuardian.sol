@@ -34,6 +34,7 @@ contract ReactorGuardian {
         guardian = guardian_;
         keeper = keeper_;
         pricingSigner = keeper_;
+        launchesPaused = true;
     }
 
     function setPricingSigner(address next) external onlyGuardian {

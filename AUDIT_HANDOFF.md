@@ -2,12 +2,26 @@
 
 **This software has not been audited.** Treat every contract as hostile-unreviewed. Do not deploy to Arc Mainnet (5042). No production claim. No Arc Public Testnet claim.
 
-**This pass (final Grok completion):** vaults return real outputs; Keeper simulate→minOut (never 0/1); protocolExempt + router `nonReentrant`; usdPegOne-only $1; unique launch-auth digest (no serial nonce); Top-10 material vs irrelevant inactivity; RoutePlanner + ValuationEngine; indexer chain timestamps + durable pool maps; Safe genesis verify.
+**This pass (final Grok security/ops patch):** public `buyPrefunded` deleted; router-only `buyRouted` with this-call custody; production Safe ≠ deployer; RoutePlanner discovers proven venues; sell `minQuoteOut` ≠ `minFinalOut`; fee preview on official-market quote notional; Keeper executes frozen onchain epoch targets; lastGoodFdvQuote accepts 3 historical samples. Architecture and tokenomics unchanged.
+
+## Codex first task (attack, do not build)
+
+Treat `InstantCurve` + `UserRouteExecutor` as hostile. Reproduce a quote-inventory drain. Do not add features.
+
+1. Confirm `buyPrefunded(address,address,uint256,uint256)` is absent (`cast sig` / ABI).
+2. Call `buyRouted` as an EOA after an honest ZCAT/ZEC buy. Must revert `NotRouter`. `realQuote` and curve quote balance unchanged. Attacker ZCAT = 0.
+3. Donate quote to InstantCurve, then try to consume it via `buyRouted` / any leftover-balance path. Must not mint.
+4. Ride a malicious quote `transferFrom` callback during `buyRouted` to reenter `buy` / `buyRouted`. Must fail (`nonReentrant`).
+5. Confirm Factory DevBuy cannot spend preexisting curve balances (pull + custody proof).
+6. Second: `protocolExempt` latch — `ProtocolExemptReentrancy.t.sol`. Third: production Guardian — deployer cannot call Guardian ops.
+
+Do not certify. Do not deploy. Do not propose a new curve or fee split.
 
 ## Codex focus (this amendment)
 
 | Area | What to read | Attack tests |
 | --- | --- | --- |
+| **Prefunded drain (P0)** | `InstantCurve.buyRouted`, `_pullQuote`, `UserRouteExecutor.buy` | **`BuyPrefundedDrain.t.sol` — start here** |
 | Router / adapters | `ReactorRouter` `swap`/`protocolSwap`/`addLiquidity` `nonReentrant`; `protocolExempt` latch | **`ProtocolExemptReentrancy.t.sol` (named malicious callback)** |
 | Protocol exemption | Only sealed vaults + `ProtocolV4Adapter.protocolSwap`. User `swap` reverts `WalletExemptForbidden` if latch set | same + `ProtocolSettlement.t.sol` |
 | Vault isolation | `FlywheelVault`, `BuybackVault`, `SelfBurnVault` — isolated pots, chunk/cooldown, returned amounts | `BlastRadius.t.sol`, `KeeperReturns.t.sol` |
@@ -34,7 +48,7 @@ REACTOR launches ERC-20s into Official REACTOR Pools: Uniswap v4 pools with `fee
 | --- | --- | --- |
 | `ReactorGuardian` | `contracts/src/ReactorGuardian.sol` | Immutable Guardian; replaceable Keeper; `pricingSigner`; pauses; adapters. No `setHook`. |
 | `ReactorFactory` | `contracts/src/ReactorFactory.sol` | Instant + Batch Fair; priced launches for non-$1 quotes |
-| `InstantCurve` | `contracts/src/InstantCurve.sol` | Virtual-reserve bonding; ready-lock; graduate revalidate |
+| `InstantCurve` | `contracts/src/InstantCurve.sol` | Virtual-reserve bonding; ready-lock; graduate revalidate. **No public prefunded buy.** `buyRouted` is UserRouteExecutor-only + this-call `transferFrom` custody |
 | `LaunchPricing` | `contracts/src/libraries/LaunchPricing.sol` | Short-lived EIP-712 auth |
 | `SelfBurnVault` | `contracts/src/SelfBurnVault.sol` | Standard 2% + Rewards genesis when eligible=0 |
 | `FairClaimVault` | `contracts/src/FairClaimVault.sol` | Eligible holder of unclaimed auction tokens |
@@ -48,7 +62,7 @@ REACTOR launches ERC-20s into Official REACTOR Pools: Uniswap v4 pools with `fee
 | `ProtocolV4Adapter` | `contracts/src/adapters/ProtocolV4Adapter.sol` | Protocol vaults only; `protocolSwap`; not Keeper EOA / UserRoute |
 | `RoutingRegistry` | `contracts/src/RoutingRegistry.sol` | View over Guardian-approved adapters |
 | `QuoteAssetRegistry` | `contracts/src/QuoteAssetRegistry.sol` | External quotes Guardian-curated; native from graduation |
-| `UserRouteExecutor` | `contracts/src/UserRouteExecutor.sol` | User USDC routing; **not** a protocol vault |
+| `UserRouteExecutor` | `contracts/src/UserRouteExecutor.sol` | User USDC routing; **not** a protocol vault. Approves InstantCurve; never pre-credits quote |
 | `TestCORE` | `contracts/src/TestCORE.sol` | Genesis mint 100M vest + 900M LP; `burn()`; no mint-all-to-deployer |
 | `CoreVesting` | `contracts/src/CoreVesting.sol` | Immutable beneficiary; T0 launch; 30d cliff 0 then 300d linear |
 | `CoreLiquidityVault` | `contracts/src/CoreLiquidityVault.sol` | Permanent single-sided CORE/USDC lock |

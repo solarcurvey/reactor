@@ -88,6 +88,7 @@ contract Base is Test {
         pricingPk = 0xA11CE;
         pricingSigner = vm.addr(pricingPk);
         auth = new ReactorGuardian(guardian, keeper);
+        auth.pauseLaunches(false);
         auth.setPricingSigner(pricingSigner);
 
         pm = new PoolManager(address(this));
@@ -178,6 +179,7 @@ contract Base is Test {
         router.setProtocolVault(address(protocolAdapter), true);
         router.sealProtocolVaults();
         userRouter = new UserRouteExecutor(auth, hook, IReactorSwapper(address(router)), curve, address(usdc));
+        curve.bindRouteExecutor(address(userRouter));
 
         _seedHop(address(zec), 100_000e8, 5_000_000e6, zecUsdcKey);
         _seedHop(address(btc), 100e8, 6_000_000e6, btcUsdcKey);

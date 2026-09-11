@@ -1,4 +1,4 @@
-import { planRoute, RouteReject, MAX_LEGS, applyMinOuts } from "./routes.ts";
+import { planRoute, RouteReject, MAX_LEGS, applyMinOuts, approvedEdges, requireProvenPool } from "./routes.ts";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -29,6 +29,11 @@ const adapters = new Set([ADAPTER]);
 {
   const r = planRoute(USDC, CAT, edges, quotes, { protocol: true, adapters });
   assert(r.hops.length === 3, `nested top10 ${r.path}`);
+}
+{
+  const userEdges = edges.map((e) => ({ ...e, kind: "user" as const }));
+  const r = planRoute(USDC, CAT, userEdges, quotes, { protocol: false, adapters });
+  assert(r.path.join("→").includes("0003") && r.hops.length === 3, `user USDC→ZEC→ZCAT→CAT ${r.path}`);
 }
 {
   let threw = false;
@@ -65,5 +70,21 @@ assert(MAX_LEGS === 3, "max 3");
     threw = true;
   }
   assert(threw, "applyMinOuts rejects last-leg reuse");
+}
+{
+  const fabricated = approvedEdges([
+    { from: USDC, to: ZEC, adapter: ADAPTER, kind: "user", data: "0x02" as `0x${string}`, usable: true, exists: false },
+    { from: ZEC, to: USDC, adapter: ADAPTER, kind: "user", data: "0x03" as `0x${string}`, usable: true, exists: true },
+  ]);
+  assert(fabricated.length === 1 && fabricated[0]!.from === ZEC, "reject fabricated nonexistent pool");
+}
+{
+  let threw = false;
+  try {
+    requireProvenPool(false, "EURC/USDC 0.30");
+  } catch (e) {
+    threw = e instanceof RouteReject;
+  }
+  assert(threw, "requireProvenPool rejects missing venues");
 }
 console.log("routes tests ok");

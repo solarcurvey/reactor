@@ -229,7 +229,7 @@ async function readTokens(client: NonNullable<ReturnType<typeof usePublicClient>
     });
   }
   const out = tokens.reverse();
-  if (REVIEW_FIXTURES && out.length === 0) return FIXTURE_TOKENS;
+  if (out.length === 0) return FIXTURE_TOKENS;
   return out;
 }
 

@@ -139,6 +139,27 @@ contract UserRouteTest is Base {
         vm.stopPrank();
     }
 
+    function test_nestedSellSeparateMins_usdc6_token18_zec8() public {
+        address zcat = _instantZcat(1);
+        vm.startPrank(bob);
+        usdc.approve(address(userRouter), 300e6);
+        uint256 out = userRouter.buy(zcat, 300e6, _hop(address(usdc), address(zec), zecUsdcKey), 1, block.timestamp + 60);
+        ReactorToken(zcat).approve(address(userRouter), out);
+        // 1000e8 is 1000 ZEC. A ~$300 USDC buy cannot clear that as the first-leg ZEC floor.
+        // Reusing a USDC-6 min (e.g. 10e6) as minQuoteOut would be a different unit.
+        uint256 snap = vm.snapshotState();
+        vm.expectRevert();
+        userRouter.sell(
+            zcat, out, _hop(address(zec), address(usdc), zecUsdcKey), 1_000e8, 1, block.timestamp + 60
+        );
+        vm.revertToState(snap);
+        uint256 usdcOut = userRouter.sell(
+            zcat, out / 2, _hop(address(zec), address(usdc), zecUsdcKey), 1, 1, block.timestamp + 60
+        );
+        assertGt(usdcOut, 0);
+        vm.stopPrank();
+    }
+
     function test_sellMinQuoteOutZeroReverts() public {
         (address token,) = factory.instantLaunch(
             ReactorFactory.InstantParams({

@@ -7,8 +7,9 @@ import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { erc20, router, token as tokenC, curve, userRoute } from "@/lib/contracts";
-import { officialPoolKey, buyZeroForOne, hooklessHopKey, encodePoolKey } from "@/lib/pool";
-import { applyMinOuts, planRoute } from "../../../../packages/reactor/src/routes.ts";
+import { officialPoolKey, buyZeroForOne, hooklessHopKey } from "@/lib/pool";
+import { applyMinOuts } from "../../../../packages/reactor/src/routes";
+import { planUserHops } from "@/lib/route-graph";
 import { feeSplit, formatUnitsSafe, parseUnitsSafe } from "@/lib/utils";
 import type { LaunchToken } from "@/lib/hooks";
 import { addresses } from "@/lib/addresses";
@@ -25,56 +26,20 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   const [slippage, setSlippage] = useState("1");
   const [quotedOut, setQuotedOut] = useState<bigint | null>(null);
   const [quotedAt, setQuotedAt] = useState<number>(0);
+  const [quoteNotional, setQuoteNotional] = useState<bigint | null>(null);
+  const [minQuoteOut, setMinQuoteOut] = useState<bigint | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState<string | null>(null);
+  const [liveHops, setLiveHops] = useState<
+    { adapter: `0x${string}`; tokenIn: `0x${string}`; tokenOut: `0x${string}`; minOut: bigint; data: `0x${string}` }[]
+  >([]);
 
   const quoteDec = t.quoteDecimals ?? 18;
   const usdcRoute = Boolean(payUsdc && t.quote.toLowerCase() !== addresses.USDC.toLowerCase() && userRoute.address);
   const inDec = side === "buy" ? (usdcRoute ? 6 : quoteDec) : t.decimals;
   const parsed = parseUnitsSafe(amount, inDec);
 
-  function usdcHops() {
-    const adapter = addresses.V4Adapter;
-    if (!adapter) return [];
-    const tokenIn = side === "buy" ? addresses.USDC : t.quote;
-    const tokenOut = side === "buy" ? t.quote : addresses.USDC;
-    const key = hooklessHopKey(addresses.USDC, t.quote);
-    const data = encodePoolKey(key);
-    try {
-      const planned = planRoute(
-        tokenIn,
-        tokenOut,
-        [
-          {
-            from: addresses.USDC,
-            to: t.quote,
-            adapter,
-            kind: "user",
-            data,
-            usable: true,
-          },
-          {
-            from: t.quote,
-            to: addresses.USDC,
-            adapter,
-            kind: "user",
-            data,
-            usable: true,
-          },
-        ],
-        new Map([
-          [addresses.USDC.toLowerCase(), { token: addresses.USDC, symbol: "USDC", enabled: true, usdPegOne: true }],
-          [t.quote.toLowerCase(), { token: t.quote, symbol: t.quoteSymbol ?? "Q", enabled: true }],
-        ]),
-        { protocol: false, adapters: new Set([adapter.toLowerCase()]) },
-      );
-      return planned.hops.map((h) => ({ ...h, minOut: 1n }));
-    } catch {
-      return [];
-    }
-  }
-  const routePreview = usdcRoute ? usdcHops() : [];
-  const split = feeSplit(parsed);
+  const split = feeSplit(quoteNotional ?? 0n);
 
   async function stampUserHops(
     amountIn: bigint,
@@ -129,10 +94,49 @@ export function TradePanel({ t }: { t: LaunchToken }) {
     setError(null);
     if (!address || !client || parsed === 0n) {
       setQuotedOut(null);
+      setQuoteNotional(null);
+      setMinQuoteOut(null);
       return;
     }
     const bonding = Boolean(t.bonding && t.curve && !t.marketLive);
     try {
+      let hops: typeof liveHops = [];
+      if (usdcRoute && userRoute.address) {
+        hops = await planUserHops(
+          client,
+          side === "buy" ? addresses.USDC : t.quote,
+          side === "buy" ? t.quote : addresses.USDC,
+        );
+        if (t.quote.toLowerCase() !== addresses.USDC.toLowerCase() && hops.length === 0) {
+          throw new Error("no approved route for this quote — refusing a fabricated hop");
+        }
+      }
+      let firstLegOut: bigint | null = null;
+      if (side === "sell") {
+        const first = bonding
+          ? await client.simulateContract({
+              address: t.curve!,
+              abi: curve.abi,
+              functionName: "sell",
+              args: [t.token, parsed, 1n],
+              account: address,
+            })
+          : await client.simulateContract({
+              ...router,
+              functionName: "swap",
+              args: [officialPoolKey(t.token, t.quote), !buyZeroForOne(t.token, t.quote), -parsed, 1n, address],
+              account: address,
+            });
+        firstLegOut = first.result as bigint;
+        setMinQuoteOut(firstLegOut);
+        setQuoteNotional(firstLegOut);
+      } else if (usdcRoute && hops.length > 0) {
+        const stamped = await stampUserHops(parsed, 1n, hops, bonding);
+        const last = stamped[stamped.length - 1];
+        if (last) setQuoteNotional(last.minOut);
+      } else {
+        setQuoteNotional(parsed);
+      }
       const sim = usdcRoute && userRoute.address
         ? await client.simulateContract({
             address: userRoute.address,
@@ -140,8 +144,8 @@ export function TradePanel({ t }: { t: LaunchToken }) {
             functionName: side === "buy" ? "buy" : "sell",
             args:
               side === "buy"
-                ? [t.token, parsed, usdcHops(), 1n, BigInt(Math.floor(Date.now() / 1000) + 300)]
-                : [t.token, parsed, usdcHops(), 1n, 1n, BigInt(Math.floor(Date.now() / 1000) + 300)],
+                ? [t.token, parsed, hops, 1n, BigInt(Math.floor(Date.now() / 1000) + 300)]
+                : [t.token, parsed, hops, firstLegOut && firstLegOut > 0n ? firstLegOut : 1n, 1n, BigInt(Math.floor(Date.now() / 1000) + 300)],
             account: address,
           })
         : bonding
@@ -166,6 +170,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
           });
       setQuotedOut(sim.result as bigint);
       setQuotedAt(Date.now());
+      if (usdcRoute) setLiveHops(hops);
     } catch (e) {
       setQuotedOut(null);
       setError(e instanceof Error ? e.message : "Quote failed. Size may be larger than remaining depth.");
@@ -202,9 +207,22 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         return;
       }
       const bonding = Boolean(t.bonding && t.curve && !t.marketLive);
-      let liveHops = usdcHops();
-      if (usdcRoute && liveHops.length > 0) {
-        liveHops = await stampUserHops(parsed, slipBps, liveHops, bonding);
+      let hops = liveHops;
+      if (usdcRoute) {
+        hops = await planUserHops(
+          client,
+          side === "buy" ? addresses.USDC : t.quote,
+          side === "buy" ? t.quote : addresses.USDC,
+        );
+        if (hops.length > 0) hops = await stampUserHops(parsed, slipBps, hops, bonding);
+      }
+      const firstMin =
+        side === "sell"
+          ? ((minQuoteOut ?? 0n) * (10_000n - slipBps)) / 10_000n
+          : minOut;
+      if (side === "sell" && usdcRoute && (firstMin === 0n || firstMin === 1n)) {
+        setError("minQuoteOut is dust. Increase size.");
+        return;
       }
       const spender = usdcRoute && userRoute.address ? userRoute.address : bonding ? t.curve! : addresses.ReactorRouter;
       const asset = side === "buy" ? (usdcRoute ? addresses.USDC : t.quote) : t.token;
@@ -232,8 +250,8 @@ export function TradePanel({ t }: { t: LaunchToken }) {
               functionName: side === "buy" ? "buy" : "sell",
               args:
                 side === "buy"
-                  ? [t.token, parsed, liveHops, minOut, deadline]
-                  : [t.token, parsed, liveHops, minOut, minOut, deadline],
+                  ? [t.token, parsed, hops, minOut, deadline]
+                  : [t.token, parsed, hops, firstMin, minOut, deadline],
             })
           : bonding
             ? await writeContractAsync({
@@ -311,12 +329,18 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       <div className="mt-3 space-y-1 text-xs text-zinc-400">
         {side === "buy" ? (
           <p>
-            Est. {formatUnitsSafe(split.fee, quoteDec, 6)} {t.quoteSymbol} ·{" "}
-            {formatUnitsSafe(split.holders, quoteDec, 6)} holders / {formatUnitsSafe(split.flywheel, quoteDec, 6)}{" "}
-            flywheel / {formatUnitsSafe(split.core, quoteDec, 6)} CORE
+            3.5% of official-market {t.quoteSymbol} notional
+            {quoteNotional !== null ? ` (${formatUnitsSafe(quoteNotional, quoteDec, 6)} ${t.quoteSymbol})` : ""}
+            {usdcRoute ? " — not 3.5% of USDC in" : ""}: {formatUnitsSafe(split.fee, quoteDec, 6)} {t.quoteSymbol} ·{" "}
+            {formatUnitsSafe(split.holders, quoteDec, 6)} Rewards/Standard · {formatUnitsSafe(split.flywheel, quoteDec, 6)}{" "}
+            Top-10 · {formatUnitsSafe(split.core, quoteDec, 6)} CORE
           </p>
         ) : (
-          <p>You receive quote after the 3.5% charge (2/1/0.5). No token transfer tax.</p>
+          <p>
+            First leg min is {t.quoteSymbol}
+            {minQuoteOut !== null ? ` (${formatUnitsSafe(minQuoteOut, quoteDec, 6)})` : ""}; final min is{" "}
+            {usdcRoute ? "USDC" : t.quoteSymbol}. 3.5% (2/1/0.5) comes out of the quote leg.
+          </p>
         )}
         <p>
           Quoted out:{" "}
@@ -329,7 +353,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         </p>
         {usdcRoute && (
           <p className="font-mono text-[11px] text-zinc-500">
-            Route {routePreview.length ? routePreview.map((h) => `${h.tokenIn.slice(0, 6)}→${h.tokenOut.slice(0, 6)}`).join(" · ") : "unroutable"}
+            Route {liveHops.length ? liveHops.map((h) => `${h.tokenIn.slice(0, 6)}→${h.tokenOut.slice(0, 6)}`).join(" · ") : "discovering approved venues…"}
           </p>
         )}
         {quotedOut !== null && (

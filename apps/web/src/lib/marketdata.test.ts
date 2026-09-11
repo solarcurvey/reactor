@@ -1,4 +1,4 @@
-import { fdvQuoteRaw, vwapFdvQuoteRaw, MIN_VWAP_SAMPLES } from "./marketdata.ts";
+import { fdvQuoteRaw, vwapFdvQuoteRaw, lastGoodFdvQuote, MIN_VWAP_SAMPLES, MARK_WINDOW_SEC } from "./marketdata.ts";
 import { rankTop10 } from "./top10.ts";
 
 function assert(cond: unknown, msg: string) {
@@ -68,6 +68,20 @@ function assert(cond: unknown, msg: string) {
     { token: "0xa", graduated: true, isCore: false, markUsdc: 100_000n * 1_000_000n, markOk: true },
   ]);
   assert(rows.length === 0, "$250k floor fail-closed");
+}
+
+{
+  const Q96 = 1n << 96n;
+  const now = 2_000_000;
+  const historical = [0, 30, 60].map((d) => ({
+    notional: 100n,
+    sqrtPrice: Q96,
+    ts: now - MARK_WINDOW_SEC - 10 - d,
+  }));
+  const lastGood = lastGoodFdvQuote(historical, 1_000n, true, now);
+  assert(lastGood === 1_000n, `3 historical samples must produce lastGood, got ${lastGood}`);
+  const two = lastGoodFdvQuote(historical.slice(0, 2), 1_000n, true, now);
+  assert(two === 0n, "fewer than 3 historical samples fail closed");
 }
 
 console.log("marketdata tests ok");

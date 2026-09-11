@@ -1,16 +1,15 @@
 # BUILD REPORT — REACTOR local Arc-compatible MVP
 
-**Status:** Hop-floor follow-up on the frozen architecture. Local Anvil 5042002 only. Hook bytecode changes — **re-read `factory.hook()` after redeploy**.  
+**Status:** Final Grok security/ops patch on the frozen architecture. Local Anvil 5042002 only. Hook bytecode changes — **re-read `factory.hook()` after redeploy**.  
 **Not audited. Not mainnet. Not production-ready. Arc Public Testnet not claimed.** See `HARDENING_REPORT.md` and `AUDIT_HANDOFF.md`.
 
-## This HEAD (hop-floor follow-up)
+## This HEAD (security/ops patch)
 
 | Item | Value |
 | --- | --- |
-| Branch | `cursor/final-grok-completion-5e6c` (merged to `main` when Origin allows) |
-| Hop-floor commit | `508e45444530cdddf007030be71a6c5d087e0c95` |
-| Parent | `58c6f948dbddc5a165a025d4abdf578216829d58` |
-| Forge | **286 passed**, 0 failed, 1 skipped (`forge test --offline`, Foundry 1.8.1, via_ir) |
+| Branch | `cursor/grok-security-ops-patch-81b1` |
+| Parent | `844255e` |
+| Forge | **299 passed**, 0 failed, 1 skipped (Foundry 1.8.1, via_ir) |
 | TS | `pnpm --filter indexer test` + `top10.test.ts` + `marketdata.test.ts` + `valuation.test.ts` — pass |
 | Invariants | Reward campaign + CORE + fee split still the bound |
 | Frontend | Search + rows, image file upload, RoutePlanner trade preview, PRICE 1m/5m/1h/4h/1d bonding→v4, denser ops |
@@ -19,7 +18,7 @@
 | Watchdog | Independent eval + alerts file; no Guardian keys |
 | E2E | `CurrentArchitecture.t.sol` + `e2e-current-architecture.ts` (old 3% demo retired) |
 | Screenshots | Existing `review/*` from prior regen; recapture after local Anvil if UI changes |
-| Limitations | No live Arc Testnet txs. Preview fns must never be broadcast (they probe `minOut=1` then revert `PreviewHops`). No prod image store. |
+| Limitations | No live Arc Testnet txs. Preview fns must never be broadcast (they probe `minOut=1` then revert `PreviewHops`). No prod image store (data-URL / file reader). InstantCurve.buyWithUsdc still has a legacy on-chain 0.30% hop; the UI uses RoutePlanner over proven venues. lastGood liquidity is lastGood/5, not a pool TVL oracle. |
 | Arc Testnet | **Not claimed.** Chain id 5042002 locally only. |
 | Mainnet blockers | BUSL v4-core, no PoolManager on 5042, no audit, no native USDC dual-decimal, Instant/CCA not compatible |
 

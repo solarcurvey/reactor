@@ -168,6 +168,10 @@ pnpm --filter indexer watchdog
 | 19 | Safe genesis payload | `SafeGenesis.t.sol`, `VerifyGenesis.s.sol` |
 | 20 | Deployer no post-genesis privilege | same |
 | 21 | Nested hop floors from per-hop sim, not last-leg/dust | `HopFloors.t.sol`, `stampHopMinOuts`, `applyMinOuts` |
+| 22 | Public buyPrefunded drain deleted; router-only pull | `BuyPrefundedDrain.t.sol` |
+| 23 | Keeper executes frozen onchain epoch, not latest API | `frozenEpochTargets` in `keeper.minout.test.ts` |
+| 24 | lastGoodFdvQuote accepts 3 historical samples | `marketdata.test.ts` |
+| 25 | CAT/ZCAT nested e2e (not CAT/USDC) | `CurrentArchitecture.t.sol` |
 
 ## Arc smoke
 

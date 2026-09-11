@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
-import { createPublicClient, http, parseAbi } from "viem";
+import { createPublicClient, http, parseAbi, type PublicClient } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { randomBytes } from "node:crypto";
 import { arcLocal } from "@/lib/chain";
 import { addresses } from "@/lib/addresses";
+import { factory } from "@/lib/contracts";
 import { fdvQuoteRaw, readSqrtPriceX96 } from "@/lib/marketdata";
 import { poolId } from "@/lib/pool";
-import { valueQuoteUsd6, type QuoteNode } from "../../../../../packages/reactor/src/valuation.ts";
+import { valueQuoteUsd6, fuseExternalUsd6, type QuoteNode } from "../../../../../../packages/reactor/src/valuation";
+import { officialPoolKey } from "@/lib/pool";
 
 /**
  * Short-lived unique EIP-712 LaunchPricingAuthorization for non-usdPegOne quotes.
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
     const quoteDecimals = Number(
       await client.readContract({ address: quote, abi: erc20Abi, functionName: "decimals" }),
     );
-    const quoteUsd6 = await hopQuoteUsd6(client, quote, quoteDecimals);
+    const quoteUsd6 = await hopQuoteUsd6(client as PublicClient, quote, quoteDecimals);
     if (quoteUsd6 === 0n) {
       return NextResponse.json(
         { error: "cannot price quote — valuation unavailable, launch disabled for this quote", needsAuth: true },
@@ -149,28 +151,71 @@ export async function POST(req: Request) {
 }
 
 async function hopQuoteUsd6(
-  client: ReturnType<typeof createPublicClient>,
+  client: PublicClient,
   quote: `0x${string}`,
   qDec: number,
 ): Promise<bigint> {
   const usdc = addresses.USDC;
-  const nodes = new Map<string, QuoteNode>([
-    [usdc.toLowerCase(), { token: usdc, symbol: "USDC", decimals: 6, usdPegOne: true }],
-  ]);
-  const direct = valueQuoteUsd6(usdc, nodes);
-  if (quote.toLowerCase() === usdc.toLowerCase()) return direct.usd6;
+  if (quote.toLowerCase() === usdc.toLowerCase()) return 1_000_000n;
 
-  const [c0, c1] = quote.toLowerCase() < usdc.toLowerCase() ? [quote, usdc] : [usdc, quote];
+  const sources: Array<{ usd6: bigint; ts: number; name: string }> = [];
+  const now = Math.floor(Date.now() / 1000);
+
   const hop = {
-    currency0: c0 as `0x${string}`,
-    currency1: c1 as `0x${string}`,
+    currency0: (quote.toLowerCase() < usdc.toLowerCase() ? quote : usdc) as `0x${string}`,
+    currency1: (quote.toLowerCase() < usdc.toLowerCase() ? usdc : quote) as `0x${string}`,
     fee: 3000,
     tickSpacing: 60,
     hooks: "0x0000000000000000000000000000000000000000" as `0x${string}`,
   };
-  const sqrt = await readSqrtPriceX96(client, poolId(hop));
-  if (!sqrt) return 0n;
-  const quoteIs0 = quote.toLowerCase() < usdc.toLowerCase();
-  const one = 10n ** BigInt(qDec);
-  return fdvQuoteRaw(sqrt, one, quoteIs0);
+  const hopSqrt = await readSqrtPriceX96(client, poolId(hop));
+  if (hopSqrt) {
+    const quoteIs0 = quote.toLowerCase() < usdc.toLowerCase();
+    const one = 10n ** BigInt(qDec);
+    const usd6 = fdvQuoteRaw(hopSqrt, one, quoteIs0);
+    if (usd6 > 0n) sources.push({ usd6, ts: now, name: "arc-hop" });
+  }
+
+  try {
+    const info = (await client.readContract({ ...factory, functionName: "tokenInfo", args: [quote] })) as readonly unknown[];
+    const parent = String(info[1]) as `0x${string}`;
+    const live = Boolean(info[5]);
+    if (live && parent) {
+      const key = officialPoolKey(quote, parent);
+      const sqrt = await readSqrtPriceX96(client, poolId(key));
+      if (sqrt) {
+        const quoteIs0 = quote.toLowerCase() < parent.toLowerCase();
+        const one = 10n ** BigInt(qDec);
+        const fdvParent = fdvQuoteRaw(sqrt, one, quoteIs0);
+        const parentUsd = await hopQuoteUsd6(client, parent, Number(await client.readContract({ address: parent, abi: erc20Abi, functionName: "decimals" }).catch(() => 18)));
+        if (parentUsd > 0n && fdvParent > 0n) {
+          const parentDec = Number(await client.readContract({ address: parent, abi: erc20Abi, functionName: "decimals" }).catch(() => 18));
+          const usd6 = (fdvParent * parentUsd) / 10n ** BigInt(parentDec);
+          if (usd6 > 0n) sources.push({ usd6, ts: now, name: "nested-official" });
+        }
+      }
+    }
+  } catch {
+    /* no official parent */
+  }
+
+  const fused = fuseExternalUsd6(sources, now);
+  if (!fused.ok) return 0n;
+
+  const nodes = new Map<string, QuoteNode>([
+    [usdc.toLowerCase(), { token: usdc, symbol: "USDC", decimals: 6, usdPegOne: true }],
+    [
+      quote.toLowerCase(),
+      {
+        token: quote,
+        symbol: "Q",
+        decimals: qDec,
+        usdPegOne: false,
+        externalUsd6: fused.usd6,
+        externalOk: true,
+      },
+    ],
+  ]);
+  const valued = valueQuoteUsd6(quote, nodes);
+  return valued.ok ? valued.usd6 : 0n;
 }

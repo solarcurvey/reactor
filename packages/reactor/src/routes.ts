@@ -23,6 +23,7 @@ export type QuoteMeta = {
   enabled?: boolean;
   usdPegOne?: boolean;
   reactorNative?: boolean;
+  hopViaUsdc?: boolean;
 };
 
 export type Hop = {
@@ -122,6 +123,17 @@ export function applyMinOuts(route: PlannedRoute, minOuts: bigint[]): PlannedRou
     ...route,
     hops: route.hops.map((h, i) => ({ ...h, minOut: minOuts[i]! })),
   };
+}
+
+/** Only proven pools become edges. Fabricated 0.30% quote/USDC hops are rejected. */
+export function approvedEdges(
+  pools: Array<MarketEdge & { exists?: boolean }>,
+): MarketEdge[] {
+  return pools.filter((p) => p.usable && p.exists !== false).map(({ exists: _e, ...e }) => e);
+}
+
+export function requireProvenPool(exists: boolean, label: string): void {
+  if (!exists) throw new RouteReject(`nonexistent fabricated pool ${label}`);
 }
 
 export function encodeHooklessPoolKey(a: `0x${string}`, b: `0x${string}`): {

@@ -55,6 +55,19 @@
   },
   {
     "type": "function",
+    "name": "bindRouteExecutor",
+    "inputs": [
+      {
+        "name": "exec",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "bindSelfBurn",
     "inputs": [
       {
@@ -179,7 +192,7 @@
   },
   {
     "type": "function",
-    "name": "buyPrefunded",
+    "name": "buyRouted",
     "inputs": [
       {
         "name": "token",
@@ -187,7 +200,7 @@
         "internalType": "address"
       },
       {
-        "name": "user",
+        "name": "recipient",
         "type": "address",
         "internalType": "address"
       },
@@ -645,6 +658,19 @@
   },
   {
     "type": "function",
+    "name": "routeExecutor",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "router",
     "inputs": [],
     "outputs": [
@@ -1063,7 +1089,17 @@
   },
   {
     "type": "error",
+    "name": "AlreadyBound",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "Bad",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CustodyShort",
     "inputs": []
   },
   {
@@ -1103,7 +1139,17 @@
   },
   {
     "type": "error",
+    "name": "NotRouter",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "ReadyLocked",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Reentrant",
     "inputs": []
   },
   {
