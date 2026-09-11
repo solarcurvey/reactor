@@ -427,6 +427,49 @@ export function useIndexerHealth() {
   });
 }
 
+export type CandlePoint = { t: number; o: string; h: string; l: string; c: string; v: string; n: number };
+
+function fixtureCandles(intervalSec: number): CandlePoint[] {
+  const now = Math.floor(Date.now() / 1000);
+  const start = now - intervalSec * 16;
+  const out: CandlePoint[] = [];
+  let px = 2n * 10n ** 16n;
+  for (let i = 0; i < 16; i++) {
+    const t = start + i * intervalSec;
+    px += BigInt(i) * 10n ** 13n;
+    const s = px.toString();
+    out.push({ t, o: s, h: s, l: s, c: s, v: i % 3 === 0 ? "0" : "100000000", n: i % 3 === 0 ? 0 : 1 });
+  }
+  return out;
+}
+
+export function useCandles(token?: string, interval: string = "5m") {
+  return useQuery({
+    queryKey: ["candles", token, interval],
+    enabled: !!token,
+    queryFn: async () => {
+      const empty = { candles: [] as CandlePoint[], sparse: true, interval };
+      const res = await fetch(`${INDEXER_URL}/candles/${token}?interval=${encodeURIComponent(interval)}`).catch(() => null);
+      if (!res?.ok) {
+        if (!REVIEW_FIXTURES) return empty;
+        const candles = fixtureCandles(
+          interval === "1m" ? 60 : interval === "15m" ? 900 : interval === "1h" ? 3600 : interval === "4h" ? 14400 : interval === "1d" ? 86400 : 300,
+        );
+        return { candles, sparse: candles.filter((c) => c.n > 0).length < 3, interval };
+      }
+      const body = (await res.json()) as { candles?: CandlePoint[]; interval?: string };
+      const candles = body.candles ?? [];
+      const real = candles.filter((c) => c.n > 0).length;
+      if (REVIEW_FIXTURES && candles.length === 0) {
+        const fb = fixtureCandles(300);
+        return { candles: fb, sparse: true, interval };
+      }
+      return { candles, sparse: real === 0 || real < 3, interval: body.interval ?? interval };
+    },
+    refetchInterval: 8_000,
+  });
+}
+
 export function useSwapSeries(token?: string) {
   return useQuery({
     queryKey: ["swaps", token],
