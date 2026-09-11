@@ -354,8 +354,13 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0));
     const rows = await store.all<Record<string, unknown>>("SELECT * FROM markets");
     const tokens = await store.all<Record<string, unknown>>("SELECT * FROM tokens");
-    const tok = new Map(tokens.map((t) => [String(t.address), t]));
-    let list = rows.map((m) => ({ ...m, ...(tok.get(String(m.token)) ?? {}) }));
+    const quotes = await store.all<{ token: string; symbol: string; decimals: number }>("SELECT token,symbol,decimals FROM quote_assets");
+    const tok = new Map(tokens.map((t) => [String(t.address).toLowerCase(), t]));
+    const qmeta = new Map(quotes.map((q) => [String(q.token).toLowerCase(), q]));
+    let list = rows.map((m) => {
+      const q = qmeta.get(String(m.quote).toLowerCase());
+      return { ...m, ...(tok.get(String(m.token).toLowerCase()) ?? {}), quote_symbol: q?.symbol ?? "", quote_decimals: q?.decimals ?? 18 };
+    });
     if (q) list = list.filter((m) => `${m.symbol}${m.name}${m.token}${m.quote}`.toLowerCase().includes(q));
     if (stage === "bonding") list = list.filter((m) => m.stage === "bonding");
     if (stage === "v4" || stage === "trending") list = list.filter((m) => m.market_live === 1 || m.stage === "v4");

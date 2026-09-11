@@ -85,6 +85,9 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     quoteSymbol: "ZEC",
     quoteDecimals: 8,
     lifetimeRewards: 0n,
+    priceQuoteX18: (8n * 10n ** 14n).toString(),
+    fdvUsd6: (41_000n * 1_000_000n).toString(),
+    volume24hUsd6: (3_200n * 1_000_000n).toString(),
   },
   {
     token: CAT,
@@ -109,6 +112,9 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     quoteSymbol: "ZCAT",
     quoteDecimals: 18,
     lifetimeRewards: 0n,
+    priceQuoteX18: (5n * 10n ** 16n).toString(),
+    fdvUsd6: (22_000n * 1_000_000n).toString(),
+    volume24hUsd6: (1_100n * 1_000_000n).toString(),
   },
   {
     token: BOND,
@@ -133,6 +139,9 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     quoteSymbol: "USDC",
     quoteDecimals: 6,
     lifetimeRewards: 40_000_000n,
+    priceQuoteX18: (12n * 10n ** 13n).toString(),
+    fdvUsd6: (12_000n * 1_000_000n).toString(),
+    volume24hUsd6: (6_400n * 1_000_000n).toString(),
   },
 ];
 

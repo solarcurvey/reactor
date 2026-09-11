@@ -353,6 +353,34 @@ export function useLaunchTokens() {
       if (res?.ok) {
         const body = (await res.json()) as { items?: Record<string, unknown>[] };
         const items = (body.items ?? []).map(marketRowToLaunch);
+        if (REVIEW_FIXTURES) {
+          const fixturesByAddr = new Map(FIXTURE_TOKENS.map((t) => [t.token.toLowerCase(), t]));
+          const merged = items.map((t) => {
+            const f = fixturesByAddr.get(t.token.toLowerCase());
+            if (!f) return t;
+            const emptyPx = !t.priceQuoteX18 || t.priceQuoteX18 === "0";
+            const emptyVol = !t.volume24hUsd6 || t.volume24hUsd6 === "0";
+            const emptyFdv = !t.fdvUsd6 || t.fdvUsd6 === "0";
+            const emptyRewards = !t.lifetimeRewards || t.lifetimeRewards === 0n;
+            return {
+              ...t,
+              name: t.name && t.name !== "Token" ? t.name : f.name,
+              symbol: t.symbol && t.symbol !== "TKN" ? t.symbol : f.symbol,
+              quoteSymbol: t.quoteSymbol || f.quoteSymbol,
+              quoteDecimals: t.quoteDecimals || f.quoteDecimals,
+              image: t.image || f.image,
+              description: t.description || f.description,
+              priceQuoteX18: emptyPx ? f.priceQuoteX18 : t.priceQuoteX18,
+              fdvUsd6: emptyFdv ? f.fdvUsd6 : t.fdvUsd6,
+              volume24hUsd6: emptyVol ? f.volume24hUsd6 : t.volume24hUsd6,
+              lifetimeRewards: emptyRewards ? f.lifetimeRewards : t.lifetimeRewards,
+              bonding: t.bonding || f.bonding,
+              bondingBps: t.bondingBps || f.bondingBps,
+            };
+          });
+          const seen = new Set(merged.map((t) => t.token.toLowerCase()));
+          return [...merged, ...FIXTURE_TOKENS.filter((t) => !seen.has(t.token.toLowerCase()))];
+        }
         if (items.length) return items;
       }
       if (REVIEW_FIXTURES) return FIXTURE_TOKENS;
