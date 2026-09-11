@@ -63,9 +63,10 @@ Closed DoD leftovers on the frozen protocol. **Zero Solidity.**
 
 Valuation tests require the nested product (CAT = $0.50, not ZEC $50). Accidental tree-wide `forge fmt` was **reverted**; no hook / fee / curve / split Solidity landed in this pass.
 
-Review screenshots regenerated at 1440 and 390 under `review/`. Zip sha256:
+New token-terminal OHLCV screenshots:
 
-`c571f467cf23e9bebb7dabfea31361fda67daeeb956e53324a514cad2ee44ee9`
+- `review/token-terminal-1440.png` sha256 `31feb0fb7b8fc27e3ac6533d7c2747eb8b2d0cb7ce01cff3c76c1afb29b4bb4f`
+- `review/token-terminal-390.png` sha256 `a9e26555b6000f32f4a5a88dfa24d2c02c52c02c2e6900455e79cef4b6483264`
 
 ## Honest gaps
 
