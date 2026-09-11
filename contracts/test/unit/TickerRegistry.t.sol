@@ -65,7 +65,7 @@ contract TickerRegistryTest is Base {
     function test_94_failed_auth_does_not_squat() public {
         LaunchAuthorization.Auth memory empty;
         ReactorFactory.InstantParams memory p = _usdc("FREE");
-        vm.expectRevert(LaunchAuthorization.BadSigner.selector);
+        vm.expectRevert(LaunchAuthorization.Expired.selector);
         factory.instantLaunch(p, empty, "");
         (,, bool available,) = tickers.status("FREE");
         assertTrue(available);

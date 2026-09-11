@@ -305,7 +305,6 @@ contract ReactorFactory {
         uint8 dec = ReactorConstants.DEFAULT_DECIMALS;
         string memory ticker = Ticker.normalize(p.symbol);
         uint8 qdec = IERC20MinimalExt(p.quote).decimals();
-        uint256 vq0 = _virtualQuote0(p.quote, qdec, a);
         bytes32 digest_ = LaunchAuthorization.verify(
             auth,
             authDomain,
@@ -318,6 +317,7 @@ contract ReactorFactory {
             a,
             sig
         );
+        uint256 vq0 = _virtualQuote0(p.quote, qdec, a);
 
         token = address(
             new ReactorToken(

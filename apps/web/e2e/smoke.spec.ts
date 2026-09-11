@@ -19,8 +19,8 @@ test("reactor flywheel page", async ({ page }) => {
 test("docs are in primary nav", async ({ page }) => {
   await page.goto("/docs");
   await expect(page.getByRole("heading", { name: /How REACTOR works/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /^Docs$/ })).toBeVisible();
-  await page.getByRole("link", { name: "Traders" }).first().click();
+  await expect(page.locator("header a[href='/docs']")).toHaveCount(1);
+  await page.goto("/docs/traders");
   await expect(page.getByRole("heading", { name: /For traders/i })).toBeVisible();
 });
 

@@ -115,7 +115,7 @@ contract Top10SecurityTest is Base {
         address[] memory t = new address[](11);
         uint256[] memory w = new uint256[](11);
         for (uint256 i; i < 11; i++) {
-            toks[i] = _instantUsdc(string(abi.encodePacked("T", i)));
+            toks[i] = _instantUsdc(string.concat("T", vm.toString(i)));
             _fillAndGraduate(alice, toks[i]);
             t[i] = toks[i];
             w[i] = i == 10 ? 0 : 1_000;

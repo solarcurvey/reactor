@@ -80,6 +80,7 @@ contract ProtocolExemptReentrancyTest is Base {
     function setUp() public override {
         super.setUp();
         mal = new MaliciousExemptToken();
+        quoteDec[address(mal)] = 6;
         mal.mint(alice, 10_000_000e6);
         mal.mint(address(this), 10_000_000e6);
         registry.register(address(mal), "MALQ", "Malicious Quote", 6, "", QuoteAssetRegistry.Category.Crypto);

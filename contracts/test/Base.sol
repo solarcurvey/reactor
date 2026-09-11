@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {Test} from "forge-std/Test.sol";
+import {VmSafe} from "forge-std/Vm.sol";
 import {PoolManager} from "v4-core/PoolManager.sol";
 import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
@@ -76,6 +77,8 @@ contract Base is Test {
     address public keeper;
     uint256 internal pricingPk;
     address public pricingSigner;
+    bytes32 internal launchDomain;
+    mapping(address => uint8) internal quoteDec;
     address public alice = makeAddr("alice");
     address public bob = makeAddr("bob");
     address public carol = makeAddr("carol");
@@ -113,6 +116,10 @@ contract Base is Test {
         usdc.mint(alice, 10_000_000e6);
         usdc.mint(bob, 10_000_000e6);
         usdc.mint(carol, 10_000_000e6);
+        quoteDec[address(usdc)] = 6;
+        quoteDec[address(zec)] = 8;
+        quoteDec[address(btc)] = 8;
+        quoteDec[address(core)] = 18;
         zec.mint(alice, 100_000e8);
         zec.mint(bob, 100_000e8);
         zec.mint(carol, 100_000e8);
@@ -169,6 +176,7 @@ contract Base is Test {
         hook.bindFlywheel(IFeeSink(address(flywheel)));
 
         factory = new ReactorFactory(pm, hook, router, vault, registry, address(core), auth, tickers);
+        launchDomain = factory.authDomain();
         auth.authorizeFactory(address(factory), 1);
         hook.bindFactory(address(factory));
         vault.bindFactory(address(factory));
@@ -353,7 +361,7 @@ contract Base is Test {
         returns (LaunchAuthorization.Auth memory a, bytes memory sig)
     {
         string memory ticker = Ticker.normalize(symbol);
-        uint8 dec = IERC20Like(quote).decimals();
+        uint8 dec = _quoteDecimals(quote);
         a = LaunchAuthorization.Auth({
             factory: address(factory),
             creator: creator,
@@ -365,18 +373,47 @@ contract Base is Test {
             authId: keccak256(abi.encode(quote, ticker, creator, block.timestamp, gasleft(), address(this))),
             deadline: block.timestamp + 15 minutes
         });
-        bytes32 d = LaunchAuthorization.digest(factory.authDomain(), a);
+        bytes32 d = LaunchAuthorization.digest(launchDomain, a);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, d);
         sig = abi.encodePacked(r, s, v);
     }
 
+    /// @dev Who the next factory call will be. One-time pranks are cleared so signing view-calls
+    ///      cannot consume them; the helper re-applies `vm.prank` around the launch.
+    function _activeCreator() internal returns (address creator) {
+        (VmSafe.CallerMode mode, address sender,) = vm.readCallers();
+        if (mode == VmSafe.CallerMode.Prank || mode == VmSafe.CallerMode.RecurrentPrank) {
+            creator = sender;
+            if (mode == VmSafe.CallerMode.Prank) vm.stopPrank();
+        } else {
+            creator = address(this);
+        }
+    }
+
+    function _maybePrank(address creator) internal {
+        (VmSafe.CallerMode mode,,) = vm.readCallers();
+        if (mode == VmSafe.CallerMode.RecurrentPrank) return;
+        if (creator != address(this)) vm.prank(creator);
+    }
+
+    function _quoteDecimals(address quote) internal view returns (uint8) {
+        uint8 d = quoteDec[quote];
+        return d == 0 ? 18 : d;
+    }
+
     function _instant(ReactorFactory.InstantParams memory p) internal returns (address token, PoolId poolId) {
-        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuth(p.symbol, p.quote);
+        address creator = _activeCreator();
+        (LaunchAuthorization.Auth memory a, bytes memory sig) =
+            _launchAuthFor(creator, p.symbol, p.quote, _vq0(p.quote), LaunchAuthorization.INSTANT_CURVE_V1);
+        _maybePrank(creator);
         return factory.instantLaunch(p, a, sig);
     }
 
     function _standard(ReactorFactory.InstantParams memory p) internal returns (address token, PoolId poolId) {
-        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuth(p.symbol, p.quote);
+        address creator = _activeCreator();
+        (LaunchAuthorization.Auth memory a, bytes memory sig) =
+            _launchAuthFor(creator, p.symbol, p.quote, _vq0(p.quote), LaunchAuthorization.INSTANT_CURVE_V1);
+        _maybePrank(creator);
         return factory.launchStandard(p, a, sig);
     }
 
@@ -384,13 +421,23 @@ contract Base is Test {
         internal
         returns (address token, PoolId poolId, uint256 tokensOut)
     {
-        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuth(p.symbol, p.quote);
+        address creator = _activeCreator();
+        (LaunchAuthorization.Auth memory a, bytes memory sig) =
+            _launchAuthFor(creator, p.symbol, p.quote, _vq0(p.quote), LaunchAuthorization.INSTANT_CURVE_V1);
+        _maybePrank(creator);
         return factory.launchAndBuy(p, rewards, minOut, a, sig);
     }
 
     function _fair(ReactorFactory.FairParams memory p) internal returns (address token, uint256 fairId) {
-        (LaunchAuthorization.Auth memory a, bytes memory sig) = _fairAuth(p.symbol, p.quote);
+        address creator = _activeCreator();
+        (LaunchAuthorization.Auth memory a, bytes memory sig) =
+            _launchAuthFor(creator, p.symbol, p.quote, 0, LaunchAuthorization.FAIR_V1);
+        _maybePrank(creator);
         return factory.createFairLaunch(p, a, sig);
+    }
+
+    function _vq0(address quote) internal view returns (uint256) {
+        return CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, _quoteDecimals(quote));
     }
 
     function helperInstant(ReactorFactory.InstantParams memory p) public returns (address token, PoolId poolId) {
@@ -409,7 +456,10 @@ contract Base is Test {
     }
 
     function _instantPriced(ReactorFactory.InstantParams memory p, bool rewards) internal returns (address token) {
-        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuth(p.symbol, p.quote);
+        address creator = _activeCreator();
+        (LaunchAuthorization.Auth memory a, bytes memory sig) =
+            _launchAuthFor(creator, p.symbol, p.quote, _vq0(p.quote), LaunchAuthorization.INSTANT_CURVE_V1);
+        _maybePrank(creator);
         if (rewards) (token,) = factory.instantLaunch(p, a, sig);
         else (token,) = factory.launchStandard(p, a, sig);
     }

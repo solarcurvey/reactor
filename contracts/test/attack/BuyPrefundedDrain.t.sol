@@ -138,6 +138,7 @@ contract BuyPrefundedDrainTest is Base {
 
     function test_buyRouted_reentrancyOnPullBlocked() public {
         ReenteringQuote q = new ReenteringQuote();
+        quoteDec[address(q)] = 6;
         q.mint(alice, 1_000_000e6);
         registry.register(address(q), "REQ", "Reentering Quote", 6, "", QuoteAssetRegistry.Category.Crypto);
         registry.setUsdPegOne(address(q), true);

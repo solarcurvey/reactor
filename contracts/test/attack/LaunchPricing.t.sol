@@ -44,7 +44,7 @@ contract LaunchPricingTest is Base {
             twitter: "",
             telegram: ""
         });
-        vm.expectRevert(LaunchAuthorization.BadSigner.selector);
+        vm.expectRevert(LaunchAuthorization.Expired.selector);
         factory.instantLaunch(p, empty, "");
         (address token,) = _instant(p);
         assertTrue(token != address(0));
@@ -54,7 +54,7 @@ contract LaunchPricingTest is Base {
 
     function test_nonDollarWithoutSigReverts() public {
         LaunchAuthorization.Auth memory empty;
-        vm.expectRevert(LaunchAuthorization.BadSigner.selector);
+        vm.expectRevert(LaunchAuthorization.Expired.selector);
         factory.instantLaunch(_p(), empty, "");
     }
 
@@ -184,8 +184,9 @@ contract LaunchPricingTest is Base {
         p.name = "E";
         p.symbol = "E";
         p.quote = address(eurc);
+        quoteDec[address(eurc)] = 6;
         LaunchAuthorization.Auth memory empty;
-        vm.expectRevert(LaunchAuthorization.BadSigner.selector);
+        vm.expectRevert(LaunchAuthorization.Expired.selector);
         factory.instantLaunch(p, empty, "");
         uint256 evq = CurveMath.virtualQuote0ForUsd(ReactorConstants.DEFAULT_SUPPLY, 6, 1_080_000);
         (LaunchAuthorization.Auth memory a, bytes memory sig) =
