@@ -60,7 +60,7 @@ contract QuoteAssetRegistry {
         auth = auth_;
     }
 
-    function bindFactory(address factory_) external {
+    function bindFactory(address factory_) external onlyGuardian {
         if (factory != address(0)) revert AlreadyBound();
         if (factory_ == address(0)) revert NotFactory();
         factory = factory_;

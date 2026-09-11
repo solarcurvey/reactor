@@ -8,11 +8,12 @@ import {Currency} from "v4-core/types/Currency.sol";
 import {BalanceDelta} from "v4-core/types/BalanceDelta.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {IERC20MinimalExt} from "./interfaces/IERC20MinimalExt.sol";
+import {ReactorGuardian} from "./ReactorGuardian.sol";
 
 /// @notice Unlock-callback router. V1 swaps are exact-input only with a nonzero minOut.
 contract ReactorRouter is IUnlockCallback {
     IPoolManager public immutable poolManager;
-    address public immutable bootstrap;
+    ReactorGuardian public immutable auth;
     bool public protocolVaultsSealed;
 
     mapping(address => bool) public protocolVault;
@@ -26,29 +27,29 @@ contract ReactorRouter is IUnlockCallback {
     error MinOutRequired();
     error IncompleteFill();
     error NotVault();
-    error NotBootstrap();
+    error NotGuardian();
     error Sealed();
     error WalletExemptForbidden();
 
     event ProtocolVaultSet(address indexed vault, bool allowed);
     event ProtocolVaultsSealed();
 
-    constructor(IPoolManager manager_) {
+    constructor(IPoolManager manager_, ReactorGuardian auth_) {
         poolManager = manager_;
-        bootstrap = msg.sender;
+        auth = auth_;
     }
 
-    /// @notice One-shot deploy wiring. Cannot mark an EOA. Guardian cannot call this after seal.
+    /// @notice Guardian one-shot deploy wiring. Cannot mark an EOA. Nobody can call after seal.
     function setProtocolVault(address vault, bool allowed) external {
         if (protocolVaultsSealed) revert Sealed();
-        if (msg.sender != bootstrap) revert NotBootstrap();
+        if (msg.sender != auth.guardian()) revert NotGuardian();
         if (allowed && vault.code.length == 0) revert WalletExemptForbidden();
         protocolVault[vault] = allowed;
         emit ProtocolVaultSet(vault, allowed);
     }
 
     function sealProtocolVaults() external {
-        if (msg.sender != bootstrap) revert NotBootstrap();
+        if (msg.sender != auth.guardian()) revert NotGuardian();
         protocolVaultsSealed = true;
         emit ProtocolVaultsSealed();
     }

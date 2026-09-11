@@ -8,11 +8,12 @@ import {Currency} from "v4-core/types/Currency.sol";
 import {BalanceDelta} from "v4-core/types/BalanceDelta.sol";
 import {PoolId} from "v4-core/types/PoolId.sol";
 import {IERC20MinimalExt} from "./interfaces/IERC20MinimalExt.sol";
+import {ReactorGuardian} from "./ReactorGuardian.sol";
 
 /// @notice Immutable official-LP owner. No withdraw, no upgrade, no admin sweep.
 contract ReactorLiquidityVault is IUnlockCallback {
     IPoolManager public immutable poolManager;
-    address public immutable bootstrap;
+    ReactorGuardian public immutable auth;
     address public factory;
     address public curve;
 
@@ -27,20 +28,20 @@ contract ReactorLiquidityVault is IUnlockCallback {
     error NotManager();
     error AlreadyBound();
     error WithdrawDisabled();
-    error NotOwner();
+    error NotGuardian();
 
     modifier onlyFactory() {
         if (msg.sender != factory && msg.sender != curve) revert NotFactory();
         _;
     }
 
-    constructor(IPoolManager manager_) {
+    constructor(IPoolManager manager_, ReactorGuardian auth_) {
         poolManager = manager_;
-        bootstrap = msg.sender;
+        auth = auth_;
     }
 
     function bindFactory(address factory_) external {
-        if (msg.sender != bootstrap) revert NotOwner();
+        if (msg.sender != auth.guardian()) revert NotGuardian();
         if (factory != address(0)) revert AlreadyBound();
         if (factory_ == address(0)) revert NotFactory();
         factory = factory_;

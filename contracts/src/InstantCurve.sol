@@ -78,9 +78,11 @@ contract InstantCurve {
     error Graduated();
     error NotReady();
     error ReadyLocked();
+    error TerminalMismatch();
     error DevBuyCap();
     error Slippage();
     error NotExempt();
+    error MinOutRequired();
 
     modifier onlyFactory() {
         if (msg.sender != address(factory)) revert NotFactory();
@@ -164,11 +166,14 @@ contract InstantCurve {
 
     function sell(address token, uint256 tokenIn, uint256 minOut) external returns (uint256 quoteOut) {
         auth.requireTradingOpen();
+        Curve storage c = curves[token];
+        if (c.ready) revert ReadyLocked();
         return _sell(token, msg.sender, tokenIn, minOut, false, true);
     }
 
     function sellExempt(address token, uint256 tokenIn, uint256 minOut) external returns (uint256 quoteOut) {
         if (!router.protocolVault(msg.sender)) revert NotExempt();
+        if (curves[token].ready) revert ReadyLocked();
         return _sell(token, msg.sender, tokenIn, minOut, true, true);
     }
 
@@ -187,8 +192,8 @@ contract InstantCurve {
     function graduate(address token) external returns (PoolId poolId) {
         Curve storage c = curves[token];
         if (c.token == address(0) || c.graduated) revert Bad();
-        if (!c.ready && c.realQuote < c.gradTarget) revert NotReady();
-        c.ready = true;
+        if (!c.ready) revert NotReady();
+        _revalidateTerminal(c);
         emit GraduationTriggered(token, c.realQuote);
 
         uint256 quoteLp = c.realQuote;
@@ -308,28 +313,65 @@ contract InstantCurve {
         if (c.token == address(0) || c.graduated) revert Graduated();
         if (c.ready) revert ReadyLocked();
         if (quoteIn == 0) revert Bad();
+        if (minOut == 0) revert MinOutRequired();
         if (!prefunded) IERC20MinimalExt(c.quote).transferFrom(user, address(this), quoteIn);
-        uint256 curveIn = quoteIn;
+
+        uint256 maxEcon = _maxEconomicIn(c);
+        uint256 executedGross = quoteIn;
         uint256 fee;
+        uint256 curveIn;
         if (!exempt) {
-            (uint256 bucket2, uint256 fly, uint256 coreAmt, uint256 f) = FeeMath.split(quoteIn);
+            if (maxEcon != type(uint256).max) {
+                uint256 maxGross = FeeMath.maxGrossForNet(maxEcon);
+                if (executedGross > maxGross) executedGross = maxGross;
+            }
+            (uint256 bucket2, uint256 fly, uint256 coreAmt, uint256 f) = FeeMath.split(executedGross);
             fee = f;
-            curveIn = quoteIn - fee;
+            curveIn = executedGross - fee;
+            if (maxEcon != type(uint256).max && curveIn > maxEcon) curveIn = maxEcon;
             _payFees(c, bucket2, fly, coreAmt);
+        } else {
+            if (maxEcon != type(uint256).max && executedGross > maxEcon) executedGross = maxEcon;
+            curveIn = executedGross;
         }
-        uint256 maxIn = CurveMath.quoteInForTokens(c.virtualQuote, c.virtualToken, c.inventory);
-        if (maxIn != 0 && maxIn != type(uint256).max && curveIn > maxIn) {
-            IERC20MinimalExt(c.quote).transfer(user, curveIn - maxIn);
-            curveIn = maxIn;
+        if (executedGross < quoteIn) {
+            IERC20MinimalExt(c.quote).transfer(user, quoteIn - executedGross);
         }
+
         (tokensOut, c.virtualQuote, c.virtualToken) = CurveMath.buyOut(c.virtualQuote, c.virtualToken, curveIn);
         if (tokensOut == 0 || tokensOut > c.inventory || tokensOut < minOut) revert Slippage();
         c.inventory -= tokensOut;
         c.realQuote += curveIn;
-        if (c.realQuote >= c.gradTarget || c.inventory == 0) c.ready = true;
+        if (_isTerminal(c)) c.ready = true;
         IERC20MinimalExt(token).transfer(user, tokensOut);
-        emit CurveBuy(token, user, quoteIn, tokensOut, fee);
+        emit CurveBuy(token, user, executedGross, tokensOut, fee);
         emit BondingProgress(token, c.realQuote, c.gradTarget, c.inventory);
+    }
+
+    function _maxEconomicIn(Curve storage c) internal view returns (uint256) {
+        uint256 invCap = CurveMath.quoteInForTokens(c.virtualQuote, c.virtualToken, c.inventory);
+        uint256 tgtCap = c.realQuote >= c.gradTarget ? 0 : c.gradTarget - c.realQuote;
+        if (invCap == 0 || tgtCap == 0) return 0;
+        if (invCap == type(uint256).max) return tgtCap;
+        return invCap < tgtCap ? invCap : tgtCap;
+    }
+
+    function _isTerminal(Curve storage c) internal view returns (bool) {
+        if (c.realQuote >= c.gradTarget || c.inventory == 0) return true;
+        uint256 invCap = CurveMath.quoteInForTokens(c.virtualQuote, c.virtualToken, c.inventory);
+        if (invCap == 0) return true;
+        uint256 remain = c.gradTarget - c.realQuote;
+        (uint256 dustTok,,) = CurveMath.buyOut(c.virtualQuote, c.virtualToken, remain);
+        return dustTok == 0;
+    }
+
+    function _revalidateTerminal(Curve storage c) internal view {
+        if (!_isTerminal(c)) revert TerminalMismatch();
+        if (c.reservedLp == 0) revert TerminalMismatch();
+        uint256 qBal = IERC20MinimalExt(c.quote).balanceOf(address(this));
+        uint256 tBal = IERC20MinimalExt(c.token).balanceOf(address(this));
+        if (qBal < c.realQuote) revert TerminalMismatch();
+        if (tBal < c.inventory + c.reservedLp) revert TerminalMismatch();
     }
 
     function _sell(address token, address user, uint256 tokenIn, uint256 minOut, bool exempt, bool sendQuote)
@@ -338,7 +380,9 @@ contract InstantCurve {
     {
         Curve storage c = curves[token];
         if (c.token == address(0) || c.graduated) revert Graduated();
+        if (c.ready) revert ReadyLocked();
         if (tokenIn == 0) revert Bad();
+        if (minOut == 0) revert MinOutRequired();
         IERC20MinimalExt(token).transferFrom(user, address(this), tokenIn);
         (uint256 quoteOut, uint256 nq, uint256 nt) = CurveMath.sellOut(c.virtualQuote, c.virtualToken, tokenIn);
         if (quoteOut == 0 || quoteOut > c.realQuote) revert Slippage();

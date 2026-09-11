@@ -98,6 +98,7 @@ contract FlywheelVault {
 
     /// @notice Keeper converts this vault's quote bucket to USDC. Hops optional when quote == USDC.
     function settleQuote(address quote, RouteGuard.Hop[] calldata hops, uint256 minOut) external onlyKeeper nonReentrant {
+        if (minOut == 0 && quote != usdc) revert Bad();
         uint256 amt = quoteAccrued[quote];
         uint256 bal = IERC20MinimalExt(quote).balanceOf(address(this));
         if (bal < amt) amt = bal;
@@ -149,11 +150,12 @@ contract FlywheelVault {
         emit EpochSubmitted(epochId, n, usdcPot);
     }
 
-    function executeTop10Buyback(address token, RouteGuard.Hop[] calldata hops, uint256 minOut)
+    function executeTop10Buyback(address token, RouteGuard.Hop[] calldata hops, uint256 minTargetOut)
         external
         onlyKeeper
         nonReentrant
     {
+        if (minTargetOut == 0) revert Bad();
         if (!epochFinalized) revert Bad();
         if (token == core) revert Bad();
         if (bought[epoch][token]) revert Bad();
@@ -172,7 +174,7 @@ contract FlywheelVault {
         if (share == 0) revert Bad();
         bought[epoch][token] = true;
         usdcPot -= share;
-        uint256 burned = _buyAndBurn(token, share, hops, minOut);
+        uint256 burned = _buyAndBurn(token, share, hops, minTargetOut);
         emit Top10Buy(epoch, token, share, burned);
     }
 
@@ -188,7 +190,7 @@ contract FlywheelVault {
         emit EpochRolled(epoch);
     }
 
-    function _buyAndBurn(address token, uint256 usdcIn, RouteGuard.Hop[] memory hops, uint256 minOut)
+    function _buyAndBurn(address token, uint256 usdcIn, RouteGuard.Hop[] memory hops, uint256 minTargetOut)
         internal
         returns (uint256 burned)
     {
@@ -196,7 +198,9 @@ contract FlywheelVault {
         if (!exists || t != token) revert Bad();
         uint256 quoteIn = usdcIn;
         if (quote != usdc) {
-            quoteIn = RouteExec.run(auth, hops, usdc, quote, usdcIn, minOut == 0 ? 1 : minOut);
+            uint256 hopMin = hops.length == 0 ? minTargetOut : hops[hops.length - 1].minOut;
+            if (hopMin == 0) revert Bad();
+            quoteIn = RouteExec.run(auth, hops, usdc, quote, usdcIn, hopMin);
         } else if (hops.length != 0) {
             revert Bad();
         }
@@ -209,10 +213,10 @@ contract FlywheelVault {
         });
         uint256 before = IERC20MinimalExt(token).balanceOf(address(this));
         IERC20MinimalExt(quote).approve(address(router), quoteIn);
-        uint256 got = router.protocolSwap(key, quote < token, -int256(quoteIn), 1, address(this));
+        uint256 got = router.protocolSwap(key, quote < token, -int256(quoteIn), minTargetOut, address(this));
         IERC20MinimalExt(quote).approve(address(router), 0);
         burned = IERC20MinimalExt(token).balanceOf(address(this)) - before;
-        if (got == 0 || burned == 0) revert Bad();
+        if (got < minTargetOut || burned < minTargetOut) revert Bad();
         ReactorToken(token).burn(burned);
     }
 }

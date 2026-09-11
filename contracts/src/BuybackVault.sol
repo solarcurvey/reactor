@@ -38,6 +38,8 @@ contract BuybackVault {
     error Reentrant();
     error Bad();
     error AlreadySet();
+    error MinOutRequired();
+    error BurnFailed();
 
     modifier nonReentrant() {
         if (executeLock == 1) revert Reentrant();
@@ -72,6 +74,7 @@ contract BuybackVault {
     }
 
     function bindFactory(address factory_) external {
+        if (msg.sender != auth.guardian()) revert ReactorGuardian.NotGuardian();
         if (factory != address(0) || factory_ == address(0)) revert AlreadySet();
         factory = factory_;
     }
@@ -96,6 +99,7 @@ contract BuybackVault {
 
     /// @notice Keeper-only. tokenIn from this bucket; tokenOut must be CORE; then burn.
     function execute(address quote, RouteGuard.Hop[] calldata hops, uint256 minOut) public onlyKeeper nonReentrant {
+        if (minOut == 0) revert MinOutRequired();
         if (quote == core) revert Bad();
         if (lastExecuteAt[quote] != 0 && block.timestamp < uint256(lastExecuteAt[quote]) + ReactorConstants.BUYBACK_COOLDOWN) {
             revert Bad();
@@ -127,10 +131,7 @@ contract BuybackVault {
     function _burn(uint256 amount) internal {
         if (amount == 0) revert Bad();
         (bool ok,) = core.call(abi.encodeWithSignature("burn(uint256)", amount));
-        if (!ok) {
-            ok = IERC20MinimalExt(core).transfer(ReactorConstants.DEAD, amount);
-            require(ok, "BURN");
-        }
+        if (!ok) revert BurnFailed();
         lifetimeBurned += amount;
         emit COREBurned(amount);
     }
