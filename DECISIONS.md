@@ -63,7 +63,8 @@ REACTOR requires: arbitrary curated ERC-20 quote, REACTOR hook from trade #1, **
 
 **Decision.** Each `ReactorToken` stores `accRewardPerShare` and per-account `rewardDebt` / `storedRewards`.
 
-- `creditRewards(amount)` (hook only) increases `accRewardPerShare` by `amount * 1e27 / eligibleSupply`.
+- `rewardDebt[account]` is the last synced `accRewardPerShare`. Unpaid is `floor(bal * (acc - userAcc) / 1e27)`.
+- `creditRewards` / leftover flush cap `acc` so `(eligible * acc) / 1e27` cannot exceed prior assigned + dist (naive `acc += dist * 1e27 / supply` over-assigns across credits).
 - Eligible supply = `totalSupply - excludedBalance`.
 - Excluded (immutable set at construction): `address(0)`, `0xdead`, `PoolManager`, `ReactorLiquidityVault`, `BuybackVault`, the token itself.
 - Every transfer accrues sender and recipient, then re-syncs debt. No economic fee.

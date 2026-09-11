@@ -46,11 +46,9 @@ contract RewardsInvariantTest is Test {
         assertLe(outstanding, quote.balanceOf(address(token)));
     }
 
-    /// @notice Documents why campaign slack is 32 raw, not 1000.
-    /// `pending = floor(bal * acc / 1e27) - debt`. After C credits, each holder can be
-    /// +1 raw versus `increment * bal / 1e27` because `floor(x+y) ≤ floor(x)+floor(y)+1`.
-    /// Leftover is the complementary `dist - increment*supply/1e27` remainder (always ≥ 0).
-    /// Net `sum(pending)+leftover − quoteBalance` is therefore a few wei, not a hole.
+    /// @notice Uncapped `acc += (dist * 1e27) / S` made `(S * ΣI) / 1e27` exceed
+    /// `Σ((S * I) / 1e27)` (observed +78 on 80 credits, +428 on 400). Cap keeps
+    /// `sum(pending)+leftover ≤ quote balance` and `≤ lifetime`.
     function test_floorMathSlackIsFewRawUnits() public {
         MockERC20 quote = new MockERC20("Q", "Q", 6, 0, address(this));
         address a = makeAddr("a");
@@ -114,9 +112,11 @@ contract RewardsInvariantTest is Test {
             }
         }
 
-        // Observed isolated-path ceiling in this fixture is well under 32.
-        assertLe(maxOverBacking, 32);
-        assertLe(maxOverLifetime, 32);
+        // Acc-snapshot debt: sum(pending)+leftover ≤ quote balance / lifetime.
+        assertEq(maxOverBacking, 0);
+        assertEq(maxOverLifetime, 0);
         assertGt(token.lifetimeRewards(), 0);
+        uint256 assigned = (token.eligibleSupply() * token.accRewardPerShare()) / 1e27;
+        assertLe(assigned + token.leftoverRewards(), token.lifetimeRewards());
     }
 }

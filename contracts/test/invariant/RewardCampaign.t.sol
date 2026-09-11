@@ -136,10 +136,9 @@ contract RewardHandler {
 }
 
 contract RewardCampaignTest is Base {
-    /// @dev Per-holder `floor((bal*(acc+inc))/P) - floor((bal*acc)/P)` can exceed
-    /// `inc*bal/P` by 1 raw each credit. Observed campaign gaps were 2 and 9 raw
-    /// (not ~1000). 32 covers that plus several extra credits. Not a proof.
-    uint256 internal constant SOLVENCY_SLACK_RAW = 32;
+    /// @dev After acc-snapshot debt, leftover + pending is bounded by lifetime.
+    /// +1 covers credit-before-ERC-20 and a single leftover remainder wei.
+    uint256 internal constant SOLVENCY_SLACK_RAW = 1;
 
     RewardHandler internal handler;
 
