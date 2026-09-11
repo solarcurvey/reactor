@@ -55,6 +55,6 @@ contract NativeQuoteTest is Base {
 
     function test_guardianCannotInventNativeCategory() public {
         vm.expectRevert();
-        registry.register(address(0xBEEF), "FAKE", "FAKE", 18, "", QuoteAssetRegistry.Category.ReactorNative, address(0));
+        registry.register(address(0xBEEF), "FAKE", "FAKE", 18, "", QuoteAssetRegistry.Category.ReactorNative);
     }
 }

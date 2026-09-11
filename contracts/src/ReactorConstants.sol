@@ -51,7 +51,6 @@ library ReactorConstants {
     uint256 internal constant INSTANT_FDV_USDC_DEFAULT = 5_000e6;
     uint256 internal constant TOP10_MCAP_FLOOR_USDC = 250_000e6;
 
-    uint256 internal constant KEEPER_BOUNTY_USDC = 1e5; // 0.10 USDC-6
     uint256 internal constant KEEPER_MAX_PER_EPOCH = 4;
 
     uint64 internal constant BUYBACK_COOLDOWN = KEEPER_COOLDOWN;

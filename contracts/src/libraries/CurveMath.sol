@@ -20,13 +20,25 @@ library CurveMath {
         return curveInv + virtualOffset(curveInv, lpReserve);
     }
 
-    /// @notice Virtual quote₀ in `quoteDecimals`, calibrated to USDC-6 start FDV.
+    /// @notice Virtual quote₀ in USDC-6 (or any $1 6-dec stable), calibrated to start FDV.
     function virtualQuote0(uint256 supply, uint8 quoteDecimals) internal pure returns (uint256 q0) {
         uint256 vt0 = virtualToken0(supply);
         uint256 qUsdc = FullMath.mulDiv(ReactorConstants.INSTANT_START_FDV_USDC, vt0, supply);
         if (quoteDecimals == 6) return qUsdc;
         if (quoteDecimals > 6) return qUsdc * (10 ** (quoteDecimals - 6));
         return qUsdc / (10 ** (6 - quoteDecimals));
+    }
+
+    /// @notice Virtual quote₀ in `quoteDecimals` so start FDV is ~$5k USD.
+    /// `quoteUsd6` is USDC-6 per 1 whole quote token (USDC = 1e6). Operational — not an onchain oracle.
+    function virtualQuote0ForUsd(uint256 supply, uint8 quoteDecimals, uint256 quoteUsd6)
+        internal
+        pure
+        returns (uint256)
+    {
+        if (quoteUsd6 == 0) return 0;
+        uint256 qUsdc = virtualQuote0(supply, 6);
+        return FullMath.mulDiv(qUsdc, 10 ** uint256(quoteDecimals), quoteUsd6);
     }
 
     function gradTarget(uint256 q0, uint256 curveInv, uint256 vOff) internal pure returns (uint256) {

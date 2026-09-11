@@ -270,7 +270,6 @@ contract ReactorFactory {
     ) internal returns (address token, PoolId poolId, uint256 tokensOut) {
         if (address(curve) == address(0)) revert CurveUnbound();
         if (!registry.canLaunch(p.quote)) revert BuybackRouteRequired();
-        _checkPricing(p.quote, a, sig);
         if (p.quote == core) revert CoreForbidden();
         uint256 supply = ReactorConstants.DEFAULT_SUPPLY;
         uint8 dec = ReactorConstants.DEFAULT_DECIMALS;
@@ -297,7 +296,8 @@ contract ReactorFactory {
         emit TokenCreated(token, msg.sender, p.name, p.symbol, supply);
 
         uint8 qdec = IERC20MinimalExt(p.quote).decimals();
-        curve.open(token, p.quote, msg.sender, rewards, qdec, supply);
+        uint256 vq0 = _checkPricing(p.quote, a, sig);
+        curve.open(token, p.quote, msg.sender, rewards, qdec, supply, vq0);
         standardMode[token] = !rewards;
 
         tokenInfo[token] = TokenInfo({
@@ -495,19 +495,33 @@ contract ReactorFactory {
         return allTokens.length;
     }
 
-    function _checkPricing(address quote, LaunchPricing.Auth memory a, bytes memory sig) internal {
-        if (_dollarStable(quote)) return;
+    /// @notice Stables use protocol USDC-6 geometry. Non-$1 quotes use the signed `virtualQuote0`.
+    function _checkPricing(address quote, LaunchPricing.Auth memory a, bytes memory sig)
+        internal
+        returns (uint256 virtualQuote0)
+    {
+        uint8 qdec = IERC20MinimalExt(quote).decimals();
+        if (_dollarStable(quote)) {
+            return CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, qdec);
+        }
         if (sig.length == 0) revert NeedPricingAuth();
         if (!registry.isEnabled(quote)) revert LaunchPricing.Quarantined();
-        uint8 qdec = IERC20MinimalExt(quote).decimals();
-        uint256 vq0 = CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, qdec);
         if (a.nonce != pricingNonce[quote]) revert LaunchPricing.Replay();
-        LaunchPricing.verify(auth, pricingDomain, address(this), quote, qdec, vq0, a, sig, usedPricing);
+        LaunchPricing.verify(auth, pricingDomain, address(this), quote, qdec, a, sig, usedPricing);
         pricingNonce[quote] += 1;
+        return a.virtualQuote0;
     }
 
+    /// @notice Default $1-stable virtual quote₀ (decimal-scaled USDC-6 start). Not for ZEC/WBTC/native.
     function expectedVirtualQuote0(address quote) external view returns (uint256) {
         return CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, IERC20MinimalExt(quote).decimals());
+    }
+
+    /// @notice USD-equivalent virtual quote₀. `quoteUsd6` is USDC-6 per 1 whole quote token.
+    function virtualQuote0ForUsd(address quote, uint256 quoteUsd6) external view returns (uint256) {
+        return CurveMath.virtualQuote0ForUsd(
+            ReactorConstants.DEFAULT_SUPPLY, IERC20MinimalExt(quote).decimals(), quoteUsd6
+        );
     }
 
     function _validateLaunch(address quote, uint256 supply, uint8, uint256) internal view {

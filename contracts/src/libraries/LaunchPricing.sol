@@ -71,7 +71,6 @@ library LaunchPricing {
         address factory,
         address quote,
         uint8 quoteDecimals,
-        uint256 virtualQuote0,
         Auth memory a,
         bytes memory sig,
         mapping(bytes32 => bool) storage used
@@ -80,7 +79,7 @@ library LaunchPricing {
         if (a.factory != factory) revert WrongFactory();
         if (a.quote != quote) revert WrongQuote();
         if (a.quoteDecimals != quoteDecimals) revert WrongDecimals();
-        if (a.virtualQuote0 != virtualQuote0) revert WrongParams();
+        if (a.virtualQuote0 == 0) revert WrongParams();
         bytes32 d = digest(domainSeparator, a);
         if (used[d]) revert Replay();
         address signer = recover(d, sig);

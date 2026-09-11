@@ -23,7 +23,6 @@ contract QuoteAssetRegistry {
         uint8 decimals;
         string icon;
         Category category;
-        address usdOracle;
         bool enabled;
         bool exists;
         bool rewardsEnabled;
@@ -81,8 +80,7 @@ contract QuoteAssetRegistry {
         string calldata name,
         uint8 decimals,
         string calldata icon,
-        Category category,
-        address usdOracle
+        Category category
     ) external onlyGuardian {
         if (assets[token].exists) revert AlreadyRegistered();
         if (category == Category.ReactorNative) revert NotGuardian();
@@ -93,7 +91,6 @@ contract QuoteAssetRegistry {
             decimals: decimals,
             icon: icon,
             category: category,
-            usdOracle: usdOracle,
             enabled: true,
             exists: true,
             rewardsEnabled: true,
@@ -116,7 +113,6 @@ contract QuoteAssetRegistry {
             decimals: decimals,
             icon: "",
             category: Category.ReactorNative,
-            usdOracle: address(0),
             enabled: true,
             exists: true,
             rewardsEnabled: true,

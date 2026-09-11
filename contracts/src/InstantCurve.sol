@@ -120,12 +120,14 @@ contract InstantCurve {
         address creator,
         bool rewardsMode,
         uint8 quoteDecimals,
-        uint256 supply
+        uint256 supply,
+        uint256 virtualQuote0
     ) external onlyFactory {
         if (curves[token].token != address(0)) revert Bad();
+        if (virtualQuote0 == 0) revert Bad();
         (uint256 inv, uint256 lp) = CurveMath.inventories(supply);
         uint256 vOff = CurveMath.virtualOffset(inv, lp);
-        uint256 q0 = CurveMath.virtualQuote0(supply, quoteDecimals);
+        uint256 q0 = virtualQuote0;
         curves[token] = Curve({
             token: token,
             quote: quote,
@@ -157,6 +159,15 @@ contract InstantCurve {
     {
         if (msg.sender != address(factory) && msg.sender != user) revert Bad();
         return _buy(token, user, quoteIn, minOut, false, false);
+    }
+
+    /// @notice Quote already on this contract. Recipient is `user`. Used by UserRoute (bonding USDC path).
+    function buyPrefunded(address token, address user, uint256 quoteIn, uint256 minOut)
+        external
+        returns (uint256 tokensOut)
+    {
+        auth.requireTradingOpen();
+        return _buy(token, user, quoteIn, minOut, false, true);
     }
 
     function buyExempt(address token, uint256 quoteIn, uint256 minOut) external returns (uint256 tokensOut) {
@@ -264,6 +275,14 @@ contract InstantCurve {
         if (usdcOut < minUsdc) revert Slippage();
         IERC20MinimalExt(usdc).transfer(msg.sender, usdcOut);
         emit QuoteRouted(token, msg.sender, c.quote, usdc, quoteOut);
+    }
+
+    function quoteOf(address token) external view returns (address) {
+        return curves[token].quote;
+    }
+
+    function virtualQuoteOf(address token) external view returns (uint256) {
+        return curves[token].virtualQuote;
     }
 
     function existsOf(address token) external view returns (bool) {

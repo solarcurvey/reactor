@@ -28,6 +28,7 @@ import {InstantCurve, IInstantFactory} from "../src/InstantCurve.sol";
 import {SelfBurnVault} from "../src/SelfBurnVault.sol";
 import {ReactorGuardian} from "../src/ReactorGuardian.sol";
 import {UniswapV4Adapter} from "../src/adapters/UniswapV4Adapter.sol";
+import {ProtocolV4Adapter} from "../src/adapters/ProtocolV4Adapter.sol";
 import {RoutingRegistry} from "../src/RoutingRegistry.sol";
 import {UserRouteExecutor} from "../src/UserRouteExecutor.sol";
 import {CoreVesting} from "../src/CoreVesting.sol";
@@ -54,6 +55,7 @@ contract Deploy is Script {
         SelfBurnVault selfBurn;
         ReactorGuardian auth;
         UniswapV4Adapter v4Adapter;
+        ProtocolV4Adapter protocolAdapter;
         RoutingRegistry routes;
         UserRouteExecutor userRouter;
         CoreVesting vesting;
@@ -98,16 +100,16 @@ contract Deploy is Script {
     function _registerQuotes(Addresses memory a) internal {
         a.registry.setUsdc(address(a.usdc));
         a.registry.register(
-            address(a.usdc), "USDC", "USD Coin", 6, "/icons/usdc.svg", QuoteAssetRegistry.Category.Stablecoins, address(0)
+            address(a.usdc), "USDC", "USD Coin", 6, "/icons/usdc.svg", QuoteAssetRegistry.Category.Stablecoins
         );
         a.registry.register(
-            address(a.zec), "ZEC", "Mock ZEC", 8, "/icons/zec.svg", QuoteAssetRegistry.Category.Crypto, address(0)
+            address(a.zec), "ZEC", "Mock ZEC", 8, "/icons/zec.svg", QuoteAssetRegistry.Category.Crypto
         );
         a.registry.register(
-            address(a.btc), "BTC", "Mock BTC", 8, "/icons/btc.svg", QuoteAssetRegistry.Category.Crypto, address(0)
+            address(a.btc), "BTC", "Mock BTC", 8, "/icons/btc.svg", QuoteAssetRegistry.Category.Crypto
         );
         a.registry.register(
-            address(a.nvda), "NVDA", "Mock NVDA", 18, "/icons/nvda.svg", QuoteAssetRegistry.Category.Stocks, address(0)
+            address(a.nvda), "NVDA", "Mock NVDA", 18, "/icons/nvda.svg", QuoteAssetRegistry.Category.Stocks
         );
         a.registry.setBuybackRoute(address(a.usdc), true, false);
         a.registry.setBuybackRoute(address(a.zec), true, true);
@@ -134,7 +136,9 @@ contract Deploy is Script {
         a.core.genesis(address(a.vesting), address(a.coreLp));
         a.coreLp.initializeAndLock();
         a.v4Adapter = new UniswapV4Adapter(IReactorSwapper(address(a.router)), a.auth, address(a.hook));
+        a.protocolAdapter = new ProtocolV4Adapter(IReactorSwapper(address(a.router)), a.auth, address(a.hook));
         a.auth.setAdapter(address(a.v4Adapter), true);
+        a.auth.setAdapter(address(a.protocolAdapter), true);
         a.buyback = new BuybackVault(
             a.auth,
             address(a.core),
@@ -166,8 +170,9 @@ contract Deploy is Script {
         a.router.setProtocolVault(address(a.selfBurn), true);
         a.router.setProtocolVault(address(a.flywheel), true);
         a.router.setProtocolVault(address(a.coreBuyback), true);
+        a.router.setProtocolVault(address(a.protocolAdapter), true);
         a.router.sealProtocolVaults();
-        a.userRouter = new UserRouteExecutor(a.auth, a.hook, IReactorSwapper(address(a.router)), address(a.usdc));
+        a.userRouter = new UserRouteExecutor(a.auth, a.hook, IReactorSwapper(address(a.router)), a.curve, address(a.usdc));
         _verifyGenesis(a);
         _tinyBuyback(a);
         a.auth.pauseLaunches(false);
@@ -249,6 +254,7 @@ contract Deploy is Script {
         console2.log("InstantCurve", address(a.curve));
         console2.log("SelfBurnVault", address(a.selfBurn));
         console2.log("V4Adapter", address(a.v4Adapter));
+        console2.log("ProtocolV4Adapter", address(a.protocolAdapter));
         console2.log("UserRouteExecutor", address(a.userRouter));
         console2.log("CoreVesting", address(a.vesting));
         console2.log("CoreLiquidityVault", address(a.coreLp));
@@ -286,6 +292,7 @@ contract Deploy is Script {
             _kv("InstantCurve", address(a.curve)),
             _kv("SelfBurnVault", address(a.selfBurn)),
             _kv("V4Adapter", address(a.v4Adapter)),
+            _kv("ProtocolV4Adapter", address(a.protocolAdapter)),
             _kv("RoutingRegistry", address(a.routes)),
             _kv("UserRouteExecutor", address(a.userRouter)),
             _kv("CoreVesting", address(a.vesting)),

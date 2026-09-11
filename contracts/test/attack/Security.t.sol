@@ -141,7 +141,7 @@ contract SecurityTest is Base {
 
     function test_routeUnavailableSkips() public {
         MockERC20 orphan = new MockERC20("ORPH", "ORPH", 6, 0, address(this));
-        registry.register(address(orphan), "ORPH", "Orphan", 6, "", QuoteAssetRegistry.Category.Crypto, address(0));
+        registry.register(address(orphan), "ORPH", "Orphan", 6, "", QuoteAssetRegistry.Category.Crypto);
         // no buyback route → cannot launch
         vm.expectRevert();
         factory.instantLaunch(

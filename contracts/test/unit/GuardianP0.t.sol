@@ -342,7 +342,7 @@ contract GuardianP0Test is Base {
     function test_42_30_keeperCannotConfigQuotes() public {
         vm.prank(keeper);
         vm.expectRevert();
-        registry.register(address(1), "X", "X", 18, "", QuoteAssetRegistry.Category.Crypto, address(0));
+        registry.register(address(1), "X", "X", 18, "", QuoteAssetRegistry.Category.Crypto);
     }
 
     function test_42_31_keeperCannotChangeGuardian() public {
@@ -495,9 +495,9 @@ contract GuardianP0Test is Base {
     }
 
     function test_42_privilegedEntrypointsEnumerated() public view {
-        // Guardian-only: setKeeper, setPricingSigner, setHook, pauseLaunches, pauseKeeper,
+        // Guardian-only: setKeeper, setPricingSigner, pauseLaunches, pauseKeeper,
         // pauseTrading, setAdapter, registry.register / setEnabled / setIcon / setBuybackRoute / setUsdc,
-        // factory.bindCurve (one-shot).
+        // factory.bindCurve (one-shot). V1 has no setHook — hookless + official REACTOR only.
         // Keeper-only: flywheel.settleQuote / submitEpoch / executeTop10Buyback / rollEpoch,
         // buyback.execute / executeCoreBuyback, selfBurn.execute.
         // Guardian one-time binds (sealed after deploy): router.setProtocolVault, hook binds, vault.bindFactory.
@@ -506,21 +506,19 @@ contract GuardianP0Test is Base {
         assertTrue(router.protocolVaultsSealed());
     }
 
-    function test_42_pricingSignerAndHook_guardianOnly() public {
+    function test_42_pricingSigner_guardianOnly_noSetHook() public {
         vm.prank(alice);
         vm.expectRevert();
         auth.setPricingSigner(alice);
-        vm.prank(alice);
-        vm.expectRevert();
-        auth.setHook(alice, true);
         vm.prank(keeper);
         vm.expectRevert();
         auth.setPricingSigner(keeper);
         auth.setPricingSigner(bob);
         assertEq(auth.pricingSigner(), bob);
-        auth.setHook(address(0xBEEF), true);
-        assertTrue(auth.hookApproved(address(0xBEEF)));
-        auth.setHook(address(0xBEEF), false);
+        (bool ok,) = address(auth).call(abi.encodeWithSignature("setHook(address,bool)", address(0xBEEF), true));
+        assertFalse(ok);
+        (ok,) = address(auth).call(abi.encodeWithSignature("hookApproved(address)", address(0xBEEF)));
+        assertFalse(ok);
         auth.setPricingSigner(pricingSigner);
     }
 }

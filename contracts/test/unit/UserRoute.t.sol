@@ -88,6 +88,55 @@ contract UserRouteTest is Base {
     function test_cannotMarkUserAsVault() public view {
         assertFalse(router.protocolVault(address(userRouter)));
         assertFalse(router.protocolVault(bob));
+        assertTrue(router.protocolVault(address(protocolAdapter)));
+        assertTrue(router.protocolVault(address(flywheel)));
+    }
+
+    function test_userBuySellUsdcWhileBonding() public {
+        (address token,) = factory.instantLaunch(
+            ReactorFactory.InstantParams({
+                name: "BD",
+                symbol: "BD",
+                decimals: 18,
+                supply: 0,
+                quote: address(usdc),
+                fdvQuoteRaw: 0,
+                devBuyQuote: 0,
+                image: "",
+                description: "",
+                website: "",
+                twitter: "",
+                telegram: ""
+            })
+        );
+        assertFalse(curve.graduatedOf(token));
+        assertFalse(curve.readyOf(token));
+
+        vm.startPrank(bob);
+        usdc.approve(address(userRouter), 200e6);
+        uint256 out = userRouter.buy(token, 200e6, _emptyHops(), 1, block.timestamp + 60);
+        assertGt(out, 0);
+        assertFalse(curve.graduatedOf(token));
+        ReactorToken(token).approve(address(userRouter), out / 2);
+        uint256 usdcOut = userRouter.sell(token, out / 2, _emptyHops(), 1, 1, block.timestamp + 60);
+        assertGt(usdcOut, 0);
+        vm.stopPrank();
+    }
+
+    function test_userBuyUsdcNestedWhileBonding() public {
+        address token = _instantZcat(1);
+        assertFalse(curve.graduatedOf(token));
+
+        vm.startPrank(bob);
+        usdc.approve(address(userRouter), 200e6);
+        uint256 out = userRouter.buy(token, 200e6, _hop(address(usdc), address(zec), zecUsdcKey), 1, block.timestamp + 60);
+        assertGt(out, 0);
+        ReactorToken(token).approve(address(userRouter), out / 2);
+        uint256 usdcOut = userRouter.sell(
+            token, out / 2, _hop(address(zec), address(usdc), zecUsdcKey), 1, 1, block.timestamp + 60
+        );
+        assertGt(usdcOut, 0);
+        vm.stopPrank();
     }
 
     function test_sellMinQuoteOutZeroReverts() public {
