@@ -131,22 +131,54 @@ export default function LaunchPage() {
 
       <Card className="mt-4 space-y-3 p-4">
         <div className="grid gap-2 sm:grid-cols-2">
-          <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input placeholder="Ticker" value={symbol} onChange={(e) => setSymbol(e.target.value)} />
+          <div>
+            <label htmlFor="launch-name" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-500">
+              Name
+            </label>
+            <Input id="launch-name" name="name" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="launch-ticker" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-500">
+              Ticker
+            </label>
+            <Input
+              id="launch-ticker"
+              name="ticker"
+              placeholder="Ticker"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+            />
+          </div>
         </div>
-        <Input placeholder="Image URL" value={image} onChange={(e) => setImage(e.target.value)} />
-        <textarea
-          className="min-h-16 w-full rounded-xl border border-white/10 bg-black/30 p-3 text-sm"
-          placeholder="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        <div>
+          <label htmlFor="launch-image" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-500">
+            Image URL
+          </label>
+          <Input id="launch-image" name="image" placeholder="Image URL" value={image} onChange={(e) => setImage(e.target.value)} />
+        </div>
+        <div>
+          <label htmlFor="launch-description" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-500">
+            Description
+          </label>
+          <textarea
+            id="launch-description"
+            name="description"
+            className="min-h-16 w-full rounded-xl border border-white/10 bg-black/30 p-3 text-sm"
+            placeholder="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
 
-        <div className="text-[11px] uppercase tracking-wider text-zinc-500">Quote asset</div>
-        <div className="grid gap-2">
+        <div className="text-[11px] uppercase tracking-wider text-zinc-500" id="quote-asset-label">
+          Quote asset
+        </div>
+        <div className="grid gap-2" role="group" aria-labelledby="quote-asset-label">
           {(quotes ?? []).map((q) => (
             <button
               key={q.token}
+              type="button"
+              aria-pressed={quote === q.token}
               onClick={() => setQuote(q.token)}
               className={`flex items-center justify-between rounded-xl border px-4 py-2.5 text-left ${
                 quote === q.token ? "border-cyan-300/50 bg-cyan-300/10" : "border-white/8 bg-black/20"
@@ -166,6 +198,8 @@ export default function LaunchPage() {
           <>
             <div className="grid gap-2 sm:grid-cols-2">
               <button
+                type="button"
+                aria-pressed={rewards}
                 onClick={() => setRewards(true)}
                 className={`rounded-2xl border p-4 text-left ${
                   rewards ? "border-cyan-300/50 bg-cyan-300/10" : "border-white/8 bg-black/20"
@@ -178,6 +212,8 @@ export default function LaunchPage() {
                 <p className="mt-1 text-[12px] text-zinc-400">Same-quote holder rewards from trade #1. + 1% Top-10 + 0.5% CORE.</p>
               </button>
               <button
+                type="button"
+                aria-pressed={!rewards}
                 onClick={() => setRewards(false)}
                 className={`rounded-2xl border p-4 text-left ${
                   !rewards ? "border-amber-300/50 bg-amber-300/10" : "border-white/8 bg-black/20"
@@ -188,10 +224,17 @@ export default function LaunchPage() {
                 <p className="mt-1 text-[12px] text-zinc-400">2% later market-buys this token and burns it. Same 1% / 0.5%.</p>
               </button>
             </div>
-            <label className="block text-[11px] uppercase tracking-wider text-zinc-500">
+            <label htmlFor="launch-devbuy" className="block text-[11px] uppercase tracking-wider text-zinc-500">
               Optional Dev Buy ({selected?.symbol ?? "quote"} · max 5% token out · full 3.5%)
             </label>
-            <Input value={devBuy} onChange={(e) => setDevBuy(e.target.value)} placeholder="0" />
+            <Input
+              id="launch-devbuy"
+              name="devBuy"
+              inputMode="decimal"
+              value={devBuy}
+              onChange={(e) => setDevBuy(e.target.value)}
+              placeholder="0"
+            />
           </>
         )}
 
@@ -206,8 +249,16 @@ export default function LaunchPage() {
             <p className="text-[13px] text-zinc-400">
               Pro-rata timed sale — not CCA. 50/50 locked. 0% during the sale. Clearing price opens the official pool.
             </p>
-            <label className="block text-[11px] uppercase tracking-wider text-zinc-500">Auction length (minutes)</label>
-            <Input value={durationMin} onChange={(e) => setDurationMin(e.target.value)} />
+            <label htmlFor="launch-duration" className="block text-[11px] uppercase tracking-wider text-zinc-500">
+              Auction length (minutes)
+            </label>
+            <Input
+              id="launch-duration"
+              name="duration"
+              inputMode="numeric"
+              value={durationMin}
+              onChange={(e) => setDurationMin(e.target.value)}
+            />
           </>
         )}
 
