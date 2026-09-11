@@ -59,4 +59,13 @@ contract FlywheelTest is Base {
         assertEq(flywheel.weightSum(), 0);
         assertEq(flywheel.usdcPot(), pot);
     }
+
+    function test_productionFinalizeIdempotent() public {
+        vm.warp(block.timestamp + ReactorConstants.EPOCH_LENGTH + 1);
+        flywheel.finalizeEpoch();
+        assertTrue(flywheel.epochFinalized());
+        flywheel.finalizeEpoch();
+        assertTrue(flywheel.epochFinalized());
+        assertEq(flywheel.weightSum(), 0);
+    }
 }

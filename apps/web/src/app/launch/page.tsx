@@ -29,7 +29,7 @@ export default function LaunchPage() {
   const [telegram, setTelegram] = useState("");
   const [quote, setQuote] = useState<`0x${string}` | "">("");
   const [mode, setMode] = useState<"instant" | "fair">("instant");
-  const [fdv, setFdv] = useState("80000");
+  const [fdv, setFdv] = useState("25000");
   const [devBuy, setDevBuy] = useState("0");
   const [durationMin, setDurationMin] = useState("45");
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -98,9 +98,9 @@ export default function LaunchPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <p className="text-xs uppercase tracking-[0.22em] text-cyan-200/80">Choose what your token earns</p>
-      <h1 className="mt-2 text-3xl font-semibold">What should your token earn?</h1>
+    <div className="mx-auto max-w-xl">
+      <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/80">Choose what your token earns</p>
+      <h1 className="mt-1 text-2xl font-semibold">What should your token earn?</h1>
       <div className="mt-4 flex gap-2 text-xs uppercase tracking-wider text-zinc-500">
         {STEPS.map((s, i) => (
           <span key={s} className={i === step ? "text-cyan-200" : ""}>
@@ -110,24 +110,33 @@ export default function LaunchPage() {
       </div>
 
       {step === 0 && (
-        <Card className="mt-6 space-y-3 p-5">
-          <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input placeholder="Symbol" value={symbol} onChange={(e) => setSymbol(e.target.value)} />
+        <Card className="mt-4 space-y-2 p-4">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input placeholder="Symbol" value={symbol} onChange={(e) => setSymbol(e.target.value)} />
+          </div>
           <Input placeholder="Image URL (optional)" value={image} onChange={(e) => setImage(e.target.value)} />
           <textarea
-            className="min-h-24 w-full rounded-xl border border-white/10 bg-black/30 p-3 text-sm"
-            placeholder="Description"
+            className="min-h-16 w-full rounded-xl border border-white/10 bg-black/30 p-3 text-sm"
+            placeholder="Description (optional)"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-          <Input placeholder="Website" value={website} onChange={(e) => setWebsite(e.target.value)} />
-          <Input placeholder="X / Twitter" value={twitter} onChange={(e) => setTwitter(e.target.value)} />
-          <Input placeholder="Telegram" value={telegram} onChange={(e) => setTelegram(e.target.value)} />
+          <button className="text-[11px] text-zinc-500 underline" onClick={() => setShowAdvanced((s) => !s)}>
+            {showAdvanced ? "Hide" : "Social"} links
+          </button>
+          {showAdvanced && (
+            <div className="grid gap-2">
+              <Input placeholder="Website" value={website} onChange={(e) => setWebsite(e.target.value)} />
+              <Input placeholder="X / Twitter" value={twitter} onChange={(e) => setTwitter(e.target.value)} />
+              <Input placeholder="Telegram" value={telegram} onChange={(e) => setTelegram(e.target.value)} />
+            </div>
+          )}
         </Card>
       )}
 
       {step === 1 && (
-        <Card className="mt-6 p-5">
+        <Card className="mt-4 p-4">
           <h2 className="text-lg font-medium">What should your token earn?</h2>
           <p className="mt-2 text-sm text-zinc-400">
             Holders earn the quote asset from official-pool volume. Pick the asset your market is priced in. Only
@@ -168,7 +177,7 @@ export default function LaunchPage() {
       )}
 
       {step === 2 && (
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <button
             onClick={() => setMode("instant")}
             className={`rounded-2xl border p-5 text-left ${
@@ -176,9 +185,9 @@ export default function LaunchPage() {
             }`}
           >
             <div className="text-xs uppercase tracking-wider text-cyan-200">Instant</div>
-            <div className="mt-1 font-medium">Market live immediately</div>
-            <p className="mt-2 text-sm text-zinc-400">
-              Uniswap v4 from trade #1. Hook on. Single-sided locked liquidity. Optional paid dev buy.
+            <div className="mt-1 text-sm font-medium">Market live immediately</div>
+            <p className="mt-2 text-[13px] text-zinc-400">
+              v4 from trade #1. Locked single-sided LP. USDC FDV $10k–$50k (default $25k).
             </p>
           </button>
           <button
@@ -188,17 +197,16 @@ export default function LaunchPage() {
             }`}
           >
             <div className="text-xs uppercase tracking-wider text-cyan-200">Batch Fair Launch</div>
-            <div className="mt-1 font-medium">Pro-rata timed sale — not Uniswap CCA</div>
-            <p className="mt-2 text-sm text-zinc-400">
-              50/50 hard-locked: half to bidders, half locked as official LP. 0% REACTOR charge during the sale.
-              Clearing price becomes the official pool start price.
+            <div className="mt-1 text-sm font-medium">Pro-rata timed sale — not CCA</div>
+            <p className="mt-2 text-[13px] text-zinc-400">
+              50/50 locked. 0% charge during the sale. Clearing price opens the official pool.
             </p>
           </button>
         </div>
       )}
 
       {step === 3 && (
-        <Card className="mt-6 space-y-3 p-5 text-sm">
+        <Card className="mt-4 space-y-2 p-4 text-sm">
           <Row k="Name" v={`${name} ($${symbol.toUpperCase()})`} />
           <Row k="Quote" v={selected ? `${selected.symbol} · ${selected.categoryLabel}` : "—"} />
           <Row k="Mode" v={mode === "instant" ? "Instant launch" : "Batch Fair Launch"} />
@@ -207,7 +215,10 @@ export default function LaunchPage() {
           <Row k="Liquidity" v="Locked in ReactorLiquidityVault — no withdraw" />
           {mode === "instant" && (
             <>
-              <label className="block text-xs uppercase tracking-wider text-zinc-500">Starting FDV ({selected?.symbol})</label>
+              <label className="block text-[11px] uppercase tracking-wider text-zinc-500">
+                Starting FDV ({selected?.symbol}
+                {selected?.symbol === "USDC" ? " · $10k–$50k" : ""})
+              </label>
               <Input value={fdv} onChange={(e) => setFdv(e.target.value)} />
               <label className="block text-xs uppercase tracking-wider text-zinc-500">Paid dev buy (not free allocation)</label>
               <Input value={devBuy} onChange={(e) => setDevBuy(e.target.value)} />
@@ -221,15 +232,9 @@ export default function LaunchPage() {
               <Row k="During auction" v="0% REACTOR charge" />
             </>
           )}
-          <button className="text-xs text-zinc-500 underline" onClick={() => setShowAdvanced((s) => !s)}>
-            {showAdvanced ? "Hide" : "Advanced"} settings
-          </button>
-          {showAdvanced && (
-            <p className="text-xs text-zinc-500">
-              Economics are immutable after launch. A different split requires a V2 factory. External pools are allowed
-              and uncharged.
-            </p>
-          )}
+          <p className="text-[11px] text-zinc-500">
+            Economics are immutable after launch. Instant FDV is not a Top-10 rank input.
+          </p>
         </Card>
       )}
 

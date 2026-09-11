@@ -18,6 +18,7 @@ export type Deployment = {
     ReactorRouter: `0x${string}`;
     ReactorHook: `0x${string}`;
     BuybackVault: `0x${string}`;
+    FlywheelVault?: `0x${string}`;
     ReactorFactory: `0x${string}`;
     FairClaimVault?: `0x${string}`;
   };

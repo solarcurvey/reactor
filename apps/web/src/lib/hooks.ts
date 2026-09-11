@@ -7,6 +7,7 @@ import { addresses } from "./addresses";
 import { factory, registry, token, erc20, buyback, core } from "./contracts";
 import { CATEGORY_LABELS } from "./addresses";
 import { INDEXER_URL } from "./chain";
+import { FIXTURE_TOKENS, REVIEW_FIXTURES } from "./review-fixtures";
 
 export type QuoteAsset = {
   token: `0x${string}`;
@@ -154,7 +155,9 @@ async function readTokens(client: NonNullable<ReturnType<typeof usePublicClient>
       lifetimeRewards,
     });
   }
-  return tokens.reverse();
+  const out = tokens.reverse();
+  if (REVIEW_FIXTURES && out.length === 0) return FIXTURE_TOKENS;
+  return out;
 }
 
 function field(raw: unknown, name: string, index: number) {
@@ -212,8 +215,22 @@ export function useQuotes() {
   const client = usePublicClient();
   return useQuery({
     queryKey: ["quotes"],
-    enabled: !!client,
-    queryFn: () => readQuotes(client!),
+    enabled: !!client || REVIEW_FIXTURES,
+    queryFn: async () => {
+      try {
+        if (!client) throw new Error("no client");
+        return await readQuotes(client);
+      } catch (e) {
+        if (REVIEW_FIXTURES) {
+          return [
+            { token: "0x4826533B4897376654Bb4d4AD88B7faFD0C98528" as `0x${string}`, symbol: "USDC", name: "USD Coin", decimals: 6, icon: "", category: 4, categoryLabel: "Stablecoins", usdOracle: "0x0000000000000000000000000000000000000000" as `0x${string}`, enabled: true, exists: true },
+            { token: "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf" as `0x${string}`, symbol: "ZEC", name: "Mock ZEC", decimals: 8, icon: "", category: 0, categoryLabel: "Crypto", usdOracle: "0x0000000000000000000000000000000000000000" as `0x${string}`, enabled: true, exists: true },
+            { token: "0x0E801D84Fa97b50751Dbf25036d067dCf18858bF" as `0x${string}`, symbol: "BTC", name: "Mock BTC", decimals: 8, icon: "", category: 0, categoryLabel: "Crypto", usdOracle: "0x0000000000000000000000000000000000000000" as `0x${string}`, enabled: true, exists: true },
+          ];
+        }
+        throw e;
+      }
+    },
     refetchInterval: 15_000,
   });
 }
@@ -222,8 +239,16 @@ export function useLaunchTokens() {
   const client = usePublicClient();
   return useQuery({
     queryKey: ["launches"],
-    enabled: !!client,
-    queryFn: () => readTokens(client!),
+    enabled: !!client || REVIEW_FIXTURES,
+    queryFn: async () => {
+      try {
+        if (!client) throw new Error("no client");
+        return await readTokens(client);
+      } catch (e) {
+        if (REVIEW_FIXTURES) return FIXTURE_TOKENS;
+        throw e;
+      }
+    },
     refetchInterval: 8_000,
   });
 }
@@ -286,8 +311,29 @@ export function useSwapSeries(token?: string) {
     enabled: !!token,
     queryFn: async () => {
       const res = await fetch(`${INDEXER_URL}/swaps/${token}`).catch(() => null);
-      if (!res?.ok) return [] as { t: number; notional: string; holders: string; buyback: string; sqrtPrice?: string }[];
-      return (await res.json()) as { t: number; notional: string; holders: string; buyback: string; sqrtPrice?: string }[];
+      if (!res?.ok) {
+        if (REVIEW_FIXTURES && token) {
+          return [
+            { t: 1, notional: "1000000000", holders: "20000000", buyback: "15000000", flywheel: "10000000", coreAmt: "5000000", sqrtPrice: "79228162514264337593543950336" },
+            { t: 2, notional: "2000000000", holders: "40000000", buyback: "30000000", flywheel: "20000000", coreAmt: "10000000", sqrtPrice: "81000000000000000000000000000" },
+            { t: 3, notional: "800000000", holders: "16000000", buyback: "12000000", flywheel: "8000000", coreAmt: "4000000", sqrtPrice: "77000000000000000000000000000" },
+          ];
+        }
+        return [] as { t: number; notional: string; holders: string; buyback: string; flywheel?: string; coreAmt?: string; sqrtPrice?: string }[];
+      }
+      return (await res.json()) as { t: number; notional: string; holders: string; buyback: string; flywheel?: string; coreAmt?: string; sqrtPrice?: string }[];
+    },
+    refetchInterval: 8_000,
+  });
+}
+
+export function useReactorEvents() {
+  return useQuery({
+    queryKey: ["reactor-events"],
+    queryFn: async () => {
+      const res = await fetch(`${INDEXER_URL}/reactor`).catch(() => null);
+      if (!res?.ok) return { events: [] as { name: string; token: string; payload: string; block: number; tx: string }[] };
+      return (await res.json()) as { events: { name: string; token: string; payload: string; block: number; tx: string }[] };
     },
     refetchInterval: 8_000,
   });
@@ -295,9 +341,13 @@ export function useSwapSeries(token?: string) {
 
 export function useTokenByAddress(address?: string) {
   const { data, ...rest } = useLaunchTokens();
-  const token_ = useMemo(
-    () => data?.find((t) => t.token.toLowerCase() === address?.toLowerCase()),
-    [data, address],
-  );
+  const token_ = useMemo(() => {
+    const found = data?.find((t) => t.token.toLowerCase() === address?.toLowerCase());
+    if (found) return found;
+    if (REVIEW_FIXTURES) {
+      return FIXTURE_TOKENS.find((t) => t.token.toLowerCase() === address?.toLowerCase());
+    }
+    return found;
+  }, [data, address]);
   return { data: token_, ...rest };
 }

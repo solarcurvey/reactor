@@ -31,8 +31,9 @@ export function parseUnitsSafe(input: string, decimals: number): bigint {
 
 export function feeSplit(notional: bigint) {
   const holders = (notional * 200n) / 10_000n;
-  const buyback = (notional * 100n) / 10_000n;
-  return { holders, buyback, fee: holders + buyback };
+  const flywheel = (notional * 100n) / 10_000n;
+  const core = (notional * 50n) / 10_000n;
+  return { holders, flywheel, core, buyback: flywheel + core, fee: holders + flywheel + core };
 }
 
 export function explorerTx(hash: string) {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,17 @@ export default function TokenPage() {
   const { data: core } = useCoreStats();
 
   if (isLoading) return <p className="text-sm text-zinc-500">Loading token…</p>;
-  if (!t) return <p className="text-sm text-zinc-500">Token not found on this factory.</p>;
+  if (!t) {
+    return (
+      <div>
+        <h1 className="text-2xl font-semibold">Token not found</h1>
+        <p className="mt-2 text-sm text-zinc-500">This address is not a factory launch on the connected chain.</p>
+        <Link href="/" className="mt-4 inline-block text-sm text-cyan-200 underline">
+          Back to the board
+        </Link>
+      </div>
+    );
+  }
 
   const tokenIs0 = t.token.toLowerCase() < t.quote.toLowerCase();
   const chart = (series ?? []).map((s, i) => {
@@ -28,28 +39,27 @@ export default function TokenPage() {
   });
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
-      <div>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-semibold">{t.name}</h1>
-              <span className="font-mono text-zinc-500">${t.symbol}</span>
-              <span className="rounded-full bg-cyan-300/10 px-2 py-0.5 text-[11px] uppercase tracking-wider text-cyan-100">
-                Earns {t.quoteSymbol}
-              </span>
-            </div>
-            <p className="mt-2 max-w-xl text-sm text-zinc-400">{t.description || "No description."}</p>
-          </div>
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/8 pb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-2xl font-semibold">{t.name}</h1>
+          <span className="font-mono text-sm text-zinc-500">${t.symbol}</span>
+          <span className="rounded-full bg-cyan-300/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cyan-100">
+            Earns {t.quoteSymbol}
+          </span>
           {t.marketLive ? (
-            <Badge>Official REACTOR Pool</Badge>
+            <Badge>Official pool</Badge>
           ) : t.mode === 1 ? (
             <Badge className="border-amber-300/30 bg-amber-300/10 text-amber-100">Batch Fair</Badge>
-          ) : (
-            <Badge>Official REACTOR Pool</Badge>
-          )}
+          ) : null}
         </div>
-        <Card className="mt-6 h-64 p-3">
+        <Link href={`/trade`} className="text-[11px] uppercase tracking-wider text-zinc-500 hover:text-cyan-200">
+          All markets
+        </Link>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1.35fr_0.85fr]">
+        <Card className="h-64 p-2 sm:h-72">
           {chart.length === 0 ? (
             <div className="grid h-full place-items-center text-sm text-zinc-500">
               No indexed swaps yet. Trades still settle onchain.
@@ -68,28 +78,31 @@ export default function TokenPage() {
             </ResponsiveContainer>
           )}
         </Card>
-        <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-          <Meta label="Token" value={shortAddress(t.token)} href={explorerAddress(t.token)} />
-          <Meta label="Quote" value={`${t.quoteSymbol} ${shortAddress(t.quote)}`} href={explorerAddress(t.quote)} />
-          <Meta label="Pool ID" value={shortAddress(t.poolId, 6)} />
-          <Meta label="Creator" value={shortAddress(t.creator)} />
-          <Meta label="Supply" value={formatUnitsSafe(t.supply, t.decimals, 0)} />
-          <Meta
-            label="Lifetime holder rewards"
-            value={`${formatUnitsSafe(t.lifetimeRewards ?? 0n, t.quoteDecimals ?? 18, 4)} ${t.quoteSymbol}`}
-          />
+        <div id="trade">
+          <TradePanel t={t} />
         </div>
-        <Card className="mt-4 p-4 text-sm text-zinc-400">
-          Protocol economics attach to the official market, not the token. External pools are allowed and uncharged.
-          CORE burned (global): {core ? formatUnitsSafe(core.lifetimeBurned, 18, 4) : "—"} CORE
-        </Card>
       </div>
-      <div className="space-y-4">
-        <TradePanel t={t} />
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[1.35fr_0.85fr]">
+        <div>
+          <p className="text-[13px] leading-5 text-zinc-400">{t.description || "No description."}</p>
+          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[12px] sm:grid-cols-3">
+            <Meta label="Token" value={shortAddress(t.token)} href={explorerAddress(t.token)} />
+            <Meta label="Quote" value={`${t.quoteSymbol} ${shortAddress(t.quote)}`} href={explorerAddress(t.quote)} />
+            <Meta label="Pool" value={shortAddress(t.poolId, 6)} />
+            <Meta label="Creator" value={shortAddress(t.creator)} />
+            <Meta label="Supply" value={formatUnitsSafe(t.supply, t.decimals, 0)} />
+            <Meta
+              label="Lifetime holders"
+              value={`${formatUnitsSafe(t.lifetimeRewards ?? 0n, t.quoteDecimals ?? 18, 4)} ${t.quoteSymbol}`}
+            />
+          </div>
+          <p className="mt-3 text-[11px] text-zinc-500">
+            Economics attach to the official market, not the token. CORE burned (global):{" "}
+            {core ? formatUnitsSafe(core.lifetimeBurned, 18, 4) : "—"} · LP {shortAddress(addresses.ReactorLiquidityVault)}
+          </p>
+        </div>
         <RewardsModule t={t} />
-        <Card className="p-4 text-xs text-zinc-500">
-          LP locked at {shortAddress(addresses.ReactorLiquidityVault)}. No creator withdraw.
-        </Card>
       </div>
     </div>
   );
@@ -98,7 +111,7 @@ export default function TokenPage() {
 function Meta({ label, value, href }: { label: string; value: string; href?: string }) {
   return (
     <div>
-      <div className="text-[11px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
       {href ? (
         <a className="font-mono text-cyan-100 underline-offset-2 hover:underline" href={href} target="_blank" rel="noreferrer">
           {value}
