@@ -9,6 +9,8 @@ import {QuoteAssetRegistry} from "../../src/QuoteAssetRegistry.sol";
 import {RouteGuard} from "../../src/libraries/RouteGuard.sol";
 import {FeeMath} from "../../src/libraries/FeeMath.sol";
 import {Top10Ranker} from "../../src/libraries/Top10Ranker.sol";
+import {LaunchPricing} from "../../src/libraries/LaunchPricing.sol";
+import {CurveMath} from "../../src/libraries/CurveMath.sol";
 
 /// @notice Authoritative current-architecture E2E. Replaces obsolete hookless/3%/immediate-v4 demos.
 contract CurrentArchitectureTest is Base {
@@ -43,15 +45,20 @@ contract CurrentArchitectureTest is Base {
         _fillAndGraduate(alice, zcat);
         assertTrue(curve.graduatedOf(zcat));
         assertTrue(registry.isReactorNative(zcat));
+        assertTrue(registry.canLaunch(zcat), "graduated ZCAT is a legal nested quote");
+
+        // Signed nested pricing (ZCAT/ZEC × ZEC/USD). No ZCAT/USDC pool required.
+        uint256 vq0 = CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, 18);
+        (LaunchPricing.Auth memory priced, bytes memory sig) = _priceAuthFor(alice, zcat, vq0);
 
         vm.prank(alice);
-        (address cat,) = factory.launchStandard(
+        (address cat,) = factory.launchStandardPriced(
             ReactorFactory.InstantParams({
                 name: "CAT",
                 symbol: "CAT",
                 decimals: 18,
                 supply: 0,
-                quote: address(usdc),
+                quote: zcat,
                 fdvQuoteRaw: 0,
                 devBuyQuote: 0,
                 image: "",
@@ -59,12 +66,35 @@ contract CurrentArchitectureTest is Base {
                 website: "",
                 twitter: "",
                 telegram: ""
-            })
+            }),
+            priced,
+            sig
         );
-        _buy(bob, cat, address(usdc), 3_000e6);
-        vm.prank(keeper);
-        uint256 burned = selfBurn.execute(cat, 1);
-        assertGt(burned, 1);
+        assertEq(ReactorToken(cat).quoteAsset(), zcat, "CAT/ZCAT not CAT/USDC");
+
+        vm.startPrank(bob);
+        usdc.approve(address(userRouter), 40e6);
+        uint256 catOut = userRouter.buy(
+            cat,
+            40e6,
+            _twoHops(address(usdc), address(zec), zecUsdcKey, zcat, _key(zcat, address(zec))),
+            1,
+            type(uint256).max
+        );
+        vm.stopPrank();
+        assertGt(catOut, 0);
+        assertGt(ReactorToken(cat).balanceOf(bob), 0);
+        assertFalse(curve.readyOf(cat), "nested CAT buy must stay on the curve");
+        uint256 catFee = selfBurn.accrued(cat) + flywheel.quoteAccrued(zcat) + buyback.accrued(zcat);
+        assertGt(catFee, 0, "3.5% of ZCAT notional (2/1/0.5), not 3.5% of USDC in");
+        assertApproxEqRel(selfBurn.accrued(cat), (catFee * 200) / 350, 0.01e18, "Standard 2% of 3.5%");
+        assertApproxEqRel(flywheel.quoteAccrued(zcat), (catFee * 100) / 350, 0.01e18, "1% flywheel");
+        assertApproxEqRel(buyback.accrued(zcat), (catFee * 50) / 350, 0.01e18, "0.5% CORE");
+        if (selfBurn.accrued(cat) >= 10_000) {
+            vm.prank(keeper);
+            uint256 burned = selfBurn.execute(cat, 1);
+            assertGt(burned, 1);
+        }
 
         uint256 zecAmt = 2_000e8;
         deal(address(zec), address(flywheel), zecAmt);
@@ -116,6 +146,20 @@ contract CurrentArchitectureTest is Base {
             zcat, nestedOut / 4, _hop(address(zec), address(usdc), zecUsdcKey), 1, 1, type(uint256).max
         );
         assertGt(back, 0);
+
+        uint256 catSell = ReactorToken(cat).balanceOf(bob) / 2;
+        vm.prank(bob);
+        ReactorToken(cat).approve(address(userRouter), catSell);
+        vm.prank(bob);
+        uint256 catBack = userRouter.sell(
+            cat,
+            catSell,
+            _twoHops(zcat, address(zec), _key(zcat, address(zec)), address(usdc), zecUsdcKey),
+            1,
+            1,
+            type(uint256).max
+        );
+        assertGt(catBack, 0, "nested CAT sell: minQuoteOut is ZCAT, minFinalOut is USDC");
 
         address nextKeeper = makeAddr("keeper2");
         auth.setKeeper(nextKeeper);

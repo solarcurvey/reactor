@@ -70,8 +70,9 @@ contract UserRouteExecutor {
             tokensOut = router.swap(key, quote < token, -int256(quoteIn), minFinalOut, msg.sender);
             IERC20MinimalExt(quote).approve(address(router), 0);
         } else if (bonding) {
-            IERC20MinimalExt(quote).transfer(address(curve), quoteIn);
-            tokensOut = curve.buyPrefunded(token, msg.sender, quoteIn, minFinalOut);
+            IERC20MinimalExt(quote).approve(address(curve), quoteIn);
+            tokensOut = curve.buyRouted(token, msg.sender, quoteIn, minFinalOut);
+            IERC20MinimalExt(quote).approve(address(curve), 0);
         } else {
             revert Bad();
         }

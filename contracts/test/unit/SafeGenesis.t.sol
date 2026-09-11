@@ -52,6 +52,39 @@ contract SafeGenesisTest is Base {
         assertEq(ReactorConstants.CORE_VESTING_BENEFICIARY, 0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406);
     }
 
+    function test_safeNotDeployer_verifyProductionSucceeds() public {
+        address safe = makeAddr("FINAL_SAFE");
+        address k = makeAddr("PROD_KEEPER");
+        address deployer = makeAddr("EOA_DEPLOYER");
+        assertTrue(safe != deployer);
+        ReactorGuardian g = new ReactorGuardian(safe, k);
+        assertTrue(g.launchesPaused());
+        assertEq(g.guardian(), safe);
+        GenesisVerify.verifyProduction(g, safe, k, deployer, core, coreVesting, coreLp, registry, router);
+    }
+
+    function test_deployerCannotCallGuardianOps() public {
+        address safe = makeAddr("FINAL_SAFE");
+        address k = makeAddr("PROD_KEEPER");
+        address deployer = makeAddr("EOA_DEPLOYER");
+        ReactorGuardian g = new ReactorGuardian(safe, k);
+        vm.startPrank(deployer);
+        vm.expectRevert(ReactorGuardian.NotGuardian.selector);
+        g.pauseLaunches(false);
+        vm.expectRevert(ReactorGuardian.NotGuardian.selector);
+        g.setKeeper(deployer);
+        vm.expectRevert(ReactorGuardian.NotGuardian.selector);
+        g.setPricingSigner(deployer);
+        vm.expectRevert(ReactorGuardian.NotGuardian.selector);
+        g.setAdapter(address(protocolAdapter), true);
+        vm.expectRevert(ReactorGuardian.NotGuardian.selector);
+        g.pauseTrading(true);
+        vm.stopPrank();
+        vm.prank(safe);
+        g.pauseLaunches(true);
+        assertTrue(g.launchesPaused());
+    }
+
     function _verifyAs(address safe, address k, address deployer) external view {
         GenesisVerify.verifyProduction(auth, safe, k, deployer, core, coreVesting, coreLp, registry, router);
     }

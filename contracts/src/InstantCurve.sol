@@ -41,6 +41,8 @@ contract InstantCurve {
     address public immutable usdc;
     ReactorGuardian public immutable auth;
     SelfBurnVault public selfBurn;
+    address public routeExecutor;
+    uint256 private locked;
 
     struct Curve {
         address token;
@@ -83,10 +85,21 @@ contract InstantCurve {
     error Slippage();
     error NotExempt();
     error MinOutRequired();
+    error NotRouter();
+    error CustodyShort();
+    error AlreadyBound();
+    error Reentrant();
 
     modifier onlyFactory() {
         if (msg.sender != address(factory)) revert NotFactory();
         _;
+    }
+
+    modifier nonReentrant() {
+        if (locked == 1) revert Reentrant();
+        locked = 1;
+        _;
+        locked = 0;
     }
 
     constructor(
@@ -112,6 +125,14 @@ contract InstantCurve {
         if (msg.sender != address(factory)) revert NotFactory();
         if (address(selfBurn) != address(0)) revert Bad();
         selfBurn = s;
+    }
+
+    /// @notice One-shot bind. Factory or Guardian. No public trust-by-prefunding after this.
+    function bindRouteExecutor(address exec) external {
+        if (msg.sender != address(factory) && msg.sender != auth.guardian()) revert Bad();
+        if (address(routeExecutor) != address(0)) revert AlreadyBound();
+        if (exec == address(0)) revert Bad();
+        routeExecutor = exec;
     }
 
     function open(
@@ -148,41 +169,55 @@ contract InstantCurve {
         emit InstantLaunchCreated(token, quote, creator, rewardsMode, CurveMath.gradTarget(q0, inv, vOff));
     }
 
-    function buy(address token, uint256 quoteIn, uint256 minOut) external returns (uint256 tokensOut) {
+    function buy(address token, uint256 quoteIn, uint256 minOut) external nonReentrant returns (uint256 tokensOut) {
         auth.requireTradingOpen();
-        return _buy(token, msg.sender, quoteIn, minOut, false, false);
+        _assertLiveCurve(token);
+        uint256 received = _pullQuote(curves[token].quote, msg.sender, quoteIn);
+        return _buy(token, msg.sender, received, minOut, false);
     }
 
     function buyFor(address token, address user, uint256 quoteIn, uint256 minOut)
         external
+        nonReentrant
         returns (uint256 tokensOut)
     {
         if (msg.sender != address(factory) && msg.sender != user) revert Bad();
-        return _buy(token, user, quoteIn, minOut, false, false);
+        _assertLiveCurve(token);
+        uint256 received = _pullQuote(curves[token].quote, user, quoteIn);
+        return _buy(token, user, received, minOut, false);
     }
 
-    /// @notice Quote already on this contract. Recipient is `user`. Used by UserRoute (bonding USDC path).
-    function buyPrefunded(address token, address user, uint256 quoteIn, uint256 minOut)
+    /// @notice Router-only. Pulls quote from `msg.sender` (the bound UserRouteExecutor) via
+    ///         transferFrom and proves a balance increase for THIS call. Never consumes
+    ///         preexisting InstantCurve inventory as someone else's deposit.
+    function buyRouted(address token, address recipient, uint256 quoteIn, uint256 minOut)
         external
+        nonReentrant
         returns (uint256 tokensOut)
     {
+        if (msg.sender != routeExecutor || routeExecutor == address(0)) revert NotRouter();
+        if (recipient == address(0)) revert Bad();
         auth.requireTradingOpen();
-        return _buy(token, user, quoteIn, minOut, false, true);
+        _assertLiveCurve(token);
+        uint256 received = _pullQuote(curves[token].quote, msg.sender, quoteIn);
+        return _buy(token, recipient, received, minOut, false);
     }
 
-    function buyExempt(address token, uint256 quoteIn, uint256 minOut) external returns (uint256 tokensOut) {
+    function buyExempt(address token, uint256 quoteIn, uint256 minOut) external nonReentrant returns (uint256 tokensOut) {
         if (!router.protocolVault(msg.sender)) revert NotExempt();
-        return _buy(token, msg.sender, quoteIn, minOut, true, false);
+        _assertLiveCurve(token);
+        uint256 received = _pullQuote(curves[token].quote, msg.sender, quoteIn);
+        return _buy(token, msg.sender, received, minOut, true);
     }
 
-    function sell(address token, uint256 tokenIn, uint256 minOut) external returns (uint256 quoteOut) {
+    function sell(address token, uint256 tokenIn, uint256 minOut) external nonReentrant returns (uint256 quoteOut) {
         auth.requireTradingOpen();
         Curve storage c = curves[token];
         if (c.ready) revert ReadyLocked();
         return _sell(token, msg.sender, tokenIn, minOut, false, true);
     }
 
-    function sellExempt(address token, uint256 tokenIn, uint256 minOut) external returns (uint256 quoteOut) {
+    function sellExempt(address token, uint256 tokenIn, uint256 minOut) external nonReentrant returns (uint256 quoteOut) {
         if (!router.protocolVault(msg.sender)) revert NotExempt();
         if (curves[token].ready) revert ReadyLocked();
         return _sell(token, msg.sender, tokenIn, minOut, true, true);
@@ -191,13 +226,17 @@ contract InstantCurve {
     function launchDevBuy(address token, address creator, uint256 quoteIn)
         external
         onlyFactory
+        nonReentrant
         returns (uint256 tokensOut)
     {
+        _assertLiveCurve(token);
+        // Factory must approve this contract. Pull + custody proof — no leftover-balance spend.
+        uint256 received = _pullQuote(curves[token].quote, msg.sender, quoteIn);
         // Fees first while creator has no tokens → Rewards leftover carries; no historic credit.
-        tokensOut = _buy(token, creator, quoteIn, 1, false, true);
+        tokensOut = _buy(token, creator, received, 1, false);
         if (tokensOut > ReactorConstants.DEV_BUY_MAX_TOKENS) revert DevBuyCap();
         curves[token].devBought = tokensOut;
-        emit DevBuyExecuted(token, creator, quoteIn, tokensOut);
+        emit DevBuyExecuted(token, creator, received, tokensOut);
     }
 
     function graduate(address token) external returns (PoolId poolId) {
@@ -239,25 +278,33 @@ contract InstantCurve {
         emit GraduationCompleted(token, poolId, quoteLp, tokenLp);
     }
 
-    function buyWithUsdc(address token, uint256 usdcIn, uint256 minTokenOut) external returns (uint256 tokensOut) {
+    function buyWithUsdc(address token, uint256 usdcIn, uint256 minTokenOut)
+        external
+        nonReentrant
+        returns (uint256 tokensOut)
+    {
         auth.requireTradingOpen();
         Curve storage c = curves[token];
         if (c.token == address(0)) revert Bad();
+        uint256 quoteBefore = IERC20MinimalExt(c.quote).balanceOf(address(this));
         IERC20MinimalExt(usdc).transferFrom(msg.sender, address(this), usdcIn);
-        uint256 quoteIn = usdcIn;
+        uint256 quoteIn;
         if (c.quote != usdc) {
-            quoteIn = _hop(usdc, c.quote, usdcIn);
-            if (quoteIn == 0) revert Slippage();
+            uint256 hopped = _hop(usdc, c.quote, usdcIn);
+            if (hopped == 0) revert Slippage();
         }
+        uint256 quoteAfter = IERC20MinimalExt(c.quote).balanceOf(address(this));
+        if (quoteAfter <= quoteBefore) revert CustodyShort();
+        quoteIn = quoteAfter - quoteBefore;
         emit QuoteRouted(token, msg.sender, usdc, c.quote, usdcIn);
         if (c.graduated) {
             tokensOut = _v4Buy(c, quoteIn, minTokenOut, msg.sender);
         } else {
-            tokensOut = _buy(token, msg.sender, quoteIn, minTokenOut, false, true);
+            tokensOut = _buy(token, msg.sender, quoteIn, minTokenOut, false);
         }
     }
 
-    function sellToUsdc(address token, uint256 tokenIn, uint256 minUsdc) external returns (uint256 usdcOut) {
+    function sellToUsdc(address token, uint256 tokenIn, uint256 minUsdc) external nonReentrant returns (uint256 usdcOut) {
         auth.requireTradingOpen();
         Curve storage c = curves[token];
         uint256 quoteOut;
@@ -324,7 +371,24 @@ contract InstantCurve {
         return (c.realQuote * 10_000) / c.gradTarget;
     }
 
-    function _buy(address token, address user, uint256 quoteIn, uint256 minOut, bool exempt, bool prefunded)
+    function _assertLiveCurve(address token) internal view {
+        Curve storage c = curves[token];
+        if (c.token == address(0) || c.graduated) revert Graduated();
+        if (c.ready) revert ReadyLocked();
+    }
+
+    /// @notice Pull `amount` from `from` and require THIS call increased our quote balance by at least `amount`.
+    function _pullQuote(address quote, address from, uint256 amount) internal returns (uint256 received) {
+        if (quote == address(0) || from == address(0) || amount == 0) revert Bad();
+        uint256 before = IERC20MinimalExt(quote).balanceOf(address(this));
+        IERC20MinimalExt(quote).transferFrom(from, address(this), amount);
+        uint256 afterBal = IERC20MinimalExt(quote).balanceOf(address(this));
+        if (afterBal <= before) revert CustodyShort();
+        received = afterBal - before;
+        if (received < amount) revert CustodyShort();
+    }
+
+    function _buy(address token, address user, uint256 quoteIn, uint256 minOut, bool exempt)
         internal
         returns (uint256 tokensOut)
     {
@@ -333,7 +397,7 @@ contract InstantCurve {
         if (c.ready) revert ReadyLocked();
         if (quoteIn == 0) revert Bad();
         if (minOut == 0) revert MinOutRequired();
-        if (!prefunded) IERC20MinimalExt(c.quote).transferFrom(user, address(this), quoteIn);
+        // Caller already proved a same-tx balance increase. Never spend leftover inventory.
 
         uint256 maxEcon = _maxEconomicIn(c);
         uint256 executedGross = quoteIn;

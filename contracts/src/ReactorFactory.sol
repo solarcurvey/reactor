@@ -168,6 +168,11 @@ contract ReactorFactory {
         emit CurveBound(address(curve_), address(selfBurn_));
     }
 
+    function bindUserRouter(address exec) external {
+        if (msg.sender != auth.guardian()) revert ReactorGuardian.NotGuardian();
+        curve.bindRouteExecutor(exec);
+    }
+
     function isRewards(address token) external view returns (bool) {
         return !standardMode[token];
     }
@@ -315,8 +320,10 @@ contract ReactorFactory {
         emit InstantLaunchCreated(token, p.quote, msg.sender, rewards, 0);
 
         if (quoteIn > 0) {
-            IERC20MinimalExt(p.quote).transferFrom(msg.sender, address(curve), quoteIn);
+            IERC20MinimalExt(p.quote).transferFrom(msg.sender, address(this), quoteIn);
+            IERC20MinimalExt(p.quote).approve(address(curve), quoteIn);
             tokensOut = curve.launchDevBuy(token, msg.sender, quoteIn);
+            IERC20MinimalExt(p.quote).approve(address(curve), 0);
             if (tokensOut < minOut) revert BadParams();
         }
         poolId = PoolId.wrap(bytes32(0));

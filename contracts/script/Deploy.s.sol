@@ -71,16 +71,26 @@ contract Deploy is Script {
         address guardian = vm.envOr("GUARDIAN", deployer);
         vm.startBroadcast(pk);
         Addresses memory a = _deployCore(deployer, guardian, keeper);
-        _registerQuotes(a);
-        _bind(a, deployer);
-        _seedRoutes(a);
+        bool safeGenesis = vm.envOr("SAFE_GENESIS", false);
+        if (safeGenesis) {
+            require(guardian != deployer, "SAFE_MUST_BE_GUARDIAN");
+            require(a.auth.launchesPaused(), "LAUNCHES_MUST_STAY_PAUSED");
+            // Constructors only. Guardian genesis is a later Safe MultiSend — see SafeGenesisBatch.s.sol.
+            _deployUnsigned(a);
+            require(a.core.balanceOf(deployer) == 0, "DEPLOYER_CORE");
+        } else {
+            require(guardian == deployer, "LOCAL_GUARDIAN_IS_DEPLOYER");
+            _registerQuotes(a);
+            _bind(a, deployer);
+            _seedRoutes(a);
+        }
         vm.stopBroadcast();
         _log(a);
     }
 
     function _deployCore(address deployer, address guardian, address keeper) internal returns (Addresses memory a) {
         a.auth = new ReactorGuardian(guardian, keeper);
-        a.auth.pauseLaunches(true);
+        // launchesPaused starts true. Production Safe unpauses after genesis batch.
         a.pm = new PoolManager(deployer);
         a.registry = new QuoteAssetRegistry(a.auth);
         a.core = new TestCORE(deployer);
@@ -173,18 +183,54 @@ contract Deploy is Script {
         a.router.setProtocolVault(address(a.protocolAdapter), true);
         a.router.sealProtocolVaults();
         a.userRouter = new UserRouteExecutor(a.auth, a.hook, IReactorSwapper(address(a.router)), a.curve, address(a.usdc));
+        a.curve.bindRouteExecutor(address(a.userRouter));
         _verifyGenesis(a);
-        bool safeGenesis = vm.envOr("SAFE_GENESIS", false);
-        if (safeGenesis) {
-            require(a.auth.guardian() != deployer, "SAFE_MUST_BE_GUARDIAN");
-            require(a.auth.launchesPaused(), "LAUNCHES_MUST_STAY_PAUSED");
-            require(a.core.balanceOf(deployer) == 0, "DEPLOYER_CORE");
-            // Safe enables launches + activateLaunch in a later batch. Never EOA-then-transfer.
-        } else {
-            _tinyBuyback(a);
-            a.auth.pauseLaunches(false);
-            a.vesting.activateLaunch();
-        }
+        _tinyBuyback(a);
+        a.auth.pauseLaunches(false);
+        a.vesting.activateLaunch();
+    }
+
+    /// @notice Production constructors only. No Guardian calls. Safe MultiSend completes genesis.
+    function _deployUnsigned(Addresses memory a) internal {
+        uint160 flags = uint160(
+            Hooks.BEFORE_INITIALIZE_FLAG | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG
+                | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG
+        );
+        address create2 = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
+        (address hookAddr, bytes32 salt) = HookMiner.find(
+            create2,
+            flags,
+            type(ReactorHook).creationCode,
+            abi.encode(a.pm, a.registry, address(a.core), address(a.vault), a.auth)
+        );
+        a.hook = new ReactorHook{salt: salt}(a.pm, a.registry, address(a.core), address(a.vault), a.auth);
+        require(address(a.hook) == hookAddr, "HOOK");
+        a.vesting = new CoreVesting(address(a.core), a.auth, 0);
+        a.coreLp = new CoreLiquidityVault(a.pm, a.auth, a.hook, address(a.core), address(a.usdc));
+        a.core.genesis(address(a.vesting), address(a.coreLp));
+        a.v4Adapter = new UniswapV4Adapter(IReactorSwapper(address(a.router)), a.auth, address(a.hook));
+        a.protocolAdapter = new ProtocolV4Adapter(IReactorSwapper(address(a.router)), a.auth, address(a.hook));
+        a.buyback = new BuybackVault(
+            a.auth,
+            address(a.core),
+            address(a.hook),
+            address(a.usdc),
+            a.pm,
+            address(a.router),
+            a.registry,
+            ReactorConstants.DEFAULT_BUYBACK_THRESHOLD
+        );
+        a.flywheel = new FlywheelVault(a.auth, address(a.hook), address(a.usdc), address(a.core), a.pm, address(a.router));
+        a.factory = new ReactorFactory(a.pm, a.hook, a.router, a.vault, a.registry, address(a.core), a.auth);
+        a.curve = new InstantCurve(IInstantFactory(address(a.factory)), a.hook, a.router, a.vault, a.registry, a.pm, a.auth);
+        a.selfBurn = new SelfBurnVault(a.auth, address(a.factory), address(a.hook), a.curve, a.router);
+        a.coreBuyback = new CoreBuybackExecutor(
+            a.auth, a.hook, IReactorSwapper(address(a.router)), address(a.core), address(a.usdc), address(a.buyback)
+        );
+        a.userRouter = new UserRouteExecutor(a.auth, a.hook, IReactorSwapper(address(a.router)), a.curve, address(a.usdc));
+        require(a.auth.launchesPaused(), "LAUNCHES_MUST_STAY_PAUSED");
+        require(a.curve.routeExecutor() == address(0), "EXECUTOR_MUST_WAIT_FOR_SAFE");
+        require(a.core.balanceOf(a.auth.guardian()) == 0, "GUARDIAN_CORE");
     }
 
     function _verifyGenesis(Addresses memory a) internal view {

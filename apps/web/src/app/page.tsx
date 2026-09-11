@@ -57,7 +57,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {REVIEW_FIXTURES && (
+      {(REVIEW_FIXTURES || list.some((t) => t.token.toLowerCase().startsWith("0x11111111"))) && (
         <p className="mt-3 text-[11px] uppercase tracking-wider text-amber-200/80">Review fixtures — not on-chain</p>
       )}
 
@@ -122,8 +122,13 @@ export default function HomePage() {
                     <td className="px-3 py-2 tabular-nums text-zinc-500">{i + 1}</td>
                     <td className="px-3 py-2">
                       <Link href={href} className="flex items-center gap-2">
-                        <span className="grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-zinc-900 text-[10px] text-cyan-100">
-                          {t.symbol.slice(0, 2)}
+                        <span className="grid h-7 w-7 place-items-center overflow-hidden rounded-full border border-white/10 bg-zinc-900 text-[10px] text-cyan-100">
+                          {t.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={t.image} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            t.symbol.slice(0, 2)
+                          )}
                         </span>
                         <span>
                           <span className="font-medium text-white">{t.name}</span>
