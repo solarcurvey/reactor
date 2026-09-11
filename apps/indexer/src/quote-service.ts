@@ -1,6 +1,6 @@
 import { encodeFunctionData, parseAbi, type PublicClient } from "viem";
 import type { Store } from "./db.ts";
-import { loadEdges, loadQuoteMetas } from "./route-graph.ts";
+import { loadEdges, loadQuoteMetas, planFeeExemptRoute } from "./route-graph.ts";
 import { planRoute, applyMinOuts, type Hop } from "../../../packages/reactor/src/routes.ts";
 import {
   applySlippage,
@@ -256,10 +256,103 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
       };
     }
 
-    return fail(rid, req, `kind ${req.kind} quoted via keeper route engine`);
+    if (
+      req.kind === "MAINTENANCE" ||
+      req.kind === "TOP10" ||
+      req.kind === "SELFBURN" ||
+      req.kind === "CORE"
+    ) {
+      return await buildMaintenanceQuote(ctx, req, rid, account, slip);
+    }
+
+    return fail(rid, req, `unsupported quote kind ${req.kind}`);
   } catch (e) {
     return fail(rid, req, e instanceof Error ? e.message : "quote failed");
   }
+}
+
+async function buildMaintenanceQuote(
+  ctx: QuoteCtx,
+  req: QuoteRequest,
+  rid: string,
+  account: `0x${string}`,
+  slip: number,
+): Promise<QuoteResponse> {
+  const addrs = ctx.addresses;
+  const hook = addrs.ReactorHook ?? "";
+  const protocol = (addrs.ProtocolV4Adapter ?? addrs.V4Adapter ?? "").toLowerCase();
+  const adapters = new Set([protocol, (addrs.V4Adapter ?? "").toLowerCase()].filter(Boolean));
+  const planned = await planFeeExemptRoute(ctx.store, req.tokenIn, req.tokenOut, adapters);
+  const hops: QuoteHop[] = [];
+  let cursor = BigInt(req.amountIn);
+  let simulated = planned.hops.length === 0;
+  for (const h of planned.hops) {
+    const official = h.adapter.toLowerCase() === protocol && !!hook;
+    const key = official ? officialKey(h.tokenIn, h.tokenOut, hook) : hooklessKey(h.tokenIn, h.tokenOut);
+    let out = 0n;
+    try {
+      out = await simSwap(ctx, key, h.tokenIn, cursor, account);
+      simulated = true;
+    } catch {
+      out = 0n;
+    }
+    hops.push({
+      ...h,
+      minOut: 0n,
+      amountIn: cursor.toString(),
+      amountOut: out.toString(),
+      impactBps: 0,
+      gasEstimate: 90_000,
+      reliabilityBps: 8_500,
+      feeExempt: true,
+    });
+    if (out > 1n) cursor = out;
+  }
+  if (planned.hops.length && hops.every((h) => h.amountOut === "0")) simulated = false;
+  if (hops.length) {
+    const outs = hops.map((h) => BigInt(h.amountOut));
+    if (outs.every((o) => o > 1n)) {
+      const stamped = applyMinOuts({ hops, path: planned.path, reason: planned.reason }, outs.map((o) => applySlippage(o, slip)));
+      for (let i = 0; i < hops.length; i++) hops[i] = { ...hops[i]!, minOut: stamped.hops[i]!.minOut };
+    } else {
+      for (const h of hops) h.minOut = 1n;
+    }
+  }
+  const amountOut = hops.length ? BigInt(hops[hops.length - 1]!.amountOut) : BigInt(req.amountIn);
+  const minOut = amountOut > 1n ? applySlippage(amountOut, slip) : 0n;
+  const vault =
+    req.kind === "CORE"
+      ? addrs.BuybackVault
+      : req.kind === "SELFBURN"
+        ? addrs.SelfBurnVault
+        : addrs.FlywheelVault;
+  const functionName =
+    req.kind === "MAINTENANCE"
+      ? "settleQuote"
+      : req.kind === "TOP10"
+        ? "executeTop10Buyback"
+        : req.kind === "CORE"
+          ? "execute"
+          : "execute";
+  return {
+    ok: true,
+    reason: simulated ? planned.reason : `${planned.reason} — simulate before submit`,
+    requestId: rid,
+    kind: req.kind,
+    tokenIn: req.tokenIn,
+    tokenOut: req.tokenOut,
+    amountIn: req.amountIn,
+    amountOut: amountOut.toString(),
+    minOut: minOut.toString(),
+    hops,
+    feeLegs: [],
+    reactorFeeCount: 0,
+    totalProtocolFeeBps: 0,
+    impactBps: 0,
+    expiry: Math.floor(Date.now() / 1000) + QUOTE_TTL_SEC,
+    path: planned.path,
+    tx: { to: vault ?? "", data: "0x", value: "0", functionName },
+  };
 }
 
 function fail(rid: string, req: QuoteRequest, reason: string): QuoteResponse {

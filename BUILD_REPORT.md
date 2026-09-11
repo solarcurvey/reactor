@@ -8,8 +8,8 @@
 
 | Item | Value |
 | --- | --- |
-| Branch | `cursor/prod-indexer-ops-921c` |
-| Parent | `890cac9` |
+| Branch | `cursor/candles-keeper-pg-921c` → merge `main` |
+| Parent | `b590c8d` (slice parent `890cac9`) |
 | Intent | Postgres indexer + quote API + isolated signer + SAFE genesis completeness + Stonk-like UI |
 | Solidity | Scripts + `GenesisVerify.verifyFullyWired` only. No hook / fee / curve / split change. |
 | Mainnet | **Blocked** pending Codex + audits + KMS/Safe/rehearsal |
@@ -21,7 +21,7 @@
 3. **ONE ValuationService** — recursive CAT→ZCAT→ZEC→USD with ancestry. Missing `priceInParentX18` is **unpriced**, not a copy of parent USD.
 4. **External pricing adapters** — multi-source median + staleness/deviation + Arc sanity. Degraded → no launch signatures / pause material Top-10. Trading continues. No Solidity oracle.
 5. **Durable RouteGraph** — `route_venues` stores proven official pools only. Keeper no longer invents hopViaUsdc quote/USDC edges.
-6. **`POST /quote`** — BUY/SELL (+ maintenance kinds reserved). Per-hop amounts/minOuts, each official 3.5% listed separately, expiry, tx params.
+6. **`POST /quote`** — BUY/SELL plus MAINTENANCE / TOP10 / SELFBURN / CORE via the same RouteGraph planner (fee-exempt protocol/hookless edges). Per-hop amounts/minOuts, each official 3.5% listed separately on user tickets.
 7. **Frontend quote API only** — trade panel does not wallet-sim intermediate hops.
 8. **Keeper jobs in SQL** — not `keeper-state.json` when the store is up. Advisory-lock leader. Distinct Guardian / Keeper / Pricing keys enforced.
 9. **Isolated pricing signer** (`apps/indexer/src/pricing-signer.ts` :43149). Next proxies and **fails** if down. No Anvil key in Next. LOCAL-only anvil key on the signer process.
@@ -34,7 +34,24 @@
 
 CORE liquidity doc marked **APPROVED WORKING MAINNET CONFIG — SUBJECT TO AUDIT** for the frozen ~$100k book.
 
-## Tests (this pass)
+## Follow-up (this HEAD, parent `b590c8d`)
+
+Closed DoD leftovers on the frozen protocol. **Zero Solidity.**
+
+1. **Token terminal chart** uses `GET /candles/:token?interval=` (1m/5m/15m/1h/4h/1d). Gap-filled continuous series. Sparse badge when fewer than 3 real prints. `/swaps` is the trade tape only.
+2. **Keeper maintenance** plans through `planFeeExemptRoute` (same RouteGraph as `/quote`). Official live factory venues are synced into `route_venues` — hopViaUsdc pools are still never invented. Job rows persist as `MAINTENANCE_SETTLEMENT` / `TOP10_BUY` / `SELFBURN` / `CORE_BUYBACK`.
+3. **Postgres smoke** — `docker-compose.yml` (postgres:16 on :54329) + `pnpm --filter indexer pg-smoke`. **Not run here:** this environment has no Docker/Postgres daemon. SQLite remains the local proof.
+
+## Tests (follow-up)
+
+| Suite | Result |
+| --- | --- |
+| `pnpm --filter indexer test` | ok including maintenance planner + SQL job kinds |
+| Web top10 + marketdata | ok |
+| Playwright interactive + capture | **6 passed / 0 failed** |
+| Foundry | not re-run (no Solidity) |
+
+## Tests (prior pass on `b590c8d`)
 
 | Suite | Result |
 | --- | --- |
@@ -55,9 +72,8 @@ Review screenshots regenerated at 1440 and 390 under `review/`. Zip sha256:
 - No live Arc Testnet txs. No public mainnet.
 - `sharp` is optional; without it, media validates and stores original bytes (webp if already webp).
 - R2/S3 PUT is env-stubbed; local disk + `MEDIA_CDN_BASE` is the working path.
-- Quote API maintenance/TOP10/CORE/SELFBURN kinds return a reserved error — Keeper still simulates via existing preview fns.
-- Token-detail still reads some wallet/claim state from chain (correct; balances are onchain truth). Token chart uses `/swaps` trade prints, not the full `/candles` series (candles API exists).
-- Postgres dialect is implemented and **untested against a live postgres** in this environment (SQLite is the local proof).
+- Token-detail still reads some wallet/claim state from chain (correct; balances are onchain truth).
+- Postgres dialect + `pg-smoke` are implemented; **this VM has no Docker**, so live Postgres was not executed. Run `docker compose up -d postgres` then `DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke` locally.
 - Keeper still writes a heartbeat JSON for the independent watchdog; jobs themselves are SQL.
 - Homepage “Review fixtures — not on-chain” banner stays on while seeded `0x1111…` rows are present.
 - Mainnet remains blocked: BUSL v4-core, no PoolManager on 5042, no audit, no KMS/HSM, no Safe rehearsal.

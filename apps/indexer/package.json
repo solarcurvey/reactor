@@ -15,7 +15,8 @@
     "watchdog": "tsx src/watchdog.ts",
     "watchdog:once": "WATCHDOG_ONCE=1 tsx src/watchdog.ts",
     "seed-bonding": "tsx src/seed-bonding.ts",
-    "seed-review": "tsx src/seed-review.ts"
+    "seed-review": "tsx src/seed-review.ts",
+    "pg-smoke": "tsx src/pg-smoke.ts"
   },
   "dependencies": {
     "viem": "^2.56.3",

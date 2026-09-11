@@ -7,13 +7,14 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { RewardsModule, TradePanel } from "@/components/trade-panel";
-import { useCoreStats, useSwapSeries, useTokenByAddress } from "@/lib/hooks";
-import { explorerAddress, formatUnitsSafe, priceFromSqrtX96, shortAddress } from "@/lib/utils";
+import { useCandles, useCoreStats, useSwapSeries, useTokenByAddress } from "@/lib/hooks";
+import { explorerAddress, formatUnitsSafe, shortAddress } from "@/lib/utils";
 import { addresses } from "@/lib/addresses";
 
 const INTERVALS = [
   { id: "1m", sec: 60 },
   { id: "5m", sec: 300 },
+  { id: "15m", sec: 900 },
   { id: "1h", sec: 3600 },
   { id: "4h", sec: 14400 },
   { id: "1d", sec: 86400 },
@@ -22,31 +23,19 @@ const INTERVALS = [
 export default function TokenPage() {
   const { address } = useParams<{ address: `0x${string}` }>();
   const { data: t, isLoading } = useTokenByAddress(address);
-  const { data: series } = useSwapSeries(address);
+  const { data: tape } = useSwapSeries(address);
   const { data: core } = useCoreStats();
   const [interval, setInterval] = useState<(typeof INTERVALS)[number]["id"]>("5m");
-  const sec = INTERVALS.find((x) => x.id === interval)?.sec ?? 300;
+  const { data: ohlcv } = useCandles(address, interval);
   const chart = useMemo(() => {
-    if (!t) return [];
-    const tokenIs0 = t.token.toLowerCase() < t.quote.toLowerCase();
-    const pts: { t: number; price: number }[] = [];
-    for (const s of series ?? []) {
-      const row = s as { t?: number; ts?: number; sqrtPrice?: string; px?: string };
-      const ts = Number(row.ts ?? row.t ?? 0);
-      let price = 0;
-      if (row.sqrtPrice && row.sqrtPrice !== "0") {
-        price = priceFromSqrtX96(BigInt(row.sqrtPrice), tokenIs0, t.decimals, t.quoteDecimals ?? 18);
-      } else if (row.px && row.px !== "0") {
-        price = Number(row.px) / 1e18;
-      }
-      if (!(price > 0) || !(ts > 0)) continue;
-      const bucket = Math.floor(ts / sec) * sec;
-      const last = pts[pts.length - 1];
-      if (!last || last.t !== bucket) pts.push({ t: bucket, price });
-      else last.price = price;
+    const pts: { t: number; price: number; real: boolean }[] = [];
+    for (const c of ohlcv?.candles ?? []) {
+      const price = Number(c.c ?? "0") / 1e18;
+      if (!(price > 0) || !(c.t > 0)) continue;
+      pts.push({ t: c.t, price, real: c.n > 0 });
     }
     return pts;
-  }, [series, t, sec]);
+  }, [ohlcv]);
 
   if (isLoading) return <p className="text-sm text-zinc-500">Loading token…</p>;
   if (!t) {
@@ -89,10 +78,11 @@ export default function TokenPage() {
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.35fr_0.85fr]">
+        <div>
         <Card className="h-64 p-2 sm:h-72">
           <div className="flex items-center justify-between px-2 pt-1">
             <span className="text-[10px] uppercase tracking-wider text-zinc-500">
-              PRICE · bonding→v4 · chain time
+              OHLCV · bonding→v4 · {ohlcv?.sparse ? "sparse" : "continuous"}
             </span>
             <div className="flex gap-1">
               {INTERVALS.map((x) => (
@@ -110,7 +100,7 @@ export default function TokenPage() {
           </div>
           {chart.length === 0 ? (
             <div className="grid h-[calc(100%-1.5rem)] place-items-center text-sm text-zinc-500">
-              No indexed swaps yet. Trades still settle onchain.
+              No indexed candles yet. Trades still settle onchain.
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="90%">
@@ -126,6 +116,23 @@ export default function TokenPage() {
             </ResponsiveContainer>
           )}
         </Card>
+        <Card className="mb-3 p-3" id="tape">
+          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Trade tape · /swaps</div>
+          {(tape ?? []).length === 0 ? (
+            <p className="mt-2 text-[12px] text-zinc-500">No prints yet. Chart uses candles, not this tape.</p>
+          ) : (
+            <ul className="mt-2 max-h-28 space-y-1 overflow-auto text-[12px] font-mono text-zinc-300">
+              {[...(tape ?? [])].slice(-8).reverse().map((s, i) => (
+                <li key={`${s.t}-${i}`}>
+                  {s.source ?? "trade"} · {formatUnitsSafe(BigInt(s.notional || "0"), t.quoteDecimals ?? 18, 3)}{" "}
+                  {t.quoteSymbol}
+                  {s.px && s.px !== "0" ? ` · ${formatUnitsSafe(BigInt(s.px), 18, 6)}` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+        </div>
         <div id="trade">
           {t.bonding && (
             <Card className="mb-3 p-3 text-[13px] text-zinc-300">

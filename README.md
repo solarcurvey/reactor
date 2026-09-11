@@ -25,6 +25,9 @@ cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0
 # Apps
 pnpm install
 pnpm --filter indexer dev             # http://127.0.0.1:43148  Postgres if DATABASE_URL, else SQLite
+# optional Postgres smoke (docker compose postgres on :54329)
+# docker compose up -d postgres
+# DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
 REACTOR_ENV=LOCAL pnpm --filter indexer signer   # isolated pricing signer :43149
 pnpm --filter web dev                 # http://127.0.0.1:43147
 # optional — local Anvil only (KEEPER_MODE=LOCAL|DRY_RUN|ARC_TESTNET; mainnet disabled)
