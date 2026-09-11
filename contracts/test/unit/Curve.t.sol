@@ -186,7 +186,7 @@ contract CurveTest is Base {
         MockERC20 q18 = new MockERC20("Q18", "Q18", 18, 0, address(this));
         q18.mint(alice, 1_000_000 ether);
         q18.mint(address(this), 1_000_000 ether);
-        registry.register(address(q18), "Q18", "Q18", 18, "", QuoteAssetRegistry.Category.Stocks, address(0));
+        registry.register(address(q18), "Q18", "Q18", 18, "", QuoteAssetRegistry.Category.Stocks);
         registry.setBuybackRoute(address(q18), true, true);
         address token = _instantPriced(_params("P18", "P18", address(q18), 0), true);
         _assertContinuity(token, address(q18));

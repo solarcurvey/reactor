@@ -29,6 +29,7 @@ import {InstantCurve, IInstantFactory} from "../src/InstantCurve.sol";
 import {SelfBurnVault} from "../src/SelfBurnVault.sol";
 import {ReactorGuardian} from "../src/ReactorGuardian.sol";
 import {UniswapV4Adapter} from "../src/adapters/UniswapV4Adapter.sol";
+import {ProtocolV4Adapter} from "../src/adapters/ProtocolV4Adapter.sol";
 import {RoutingRegistry} from "../src/RoutingRegistry.sol";
 import {RouteGuard} from "../src/libraries/RouteGuard.sol";
 import {IReactorSwapper} from "../src/interfaces/IReactorSwapper.sol";
@@ -58,6 +59,7 @@ contract Base is Test {
     SelfBurnVault public selfBurn;
     ReactorGuardian public auth;
     UniswapV4Adapter public v4Adapter;
+    ProtocolV4Adapter public protocolAdapter;
     RoutingRegistry public routes;
     UserRouteExecutor public userRouter;
     CoreVesting public coreVesting;
@@ -109,9 +111,9 @@ contract Base is Test {
         btc.mint(carol, 100e8);
 
         registry.setUsdc(address(usdc));
-        registry.register(address(usdc), "USDC", "USD Coin", 6, "", QuoteAssetRegistry.Category.Stablecoins, address(0));
-        registry.register(address(zec), "ZEC", "Mock ZEC", 8, "", QuoteAssetRegistry.Category.Crypto, address(0));
-        registry.register(address(btc), "BTC", "Mock BTC", 8, "", QuoteAssetRegistry.Category.Crypto, address(0));
+        registry.register(address(usdc), "USDC", "USD Coin", 6, "", QuoteAssetRegistry.Category.Stablecoins);
+        registry.register(address(zec), "ZEC", "Mock ZEC", 8, "", QuoteAssetRegistry.Category.Crypto);
+        registry.register(address(btc), "BTC", "Mock BTC", 8, "", QuoteAssetRegistry.Category.Crypto);
         registry.setBuybackRoute(address(usdc), true, false);
         registry.setBuybackRoute(address(zec), true, true);
         registry.setBuybackRoute(address(btc), true, true);
@@ -138,7 +140,9 @@ contract Base is Test {
         coreKey = coreLp.poolKey();
 
         v4Adapter = new UniswapV4Adapter(IReactorSwapper(address(router)), auth, address(hook));
+        protocolAdapter = new ProtocolV4Adapter(IReactorSwapper(address(router)), auth, address(hook));
         auth.setAdapter(address(v4Adapter), true);
+        auth.setAdapter(address(protocolAdapter), true);
 
         buyback = new BuybackVault(
             auth,
@@ -171,8 +175,9 @@ contract Base is Test {
         router.setProtocolVault(address(selfBurn), true);
         router.setProtocolVault(address(flywheel), true);
         router.setProtocolVault(address(coreBuyback), true);
+        router.setProtocolVault(address(protocolAdapter), true);
         router.sealProtocolVaults();
-        userRouter = new UserRouteExecutor(auth, hook, IReactorSwapper(address(router)), address(usdc));
+        userRouter = new UserRouteExecutor(auth, hook, IReactorSwapper(address(router)), curve, address(usdc));
 
         _seedHop(address(zec), 100_000e8, 5_000_000e6, zecUsdcKey);
         _seedHop(address(btc), 100e8, 6_000_000e6, btcUsdcKey);
@@ -278,6 +283,25 @@ contract Base is Test {
     function _priceAuth(address quote) internal view returns (LaunchPricing.Auth memory a, bytes memory sig) {
         uint8 dec = IERC20Like(quote).decimals();
         uint256 vq0 = CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, dec);
+        return _priceAuthVq(quote, vq0);
+    }
+
+    function _priceAuthUsd(address quote, uint256 quoteUsd6)
+        internal
+        view
+        returns (LaunchPricing.Auth memory a, bytes memory sig)
+    {
+        uint8 dec = IERC20Like(quote).decimals();
+        uint256 vq0 = CurveMath.virtualQuote0ForUsd(ReactorConstants.DEFAULT_SUPPLY, dec, quoteUsd6);
+        return _priceAuthVq(quote, vq0);
+    }
+
+    function _priceAuthVq(address quote, uint256 vq0)
+        internal
+        view
+        returns (LaunchPricing.Auth memory a, bytes memory sig)
+    {
+        uint8 dec = IERC20Like(quote).decimals();
         a = LaunchPricing.Auth({
             factory: address(factory),
             quote: quote,
@@ -289,6 +313,17 @@ contract Base is Test {
         bytes32 digest = LaunchPricing.digest(factory.pricingDomain(), a);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, digest);
         sig = abi.encodePacked(r, s, v);
+    }
+
+    function _protocolHop(address tokenIn, address tokenOut, PoolKey memory key)
+        internal
+        view
+        returns (RouteGuard.Hop[] memory hops)
+    {
+        hops = new RouteGuard.Hop[](1);
+        hops[0] = RouteGuard.Hop({
+            adapter: address(protocolAdapter), tokenIn: tokenIn, tokenOut: tokenOut, minOut: 1, data: abi.encode(key)
+        });
     }
 
     function _instantPriced(ReactorFactory.InstantParams memory p, bool rewards)

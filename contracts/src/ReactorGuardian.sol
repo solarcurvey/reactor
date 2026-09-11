@@ -13,7 +13,6 @@ contract ReactorGuardian {
     bool public tradingPaused;
 
     mapping(address => bool) public adapterApproved;
-    mapping(address => bool) public hookApproved;
 
     event KeeperReplaced(address indexed previous, address indexed next);
     event PricingSignerReplaced(address indexed previous, address indexed next);
@@ -21,7 +20,6 @@ contract ReactorGuardian {
     event KeeperPause(bool paused);
     event TradingPause(bool paused);
     event AdapterSet(address indexed adapter, bool approved);
-    event HookSet(address indexed hook, bool approved);
 
     error NotGuardian();
     error ZeroAddress();
@@ -69,11 +67,6 @@ contract ReactorGuardian {
         if (adapter == address(0)) revert ZeroAddress();
         adapterApproved[adapter] = approved;
         emit AdapterSet(adapter, approved);
-    }
-
-    function setHook(address hook, bool approved) external onlyGuardian {
-        hookApproved[hook] = approved;
-        emit HookSet(hook, approved);
     }
 
     function requireKeeper(address caller) external view {
