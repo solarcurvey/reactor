@@ -331,25 +331,20 @@ export function useCoreStats() {
     queryKey: ["core-stats"],
     enabled: !!client,
     queryFn: async () => {
-      const [supply, burnedBal, accruedUsdc, lifetimeAccrued, lifetimeBurned, threshold, purchased] =
-        await Promise.all([
-          client!.readContract({ ...core, functionName: "totalSupply" }) as Promise<bigint>,
-          client!.readContract({
-            ...core,
-            functionName: "balanceOf",
-            args: ["0x000000000000000000000000000000000000dEaD"],
-          }) as Promise<bigint>,
-          client!.readContract({
-            ...buyback,
-            functionName: "accrued",
-            args: [addresses.USDC],
-          }) as Promise<bigint>,
-          client!.readContract({ ...buyback, functionName: "lifetimeAccrued" }) as Promise<bigint>,
-          client!.readContract({ ...buyback, functionName: "lifetimeBurned" }) as Promise<bigint>,
-          client!.readContract({ ...buyback, functionName: "threshold" }) as Promise<bigint>,
-          client!.readContract({ ...buyback, functionName: "lifetimePurchased" }) as Promise<bigint>,
-        ]);
-      return { supply, burnedBal, accruedUsdc, lifetimeAccrued, lifetimeBurned, threshold, purchased };
+      const [supply, accruedUsdc, lifetimeAccrued, lifetimeBurned, threshold, purchased] = await Promise.all([
+        client!.readContract({ ...core, functionName: "totalSupply" }) as Promise<bigint>,
+        client!.readContract({
+          ...buyback,
+          functionName: "accrued",
+          args: [addresses.USDC],
+        }) as Promise<bigint>,
+        client!.readContract({ ...buyback, functionName: "lifetimeAccrued" }) as Promise<bigint>,
+        client!.readContract({ ...buyback, functionName: "lifetimeBurned" }) as Promise<bigint>,
+        client!.readContract({ ...buyback, functionName: "threshold" }) as Promise<bigint>,
+        client!.readContract({ ...buyback, functionName: "lifetimePurchased" }) as Promise<bigint>,
+      ]);
+      // Real burn() shrinks totalSupply. BuybackVault.lifetimeBurned is the Keeper path.
+      return { supply, burnedBal: lifetimeBurned, accruedUsdc, lifetimeAccrued, lifetimeBurned, threshold, purchased };
     },
     refetchInterval: 8_000,
   });

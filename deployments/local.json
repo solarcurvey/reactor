@@ -3,7 +3,7 @@
   "chainId": 5042002,
   "rpc": "http://127.0.0.1:8545",
   "claimedArcTestnet": false,
-  "note": "Anvil chain id 5042002. Not Arc Testnet. CORE genesis 10/90.",
+  "note": "Anvil chain id 5042002. Not Arc Testnet. CORE genesis 10/90. Local demo only.",
   "addresses": {
     "Guardian": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
     "Keeper": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
