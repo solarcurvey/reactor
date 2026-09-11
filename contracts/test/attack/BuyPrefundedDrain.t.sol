@@ -25,11 +25,12 @@ contract BuyPrefundedDrainTest is Base {
         uint256 curveZec0 = zec.balanceOf(address(curve));
         assertEq(zec.balanceOf(attacker), 0, "attacker holds 0 ZEC");
 
-        (bool ok,) = address(curve).call(
-            abi.encodeWithSignature(
-                "buyPrefunded(address,address,uint256,uint256)", zcat, attacker, uint256(10e8), uint256(1)
-            )
-        );
+        (bool ok,) = address(curve)
+            .call(
+                abi.encodeWithSignature(
+                    "buyPrefunded(address,address,uint256,uint256)", zcat, attacker, uint256(10e8), uint256(1)
+                )
+            );
         assertFalse(ok, "old public prefunded selector must not exist");
         assertEq(curve.realQuoteOf(zcat), real0, "realQuote unchanged");
         assertEq(zec.balanceOf(address(curve)), curveZec0, "curve ZEC inventory unchanged");
@@ -142,7 +143,7 @@ contract BuyPrefundedDrainTest is Base {
         registry.setUsdPegOne(address(q), true);
         registry.setBuybackRoute(address(q), true, true);
 
-        (address token,) = factory.instantLaunch(
+        (address token,) = _instant(
             ReactorFactory.InstantParams({
                 name: "RQ",
                 symbol: "RQ",
@@ -179,14 +180,16 @@ contract BuyPrefundedDrainTest is Base {
         address zcat = _instantZcat(1);
         vm.startPrank(bob);
         usdc.approve(address(userRouter), 200e6);
-        uint256 out = userRouter.buy(zcat, 200e6, _hop(address(usdc), address(zec), zecUsdcKey), 1, block.timestamp + 60);
+        uint256 out =
+            userRouter.buy(zcat, 200e6, _hop(address(usdc), address(zec), zecUsdcKey), 1, block.timestamp + 60);
         vm.stopPrank();
         assertGt(out, 0);
         assertGt(ReactorToken(zcat).balanceOf(bob), 0);
     }
 
     function test_unboundExecutorRejectedUntilBound() public {
-        InstantCurve fresh = new InstantCurve(IInstantFactory(address(factory)), hook, router, vault, registry, pm, auth);
+        InstantCurve fresh =
+            new InstantCurve(IInstantFactory(address(factory)), hook, router, vault, registry, pm, auth);
         vm.expectRevert(InstantCurve.NotRouter.selector);
         fresh.buyRouted(address(usdc), attacker, 1, 1);
     }

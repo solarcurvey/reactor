@@ -32,7 +32,7 @@ async function main() {
   const hash = await wallet.writeContract({
     address: factory,
     abi: factoryAbi,
-    functionName: "instantLaunch",
+    functionName: "instantLaunch", // local seed must pass LaunchAuthorization — use helperInstant / UI
     args: [
       {
         name: "Neon",

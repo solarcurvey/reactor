@@ -34,7 +34,7 @@ contract CurveRoutingTest is Base {
         uint256 pay = 105_600_000;
         vm.startPrank(alice);
         usdc.approve(address(factory), pay);
-        factory.launchAndBuy(_p("FEE", address(usdc), pay), true, 1);
+        _launchBuy(_p("FEE", address(usdc), pay), true, 1);
         vm.stopPrank();
         (uint256 h, uint256 f, uint256 c, uint256 fee) = FeeMath.split(pay);
         assertEq(fee, (pay * 350) / 10_000);
@@ -111,7 +111,7 @@ contract CurveRoutingTest is Base {
     }
 
     function test_usdcQuotedBuyWithUsdcIsDirectQuoteLeg() public {
-        (address token,) = factory.instantLaunch(_p("USD", address(usdc), 0));
+        (address token,) = _instant(_p("USD", address(usdc), 0));
         uint256 real0 = curve.realQuoteOf(token);
         vm.startPrank(alice);
         usdc.approve(address(curve), 400e6);
@@ -123,7 +123,7 @@ contract CurveRoutingTest is Base {
     }
 
     function test_productionTop10SkipsUngraduatedThenBuysAfterGrad() public {
-        (address token,) = factory.instantLaunch(_p("T10", address(usdc), 0));
+        (address token,) = _instant(_p("T10", address(usdc), 0));
         _buy(alice, token, address(usdc), 1_000e6);
         address[] memory t = new address[](1);
         uint256[] memory w = new uint256[](1);
@@ -147,12 +147,15 @@ contract CurveRoutingTest is Base {
 
     function test_selfBurnDoesNotCreditHolderRewards() public {
         vm.prank(alice);
-        (address token,) = factory.launchStandard(_p("SB", address(usdc), 0));
+        (address token,) = _standard(_p("SB", address(usdc), 0));
         _buy(bob, token, address(usdc), 800e6);
         assertEq(ReactorToken(token).lifetimeRewards(), 0);
         assertGt(selfBurn.accrued(token), 0);
         assertGt(flywheel.quoteAccrued(address(usdc)), 0);
         assertGt(buyback.accrued(address(usdc)), 0);
-        assertEq(selfBurn.accrued(token) + flywheel.quoteAccrued(address(usdc)) + buyback.accrued(address(usdc)), (800e6 * 350) / 10_000);
+        assertEq(
+            selfBurn.accrued(token) + flywheel.quoteAccrued(address(usdc)) + buyback.accrued(address(usdc)),
+            (800e6 * 350) / 10_000
+        );
     }
 }

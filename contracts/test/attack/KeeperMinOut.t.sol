@@ -12,7 +12,7 @@ import {RouteGuard} from "../../src/libraries/RouteGuard.sol";
 contract KeeperMinOutTest is Base {
     function _std(string memory s) internal returns (address token) {
         vm.prank(alice);
-        (token,) = factory.launchStandard(
+        (token,) = _standard(
             ReactorFactory.InstantParams({
                 name: s,
                 symbol: s,

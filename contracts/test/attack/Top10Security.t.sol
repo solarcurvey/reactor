@@ -10,7 +10,7 @@ import {RouteGuard} from "../../src/libraries/RouteGuard.sol";
 /// @notice Structural Top-10 / Keeper security. Contracts do not verify market caps.
 contract Top10SecurityTest is Base {
     function _instantUsdc(string memory symbol) internal returns (address token) {
-        (token,) = factory.instantLaunch(
+        (token,) = _instant(
             ReactorFactory.InstantParams({
                 name: symbol,
                 symbol: symbol,

@@ -9,7 +9,7 @@ import {QuoteAssetRegistry} from "../../src/QuoteAssetRegistry.sol";
 import {RouteGuard} from "../../src/libraries/RouteGuard.sol";
 import {FeeMath} from "../../src/libraries/FeeMath.sol";
 import {Top10Ranker} from "../../src/libraries/Top10Ranker.sol";
-import {LaunchPricing} from "../../src/libraries/LaunchPricing.sol";
+import {LaunchAuthorization} from "../../src/libraries/LaunchAuthorization.sol";
 import {CurveMath} from "../../src/libraries/CurveMath.sol";
 
 /// @notice Authoritative current-architecture E2E. Replaces obsolete hookless/3%/immediate-v4 demos.
@@ -38,7 +38,8 @@ contract CurrentArchitectureTest is Base {
 
         vm.startPrank(bob);
         usdc.approve(address(userRouter), 200e6);
-        uint256 nestedOut = userRouter.buy(zcat, 200e6, _hop(address(usdc), address(zec), zecUsdcKey), 1, type(uint256).max);
+        uint256 nestedOut =
+            userRouter.buy(zcat, 200e6, _hop(address(usdc), address(zec), zecUsdcKey), 1, type(uint256).max);
         assertGt(nestedOut, 0);
         vm.stopPrank();
 
@@ -49,7 +50,8 @@ contract CurrentArchitectureTest is Base {
 
         // Signed nested pricing (ZCAT/ZEC × ZEC/USD). No ZCAT/USDC pool required.
         uint256 vq0 = CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, 18);
-        (LaunchPricing.Auth memory priced, bytes memory sig) = _priceAuthFor(alice, zcat, vq0);
+        (LaunchAuthorization.Auth memory priced, bytes memory sig) =
+            _launchAuthFor(alice, "CAT", zcat, vq0, LaunchAuthorization.INSTANT_CURVE_V1);
 
         vm.prank(alice);
         (address cat,) = factory.launchStandardPriced(
@@ -106,7 +108,7 @@ contract CurrentArchitectureTest is Base {
         assertGt(settled, 1);
         assertEq(flywheel.lifetimeAccrued(), fly0);
 
-        (address usdcTok,) = factory.instantLaunch(
+        (address usdcTok,) = _instant(
             ReactorFactory.InstantParams({
                 name: "TOP",
                 symbol: "TOP",

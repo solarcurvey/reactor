@@ -18,6 +18,8 @@ import {IFeeSink} from "../src/interfaces/IFeeSink.sol";
 import {IReactorSwapper} from "../src/interfaces/IReactorSwapper.sol";
 import {QuoteAssetRegistry} from "../src/QuoteAssetRegistry.sol";
 import {TestCORE} from "../src/TestCORE.sol";
+import {CoreToken} from "../src/CoreToken.sol";
+import {TickerRegistry} from "../src/TickerRegistry.sol";
 import {MockERC20} from "../src/MockERC20.sol";
 import {ReactorConstants} from "../src/ReactorConstants.sol";
 import {HookMiner} from "../src/libraries/HookMiner.sol";
@@ -41,6 +43,7 @@ contract Deploy is Script {
         PoolManager pm;
         QuoteAssetRegistry registry;
         TestCORE core;
+        TickerRegistry tickers;
         MockERC20 usdc;
         MockERC20 zec;
         MockERC20 btc;
@@ -93,6 +96,7 @@ contract Deploy is Script {
         // launchesPaused starts true. Production Safe unpauses after genesis batch.
         a.pm = new PoolManager(deployer);
         a.registry = new QuoteAssetRegistry(a.auth);
+        a.tickers = new TickerRegistry(a.auth);
         a.core = new TestCORE(deployer);
         a.usdc = new MockERC20("USD Coin", "USDC", 6, 0, deployer);
         a.zec = new MockERC20("Mock ZEC", "ZEC", 8, 0, deployer);
@@ -109,18 +113,14 @@ contract Deploy is Script {
 
     function _registerQuotes(Addresses memory a) internal {
         a.registry.setUsdc(address(a.usdc));
-        a.registry.register(
-            address(a.usdc), "USDC", "USD Coin", 6, "/icons/usdc.svg", QuoteAssetRegistry.Category.Stablecoins
-        );
-        a.registry.register(
-            address(a.zec), "ZEC", "Mock ZEC", 8, "/icons/zec.svg", QuoteAssetRegistry.Category.Crypto
-        );
-        a.registry.register(
-            address(a.btc), "BTC", "Mock BTC", 8, "/icons/btc.svg", QuoteAssetRegistry.Category.Crypto
-        );
-        a.registry.register(
-            address(a.nvda), "NVDA", "Mock NVDA", 18, "/icons/nvda.svg", QuoteAssetRegistry.Category.Stocks
-        );
+        a.registry
+            .register(
+                address(a.usdc), "USDC", "USD Coin", 6, "/icons/usdc.svg", QuoteAssetRegistry.Category.Stablecoins
+            );
+        a.registry.register(address(a.zec), "ZEC", "Mock ZEC", 8, "/icons/zec.svg", QuoteAssetRegistry.Category.Crypto);
+        a.registry.register(address(a.btc), "BTC", "Mock BTC", 8, "/icons/btc.svg", QuoteAssetRegistry.Category.Crypto);
+        a.registry
+            .register(address(a.nvda), "NVDA", "Mock NVDA", 18, "/icons/nvda.svg", QuoteAssetRegistry.Category.Stocks);
         a.registry.setBuybackRoute(address(a.usdc), true, false);
         a.registry.setBuybackRoute(address(a.zec), true, true);
         a.registry.setBuybackRoute(address(a.btc), true, true);
@@ -160,15 +160,19 @@ contract Deploy is Script {
             ReactorConstants.DEFAULT_BUYBACK_THRESHOLD
         );
         a.hook.bindBuyback(a.buyback);
-        a.flywheel = new FlywheelVault(a.auth, address(a.hook), address(a.usdc), address(a.core), a.pm, address(a.router));
+        a.flywheel =
+            new FlywheelVault(a.auth, address(a.hook), address(a.usdc), address(a.core), a.pm, address(a.router));
         a.hook.bindFlywheel(IFeeSink(address(a.flywheel)));
-        a.factory = new ReactorFactory(a.pm, a.hook, a.router, a.vault, a.registry, address(a.core), a.auth);
+        a.auth.bindTickerRegistry(address(a.tickers));
+        a.factory = new ReactorFactory(a.pm, a.hook, a.router, a.vault, a.registry, address(a.core), a.auth, a.tickers);
+        a.auth.authorizeFactory(address(a.factory), 1);
         a.hook.bindFactory(address(a.factory));
         a.vault.bindFactory(address(a.factory));
         a.registry.bindFactory(address(a.factory));
         a.flywheel.bind(a.factory);
         a.buyback.bindFactory(address(a.factory));
-        a.curve = new InstantCurve(IInstantFactory(address(a.factory)), a.hook, a.router, a.vault, a.registry, a.pm, a.auth);
+        a.curve =
+            new InstantCurve(IInstantFactory(address(a.factory)), a.hook, a.router, a.vault, a.registry, a.pm, a.auth);
         a.selfBurn = new SelfBurnVault(a.auth, address(a.factory), address(a.hook), a.curve, a.router);
         a.factory.bindCurve(a.curve, a.selfBurn);
         a.hook.bindCurve(address(a.curve));
@@ -182,7 +186,8 @@ contract Deploy is Script {
         a.router.setProtocolVault(address(a.coreBuyback), true);
         a.router.setProtocolVault(address(a.protocolAdapter), true);
         a.router.sealProtocolVaults();
-        a.userRouter = new UserRouteExecutor(a.auth, a.hook, IReactorSwapper(address(a.router)), a.curve, address(a.usdc));
+        a.userRouter =
+            new UserRouteExecutor(a.auth, a.hook, IReactorSwapper(address(a.router)), a.curve, address(a.usdc));
         a.curve.bindRouteExecutor(address(a.userRouter));
         _verifyGenesis(a);
         _tinyBuyback(a);
@@ -220,14 +225,17 @@ contract Deploy is Script {
             a.registry,
             ReactorConstants.DEFAULT_BUYBACK_THRESHOLD
         );
-        a.flywheel = new FlywheelVault(a.auth, address(a.hook), address(a.usdc), address(a.core), a.pm, address(a.router));
-        a.factory = new ReactorFactory(a.pm, a.hook, a.router, a.vault, a.registry, address(a.core), a.auth);
-        a.curve = new InstantCurve(IInstantFactory(address(a.factory)), a.hook, a.router, a.vault, a.registry, a.pm, a.auth);
+        a.flywheel =
+            new FlywheelVault(a.auth, address(a.hook), address(a.usdc), address(a.core), a.pm, address(a.router));
+        a.factory = new ReactorFactory(a.pm, a.hook, a.router, a.vault, a.registry, address(a.core), a.auth, a.tickers);
+        a.curve =
+            new InstantCurve(IInstantFactory(address(a.factory)), a.hook, a.router, a.vault, a.registry, a.pm, a.auth);
         a.selfBurn = new SelfBurnVault(a.auth, address(a.factory), address(a.hook), a.curve, a.router);
         a.coreBuyback = new CoreBuybackExecutor(
             a.auth, a.hook, IReactorSwapper(address(a.router)), address(a.core), address(a.usdc), address(a.buyback)
         );
-        a.userRouter = new UserRouteExecutor(a.auth, a.hook, IReactorSwapper(address(a.router)), a.curve, address(a.usdc));
+        a.userRouter =
+            new UserRouteExecutor(a.auth, a.hook, IReactorSwapper(address(a.router)), a.curve, address(a.usdc));
         require(a.auth.launchesPaused(), "LAUNCHES_MUST_STAY_PAUSED");
         require(a.curve.routeExecutor() == address(0), "EXECUTOR_MUST_WAIT_FOR_SAFE");
         require(a.core.balanceOf(a.auth.guardian()) == 0, "GUARDIAN_CORE");
@@ -298,7 +306,8 @@ contract Deploy is Script {
         console2.log("ZEC", address(a.zec));
         console2.log("BTC", address(a.btc));
         console2.log("NVDA", address(a.nvda));
-        console2.log("TestCORE", address(a.core));
+        console2.log("CoreToken", address(a.core));
+        console2.log("TickerRegistry", address(a.tickers));
         console2.log("Vault", address(a.vault));
         console2.log("Router", address(a.router));
         console2.log("Hook", address(a.hook));
@@ -330,9 +339,12 @@ contract Deploy is Script {
             _kv("Guardian", address(a.auth)),
             _kv("Keeper", a.auth.keeper()),
             _kv("PricingSigner", a.auth.pricingSigner()),
+            _kv("LaunchSigner", a.auth.launchSigner()),
             _kv("PoolManager", address(a.pm)),
             _kv("QuoteAssetRegistry", address(a.registry)),
+            _kv("TickerRegistry", address(a.tickers)),
             _kv("TestCORE", address(a.core)),
+            _kv("CoreToken", address(a.core)),
             _kv("USDC", address(a.usdc)),
             _kv("ZEC", address(a.zec)),
             _kv("BTC", address(a.btc)),

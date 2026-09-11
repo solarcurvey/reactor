@@ -116,7 +116,17 @@ contract SafeGenesisTest is Base {
 
     function _verifyWired(ReactorGuardian g, address safe, address k, address pricing, address deployer) external view {
         GenesisVerify.verifyFullyWired(
-            g, safe, k, pricing, deployer, address(v4Adapter), address(protocolAdapter), address(factory), address(curve), address(selfBurn), address(userRouter)
+            g,
+            safe,
+            k,
+            pricing,
+            deployer,
+            address(v4Adapter),
+            address(protocolAdapter),
+            address(factory),
+            address(curve),
+            address(selfBurn),
+            address(userRouter)
         );
     }
 }

@@ -16,6 +16,14 @@ test("reactor flywheel page", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Top-10 flywheel/i })).toBeVisible();
 });
 
+test("docs are in primary nav", async ({ page }) => {
+  await page.goto("/docs");
+  await expect(page.getByRole("heading", { name: /How REACTOR works/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Docs$/ })).toBeVisible();
+  await page.getByRole("link", { name: "Traders" }).first().click();
+  await expect(page.getByRole("heading", { name: /For traders/i })).toBeVisible();
+});
+
 test("token detail is not the homepage", async ({ page }) => {
   await page.goto("/token/0x1111111111111111111111111111111111110001");
   await expect(page.getByRole("heading", { name: /Zcash Cat|Token not found/i })).toBeVisible();

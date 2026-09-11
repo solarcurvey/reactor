@@ -121,7 +121,7 @@ contract SecurityTest is Base {
     function test_maliciousQuoteNotLaunchable() public {
         MockERC20 evil = new MockERC20("EVIL", "EVIL", 18, 0, address(this));
         vm.expectRevert();
-        factory.instantLaunch(
+        _instant(
             ReactorFactory.InstantParams({
                 name: "X",
                 symbol: "X",
@@ -144,7 +144,7 @@ contract SecurityTest is Base {
         registry.register(address(orphan), "ORPH", "Orphan", 6, "", QuoteAssetRegistry.Category.Crypto);
         // no buyback route → cannot launch
         vm.expectRevert();
-        factory.instantLaunch(
+        _instant(
             ReactorFactory.InstantParams({
                 name: "O",
                 symbol: "O",
@@ -163,7 +163,7 @@ contract SecurityTest is Base {
     }
 
     function test_manipulatedCoreSpotDoesNotDrain() public {
-        (address ucat,) = factory.instantLaunch(
+        (address ucat,) = _instant(
             ReactorFactory.InstantParams({
                 name: "U",
                 symbol: "U",
@@ -196,7 +196,7 @@ contract SecurityTest is Base {
     }
 
     function test_staleRefAndCooldown() public {
-        (address ucat,) = factory.instantLaunch(
+        (address ucat,) = _instant(
             ReactorFactory.InstantParams({
                 name: "U2",
                 symbol: "U2",
@@ -226,7 +226,7 @@ contract SecurityTest is Base {
 
     function test_decimals618AndMultiMarketBurn() public {
         address zcat = _instantZcat(80_000e8);
-        (address giga,) = factory.instantLaunch(
+        (address giga,) = _instant(
             ReactorFactory.InstantParams({
                 name: "GIGA",
                 symbol: "GIGA",
@@ -283,7 +283,7 @@ contract SecurityTest is Base {
     }
 
     function test_fairEarlyClaimerDoesNotSteal() public {
-        (address token, uint256 fairId) = factory.createFairLaunch(
+        (address token, uint256 fairId) = _fair(
             ReactorFactory.FairParams({
                 name: "FairDuo",
                 symbol: "FDUO",
@@ -339,7 +339,7 @@ contract SecurityTest is Base {
 
     function test_fairAuctionBpsLockedAndPriceContinuity() public {
         vm.expectRevert(ReactorFactory.AuctionBpsLocked.selector);
-        factory.createFairLaunch(
+        _fair(
             ReactorFactory.FairParams({
                 name: "Bad",
                 symbol: "BAD",
@@ -359,7 +359,7 @@ contract SecurityTest is Base {
     }
 
     function test_repeatFinalizeReverts() public {
-        (, uint256 fairId) = factory.createFairLaunch(
+        (, uint256 fairId) = _fair(
             ReactorFactory.FairParams({
                 name: "R",
                 symbol: "R",

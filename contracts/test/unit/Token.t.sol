@@ -70,7 +70,7 @@ contract TokenTest is Base {
     }
 
     function test_usdcSixDecimalsRawMath() public {
-        (address token,) = factory.instantLaunch(
+        (address token,) = _instant(
             ReactorFactory.InstantParams({
                 name: "USD Cat",
                 symbol: "UCAT",

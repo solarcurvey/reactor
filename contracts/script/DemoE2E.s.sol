@@ -10,6 +10,8 @@ import {MockERC20} from "../src/MockERC20.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {Currency} from "v4-core/types/Currency.sol";
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
+import {LaunchAuthorization} from "../src/libraries/LaunchAuthorization.sol";
+import {Ticker} from "../src/libraries/Ticker.sol";
 
 /// @notice Post-deploy economic loop. Reads addresses from env.
 contract DemoE2E is Script {
@@ -38,22 +40,30 @@ contract DemoE2E is Script {
         zec.mint(bob, 1_000_000e8);
         usdc.mint(alice, 1_000_000e6);
 
-        (address zcat,) = factory.instantLaunch(
-            ReactorFactory.InstantParams({
-                name: "Zcash Cat",
-                symbol: "ZCAT",
-                decimals: 18,
-                supply: 1_000_000_000 ether,
-                quote: zecAddr,
-                fdvQuoteRaw: 80_000e8,
-                devBuyQuote: 0,
-                image: "/metadata/zcat.svg",
-                description: "Official REACTOR instant launch against Mock ZEC.",
-                website: "https://reactor.local",
-                twitter: "",
-                telegram: ""
-            })
+        ReactorFactory.InstantParams memory zp = ReactorFactory.InstantParams({
+            name: "Zcash Cat",
+            symbol: "ZCAT",
+            decimals: 18,
+            supply: 1_000_000_000 ether,
+            quote: zecAddr,
+            fdvQuoteRaw: 80_000e8,
+            devBuyQuote: 0,
+            image: "/metadata/zcat.svg",
+            description: "Official REACTOR instant launch against Mock ZEC.",
+            website: "https://reactor.local",
+            twitter: "",
+            telegram: ""
+        });
+        (LaunchAuthorization.Auth memory za, bytes memory zs) = _sign(
+            factory,
+            pk,
+            alice,
+            zecAddr,
+            "ZCAT",
+            factory.virtualQuote0ForUsd(zecAddr, 50e6),
+            LaunchAuthorization.INSTANT_CURVE_V1
         );
+        (address zcat,) = factory.instantLaunch(zp, za, zs);
         _buy(router, hookAddr, zcat, zecAddr, 5_000e8, alice);
         vm.stopBroadcast();
 
@@ -72,23 +82,24 @@ contract DemoE2E is Script {
         console2.log("ZCAT pending alice", ReactorToken(zcat).pendingRewards(alice));
         console2.log("buyback ZEC", buyback.accrued(zecAddr));
 
-        (address fcat, uint256 fairId) = factory.createFairLaunch(
-            ReactorFactory.FairParams({
-                name: "Fair Cat",
-                symbol: "FCAT",
-                decimals: 18,
-                supply: 1_000_000_000 ether,
-                quote: zecAddr,
-                duration: 1,
-                auctionBps: 5_000,
-                minRaise: 0,
-                image: "",
-                description: "Fair launch demo",
-                website: "",
-                twitter: "",
-                telegram: ""
-            })
-        );
+        ReactorFactory.FairParams memory fp = ReactorFactory.FairParams({
+            name: "Fair Cat",
+            symbol: "FCAT",
+            decimals: 18,
+            supply: 1_000_000_000 ether,
+            quote: zecAddr,
+            duration: 1,
+            auctionBps: 5_000,
+            minRaise: 0,
+            image: "",
+            description: "Fair launch demo",
+            website: "",
+            twitter: "",
+            telegram: ""
+        });
+        (LaunchAuthorization.Auth memory fa, bytes memory fs) =
+            _sign(factory, pk, alice, zecAddr, "FCAT", 0, LaunchAuthorization.FAIR_V1);
+        (address fcat, uint256 fairId) = factory.createFairLaunch(fp, fa, fs);
         zec.approve(factoryAddr, 1_000e8);
         factory.bid(fairId, 1_000e8);
         vm.stopBroadcast();
@@ -106,6 +117,32 @@ contract DemoE2E is Script {
         console2.log("FCAT", fcat);
         console2.log("fairId", fairId);
         vm.stopBroadcast();
+    }
+
+    function _sign(
+        ReactorFactory factory,
+        uint256 pk,
+        address creator,
+        address quote,
+        string memory symbol,
+        uint256 vq0,
+        bytes32 curveConfig
+    ) internal view returns (LaunchAuthorization.Auth memory a, bytes memory sig) {
+        uint8 dec = IERC20Dec(quote).decimals();
+        string memory ticker = Ticker.normalize(symbol);
+        a = LaunchAuthorization.Auth({
+            factory: address(factory),
+            creator: creator,
+            quote: quote,
+            quoteDecimals: dec,
+            virtualQuote0: vq0,
+            curveConfig: curveConfig,
+            tickerHash: Ticker.hashCanonical(ticker),
+            authId: keccak256(abi.encode(quote, ticker, creator, block.timestamp)),
+            deadline: block.timestamp + 15 minutes
+        });
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, LaunchAuthorization.digest(factory.authDomain(), a));
+        sig = abi.encodePacked(r, s, v);
     }
 
     function _buy(ReactorRouter router, address hook, address token, address quote, uint256 amt, address who) internal {
@@ -142,4 +179,8 @@ contract DemoE2E is Script {
 
 interface IERC20Like {
     function approve(address, uint256) external returns (bool);
+}
+
+interface IERC20Dec {
+    function decimals() external view returns (uint8);
 }

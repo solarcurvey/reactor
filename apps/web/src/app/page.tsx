@@ -56,6 +56,9 @@ export default function HomePage() {
           <Button asChild size="sm" variant="outline">
             <Link href="/reactor">THE REACTOR</Link>
           </Button>
+          <Button asChild size="sm" variant="outline">
+            <Link href="/docs">How it works</Link>
+          </Button>
         </div>
       </section>
 

@@ -8,7 +8,7 @@ import {UserRouteExecutor} from "../../src/UserRouteExecutor.sol";
 
 contract UserRouteTest is Base {
     function test_userBuySellUsdcOfficialLeg() public {
-        (address token,) = factory.instantLaunch(
+        (address token,) = _instant(
             ReactorFactory.InstantParams({
                 name: "UR",
                 symbol: "UR",
@@ -36,7 +36,7 @@ contract UserRouteTest is Base {
     }
 
     function test_deadlineReverts() public {
-        (address token,) = factory.instantLaunch(
+        (address token,) = _instant(
             ReactorFactory.InstantParams({
                 name: "DL",
                 symbol: "DL",
@@ -61,7 +61,7 @@ contract UserRouteTest is Base {
     }
 
     function test_minFinalOutReverts() public {
-        (address token,) = factory.instantLaunch(
+        (address token,) = _instant(
             ReactorFactory.InstantParams({
                 name: "MO",
                 symbol: "MO",
@@ -93,7 +93,7 @@ contract UserRouteTest is Base {
     }
 
     function test_userBuySellUsdcWhileBonding() public {
-        (address token,) = factory.instantLaunch(
+        (address token,) = _instant(
             ReactorFactory.InstantParams({
                 name: "BD",
                 symbol: "BD",
@@ -129,12 +129,12 @@ contract UserRouteTest is Base {
 
         vm.startPrank(bob);
         usdc.approve(address(userRouter), 200e6);
-        uint256 out = userRouter.buy(token, 200e6, _hop(address(usdc), address(zec), zecUsdcKey), 1, block.timestamp + 60);
+        uint256 out =
+            userRouter.buy(token, 200e6, _hop(address(usdc), address(zec), zecUsdcKey), 1, block.timestamp + 60);
         assertGt(out, 0);
         ReactorToken(token).approve(address(userRouter), out / 2);
-        uint256 usdcOut = userRouter.sell(
-            token, out / 2, _hop(address(zec), address(usdc), zecUsdcKey), 1, 1, block.timestamp + 60
-        );
+        uint256 usdcOut =
+            userRouter.sell(token, out / 2, _hop(address(zec), address(usdc), zecUsdcKey), 1, 1, block.timestamp + 60);
         assertGt(usdcOut, 0);
         vm.stopPrank();
     }
@@ -143,25 +143,23 @@ contract UserRouteTest is Base {
         address zcat = _instantZcat(1);
         vm.startPrank(bob);
         usdc.approve(address(userRouter), 300e6);
-        uint256 out = userRouter.buy(zcat, 300e6, _hop(address(usdc), address(zec), zecUsdcKey), 1, block.timestamp + 60);
+        uint256 out =
+            userRouter.buy(zcat, 300e6, _hop(address(usdc), address(zec), zecUsdcKey), 1, block.timestamp + 60);
         ReactorToken(zcat).approve(address(userRouter), out);
         // 1000e8 is 1000 ZEC. A ~$300 USDC buy cannot clear that as the first-leg ZEC floor.
         // Reusing a USDC-6 min (e.g. 10e6) as minQuoteOut would be a different unit.
         uint256 snap = vm.snapshotState();
         vm.expectRevert();
-        userRouter.sell(
-            zcat, out, _hop(address(zec), address(usdc), zecUsdcKey), 1_000e8, 1, block.timestamp + 60
-        );
+        userRouter.sell(zcat, out, _hop(address(zec), address(usdc), zecUsdcKey), 1_000e8, 1, block.timestamp + 60);
         vm.revertToState(snap);
-        uint256 usdcOut = userRouter.sell(
-            zcat, out / 2, _hop(address(zec), address(usdc), zecUsdcKey), 1, 1, block.timestamp + 60
-        );
+        uint256 usdcOut =
+            userRouter.sell(zcat, out / 2, _hop(address(zec), address(usdc), zecUsdcKey), 1, 1, block.timestamp + 60);
         assertGt(usdcOut, 0);
         vm.stopPrank();
     }
 
     function test_sellMinQuoteOutZeroReverts() public {
-        (address token,) = factory.instantLaunch(
+        (address token,) = _instant(
             ReactorFactory.InstantParams({
                 name: "ZQ",
                 symbol: "ZQ",
@@ -188,7 +186,7 @@ contract UserRouteTest is Base {
     }
 
     function test_sellSandwichOnOfficialPoolReverts() public {
-        (address token,) = factory.instantLaunch(
+        (address token,) = _instant(
             ReactorFactory.InstantParams({
                 name: "SW",
                 symbol: "SW",
@@ -232,7 +230,7 @@ contract UserRouteTest is Base {
     }
 
     function test_buySandwichOnOfficialPoolReverts() public {
-        (address token,) = factory.instantLaunch(
+        (address token,) = _instant(
             ReactorFactory.InstantParams({
                 name: "BW",
                 symbol: "BW",

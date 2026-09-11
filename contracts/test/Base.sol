@@ -6,6 +6,7 @@ import {PoolManager} from "v4-core/PoolManager.sol";
 import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
+import {PoolId} from "v4-core/types/PoolId.sol";
 import {Currency} from "v4-core/types/Currency.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {Hooks} from "v4-core/libraries/Hooks.sol";
@@ -18,6 +19,10 @@ import {FlywheelVault} from "../src/FlywheelVault.sol";
 import {IFeeSink} from "../src/interfaces/IFeeSink.sol";
 import {QuoteAssetRegistry} from "../src/QuoteAssetRegistry.sol";
 import {TestCORE} from "../src/TestCORE.sol";
+import {CoreToken} from "../src/CoreToken.sol";
+import {TickerRegistry} from "../src/TickerRegistry.sol";
+import {Ticker} from "../src/libraries/Ticker.sol";
+import {LaunchAuthorization} from "../src/libraries/LaunchAuthorization.sol";
 import {MockERC20} from "../src/MockERC20.sol";
 import {ReactorToken} from "../src/ReactorToken.sol";
 import {ReactorConstants} from "../src/ReactorConstants.sol";
@@ -46,6 +51,7 @@ contract Base is Test {
     PoolManager public pm;
     QuoteAssetRegistry public registry;
     TestCORE public core;
+    TickerRegistry public tickers;
     MockERC20 public usdc;
     MockERC20 public zec;
     MockERC20 public btc;
@@ -90,6 +96,9 @@ contract Base is Test {
         auth = new ReactorGuardian(guardian, keeper);
         auth.pauseLaunches(false);
         auth.setPricingSigner(pricingSigner);
+        auth.setLaunchSigner(pricingSigner);
+        tickers = new TickerRegistry(auth);
+        auth.bindTickerRegistry(address(tickers));
 
         pm = new PoolManager(address(this));
         registry = new QuoteAssetRegistry(auth);
@@ -159,7 +168,8 @@ contract Base is Test {
         flywheel = new FlywheelVault(auth, address(hook), address(usdc), address(core), pm, address(router));
         hook.bindFlywheel(IFeeSink(address(flywheel)));
 
-        factory = new ReactorFactory(pm, hook, router, vault, registry, address(core), auth);
+        factory = new ReactorFactory(pm, hook, router, vault, registry, address(core), auth, tickers);
+        auth.authorizeFactory(address(factory), 1);
         hook.bindFactory(address(factory));
         vault.bindFactory(address(factory));
         registry.bindFactory(address(factory));
@@ -171,7 +181,9 @@ contract Base is Test {
         factory.bindCurve(curve, selfBurn);
         hook.bindCurve(address(curve));
         hook.bindSelfBurn(address(selfBurn));
-        coreBuyback = new CoreBuybackExecutor(auth, hook, IReactorSwapper(address(router)), address(core), address(usdc), address(buyback));
+        coreBuyback = new CoreBuybackExecutor(
+            auth, hook, IReactorSwapper(address(router)), address(core), address(usdc), address(buyback)
+        );
         buyback.bindExecutor(coreBuyback);
         router.setProtocolVault(address(selfBurn), true);
         router.setProtocolVault(address(flywheel), true);
@@ -237,8 +249,10 @@ contract Base is Test {
         returns (RouteGuard.Hop[] memory hops)
     {
         hops = new RouteGuard.Hop[](2);
-        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: a, tokenOut: b, minOut: 1, data: abi.encode(keyAb)});
-        hops[1] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: b, tokenOut: c, minOut: 1, data: abi.encode(keyBc)});
+        hops[0] =
+            RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: a, tokenOut: b, minOut: 1, data: abi.encode(keyAb)});
+        hops[1] =
+            RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: b, tokenOut: c, minOut: 1, data: abi.encode(keyBc)});
     }
 
     function _emptyHops() internal pure returns (RouteGuard.Hop[] memory hops) {
@@ -282,16 +296,16 @@ contract Base is Test {
         }
     }
 
-    function _priceAuth(address quote) internal view returns (LaunchPricing.Auth memory a, bytes memory sig) {
+    function _priceAuth(address quote) internal view returns (LaunchAuthorization.Auth memory a, bytes memory sig) {
         uint8 dec = IERC20Like(quote).decimals();
         uint256 vq0 = CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, dec);
-        return _priceAuthVq(quote, vq0);
+        return _launchAuthFor(address(this), "Z", quote, vq0, LaunchAuthorization.INSTANT_CURVE_V1);
     }
 
     function _priceAuthUsd(address quote, uint256 quoteUsd6)
         internal
         view
-        returns (LaunchPricing.Auth memory a, bytes memory sig)
+        returns (LaunchAuthorization.Auth memory a, bytes memory sig)
     {
         uint8 dec = IERC20Like(quote).decimals();
         uint256 vq0 = CurveMath.virtualQuote0ForUsd(ReactorConstants.DEFAULT_SUPPLY, dec, quoteUsd6);
@@ -301,30 +315,86 @@ contract Base is Test {
     function _priceAuthVq(address quote, uint256 vq0)
         internal
         view
-        returns (LaunchPricing.Auth memory a, bytes memory sig)
+        returns (LaunchAuthorization.Auth memory a, bytes memory sig)
     {
-        return _priceAuthFor(address(this), quote, vq0);
+        return _launchAuthFor(address(this), "Z", quote, vq0, LaunchAuthorization.INSTANT_CURVE_V1);
     }
 
     function _priceAuthFor(address creator, address quote, uint256 vq0)
         internal
         view
-        returns (LaunchPricing.Auth memory a, bytes memory sig)
+        returns (LaunchAuthorization.Auth memory a, bytes memory sig)
+    {
+        return _launchAuthFor(creator, "Z", quote, vq0, LaunchAuthorization.INSTANT_CURVE_V1);
+    }
+
+    function _launchAuth(string memory symbol, address quote)
+        internal
+        view
+        returns (LaunchAuthorization.Auth memory a, bytes memory sig)
     {
         uint8 dec = IERC20Like(quote).decimals();
-        a = LaunchPricing.Auth({
+        uint256 vq0 = quote == address(usdc) ? CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, dec) : 0;
+        if (quote != address(usdc)) vq0 = CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, dec);
+        return _launchAuthFor(address(this), symbol, quote, vq0, LaunchAuthorization.INSTANT_CURVE_V1);
+    }
+
+    function _fairAuth(string memory symbol, address quote)
+        internal
+        view
+        returns (LaunchAuthorization.Auth memory a, bytes memory sig)
+    {
+        return _launchAuthFor(address(this), symbol, quote, 0, LaunchAuthorization.FAIR_V1);
+    }
+
+    function _launchAuthFor(address creator, string memory symbol, address quote, uint256 vq0, bytes32 curveConfig)
+        internal
+        view
+        returns (LaunchAuthorization.Auth memory a, bytes memory sig)
+    {
+        string memory ticker = Ticker.normalize(symbol);
+        uint8 dec = IERC20Like(quote).decimals();
+        a = LaunchAuthorization.Auth({
             factory: address(factory),
             creator: creator,
             quote: quote,
             quoteDecimals: dec,
             virtualQuote0: vq0,
-            curveConfig: LaunchPricing.INSTANT_CURVE_V1,
-            salt: keccak256(abi.encode(quote, vq0, creator, block.timestamp, gasleft())),
+            curveConfig: curveConfig,
+            tickerHash: Ticker.hashCanonical(ticker),
+            authId: keccak256(abi.encode(quote, ticker, creator, block.timestamp, gasleft(), address(this))),
             deadline: block.timestamp + 15 minutes
         });
-        bytes32 digest = LaunchPricing.digest(factory.pricingDomain(), a);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, digest);
+        bytes32 d = LaunchAuthorization.digest(factory.authDomain(), a);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, d);
         sig = abi.encodePacked(r, s, v);
+    }
+
+    function _instant(ReactorFactory.InstantParams memory p) internal returns (address token, PoolId poolId) {
+        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuth(p.symbol, p.quote);
+        return factory.instantLaunch(p, a, sig);
+    }
+
+    function _standard(ReactorFactory.InstantParams memory p) internal returns (address token, PoolId poolId) {
+        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuth(p.symbol, p.quote);
+        return factory.launchStandard(p, a, sig);
+    }
+
+    function _launchBuy(ReactorFactory.InstantParams memory p, bool rewards, uint256 minOut)
+        internal
+        returns (address token, PoolId poolId, uint256 tokensOut)
+    {
+        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuth(p.symbol, p.quote);
+        return factory.launchAndBuy(p, rewards, minOut, a, sig);
+    }
+
+    function _fair(ReactorFactory.FairParams memory p) internal returns (address token, uint256 fairId) {
+        (LaunchAuthorization.Auth memory a, bytes memory sig) = _fairAuth(p.symbol, p.quote);
+        return factory.createFairLaunch(p, a, sig);
+    }
+
+    function helperInstant(ReactorFactory.InstantParams memory p) public returns (address token, PoolId poolId) {
+        return _instant(p);
     }
 
     function _protocolHop(address tokenIn, address tokenOut, PoolKey memory key)
@@ -338,17 +408,10 @@ contract Base is Test {
         });
     }
 
-    function _instantPriced(ReactorFactory.InstantParams memory p, bool rewards)
-        internal
-        returns (address token)
-    {
-        if (p.quote == address(usdc)) {
-            (token,) = rewards ? factory.instantLaunch(p) : factory.launchStandard(p);
-            return token;
-        }
-        (LaunchPricing.Auth memory a, bytes memory sig) = _priceAuth(p.quote);
-        if (rewards) (token,) = factory.instantLaunchPriced(p, a, sig);
-        else (token,) = factory.launchStandardPriced(p, a, sig);
+    function _instantPriced(ReactorFactory.InstantParams memory p, bool rewards) internal returns (address token) {
+        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuth(p.symbol, p.quote);
+        if (rewards) (token,) = factory.instantLaunch(p, a, sig);
+        else (token,) = factory.launchStandard(p, a, sig);
     }
 
     function _submitTop10(address token) internal {

@@ -41,7 +41,7 @@ contract CurveFreezeTest is Base {
     }
 
     function test_exploit_buyToThreshold_ready_sellMustRevert_thenGraduate() public {
-        (address token,) = factory.instantLaunch(_p("RDY"));
+        (address token,) = _instant(_p("RDY"));
         _fillToReady(alice, token);
 
         uint256 bal = ReactorToken(token).balanceOf(alice);
@@ -74,7 +74,7 @@ contract CurveFreezeTest is Base {
     }
 
     function test_oneBeforeReady_sellOk() public {
-        (address token,) = factory.instantLaunch(_p("PRE"));
+        (address token,) = _instant(_p("PRE"));
         uint256 target = curve.gradTargetOf(token);
         uint256 userPay = (target * 8_000) / 9_650;
         _bondToward(alice, token, address(usdc), userPay);
@@ -88,7 +88,7 @@ contract CurveFreezeTest is Base {
     }
 
     function test_exactTerminalBuyFreezes() public {
-        (address token,) = factory.instantLaunch(_p("EX"));
+        (address token,) = _instant(_p("EX"));
         uint256 target = curve.gradTargetOf(token);
         uint256 userPay = FeeMath.maxGrossForNet(target) + 10;
         vm.prank(alice);
@@ -105,7 +105,7 @@ contract CurveFreezeTest is Base {
     }
 
     function test_oversizedTerminalRefundsUnearnedFee() public {
-        (address token,) = factory.instantLaunch(_p("OV"));
+        (address token,) = _instant(_p("OV"));
         uint256 before = usdc.balanceOf(alice);
         uint256 pay = 100_000e6;
         vm.prank(alice);
@@ -125,7 +125,7 @@ contract CurveFreezeTest is Base {
     }
 
     function test_repeatGraduateReverts() public {
-        (address token,) = factory.instantLaunch(_p("RP"));
+        (address token,) = _instant(_p("RP"));
         _fillToReady(alice, token);
         curve.graduate(token);
         vm.expectRevert();
@@ -133,13 +133,13 @@ contract CurveFreezeTest is Base {
     }
 
     function test_sellBeforeReadyOk_afterReadyReverts() public {
-        (address token,) = factory.instantLaunch(_p("SL"));
+        (address token,) = _instant(_p("SL"));
         _buy(alice, token, address(usdc), 1_000e6);
         assertFalse(curve.readyOf(token));
         uint256 half = ReactorToken(token).balanceOf(alice) / 2;
         _sell(alice, token, address(usdc), half);
 
-        (address token2,) = factory.instantLaunch(_p("SL2"));
+        (address token2,) = _instant(_p("SL2"));
         _fillToReady(bob, token2);
         uint256 bobTok = ReactorToken(token2).balanceOf(bob);
         vm.startPrank(bob);
@@ -150,7 +150,7 @@ contract CurveFreezeTest is Base {
     }
 
     function test_noStrandedInventoryOrQuote() public {
-        (address token,) = factory.instantLaunch(_p("ST"));
+        (address token,) = _instant(_p("ST"));
         uint256 pay = 80_000e6;
         uint256 aliceBefore = usdc.balanceOf(alice);
         vm.prank(alice);
@@ -171,7 +171,7 @@ contract CurveFreezeTest is Base {
     }
 
     function test_sellThenRefillReachesReadyAndGraduate() public {
-        (address token,) = factory.instantLaunch(_p("RF"));
+        (address token,) = _instant(_p("RF"));
         _buy(alice, token, address(usdc), 1_000e6);
         _sell(alice, token, address(usdc), ReactorToken(token).balanceOf(alice) / 2);
         _fillToReady(bob, token);
@@ -180,7 +180,7 @@ contract CurveFreezeTest is Base {
     }
 
     function test_graduateRequiresReady() public {
-        (address token,) = factory.instantLaunch(_p("NR"));
+        (address token,) = _instant(_p("NR"));
         _buy(alice, token, address(usdc), 100e6);
         vm.expectRevert(InstantCurve.NotReady.selector);
         curve.graduate(token);

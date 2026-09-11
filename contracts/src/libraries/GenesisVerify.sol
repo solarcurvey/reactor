@@ -34,7 +34,9 @@ library GenesisVerify {
         QuoteAssetRegistry registry,
         ReactorRouter router
     ) internal view {
-        if (expectedSafe == address(0) || expectedSafe == deployer) revert DeployerPrivilege();
+        if (expectedSafe == address(0) || expectedSafe == deployer) {
+            revert DeployerPrivilege();
+        }
         if (auth.guardian() != expectedSafe) revert BadGuardian();
         if (auth.keeper() != expectedKeeper) revert BadKeeper();
         if (core.balanceOf(deployer) != 0) revert DeployerPrivilege();
@@ -45,10 +47,12 @@ library GenesisVerify {
         if (!auth.launchesPaused()) revert LaunchesNotPaused();
     }
 
-    function verifyAccounting(TestCORE core, CoreVesting vesting, CoreLiquidityVault coreLp, QuoteAssetRegistry registry)
-        internal
-        view
-    {
+    function verifyAccounting(
+        TestCORE core,
+        CoreVesting vesting,
+        CoreLiquidityVault coreLp,
+        QuoteAssetRegistry registry
+    ) internal view {
         if (core.totalSupply() != 1_000_000_000 ether) revert CoreAccounting();
         if (core.balanceOf(address(vesting)) != ReactorConstants.CORE_VESTING_AMOUNT) revert CoreAccounting();
         uint256 lpHeld = core.balanceOf(address(coreLp)) + core.balanceOf(address(coreLp.poolManager()));
@@ -79,7 +83,9 @@ library GenesisVerify {
         if (auth.guardian() != expectedSafe) revert BadGuardian();
         if (auth.keeper() != expectedKeeper) revert BadKeeper();
         if (expectedPricingSigner == address(0) || expectedPricingSigner == expectedKeeper) revert KeyReuse();
+        if (expectedPricingSigner == expectedSafe || expectedPricingSigner == deployer) revert KeyReuse();
         if (auth.pricingSigner() != expectedPricingSigner) revert KeyReuse();
+        if (auth.launchSigner() == expectedKeeper || auth.launchSigner() == expectedSafe) revert KeyReuse();
         if (!auth.adapterApproved(userAdapter) || !auth.adapterApproved(protocolAdapter)) revert Adapter();
         if (factory == address(0) || curve == address(0) || selfBurn == address(0) || routeExecutor == address(0)) {
             revert NotWired();

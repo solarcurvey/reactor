@@ -39,7 +39,7 @@ contract AttacksTest is Base {
         uint256 tok = ReactorToken(token).balanceOf(alice);
         _sell(alice, token, address(zec), tok / 5);
 
-        (address ucat,) = factory.instantLaunch(
+        (address ucat,) = _instant(
             ReactorFactory.InstantParams({
                 name: "Q",
                 symbol: "Q",
@@ -62,7 +62,7 @@ contract AttacksTest is Base {
     function test_fotQuoteNotRegistered() public {
         MockERC20 fot = new MockERC20("FoT", "FOT", 6, 0, address(this));
         vm.expectRevert();
-        factory.instantLaunch(
+        _instant(
             ReactorFactory.InstantParams({
                 name: "X",
                 symbol: "X",

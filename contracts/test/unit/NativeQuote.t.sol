@@ -5,12 +5,12 @@ import {Base} from "../Base.sol";
 import {ReactorFactory} from "../../src/ReactorFactory.sol";
 import {ReactorToken} from "../../src/ReactorToken.sol";
 import {QuoteAssetRegistry} from "../../src/QuoteAssetRegistry.sol";
-import {LaunchPricing} from "../../src/libraries/LaunchPricing.sol";
+import {LaunchAuthorization} from "../../src/libraries/LaunchAuthorization.sol";
 
 /// @notice Graduated REACTOR tokens become quotes without a per-token Guardian action.
 contract NativeQuoteTest is Base {
     function test_nestedQuoteWithoutGuardian() public {
-        (address parent,) = factory.instantLaunch(
+        (address parent,) = _instant(
             ReactorFactory.InstantParams({
                 name: "PARENT",
                 symbol: "PAR",
@@ -45,7 +45,9 @@ contract NativeQuoteTest is Base {
             twitter: "",
             telegram: ""
         });
-        (LaunchPricing.Auth memory a, bytes memory sig) = _priceAuthFor(alice, parent, factory.expectedVirtualQuote0(parent));
+        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuthFor(
+            alice, "CHL", parent, factory.expectedVirtualQuote0(parent), LaunchAuthorization.INSTANT_CURVE_V1
+        );
         vm.prank(alice);
         (address child,) = factory.instantLaunchPriced(cp, a, sig);
         assertEq(ReactorToken(child).quoteAsset(), parent);

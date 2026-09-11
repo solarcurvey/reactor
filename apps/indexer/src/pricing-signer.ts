@@ -11,6 +11,9 @@ import deployment from "./deployment.json" with { type: "json" };
 import { RateLimit, SECURITY_HEADERS, logLine, requestId } from "./obs.ts";
 import { valueQuoteUsd6, type QuoteNode } from "../../../packages/reactor/src/valuation.ts";
 import { fuseExternalUsd6 } from "../../../packages/reactor/src/valuation.ts";
+import { keccak256, toBytes } from "viem";
+import { normalizeTicker } from "../../../packages/reactor/src/ticker.ts";
+import { INSTANT_CURVE_V1, FAIR_V1 } from "../../../packages/reactor/src/launch-auth.ts";
 
 const PORT = Number(process.env.PRICING_SIGNER_PORT ?? 43149);
 const LOCAL = (process.env.REACTOR_ENV ?? "").toUpperCase() === "LOCAL";
@@ -43,14 +46,17 @@ const chain = defineChain({
 });
 const client = createPublicClient({ chain, transport: http(chain.rpcUrls.default.http[0]) });
 
-async function sign(body: { quote?: string; creator?: string }) {
+async function sign(body: { quote?: string; creator?: string; ticker?: string; mode?: string }) {
   const key = resolveKey();
   if (process.env.KEEPER_PRIVATE_KEY && process.env.KEEPER_PRIVATE_KEY === key) {
-    throw new Error("pricing signer must not reuse keeper key");
+    throw new Error("launch signer must not reuse keeper key");
   }
   const quote = body.quote as `0x${string}`;
   const creator = (body.creator ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
   if (!quote || !/^0x[0-9a-fA-F]{40}$/.test(quote)) throw new Error("quote required");
+  const ticker = normalizeTicker(body.ticker ?? "");
+  const registry = addrs.TickerRegistry as `0x${string}` | undefined;
+  if (!registry) throw new Error("TickerRegistry missing");
 
   const peg = await client.readContract({
     address: addrs.QuoteAssetRegistry as `0x${string}`,
@@ -58,7 +64,6 @@ async function sign(body: { quote?: string; creator?: string }) {
     functionName: "isUsdPegOne",
     args: [quote],
   });
-  if (peg) return { needsAuth: false, reason: "usdPegOne — unsigned Instant is allowed" };
 
   const quoteDecimals = Number(await client.readContract({ address: quote, abi: erc20Abi, functionName: "decimals" }));
   const now = Math.floor(Date.now() / 1000);
@@ -69,45 +74,50 @@ async function sign(body: { quote?: string; creator?: string }) {
   );
   const nodes = new Map<string, QuoteNode>([
     [(addrs.USDC ?? "").toLowerCase(), { token: addrs.USDC, symbol: "USDC", decimals: 6, usdPegOne: true }],
-    [quote.toLowerCase(), { token: quote, symbol: "Q", decimals: quoteDecimals, usdPegOne: false, externalUsd6: fused.usd6, externalOk: fused.ok }],
+    [quote.toLowerCase(), { token: quote, symbol: "Q", decimals: quoteDecimals, usdPegOne: Boolean(peg), externalUsd6: fused.usd6, externalOk: fused.ok || Boolean(peg) }],
   ]);
   const valued = valueQuoteUsd6(quote, nodes);
   if (!valued.ok || valued.usd6 === 0n) {
     throw new Error("cannot price quote — valuation unavailable, launch disabled");
   }
 
-  const [virtualQuote0, curveConfig] = await Promise.all([
-    client.readContract({ address: addrs.ReactorFactory as `0x${string}`, abi: factoryAbi, functionName: "virtualQuote0ForUsd", args: [quote, valued.usd6] }),
-    client.readContract({ address: addrs.ReactorFactory as `0x${string}`, abi: factoryAbi, functionName: "instantCurveConfig" }),
-  ]);
-
+  const virtualQuote0 = await client.readContract({
+    address: addrs.ReactorFactory as `0x${string}`,
+    abi: factoryAbi,
+    functionName: "virtualQuote0ForUsd",
+    args: [quote, valued.usd6],
+  });
+  const curveConfig = body.mode === "fair" ? FAIR_V1 : INSTANT_CURVE_V1;
   const account = privateKeyToAccount(key);
   const deadline = BigInt(now + 5 * 60);
-  const salt = (`0x${randomBytes(32).toString("hex")}`) as `0x${string}`;
+  const authId = (`0x${randomBytes(32).toString("hex")}`) as `0x${string}`;
+  const tickerHash = keccak256(toBytes(ticker));
   const signature = await account.signTypedData({
-    domain: { name: "REACTOR", version: "1", chainId: deployment.chainId, verifyingContract: addrs.ReactorFactory as `0x${string}` },
+    domain: { name: "REACTOR", version: "1", chainId: deployment.chainId, verifyingContract: registry },
     types: {
-      LaunchPricingAuthorization: [
+      LaunchAuthorization: [
         { name: "factory", type: "address" },
         { name: "creator", type: "address" },
         { name: "quote", type: "address" },
         { name: "quoteDecimals", type: "uint8" },
         { name: "virtualQuote0", type: "uint256" },
         { name: "curveConfig", type: "bytes32" },
-        { name: "salt", type: "bytes32" },
+        { name: "tickerHash", type: "bytes32" },
+        { name: "authId", type: "bytes32" },
         { name: "deadline", type: "uint256" },
         { name: "chainId", type: "uint256" },
       ],
     },
-    primaryType: "LaunchPricingAuthorization",
+    primaryType: "LaunchAuthorization",
     message: {
       factory: addrs.ReactorFactory as `0x${string}`,
       creator,
       quote,
       quoteDecimals,
-      virtualQuote0,
+      virtualQuote0: body.mode === "fair" ? 0n : virtualQuote0,
       curveConfig,
-      salt,
+      tickerHash,
+      authId,
       deadline,
       chainId: BigInt(deployment.chainId),
     },
@@ -115,14 +125,16 @@ async function sign(body: { quote?: string; creator?: string }) {
 
   return {
     needsAuth: true,
+    ticker,
     auth: {
       factory: addrs.ReactorFactory,
       creator,
       quote,
       quoteDecimals,
-      virtualQuote0: virtualQuote0.toString(),
+      virtualQuote0: (body.mode === "fair" ? 0n : virtualQuote0).toString(),
       curveConfig,
-      salt,
+      tickerHash,
+      authId,
       deadline: deadline.toString(),
     },
     signature,
@@ -130,7 +142,7 @@ async function sign(body: { quote?: string; creator?: string }) {
     quoteUsd6: valued.usd6.toString(),
     ancestry: valued.ancestry,
     ttlSec: 300,
-    trust: "Isolated pricing signer. Not an onchain USD oracle. Unique digest. usdPegOne-only $1 bypass.",
+    trust: "Isolated Launch Signer. Pricing + ticker + factory bound. Not an onchain USD oracle. Every launch including USDC.",
   };
 }
 
@@ -163,7 +175,7 @@ const server = createServer(async (req, res) => {
   const chunks: Buffer[] = [];
   for await (const c of req) chunks.push(c as Buffer);
   try {
-    const body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") as { quote?: string; creator?: string };
+    const body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") as { quote?: string; creator?: string; ticker?: string; mode?: string };
     const out = await sign(body);
     res.end(JSON.stringify({ ...out, request_id: rid }));
   } catch (e) {

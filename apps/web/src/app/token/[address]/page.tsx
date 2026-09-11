@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { OhlcvChart } from "@/components/ohlcv-chart";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { RewardsModule, TradePanel } from "@/components/trade-panel";
@@ -27,15 +27,6 @@ export default function TokenPage() {
   const { data: core } = useCoreStats();
   const [interval, setInterval] = useState<(typeof INTERVALS)[number]["id"]>("5m");
   const { data: ohlcv } = useCandles(address, interval);
-  const chart = useMemo(() => {
-    const pts: { t: number; price: number; real: boolean }[] = [];
-    for (const c of ohlcv?.candles ?? []) {
-      const price = Number(c.c ?? "0") / 1e18;
-      if (!(price > 0) || !(c.t > 0)) continue;
-      pts.push({ t: c.t, price, real: c.n > 0 });
-    }
-    return pts;
-  }, [ohlcv]);
 
   if (isLoading) return <p className="text-sm text-zinc-500">Loading token…</p>;
   if (!t) {
@@ -98,22 +89,12 @@ export default function TokenPage() {
               ))}
             </div>
           </div>
-          {chart.length === 0 ? (
+          {(ohlcv?.candles ?? []).length === 0 ? (
             <div className="grid h-[calc(100%-1.5rem)] place-items-center text-sm text-zinc-500">
               No indexed candles yet. Trades still settle onchain.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height="90%">
-              <AreaChart data={chart}>
-                <XAxis dataKey="t" hide />
-                <YAxis hide />
-                <Tooltip
-                  contentStyle={{ background: "#121418", border: "1px solid #222" }}
-                  labelFormatter={() => `Price (${t.quoteSymbol} per ${t.symbol})`}
-                />
-                <Area dataKey="price" stroke="#7ee8ff" fill="rgba(126,232,255,0.15)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            <OhlcvChart candles={ohlcv?.candles ?? []} />
           )}
         </Card>
         <Card className="mb-3 p-3" id="tape">

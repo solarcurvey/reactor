@@ -12,7 +12,7 @@ import {QuoteAssetRegistry} from "../../src/QuoteAssetRegistry.sol";
 /// @notice P0 §42 — routing / vault / Keeper compromise / Guardian (40 cases).
 contract GuardianP0Test is Base {
     function _usdcToken(string memory s) internal returns (address token) {
-        (token,) = factory.instantLaunch(
+        (token,) = _instant(
             ReactorFactory.InstantParams({
                 name: s,
                 symbol: s,
@@ -146,9 +146,27 @@ contract GuardianP0Test is Base {
 
     function test_42_11_threeHopsAllowedStructurally() public {
         RouteGuard.Hop[] memory hops = new RouteGuard.Hop[](3);
-        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(zec), tokenOut: address(btc), minOut: 1, data: abi.encode(zecUsdcKey)});
-        hops[1] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(btc), tokenOut: address(usdc), minOut: 1, data: abi.encode(btcUsdcKey)});
-        hops[2] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(usdc), tokenOut: address(core), minOut: 1, data: abi.encode(coreKey)});
+        hops[0] = RouteGuard.Hop({
+            adapter: address(v4Adapter),
+            tokenIn: address(zec),
+            tokenOut: address(btc),
+            minOut: 1,
+            data: abi.encode(zecUsdcKey)
+        });
+        hops[1] = RouteGuard.Hop({
+            adapter: address(v4Adapter),
+            tokenIn: address(btc),
+            tokenOut: address(usdc),
+            minOut: 1,
+            data: abi.encode(btcUsdcKey)
+        });
+        hops[2] = RouteGuard.Hop({
+            adapter: address(v4Adapter),
+            tokenIn: address(usdc),
+            tokenOut: address(core),
+            minOut: 1,
+            data: abi.encode(coreKey)
+        });
         // Path is structurally valid (≤3, no cycle) but pool data won't match — revert is BadPool, not TooManyHops.
         vm.prank(keeper);
         vm.expectRevert();
@@ -157,8 +175,12 @@ contract GuardianP0Test is Base {
 
     function test_42_12_cycleRejected() public {
         RouteGuard.Hop[] memory hops = new RouteGuard.Hop[](2);
-        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(zec), tokenOut: address(usdc), minOut: 1, data: ""});
-        hops[1] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(usdc), tokenOut: address(zec), minOut: 1, data: ""});
+        hops[0] = RouteGuard.Hop({
+            adapter: address(v4Adapter), tokenIn: address(zec), tokenOut: address(usdc), minOut: 1, data: ""
+        });
+        hops[1] = RouteGuard.Hop({
+            adapter: address(v4Adapter), tokenIn: address(usdc), tokenOut: address(zec), minOut: 1, data: ""
+        });
         vm.prank(keeper);
         vm.expectRevert();
         flywheel.settleQuote(address(zec), hops, 1);
@@ -166,8 +188,12 @@ contract GuardianP0Test is Base {
 
     function test_42_13_duplicateAssetRejected() public {
         RouteGuard.Hop[] memory hops = new RouteGuard.Hop[](2);
-        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(zec), tokenOut: address(usdc), minOut: 1, data: ""});
-        hops[1] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: address(usdc), tokenOut: address(usdc), minOut: 1, data: ""});
+        hops[0] = RouteGuard.Hop({
+            adapter: address(v4Adapter), tokenIn: address(zec), tokenOut: address(usdc), minOut: 1, data: ""
+        });
+        hops[1] = RouteGuard.Hop({
+            adapter: address(v4Adapter), tokenIn: address(usdc), tokenOut: address(usdc), minOut: 1, data: ""
+        });
         vm.prank(keeper);
         vm.expectRevert();
         flywheel.settleQuote(address(zec), hops, 1);
@@ -183,7 +209,7 @@ contract GuardianP0Test is Base {
 
     function test_42_15_cannotSpendOtherSelfBurn() public {
         vm.prank(alice);
-        (address a,) = factory.launchStandard(
+        (address a,) = _standard(
             ReactorFactory.InstantParams({
                 name: "A",
                 symbol: "A",
@@ -200,7 +226,7 @@ contract GuardianP0Test is Base {
             })
         );
         vm.prank(alice);
-        (address b,) = factory.launchStandard(
+        (address b,) = _standard(
             ReactorFactory.InstantParams({
                 name: "B",
                 symbol: "B",
@@ -431,7 +457,7 @@ contract GuardianP0Test is Base {
         auth.pauseLaunches(true);
         vm.prank(alice);
         vm.expectRevert();
-        factory.instantLaunch(
+        _instant(
             ReactorFactory.InstantParams({
                 name: "P",
                 symbol: "P",

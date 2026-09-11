@@ -61,7 +61,11 @@ Every row is implemented in-repo. Re-run the matching file after any curve / fee
 | 39.16 | Hook / vault / flywheel / registry / router binds | same |
 | 39.17 | No Ownable / bootstrap residue | same |
 | 39.18 | Privileged surface Guardian or Keeper only | `GuardianP0.t.sol`, `PRIVILEGE_MAP.md` |
-| 39.19 | Signed pricing: USDC no sig | `LaunchPricing.t.sol` |
+| 39.19 | Signed launch auth: USDC requires EIP-712 | `LaunchAuthorization.t.sol`, `LaunchPricing.t.sol` |
+| 94 | Ticker normalize / reserve / 24h lock / no squat | `TickerRegistry.t.sol` |
+| 95 | LaunchAuthorization replay / ticker / factory / fair | `LaunchAuthorization.t.sol` |
+| 96 | Factory version persist + deprecate new-only | `TickerRegistry.t.sol` |
+| 97 | Permanent lock one-way | `TickerRegistry.t.sol` |
 | 39.20 | Non-$1 without sig reverts | same |
 | 39.21 | Expired / replay / wrong factory / quote / decimals / tampered / zero / chain | same |
 | 39.22 | Old signer after rotation; Keeper rotate ≠ signer rotate | same |

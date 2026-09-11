@@ -5,7 +5,7 @@ import {Base} from "../Base.sol";
 import {ReactorFactory} from "../../src/ReactorFactory.sol";
 import {RouteGuard} from "../../src/libraries/RouteGuard.sol";
 import {RouteExec} from "../../src/libraries/RouteExec.sol";
-import {LaunchPricing} from "../../src/libraries/LaunchPricing.sol";
+import {LaunchAuthorization} from "../../src/libraries/LaunchAuthorization.sol";
 import {ReactorToken} from "../../src/ReactorToken.sol";
 
 /// @notice Intermediate hop minOut must come from that hop's sim — never dust or last-leg reuse.
@@ -68,8 +68,9 @@ contract HopFloorsTest is Base {
             twitter: "",
             telegram: ""
         });
-        (LaunchPricing.Auth memory a, bytes memory sig) =
-            _priceAuthFor(alice, zcat, factory.expectedVirtualQuote0(zcat));
+        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuthFor(
+            alice, "CAT", zcat, factory.expectedVirtualQuote0(zcat), LaunchAuthorization.INSTANT_CURVE_V1
+        );
         vm.prank(alice);
         (address cat,) = factory.instantLaunchPriced(cp, a, sig);
         _buy(alice, cat, zcat, ReactorToken(zcat).balanceOf(alice) / 5);
