@@ -1,28 +1,41 @@
 # BUILD REPORT — REACTOR local Arc-compatible MVP
 
-**Status:** Final Grok completion pass on branch `cursor/final-grok-completion-5e6c`. Architecture/tokenomics frozen. Local Anvil 5042002 only. Hook bytecode changes — **re-read `factory.hook()` after redeploy**.  
+**Status:** Hop-floor follow-up on the frozen architecture. Local Anvil 5042002 only. Hook bytecode changes — **re-read `factory.hook()` after redeploy**.  
 **Not audited. Not mainnet. Not production-ready. Arc Public Testnet not claimed.** See `HARDENING_REPORT.md` and `AUDIT_HANDOFF.md`.
 
-## This HEAD (final completion)
+## This HEAD (hop-floor follow-up)
 
 | Item | Value |
 | --- | --- |
-| Branch | `cursor/final-grok-completion-5e6c` |
-| HEAD | `7d5274355ee3c6585aa59b58f444c488066ccdd2` |
-| Parent | `1a3b3b6` |
-| Forge | **282 passed**, 0 failed, 1 skipped (`forge test --offline`, Foundry 1.8.1, via_ir) |
+| Branch | `cursor/final-grok-completion-5e6c` (merged to `main` when Origin allows) |
+| Hop-floor commit | `508e45444530cdddf007030be71a6c5d087e0c95` |
+| Parent | `58c6f948dbddc5a165a025d4abdf578216829d58` |
+| Forge | **286 passed**, 0 failed, 1 skipped (`forge test --offline`, Foundry 1.8.1, via_ir) |
+| TS | `pnpm --filter indexer test` + `top10.test.ts` + `marketdata.test.ts` + `valuation.test.ts` — pass |
 | Invariants | Reward campaign + CORE + fee split still the bound |
 | Frontend | Search + rows, image file upload, RoutePlanner trade preview, PRICE 1m/5m/1h/4h/1d bonding→v4, denser ops |
 | Backend / indexer | `block.timestamp` swaps; durable `pools`; `/candles` `/ops` `/vwap` |
-| Keeper | Vault return values; `conservativeMinOut`; dynamic quotes; RoutePlanner; DRY_RUN/LOCAL/ARC_TESTNET; no 5042 |
+| Keeper | Per-hop `previewSettleQuote` / `previewTop10Hops` / `previewExecuteHops` → `stampHopMinOuts`. No last-leg reuse. DRY_RUN/LOCAL/ARC_TESTNET; no 5042 |
 | Watchdog | Independent eval + alerts file; no Guardian keys |
 | E2E | `CurrentArchitecture.t.sol` + `e2e-current-architecture.ts` (old 3% demo retired) |
 | Screenshots | Existing `review/*` from prior regen; recapture after local Anvil if UI changes |
-| Limitations | No live Arc Testnet txs. Intermediate hop floors reuse last-leg minOut (Codex residual). No prod image store. |
+| Limitations | No live Arc Testnet txs. Preview fns must never be broadcast (they probe `minOut=1` then revert `PreviewHops`). No prod image store. |
 | Arc Testnet | **Not claimed.** Chain id 5042002 locally only. |
 | Mainnet blockers | BUSL v4-core, no PoolManager on 5042, no audit, no native USDC dual-decimal, Instant/CCA not compatible |
 
-### What this pass fixed
+### Hop-floor fix (this follow-up)
+
+Intermediate nested-hop floors no longer reuse the last-leg simulation `minOut`.
+
+- `RouteExec.runRecorded` returns per-hop outs. `RouteExec.preview` probes with `minOut=1` then reverts `PreviewHops(hopOuts, finalOut)` so a broadcast cannot settle on dust floors.
+- `FlywheelVault.previewSettleQuote` / `previewTop10Hops` and `BuybackVault.previewExecuteHops` are Keeper `eth_call` probes.
+- Keeper `stampHopMinOuts` requires one sim out per hop and throws if an intermediate sim equals the last-leg. `stampProductionHops` is single-hop only.
+- User USDC hops: `stampUserHops` simulates each hookless leg, then `applyMinOuts` (rejects dust and last-leg reuse).
+- Regression: `contracts/test/attack/HopFloors.t.sol` (nested settle + nested Top-10 + last-leg reuse ≠ per-hop + preview does not commit).
+
+Economics, Instant bonding, CORE genesis, Guardian/Keeper, and the 2/1/0.5 split are unchanged.
+
+### What the prior completion pass fixed
 
 1. Maintenance fns return `burnedAmount` / `coreBought` / `targetBought` / `usdcReceived`. Keeper reads `simulateContract().result`. No fake TS returns.
 2. Production minOut never 0/1. Weak sim skips the job.
