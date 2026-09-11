@@ -34,7 +34,13 @@ export default function TokenPage() {
             </div>
             <p className="mt-2 max-w-xl text-sm text-zinc-400">{t.description || "No description."}</p>
           </div>
-          {t.marketLive ? <Badge>Official REACTOR Pool</Badge> : <Badge>Auction</Badge>}
+          {t.marketLive ? (
+            <Badge>Official REACTOR Pool</Badge>
+          ) : t.mode === 1 ? (
+            <Badge className="border-amber-300/30 bg-amber-300/10 text-amber-100">Fair auction</Badge>
+          ) : (
+            <Badge>Official REACTOR Pool</Badge>
+          )}
         </div>
         <Card className="mt-6 h-64 p-3">
           {chart.length === 0 ? (

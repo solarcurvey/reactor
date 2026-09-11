@@ -24,7 +24,7 @@ export function TokenCard({ t }: { t: LaunchToken }) {
             </div>
           </div>
           {t.marketLive ? (
-            <Badge>Official pool</Badge>
+            <Badge>Official REACTOR Pool</Badge>
           ) : (
             <Badge className="border-amber-300/30 bg-amber-300/10 text-amber-100">Fair auction</Badge>
           )}
