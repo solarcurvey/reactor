@@ -106,6 +106,11 @@
         "name": "token",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "minTargetOut",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -133,6 +138,25 @@
         "name": "",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lastExecuteAt",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
     "stateMutability": "view"
@@ -257,6 +281,16 @@
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "Bad",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MinOutRequired",
+    "inputs": []
   },
   {
     "type": "error",

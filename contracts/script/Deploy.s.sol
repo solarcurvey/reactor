@@ -29,6 +29,7 @@ import {SelfBurnVault} from "../src/SelfBurnVault.sol";
 import {ReactorGuardian} from "../src/ReactorGuardian.sol";
 import {UniswapV4Adapter} from "../src/adapters/UniswapV4Adapter.sol";
 import {RoutingRegistry} from "../src/RoutingRegistry.sol";
+import {UserRouteExecutor} from "../src/UserRouteExecutor.sol";
 
 contract Deploy is Script {
     struct Addresses {
@@ -50,6 +51,7 @@ contract Deploy is Script {
         ReactorGuardian auth;
         UniswapV4Adapter v4Adapter;
         RoutingRegistry routes;
+        UserRouteExecutor userRouter;
     }
 
     function run() external {
@@ -148,6 +150,7 @@ contract Deploy is Script {
         a.router.setProtocolVault(address(a.flywheel), true);
         a.router.setProtocolVault(address(a.buyback), true);
         a.router.sealProtocolVaults();
+        a.userRouter = new UserRouteExecutor(a.auth, a.hook, IReactorSwapper(address(a.router)), address(a.usdc));
     }
 
     function _seedRoutes(Addresses memory a) internal {
@@ -189,7 +192,7 @@ contract Deploy is Script {
         router.addLiquidity(key, lo, hi, int256(uint256(liq)));
     }
 
-    function _log(Addresses memory a) internal view {
+    function _log(Addresses memory a) internal {
         console2.log("Guardian", address(a.auth));
         console2.log("Keeper", a.auth.keeper());
         console2.log("PoolManager", address(a.pm));
@@ -208,6 +211,72 @@ contract Deploy is Script {
         console2.log("InstantCurve", address(a.curve));
         console2.log("SelfBurnVault", address(a.selfBurn));
         console2.log("V4Adapter", address(a.v4Adapter));
+        console2.log("UserRouteExecutor", address(a.userRouter));
         console2.log("FairVault", address(a.factory.fairVault()));
+        console2.log("RoutingRegistry", address(a.routes));
+        _write(a);
+    }
+
+    function _write(Addresses memory a) internal {
+        string memory json = string.concat(
+            "{\n",
+            '  "network": "local-arc-compatible",\n',
+            '  "chainId": 5042002,\n',
+            '  "rpc": "http://127.0.0.1:8545",\n',
+            '  "claimedArcTestnet": false,\n',
+            '  "note": "Anvil chain id 5042002. Not Arc Testnet. Redeployed this session.",\n',
+            '  "addresses": {\n',
+            _kv("Guardian", address(a.auth)),
+            _kv("Keeper", a.auth.keeper()),
+            _kv("PricingSigner", a.auth.pricingSigner()),
+            _kv("PoolManager", address(a.pm)),
+            _kv("QuoteAssetRegistry", address(a.registry)),
+            _kv("TestCORE", address(a.core)),
+            _kv("USDC", address(a.usdc)),
+            _kv("ZEC", address(a.zec)),
+            _kv("BTC", address(a.btc)),
+            _kv("NVDA", address(a.nvda)),
+            _kv("ReactorLiquidityVault", address(a.vault)),
+            _kv("ReactorRouter", address(a.router)),
+            _kv("ReactorHook", address(a.hook)),
+            _kv("BuybackVault", address(a.buyback)),
+            _kv("FlywheelVault", address(a.flywheel)),
+            _kv("ReactorFactory", address(a.factory)),
+            _kv("InstantCurve", address(a.curve)),
+            _kv("SelfBurnVault", address(a.selfBurn)),
+            _kv("V4Adapter", address(a.v4Adapter)),
+            _kv("RoutingRegistry", address(a.routes)),
+            _kv("UserRouteExecutor", address(a.userRouter)),
+            _kvLast("FairClaimVault", a.factory.fairVault()),
+            "  },\n",
+            '  "hookFlags": "0x30CC",\n',
+            '  "v4Core": "e50237c43811bd9b526eff40f26772152a42daba"\n',
+            "}\n"
+        );
+        vm.writeFile("deployments/local.json", json);
+        vm.writeFile("../deployments/local.json", json);
+        vm.writeFile("../apps/web/src/lib/deployment.json", json);
+        vm.writeFile("../apps/indexer/src/deployment.json", json);
+    }
+
+    function _kv(string memory k, address v) internal pure returns (string memory) {
+        return string.concat('    "', k, '": "', _hex(v), '",\n');
+    }
+
+    function _kvLast(string memory k, address v) internal pure returns (string memory) {
+        return string.concat('    "', k, '": "', _hex(v), '"\n');
+    }
+
+    function _hex(address v) internal pure returns (string memory) {
+        bytes16 hexSymbols = "0123456789abcdef";
+        bytes20 data = bytes20(v);
+        bytes memory s = new bytes(42);
+        s[0] = "0";
+        s[1] = "x";
+        for (uint256 i; i < 20; i++) {
+            s[2 + i * 2] = hexSymbols[uint8(data[i] >> 4)];
+            s[3 + i * 2] = hexSymbols[uint8(data[i] & 0x0f)];
+        }
+        return string(s);
     }
 }

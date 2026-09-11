@@ -164,6 +164,11 @@
             "internalType": "address"
           },
           {
+            "name": "minOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
             "name": "data",
             "type": "bytes",
             "internalType": "bytes"
@@ -207,6 +212,11 @@
             "name": "tokenOut",
             "type": "address",
             "internalType": "address"
+          },
+          {
+            "name": "minOut",
+            "type": "uint256",
+            "internalType": "uint256"
           },
           {
             "name": "data",
@@ -503,6 +513,11 @@
   },
   {
     "type": "error",
+    "name": "BurnFailed",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "Cycle",
     "inputs": []
   },
@@ -514,6 +529,16 @@
   {
     "type": "error",
     "name": "DeltaOut",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MinOutRequired",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotGuardian",
     "inputs": []
   },
   {

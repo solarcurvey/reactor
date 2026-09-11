@@ -16,8 +16,9 @@
 | `InstantCurve` | No | Curve inventory + economic quote | Bonding curve; graduates to locked v4 |
 | `SelfBurnVault` | No | Standard-mode 2% quote | Keeper market-buy + burn |
 | `FlywheelVault` | No | Quote / USDC pot | Keeper settle + API-submitted Top-10 |
-| `UniswapV4Adapter` | No | Transient hop | Reviewed v4 hop; vaults approve it, never the Keeper EOA |
-| `ReactorFactory` | No | None during idle | Instant + Batch Fair Launch, metadata, events |
+| `UniswapV4Adapter` | No | Transient hop | Hookless / official / approved hooks; vaults approve it, never the Keeper EOA |
+| `UserRouteExecutor` | No | Transient user funds | USDC↔token official-leg router; not a protocol vault |
+| `ReactorFactory` | No | None during idle | Instant + Batch Fair Launch, priced non-$1 init, metadata, events |
 | `FairClaimVault` | No | Unclaimed auction tokens + their quote slice | O(1) eligible holder for Batch Fair |
 | `PoolManager` | Uniswap | All v4 reserves | Official v4-core (BUSL, non-production) |
 

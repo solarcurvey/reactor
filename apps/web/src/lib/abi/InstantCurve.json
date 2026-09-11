@@ -1006,6 +1006,11 @@
   },
   {
     "type": "error",
+    "name": "MinOutRequired",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotExempt",
     "inputs": []
   },
@@ -1027,6 +1032,11 @@
   {
     "type": "error",
     "name": "Slippage",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TerminalMismatch",
     "inputs": []
   }
 ]

@@ -330,6 +330,25 @@
   },
   {
     "type": "function",
+    "name": "expectedVirtualQuote0",
+    "inputs": [
+      {
+        "name": "quote",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "fairVault",
     "inputs": [],
     "outputs": [
@@ -540,6 +559,134 @@
   },
   {
     "type": "function",
+    "name": "instantLaunchPriced",
+    "inputs": [
+      {
+        "name": "p",
+        "type": "tuple",
+        "internalType": "struct ReactorFactory.InstantParams",
+        "components": [
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "decimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "supply",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "quote",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "fdvQuoteRaw",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "devBuyQuote",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "image",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "description",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "website",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "twitter",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "telegram",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      },
+      {
+        "name": "a",
+        "type": "tuple",
+        "internalType": "struct LaunchPricing.Auth",
+        "components": [
+          {
+            "name": "factory",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "quote",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "quoteDecimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "virtualQuote0",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "sig",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "poolId",
+        "type": "bytes32",
+        "internalType": "PoolId"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "isGraduatedReactor",
     "inputs": [
       {
@@ -679,6 +826,149 @@
   },
   {
     "type": "function",
+    "name": "launchAndBuyPriced",
+    "inputs": [
+      {
+        "name": "p",
+        "type": "tuple",
+        "internalType": "struct ReactorFactory.InstantParams",
+        "components": [
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "decimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "supply",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "quote",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "fdvQuoteRaw",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "devBuyQuote",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "image",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "description",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "website",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "twitter",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "telegram",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      },
+      {
+        "name": "rewards",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "minOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "a",
+        "type": "tuple",
+        "internalType": "struct LaunchPricing.Auth",
+        "components": [
+          {
+            "name": "factory",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "quote",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "quoteDecimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "virtualQuote0",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "sig",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "poolId",
+        "type": "bytes32",
+        "internalType": "PoolId"
+      },
+      {
+        "name": "tokensOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "launchCount",
     "inputs": [],
     "outputs": [
@@ -760,6 +1050,134 @@
             "internalType": "string"
           }
         ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "poolId",
+        "type": "bytes32",
+        "internalType": "PoolId"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "launchStandardPriced",
+    "inputs": [
+      {
+        "name": "p",
+        "type": "tuple",
+        "internalType": "struct ReactorFactory.InstantParams",
+        "components": [
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "decimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "supply",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "quote",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "fdvQuoteRaw",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "devBuyQuote",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "image",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "description",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "website",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "twitter",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "telegram",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      },
+      {
+        "name": "a",
+        "type": "tuple",
+        "internalType": "struct LaunchPricing.Auth",
+        "components": [
+          {
+            "name": "factory",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "quote",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "quoteDecimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "virtualQuote0",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "sig",
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [
@@ -861,6 +1279,38 @@
         "name": "",
         "type": "address",
         "internalType": "contract IPoolManager"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pricingDomain",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pricingNonce",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -1006,6 +1456,25 @@
         "name": "fairId",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "usedPricing",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -1351,6 +1820,11 @@
   },
   {
     "type": "error",
+    "name": "BadSigner",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "BuybackRouteRequired",
     "inputs": []
   },
@@ -1362,6 +1836,11 @@
   {
     "type": "error",
     "name": "CurveUnbound",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Expired",
     "inputs": []
   },
   {
@@ -1386,6 +1865,11 @@
   },
   {
     "type": "error",
+    "name": "NeedPricingAuth",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotCreator",
     "inputs": []
   },
@@ -1402,6 +1886,36 @@
   {
     "type": "error",
     "name": "NothingToClaim",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Quarantined",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Replay",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WrongDecimals",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WrongFactory",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WrongParams",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WrongQuote",
     "inputs": []
   }
 ]

@@ -9,8 +9,10 @@ Guardian is immutable. Keeper is replaceable by Guardian.
 | Contract | Function | Notes |
 | --- | --- | --- |
 | `ReactorGuardian` | `setKeeper` | Replace designated Keeper |
+| `ReactorGuardian` | `setPricingSigner` | Launch-pricing EIP-712 signer (starts as Keeper) |
 | `ReactorGuardian` | `pauseLaunches` / `pauseKeeper` / `pauseTrading` | Brake pedal |
 | `ReactorGuardian` | `setAdapter` | Reviewed routing adapters |
+| `ReactorGuardian` | `setHook` | Extra v4 hooks allowed on the adapter (official + hookless always ok) |
 | `QuoteAssetRegistry` | `bindFactory` | One-time |
 | `QuoteAssetRegistry` | `setUsdc` | One-time (same address may be re-set) |
 | `QuoteAssetRegistry` | `register` / `setEnabled` / `setIcon` / `setBuybackRoute` | External quotes |
@@ -30,7 +32,7 @@ Guardian is immutable. Keeper is replaceable by Guardian.
 | `FlywheelVault` | `executeTop10Buyback` | Requires `minTargetOut` |
 | `FlywheelVault` | `rollEpoch` | After finalize |
 | `BuybackVault` | `execute` / `executeCoreBuyback` | Requires `minOut` > 0; burns via `burn()` |
-| `SelfBurnVault` | `execute` | Requires `minTargetOut` > 0 |
+| `SelfBurnVault` | `execute` | Requires `minTargetOut` > 0; chunk + cooldown |
 
 ## One-time address assignment (no first-caller-wins)
 
@@ -49,13 +51,16 @@ Guardian is immutable. Keeper is replaceable by Guardian.
 | `InstantCurve.selfBurn` | Factory `bindSelfBurn` | once |
 | `ReactorRouter.protocolVault` | Guardian then `sealProtocolVaults` | `Sealed` — Guardian included |
 | `ReactorGuardian.guardian` | Constructor immutable | never |
+| `ReactorGuardian.pricingSigner` | Guardian `setPricingSigner` | replaceable, never first-caller |
 | `BuybackVault.core` / hook / usdc | Constructor immutable | never |
+| `UniswapV4Adapter.officialHook` | Constructor immutable | never |
+| `UserRouteExecutor.auth` / hook / router / usdc | Constructor immutable | never — not a vault |
 
 Attack suite: `test/attack/FrontrunBind.t.sol`.
 
 ## Not privileged (permissionless)
 
-Launch, bid, claim, curve buy/sell (when open and not ready-locked), graduate (when ready), official swap, reward claim, metadata (creator, once).
+Launch (unsigned $1 / priced non-$1), bid, claim, curve buy/sell (when open and not ready-locked), graduate (when ready), official swap, `UserRouteExecutor` buy/sell, reward claim, metadata (creator, once).
 
 ## Forbidden to everyone
 

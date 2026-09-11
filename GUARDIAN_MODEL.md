@@ -17,9 +17,11 @@ There is no owner, admin, proxy admin, upgrader, governor, or treasury owner.
 | Pause / unpause launches | `pauseLaunches` |
 | Pause / unpause Keeper | `pauseKeeper` |
 | Replace Keeper | `setKeeper` |
+| Replace launch-pricing signer | `setPricingSigner` |
 | Emergency trading / safe-mode pause | `pauseTrading` (curve + official v4 swaps) |
 | Add / quarantine **external** quotes | `QuoteAssetRegistry.register`, `setEnabled`, `setBuybackRoute` |
 | Add / disable reviewed routing adapters | `setAdapter` |
+| Approve extra v4 hooks | `setHook` (hookless + official REACTOR hook are always allowed) |
 
 One-shot deploy binds (factory, hook, vaults, protocol-vault seal) are **Guardian-only**, not first-caller-wins and not a leftover bootstrap admin. After `sealProtocolVaults`, nobody — including Guardian — can add a fee-exempt wallet. See `PRIVILEGE_MAP.md`.
 

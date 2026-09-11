@@ -19,3 +19,4 @@ apps/web/test-results/
 contracts/lib/
 .idea/
 .vscode/
+agent-tools/

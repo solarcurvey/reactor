@@ -36,7 +36,7 @@ Hostile-reader notes for Codex / external review. **Not an audit.**
 7. **Batch Fair finalize once**; `FairClaimVault` eligible; auction has no hook.
 10. **Canonical flush** — quote derived from `marketOfToken`; two-arg flush reverts on mismatch.
 11. **Exact-in + nonzero minOut + incomplete-fill revert** on the router.
-12. **Binds are owner + freeze**, not first-caller-wins.
+12. **Binds are Guardian-only + freeze**, not first-caller-wins and not Ownable/bootstrap.
 8. **Guardian cannot** withdraw, mint, change fee BPS, set Top-10, or take fee exemption as a wallet. See `GUARDIAN_MODEL.md`.
 9. **FoT / rebase quotes:** `creditRewards` / vault `accrue` measure actual received; shortfall reverts. Rebasing quotes are unsupported (document + do not register).
 
