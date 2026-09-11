@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "viem/actions";
 import { useRouter } from "next/navigation";
@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useQuotes } from "@/lib/hooks";
-import { factory, erc20 } from "@/lib/contracts";
+import { factory, erc20, launchAbi } from "@/lib/contracts";
+import { INDEXER_URL } from "@/lib/chain";
 import { parseUnitsSafe } from "@/lib/utils";
 
 export default function LaunchPage() {
@@ -27,18 +28,50 @@ export default function LaunchPage() {
   const [devBuy, setDevBuy] = useState("");
   const [durationMin, setDurationMin] = useState("45");
   const [error, setError] = useState<string | null>(null);
+  const [tickerStatus, setTickerStatus] = useState<string>("");
 
   const selected = quotes?.find((q) => q.token.toLowerCase() === quote.toLowerCase());
 
-  async function maybePricing(quoteAddr: `0x${string}`, usdPegOne: boolean | undefined) {
-    if (usdPegOne) return null;
+  useEffect(() => {
+    const raw = symbol.trim();
+    if (!raw) {
+      setTickerStatus("");
+      return;
+    }
+    let cancelled = false;
+    fetch(`${INDEXER_URL}/ticker/${encodeURIComponent(raw)}`)
+      .then((r) => r.json())
+      .then((j: { ticker?: string; reserved?: boolean; available?: boolean; error?: string }) => {
+        if (cancelled) return;
+        if (j.error) setTickerStatus(j.error);
+        else if (j.reserved) setTickerStatus(`${j.ticker} is reserved`);
+        else if (j.available === false) setTickerStatus(`${j.ticker} is locked`);
+        else setTickerStatus(`${j.ticker} available · 24h lock on success`);
+      })
+      .catch(() => {
+        if (!cancelled) setTickerStatus("Ticker status offline");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol]);
+
+  async function authorizeLaunch(quoteAddr: `0x${string}`, ticker: string, mode: "instant" | "fair") {
+    const admit = await fetch(`${(await import("@/lib/chain")).INDEXER_URL}/launch/admit`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ticker, quote: quoteAddr, wallet: address, name }),
+    }).catch(() => null);
+    const admitted = admit ? ((await admit.json()) as { decision?: string; reasons?: string[]; ticker?: string }) : null;
+    if (admitted?.decision === "DENY") throw new Error(admitted.reasons?.join(", ") || "Launch denied");
     const res = await fetch("/api/launch-pricing", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ quote: quoteAddr, creator: address }),
+      body: JSON.stringify({ quote: quoteAddr, creator: address, ticker, mode }),
     });
     const body = (await res.json()) as {
       needsAuth?: boolean;
+      ticker?: string;
       auth?: {
         factory: `0x${string}`;
         creator: `0x${string}`;
@@ -46,14 +79,15 @@ export default function LaunchPage() {
         quoteDecimals: number;
         virtualQuote0: string;
         curveConfig: `0x${string}`;
-        salt: `0x${string}`;
+        tickerHash: `0x${string}`;
+        authId: `0x${string}`;
         deadline: string;
       };
       signature?: `0x${string}`;
       error?: string;
     };
-    if (!res.ok || !body.needsAuth || !body.auth || !body.signature) {
-      throw new Error(body.error ?? "Launch pricing authorization unavailable");
+    if (!res.ok || !body.auth || !body.signature) {
+      throw new Error(body.error ?? "Launch authorization unavailable");
     }
     return {
       auth: {
@@ -63,10 +97,12 @@ export default function LaunchPage() {
         quoteDecimals: body.auth.quoteDecimals,
         virtualQuote0: BigInt(body.auth.virtualQuote0),
         curveConfig: body.auth.curveConfig,
-        salt: body.auth.salt,
+        tickerHash: body.auth.tickerHash,
+        authId: body.auth.authId,
         deadline: BigInt(body.auth.deadline),
       },
       signature: body.signature,
+      ticker: body.ticker ?? ticker,
     };
   }
 
@@ -91,8 +127,9 @@ export default function LaunchPage() {
         twitter: "",
         telegram: "",
       };
+      const priced = await authorizeLaunch(selected.token, params.symbol, path);
+      params.symbol = priced.ticker;
       if (path === "instant") {
-        const priced = await maybePricing(selected.token, selected.usdPegOne);
         if (params.devBuyQuote > 0n) {
           const allowance = (await client.readContract({
             address: selected.token,
@@ -109,54 +146,40 @@ export default function LaunchPage() {
             });
             await waitForTransactionReceipt(client, { hash: ah });
           }
-          const hash = priced
-            ? await writeContractAsync({
-                ...factory,
-                functionName: "launchAndBuyPriced",
-                args: [params, rewards, 1n, priced.auth, priced.signature],
-              })
-            : await writeContractAsync({
-                ...factory,
-                functionName: "launchAndBuy",
-                args: [params, rewards, 1n],
-              });
+          const hash = await writeContractAsync({
+            address: factory.address,
+            abi: launchAbi,
+            functionName: "launchAndBuy",
+            args: [params, rewards, 1n, priced.auth, priced.signature],
+          });
           await waitForTransactionReceipt(client, { hash });
         } else if (rewards) {
-          const hash = priced
-            ? await writeContractAsync({
-                ...factory,
-                functionName: "instantLaunchPriced",
-                args: [params, priced.auth, priced.signature],
-              })
-            : await writeContractAsync({
-                ...factory,
-                functionName: "instantLaunch",
-                args: [params],
-              });
+          const hash = await writeContractAsync({
+            address: factory.address,
+            abi: launchAbi,
+            functionName: "instantLaunch",
+            args: [params, priced.auth, priced.signature],
+          });
           await waitForTransactionReceipt(client, { hash });
         } else {
-          const hash = priced
-            ? await writeContractAsync({
-                ...factory,
-                functionName: "launchStandardPriced",
-                args: [params, priced.auth, priced.signature],
-              })
-            : await writeContractAsync({
-                ...factory,
-                functionName: "launchStandard",
-                args: [params],
-              });
+          const hash = await writeContractAsync({
+            address: factory.address,
+            abi: launchAbi,
+            functionName: "launchStandard",
+            args: [params, priced.auth, priced.signature],
+          });
           await waitForTransactionReceipt(client, { hash });
         }
         router.push("/");
       } else {
         const hash = await writeContractAsync({
-          ...factory,
+          address: factory.address,
+          abi: launchAbi,
           functionName: "createFairLaunch",
           args: [
             {
               name,
-              symbol: symbol.toUpperCase(),
+              symbol: priced.ticker,
               decimals: 18,
               supply: 0n,
               quote: selected.token,
@@ -169,6 +192,8 @@ export default function LaunchPage() {
               twitter: "",
               telegram: "",
             },
+            priced.auth,
+            priced.signature,
           ],
         });
         await waitForTransactionReceipt(client, { hash });
@@ -205,8 +230,10 @@ export default function LaunchPage() {
               name="ticker"
               placeholder="Ticker"
               value={symbol}
-              onChange={(e) => setSymbol(e.target.value)}
+              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+              maxLength={10}
             />
+            {tickerStatus && <p className="mt-1 text-[11px] text-zinc-500">{tickerStatus}</p>}
           </div>
         </div>
         <div>

@@ -9,11 +9,7 @@ import {PoolKey} from "v4-core/types/PoolKey.sol";
 
 /// @notice §31 hostile cases: exemption abuse, leftover leak, double graduate.
 contract CurveSecurityTest is Base {
-    function _p(string memory symbol, address quote)
-        internal
-        pure
-        returns (ReactorFactory.InstantParams memory p)
-    {
+    function _p(string memory symbol, address quote) internal pure returns (ReactorFactory.InstantParams memory p) {
         p = ReactorFactory.InstantParams({
             name: symbol,
             symbol: symbol,
@@ -31,7 +27,7 @@ contract CurveSecurityTest is Base {
     }
 
     function test_walletCannotSpoofProtocolSwap() public {
-        (address token,) = factory.instantLaunch(_p("X", address(usdc)));
+        (address token,) = _instant(_p("X", address(usdc)));
         _fillAndGraduate(alice, token);
         PoolKey memory key = _key(token, address(usdc));
         vm.startPrank(alice);
@@ -43,7 +39,7 @@ contract CurveSecurityTest is Base {
 
     function test_exemptCannotDivertToAttacker() public {
         vm.prank(alice);
-        (address token,) = factory.launchStandard(_p("Y", address(usdc)));
+        (address token,) = _standard(_p("Y", address(usdc)));
         _buy(alice, token, address(usdc), 500e6);
         uint256 acc = selfBurn.accrued(token);
         uint256 aliceTok = ReactorToken(token).balanceOf(alice);
@@ -54,7 +50,7 @@ contract CurveSecurityTest is Base {
     }
 
     function test_reservedTwentyCannotBeSwept() public {
-        (address token,) = factory.instantLaunch(_p("Z", address(usdc)));
+        (address token,) = _instant(_p("Z", address(usdc)));
         uint256 reserved = curve.reservedOf(token);
         assertEq(reserved, 206_900_000 ether);
         _fillAndGraduate(bob, token);

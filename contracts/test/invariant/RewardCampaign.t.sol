@@ -32,23 +32,25 @@ contract RewardHandler {
         if (tokens.length > 4) return;
         address quote = which % 2 == 0 ? address(b.zec()) : address(b.usdc());
         uint256 fdv = quote == address(b.zec()) ? 40_000e8 : 12_000e6;
-        (address token,) = b.factory()
-            .instantLaunch(
-                ReactorFactory.InstantParams({
-                    name: "INV",
-                    symbol: "INV",
-                    decimals: 18,
-                    supply: 1_000_000_000 ether,
-                    quote: quote,
-                    fdvQuoteRaw: fdv,
-                    devBuyQuote: 0,
-                    image: "",
-                    description: "",
-                    website: "",
-                    twitter: "",
-                    telegram: ""
-                })
-            );
+        bytes memory raw = bytes("INV0");
+        raw[3] = bytes1(uint8(48 + tokens.length));
+        string memory sym = string(raw);
+        (address token,) = b.helperInstant(
+            ReactorFactory.InstantParams({
+                name: "INV",
+                symbol: sym,
+                decimals: 18,
+                supply: 1_000_000_000 ether,
+                quote: quote,
+                fdvQuoteRaw: fdv,
+                devBuyQuote: 0,
+                image: "",
+                description: "",
+                website: "",
+                twitter: "",
+                telegram: ""
+            })
+        );
         tokens.push(token);
     }
 

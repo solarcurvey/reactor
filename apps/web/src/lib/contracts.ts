@@ -11,9 +11,19 @@ import curveAbi from "./abi/InstantCurve.json";
 import selfBurnAbi from "./abi/SelfBurnVault.json";
 import { parseAbi } from "viem";
 
+const launchAuthTuple =
+  "(address factory,address creator,address quote,uint8 quoteDecimals,uint256 virtualQuote0,bytes32 curveConfig,bytes32 tickerHash,bytes32 authId,uint256 deadline)";
+
+export const launchAbi = parseAbi([
+  `function instantLaunch((string name,string symbol,uint8 decimals,uint256 supply,address quote,uint256 fdvQuoteRaw,uint256 devBuyQuote,string image,string description,string website,string twitter,string telegram) p, ${launchAuthTuple} a, bytes sig) returns (address token, bytes32 poolId)`,
+  `function launchStandard((string name,string symbol,uint8 decimals,uint256 supply,address quote,uint256 fdvQuoteRaw,uint256 devBuyQuote,string image,string description,string website,string twitter,string telegram) p, ${launchAuthTuple} a, bytes sig) returns (address token, bytes32 poolId)`,
+  `function launchAndBuy((string name,string symbol,uint8 decimals,uint256 supply,address quote,uint256 fdvQuoteRaw,uint256 devBuyQuote,string image,string description,string website,string twitter,string telegram) p, bool rewards, uint256 minOut, ${launchAuthTuple} a, bytes sig) returns (address token, bytes32 poolId, uint256 tokensOut)`,
+  `function createFairLaunch((string name,string symbol,uint8 decimals,uint256 supply,address quote,uint64 duration,uint16 auctionBps,uint256 minRaise,string image,string description,string website,string twitter,string telegram) p, ${launchAuthTuple} a, bytes sig) returns (address token, uint256 fairId)`,
+]);
+
 export const factory = {
   address: addresses.ReactorFactory,
-  abi: factoryAbi,
+  abi: [...(factoryAbi as readonly unknown[]), ...launchAbi] as typeof factoryAbi,
 } as const;
 
 export const router = {
@@ -37,7 +47,7 @@ export const hook = {
 } as const;
 
 export const core = {
-  address: addresses.TestCORE,
+  address: (addresses.CoreToken ?? addresses.TestCORE) as `0x${string}`,
   abi: coreAbi,
 } as const;
 

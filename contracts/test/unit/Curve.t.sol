@@ -37,7 +37,7 @@ contract CurveTest is Base {
     }
 
     function test_protocolOwnsSupplyDecimalsAndCurve() public {
-        (address token,) = factory.instantLaunch(_params("A", "A", address(usdc), 0));
+        (address token,) = _instant(_params("A", "A", address(usdc), 0));
         assertEq(ReactorToken(token).totalSupply(), ReactorConstants.DEFAULT_SUPPLY);
         assertEq(ReactorToken(token).decimals(), 18);
         assertEq(curve.inventoryOf(token), 793_100_000 ether);
@@ -50,13 +50,15 @@ contract CurveTest is Base {
         uint256 pay = 105_600_000; // ~$105.60 for ~2%
         vm.startPrank(alice);
         usdc.approve(address(factory), pay);
-        (address token,, uint256 out) = factory.launchAndBuy(_params("DEV", "DEV", address(usdc), pay), true, 1);
+        (address token,, uint256 out) = _launchBuy(_params("DEV", "DEV", address(usdc), pay), true, 1);
         vm.stopPrank();
         assertEq(ReactorToken(token).balanceOf(alice), out);
         assertGt(out, 0);
         assertLe(out, ReactorConstants.DEV_BUY_MAX_TOKENS);
         assertEq(curve.devBoughtOf(token), out);
-        assertEq(ReactorToken(token).balanceOf(alice) + ReactorToken(token).balanceOf(address(curve)), 1_000_000_000 ether);
+        assertEq(
+            ReactorToken(token).balanceOf(alice) + ReactorToken(token).balanceOf(address(curve)), 1_000_000_000 ether
+        );
         assertEq(ReactorToken(token).pendingRewards(alice), 0);
         assertEq(ReactorToken(token).lifetimeRewards(), 0);
         assertGt(selfBurn.accrued(token), 0);
@@ -67,12 +69,12 @@ contract CurveTest is Base {
         vm.startPrank(alice);
         usdc.approve(address(factory), pay);
         vm.expectRevert();
-        factory.launchAndBuy(_params("CAP", "CAP", address(usdc), pay), true, 1);
+        _launchBuy(_params("CAP", "CAP", address(usdc), pay), true, 1);
         vm.stopPrank();
     }
 
     function test_noFreeAllocation() public {
-        (address token,) = factory.instantLaunch(_params("FREE", "FREE", address(usdc), 0));
+        (address token,) = _instant(_params("FREE", "FREE", address(usdc), 0));
         assertEq(ReactorToken(token).balanceOf(alice), 0);
         assertEq(ReactorToken(token).balanceOf(address(this)), 0);
         assertEq(ReactorToken(token).balanceOf(address(factory)), 0);
@@ -83,7 +85,7 @@ contract CurveTest is Base {
         uint256 pay = 52_300_000;
         vm.startPrank(alice);
         usdc.approve(address(factory), pay);
-        (address token,, uint256 out) = factory.launchAndBuy(_params("GEN", "GEN", address(usdc), pay), true, 1);
+        (address token,, uint256 out) = _launchBuy(_params("GEN", "GEN", address(usdc), pay), true, 1);
         vm.stopPrank();
         // Zero-eligible Rewards fee goes to SelfBurn — not leftover rebate to first holder.
         assertEq(ReactorToken(token).pendingRewards(alice), 0);
@@ -96,7 +98,7 @@ contract CurveTest is Base {
 
     function test_standardSelfBurnOnCurve() public {
         vm.prank(alice);
-        (address token,) = factory.launchStandard(_params("STD", "STD", address(usdc), 0));
+        (address token,) = _standard(_params("STD", "STD", address(usdc), 0));
         assertFalse(factory.isRewards(token));
         _buy(bob, token, address(usdc), 1_000e6);
         assertEq(ReactorToken(token).lifetimeRewards(), 0);
@@ -109,7 +111,7 @@ contract CurveTest is Base {
 
     function test_standardSelfBurnAfterV4() public {
         vm.prank(alice);
-        (address token,) = factory.launchStandard(_params("STD2", "ST2", address(usdc), 0));
+        (address token,) = _standard(_params("STD2", "ST2", address(usdc), 0));
         _fillAndGraduate(bob, token);
         _buy(carol, token, address(usdc), 400e6);
         hook.flush(token);
@@ -121,7 +123,7 @@ contract CurveTest is Base {
     }
 
     function test_feeExemptNotCallableByWallet() public {
-        (address token,) = factory.instantLaunch(_params("EX", "EX", address(usdc), 0));
+        (address token,) = _instant(_params("EX", "EX", address(usdc), 0));
         vm.startPrank(alice);
         usdc.approve(address(curve), 100e6);
         vm.expectRevert();
@@ -132,7 +134,7 @@ contract CurveTest is Base {
     }
 
     function test_graduationOnceAndInventoryLocked() public {
-        (address token,) = factory.instantLaunch(_params("G", "G", address(usdc), 0));
+        (address token,) = _instant(_params("G", "G", address(usdc), 0));
         _fillAndGraduate(alice, token);
         assertTrue(curve.graduatedOf(token));
         (,,,,, bool live,) = factory.tokenInfo(token);
@@ -147,7 +149,7 @@ contract CurveTest is Base {
     }
 
     function test_lpReserveCannotLeakToCreator() public {
-        (address token,) = factory.instantLaunch(_params("LP", "LP", address(usdc), 0));
+        (address token,) = _instant(_params("LP", "LP", address(usdc), 0));
         uint256 creatorBefore = ReactorToken(token).balanceOf(alice);
         _fillAndGraduate(bob, token);
         assertEq(ReactorToken(token).balanceOf(alice), creatorBefore);
@@ -160,7 +162,7 @@ contract CurveTest is Base {
     }
 
     function test_noCreatorOrAdminQuoteWithdraw() public {
-        (address token,) = factory.instantLaunch(_params("W", "W", address(usdc), 0));
+        (address token,) = _instant(_params("W", "W", address(usdc), 0));
         _buy(alice, token, address(usdc), 1_000e6);
         uint256 onCurve = usdc.balanceOf(address(curve));
         assertGt(onCurve, 0);
@@ -173,7 +175,7 @@ contract CurveTest is Base {
     }
 
     function test_priceContinuityUsdc6() public {
-        (address token,) = factory.instantLaunch(_params("P6", "P6", address(usdc), 0));
+        (address token,) = _instant(_params("P6", "P6", address(usdc), 0));
         _assertContinuity(token, address(usdc));
     }
 
@@ -193,7 +195,7 @@ contract CurveTest is Base {
     }
 
     function test_ungraduatedNotTop10() public {
-        (address token,) = factory.instantLaunch(_params("U", "U", address(usdc), 0));
+        (address token,) = _instant(_params("U", "U", address(usdc), 0));
         _buy(alice, token, address(usdc), 2_000e6);
         assertFalse(factory.isGraduatedReactor(token));
         address[] memory t = new address[](1);
@@ -222,7 +224,7 @@ contract CurveTest is Base {
         vm.startPrank(alice);
         usdc.approve(address(factory), pay);
         vm.expectRevert();
-        factory.launchAndBuy(_params("MO", "MO", address(usdc), pay), true, type(uint256).max);
+        _launchBuy(_params("MO", "MO", address(usdc), pay), true, type(uint256).max);
         vm.stopPrank();
     }
 

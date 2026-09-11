@@ -5,7 +5,8 @@
 | Contract | Upgradeable | Custody | Role |
 | --- | --- | --- | --- |
 | `ReactorToken` | No | Holds claimable quote | Fixed-supply ERC-20 + O(1) rewards |
-| `TestCORE` | No | None | Platform token; genesis 100M vest + 900M LP; mint once |
+| `CoreToken` (alias `TestCORE`) | No | None | REACTOR CORE / CORE; genesis 100M vest + 900M LP; mint once |
+| `TickerRegistry` | No | None | Global ticker identity + factory versions + usedAuthorization |
 | `CoreVesting` | No | 100M CORE | Immutable beneficiary; T0 launch; 30d cliff 0 then 10×30d linear |
 | `CoreLiquidityVault` | No | Official CORE/USDC LP | Single-sided 900M lock; no withdraw |
 | `CoreBuybackExecutor` | No | Transient USDC | Only fee-exempt official CORE buy |

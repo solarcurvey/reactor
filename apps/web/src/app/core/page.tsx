@@ -102,7 +102,7 @@ export default function CorePage() {
       </div>
 
       <p className="mt-4 font-mono text-[11px] text-zinc-600">
-        CORE {shortAddress(addresses.TestCORE)} · Vesting {shortAddress(addresses.CoreVesting ?? "0x")} · Vault{" "}
+        CORE {shortAddress(addresses.CoreToken ?? addresses.TestCORE)} · Vesting {shortAddress(addresses.CoreVesting ?? "0x")} · Vault{" "}
         {shortAddress(addresses.BuybackVault)}
       </p>
     </div>

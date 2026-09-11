@@ -16,15 +16,17 @@ export async function upsertToken(
     mode?: number;
     rewardsMode?: boolean;
     supply?: string;
+    ticker?: string;
+    factoryVersion?: number;
     block?: number;
     tx?: string;
     ts?: number;
   },
 ) {
   await store.run(
-    `INSERT INTO tokens(address,symbol,name,decimals,creator,quote,mode,rewards_mode,supply,created_block,created_tx,created_ts)
-     VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
-     ON CONFLICT(address) DO UPDATE SET symbol=COALESCE(excluded.symbol,tokens.symbol), quote=COALESCE(excluded.quote,tokens.quote)`,
+    `INSERT INTO tokens(address,symbol,name,decimals,creator,quote,mode,rewards_mode,supply,ticker,factory_version,created_block,created_tx,created_ts)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+     ON CONFLICT(address) DO UPDATE SET symbol=COALESCE(excluded.symbol,tokens.symbol), quote=COALESCE(excluded.quote,tokens.quote), ticker=COALESCE(NULLIF(excluded.ticker,''),tokens.ticker)`,
     row.address.toLowerCase(),
     row.symbol ?? "",
     row.name ?? "",
@@ -34,6 +36,8 @@ export async function upsertToken(
     row.mode ?? 0,
     row.rewardsMode === false ? 0 : 1,
     row.supply ?? "",
+    row.ticker ?? row.symbol ?? "",
+    row.factoryVersion ?? 1,
     row.block ?? 0,
     row.tx ?? "",
     row.ts ?? 0,
@@ -112,6 +116,7 @@ export async function recordTrade(
     block: number;
     tx: string;
     logIndex?: number;
+    chainId?: number;
     token: string;
     quote: string;
     side: string;
@@ -130,11 +135,13 @@ export async function recordTrade(
   },
 ) {
   const token = t.token.toLowerCase();
-  const logIndex = t.logIndex ?? t.block;
+  const logIndex = t.logIndex ?? 0;
+  const chainId = t.chainId ?? 0;
   try {
     await store.run(
-      `INSERT INTO trades(block,tx,log_index,token,quote,side,source,amount_in,amount_out,notional_quote,price_quote_x18,sqrt_price,holders_fee,flywheel_fee,core_fee,ts)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO trades(chain_id,block,tx,log_index,token,quote,side,source,amount_in,amount_out,notional_quote,price_quote_x18,sqrt_price,holders_fee,flywheel_fee,core_fee,ts)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      chainId,
       t.block,
       t.tx,
       logIndex,

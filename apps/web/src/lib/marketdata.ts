@@ -82,7 +82,7 @@ export async function discoverTop10(client: PublicClient): Promise<{
   reason: string;
   candidates: number;
 }> {
-  const core = addresses.TestCORE.toLowerCase();
+  const core = (addresses.CoreToken ?? addresses.TestCORE).toLowerCase();
   const usdc = addresses.USDC.toLowerCase();
   const len = Number((await client.readContract({ ...factory, functionName: "allTokensLength" })) as bigint);
   const quoteUsd = new Map<string, { usd6: bigint; ok: boolean }>();

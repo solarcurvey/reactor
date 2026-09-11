@@ -18,6 +18,10 @@ There is no owner, admin, proxy admin, upgrader, governor, or treasury owner.
 | Pause / unpause Keeper | `pauseKeeper` |
 | Replace Keeper | `setKeeper` |
 | Replace launch-pricing signer | `setPricingSigner` |
+| Replace Launch Signer | `setLaunchSigner` (≠ Keeper ≠ Guardian Safe) |
+| Bind global ticker registry | `bindTickerRegistry` (one-time) |
+| Authorize / deprecate factory versions | `authorizeFactory`, `deprecateFactory` — **new launches only** |
+| Permanently lock a ticker | `permanentlyLockTicker` — one-way qualitative judgment, **not** an mcap oracle |
 | Emergency trading / safe-mode pause | `pauseTrading` (curve + official v4 swaps) |
 | Add / quarantine **external** quotes | `QuoteAssetRegistry.register`, `setEnabled`, `setBuybackRoute`, **`setUsdPegOne` (explicit; Stablecoins ≠ $1)** |
 | Add / disable reviewed routing adapters | `setAdapter` |

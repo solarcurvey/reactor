@@ -32,7 +32,7 @@ contract LockAndBuybackTest is Base {
     }
 
     function test_buybackUsdcLaunch() public {
-        (address ucat,) = factory.instantLaunch(
+        (address ucat,) = _instant(
             ReactorFactory.InstantParams({
                 name: "U",
                 symbol: "U",

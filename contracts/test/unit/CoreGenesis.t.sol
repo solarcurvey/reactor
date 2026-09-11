@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {Base} from "../Base.sol";
 import {TestCORE} from "../../src/TestCORE.sol";
+import {CoreToken} from "../../src/CoreToken.sol";
 import {CoreVesting} from "../../src/CoreVesting.sol";
 import {CoreLiquidityVault} from "../../src/CoreLiquidityVault.sol";
 import {ReactorConstants} from "../../src/ReactorConstants.sol";
@@ -20,7 +21,7 @@ contract CoreGenesisTest is Base {
     }
 
     function test_28_02_cannotMintAfterGenesis() public {
-        vm.expectRevert(TestCORE.AlreadyMinted.selector);
+        vm.expectRevert(CoreToken.AlreadyMinted.selector);
         core.genesis(address(coreVesting), address(coreLp));
         (bool ok,) = address(core).call(abi.encodeWithSignature("mint(address,uint256)", alice, 1));
         assertFalse(ok);
@@ -163,7 +164,7 @@ contract CoreGenesisTest is Base {
 
     function test_28_25_cannotLaunchWithCoreQuote() public {
         vm.expectRevert();
-        factory.instantLaunch(
+        _instant(
             ReactorFactory.InstantParams({
                 name: "X",
                 symbol: "X",
@@ -221,7 +222,7 @@ contract CoreGenesisTest is Base {
     }
 
     function test_28_30_nonCoreStillSends05ToCore() public {
-        (address token,) = factory.instantLaunch(
+        (address token,) = _instant(
             ReactorFactory.InstantParams({
                 name: "N",
                 symbol: "N",

@@ -9,7 +9,7 @@ import {ReactorToken} from "../../src/ReactorToken.sol";
 contract KeeperReturnsTest is Base {
     function test_selfBurnExecuteReturnsBurnedAmount() public {
         vm.prank(alice);
-        (address token,) = factory.launchStandard(
+        (address token,) = _standard(
             ReactorFactory.InstantParams({
                 name: "SB",
                 symbol: "SB",
@@ -65,7 +65,7 @@ contract KeeperReturnsTest is Base {
     }
 
     function test_top10BuybackReturnsTargetBought() public {
-        (address token,) = factory.instantLaunch(
+        (address token,) = _instant(
             ReactorFactory.InstantParams({
                 name: "T10",
                 symbol: "T10",

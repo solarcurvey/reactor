@@ -34,7 +34,7 @@ contract LaunchesTest is Base {
     }
 
     function test_fairLaunchZeroFeeThenEconomics() public {
-        (address token, uint256 fairId) = factory.createFairLaunch(
+        (address token, uint256 fairId) = _fair(
             ReactorFactory.FairParams({
                 name: "FairCat",
                 symbol: "FCAT",

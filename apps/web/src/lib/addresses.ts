@@ -11,6 +11,9 @@ export type Deployment = {
     PoolManager: `0x${string}`;
     QuoteAssetRegistry: `0x${string}`;
     TestCORE: `0x${string}`;
+    CoreToken?: `0x${string}`;
+    TickerRegistry?: `0x${string}`;
+    LaunchSigner?: `0x${string}`;
     USDC: `0x${string}`;
     ZEC: `0x${string}`;
     BTC: `0x${string}`;

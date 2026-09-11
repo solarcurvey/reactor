@@ -34,7 +34,7 @@ contract FlushFuzzTest is Base {
 
     function test_multiQuoteFlushIsolation() public {
         address zcat = _instantZcat(40_000e8);
-        (address ucat,) = factory.instantLaunch(
+        (address ucat,) = _instant(
             ReactorFactory.InstantParams({
                 name: "U",
                 symbol: "U",

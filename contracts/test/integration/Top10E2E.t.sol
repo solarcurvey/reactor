@@ -8,7 +8,7 @@ import {ReactorToken} from "../../src/ReactorToken.sol";
 /// @notice End-to-end Keeper-submitted Top-10 buy+burn and CORE execute with real supply drops.
 contract Top10E2ETest is Base {
     function _instantUsdc(string memory name, string memory symbol) internal returns (address token) {
-        (token,) = factory.instantLaunch(
+        (token,) = _instant(
             ReactorFactory.InstantParams({
                 name: name,
                 symbol: symbol,

@@ -13,6 +13,7 @@ const links = [
   { href: "/reactor", label: "Reactor" },
   { href: "/rewards", label: "Rewards", wide: true },
   { href: "/core", label: "CORE" },
+  { href: "/docs", label: "Docs" },
 ];
 
 export function Nav() {

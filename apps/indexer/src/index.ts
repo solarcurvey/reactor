@@ -14,6 +14,8 @@ import { fillContinuous, CANDLE_INTERVALS } from "../../../packages/reactor/src/
 import { raiseAlert, recentAlerts } from "./alerts.ts";
 import { ValuationService, type QuoteNode } from "../../../packages/reactor/src/valuation.ts";
 import { consensusUsd6, StaticProvider } from "../../../packages/reactor/src/pricing.ts";
+import { priceQuoteX18FromSqrt } from "../../../packages/reactor/src/prices.ts";
+import { admit, tryNormalizeTicker } from "./admission.ts";
 
 const PORT = Number(process.env.INDEXER_PORT ?? 43148);
 const addrs = deployment.addresses as Record<string, string>;
@@ -35,6 +37,10 @@ const events = [
   parseAbiItem("event BondingProgress(address indexed token, uint256 realQuote, uint256 gradTarget, uint256 inventory)"),
   parseAbiItem("event GraduationCompleted(address indexed token, bytes32 indexed poolId, uint256 quoteLp, uint256 tokenLp)"),
   parseAbiItem("event OfficialPoolCreated(address indexed token, bytes32 indexed poolId, uint8 mode)"),
+  parseAbiItem("event OfficialPoolCreated(bytes32 indexed poolId, address indexed token, address indexed quote)"),
+  parseAbiItem("event LaunchAuthorized(address indexed token, string ticker, bytes32 authId, uint32 factoryVersion)"),
+  parseAbiItem("event TickerClaimed(string ticker, address indexed token, address indexed factory, uint32 version, uint64 lockedUntil)"),
+  parseAbiItem("event TickerPermanentlyLocked(string ticker, address indexed canonicalToken)"),
   parseAbiItem("event SwapFeeAccrued(bytes32 indexed poolId, address indexed quote, uint256 holders, uint256 flywheel, uint256 coreAmt, uint256 notional)"),
   parseAbiItem("event Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint24 fee)"),
   parseAbiItem("event RewardClaimed(address indexed account, address indexed to, uint256 amount)"),
@@ -84,10 +90,24 @@ function opsOk(req: IncomingMessage): boolean {
 async function tick(store: Store) {
   const head = await client.getBlockNumber();
   const last = BigInt((await getState(store, "block")) ?? "0");
+  const lastHash = await getState(store, "block_hash");
+  if (last > 0n && lastHash) {
+    try {
+      const blk = await client.getBlock({ blockNumber: last });
+      if (blk.hash && blk.hash !== lastHash) {
+        const rewind = last > 8n ? last - 8n : 0n;
+        await setState(store, "block", rewind.toString());
+        await setState(store, "block_hash", "");
+        return;
+      }
+    } catch {
+      /* rpc flap — keep cursor */
+    }
+  }
   let from = last > 0n ? last + 1n : 0n;
   if (from > head) return;
   const to = head - from > 2000n ? from + 2000n : head;
-  const watch = [factory, hook, addrs.BuybackVault, addrs.FlywheelVault, addrs.InstantCurve, addrs.SelfBurnVault, addrs.PoolManager]
+  const watch = [factory, hook, addrs.BuybackVault, addrs.FlywheelVault, addrs.InstantCurve, addrs.SelfBurnVault, addrs.PoolManager, addrs.TickerRegistry]
     .filter(Boolean) as `0x${string}`[];
   const logs = await client.getLogs({ address: watch, events, fromBlock: from, toBlock: to });
   const lastSqrt = new Map<string, string>();
@@ -99,12 +119,15 @@ async function tick(store: Store) {
     const ts = await chainTs(log.blockNumber);
     const tx = log.transactionHash;
     const block = Number(log.blockNumber);
+    const logIndex = Number(log.logIndex ?? 0);
+    const chainId = deployment.chainId;
 
     if (name === "TokenCreated") {
       await upsertToken(store, {
         address: token,
         name: String(args.name ?? ""),
         symbol: String(args.symbol ?? ""),
+        ticker: String(args.symbol ?? ""),
         supply: String(args.supply ?? ""),
         creator: String(args.creator ?? ""),
         block,
@@ -117,9 +140,34 @@ async function tick(store: Store) {
       await upsertToken(store, { address: token, quote: String(args.quote ?? ""), creator: String(args.creator ?? ""), rewardsMode: Boolean(args.rewardsMode ?? true), block, tx, ts });
       await upsertMarket(store, { token, quote: String(args.quote ?? ""), stage: "bonding", gradTarget: String(args.gradTarget ?? ""), ts });
     }
+    if (name === "LaunchAuthorized") {
+      await upsertToken(store, {
+        address: token,
+        ticker: String(args.ticker ?? ""),
+        factoryVersion: Number(args.factoryVersion ?? 1),
+        block,
+        tx,
+        ts,
+      });
+    }
+    if (name === "TickerClaimed" || name === "TickerPermanentlyLocked") {
+      const ticker = String(args.ticker ?? "").toUpperCase();
+      await store.run(
+        `INSERT INTO tickers(ticker,token,factory,factory_version,locked_until,permanent,reserved)
+         VALUES(?,?,?,?,?,?,?) ON CONFLICT(ticker) DO UPDATE SET token=excluded.token, locked_until=excluded.locked_until, permanent=excluded.permanent`,
+        ticker,
+        String(args.token ?? args.canonicalToken ?? "").toLowerCase(),
+        String(args.factory ?? ""),
+        Number(args.version ?? 0),
+        Number(args.lockedUntil ?? 0),
+        name === "TickerPermanentlyLocked" ? 1 : 0,
+        name === "TickerPermanentlyLocked" && !args.canonicalToken ? 1 : 0,
+      );
+    }
     if (name === "OfficialPoolCreated" || name === "GraduationCompleted") {
       const poolId = String(args.poolId ?? "");
-      tokenByPool.set(poolId, { token: token.toLowerCase(), quote: String(args.quote ?? "") });
+      const quoteFromHook = String(args.quote ?? "");
+      tokenByPool.set(poolId, { token: token.toLowerCase(), quote: quoteFromHook });
       await store.run(
         `INSERT INTO pool_relationships(pool_id,token,quote,venue,fee,hooks,exists_onchain,approved,created_block)
          VALUES(?,?,?,?,?,?,1,1,?) ON CONFLICT(pool_id) DO UPDATE SET exists_onchain=1, approved=1`,
@@ -184,6 +232,8 @@ async function tick(store: Store) {
       await recordTrade(store, sse, {
         block,
         tx,
+        logIndex,
+        chainId,
         token,
         quote: q,
         side: name === "CurveBuy" ? "buy" : "sell",
@@ -199,18 +249,31 @@ async function tick(store: Store) {
       const poolId = String(args.poolId ?? "");
       const mapped = tokenByPool.get(poolId);
       const q = String(args.quote ?? mapped?.quote ?? "");
+      const tok = mapped?.token ?? "";
+      const sqrt = lastSqrt.get(poolId) ?? "";
+      let px = "0";
+      if (sqrt && tok && q) {
+        try {
+          const tokenIs0 = tok.toLowerCase() < q.toLowerCase();
+          px = priceQuoteX18FromSqrt(BigInt(sqrt), tokenIs0, 18, quoteDec.get(q.toLowerCase()) ?? 18).toString();
+        } catch {
+          px = "0";
+        }
+      }
       await recordTrade(store, sse, {
         block,
         tx,
-        token: mapped?.token ?? "",
+        logIndex,
+        chainId,
+        token: tok,
         quote: q,
         side: "swap",
         source: "v4",
         amountIn: String(args.notional ?? "0"),
         amountOut: "0",
         notionalQuote: String(args.notional ?? "0"),
-        priceQuoteX18: "0",
-        sqrtPrice: lastSqrt.get(poolId) ?? "",
+        priceQuoteX18: px,
+        sqrtPrice: sqrt,
         holders: String(args.holders ?? "0"),
         flywheel: String(args.flywheel ?? "0"),
         core: String(args.coreAmt ?? "0"),
@@ -244,7 +307,9 @@ async function tick(store: Store) {
       sse.publish({ type: "core", data: { name, tx } });
     }
   }
+  const headBlk = await client.getBlock({ blockNumber: to });
   await setState(store, "block", to.toString());
+  await setState(store, "block_hash", headBlk.hash ?? "");
 }
 
 async function refreshQuotes(store: Store) {
@@ -352,22 +417,32 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     const sort = url.searchParams.get("sort") ?? "new";
     const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 40)));
     const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0));
-    const rows = await store.all<Record<string, unknown>>("SELECT * FROM markets");
-    const tokens = await store.all<Record<string, unknown>>("SELECT * FROM tokens");
-    const quotes = await store.all<{ token: string; symbol: string; decimals: number }>("SELECT token,symbol,decimals FROM quote_assets");
-    const tok = new Map(tokens.map((t) => [String(t.address).toLowerCase(), t]));
-    const qmeta = new Map(quotes.map((q) => [String(q.token).toLowerCase(), q]));
-    let list = rows.map((m) => {
-      const q = qmeta.get(String(m.quote).toLowerCase());
-      return { ...m, ...(tok.get(String(m.token).toLowerCase()) ?? {}), quote_symbol: q?.symbol ?? "", quote_decimals: q?.decimals ?? 18 };
-    });
-    if (q) list = list.filter((m) => `${m.symbol}${m.name}${m.token}${m.quote}`.toLowerCase().includes(q));
-    if (stage === "bonding") list = list.filter((m) => m.stage === "bonding");
-    if (stage === "v4" || stage === "trending") list = list.filter((m) => m.market_live === 1 || m.stage === "v4");
-    if (quote) list = list.filter((m) => String(m.quote).includes(quote));
-    if (sort === "vol") list.sort((a, b) => Number(b.volume_24h_usd6 ?? 0) - Number(a.volume_24h_usd6 ?? 0));
-    else list.sort((a, b) => Number(b.updated_ts ?? 0) - Number(a.updated_ts ?? 0));
-    json(res, 200, { items: list.slice(offset, offset + limit), total: list.length, request_id: rid }, rid);
+    const like = `%${q}%`;
+    const stageSql = stage === "bonding" ? "bonding" : stage === "v4" || stage === "trending" ? "v4" : "";
+    const order = sort === "vol" ? "CAST(m.volume_24h_usd6 AS INTEGER) DESC" : "m.updated_ts DESC";
+    const where = `WHERE (?='' OR lower(COALESCE(t.symbol,'')) LIKE ? OR lower(COALESCE(t.name,'')) LIKE ? OR m.token LIKE ? OR lower(COALESCE(t.ticker,'')) LIKE ?)
+      AND (?='' OR m.stage=?)
+      AND (?='' OR m.quote=?)`;
+    const params = [q, like, like, like, like, stageSql, stageSql, quote, quote];
+    const total = await store.get<{ n: number }>(
+      `SELECT COUNT(*) as n FROM markets m LEFT JOIN tokens t ON t.address=m.token ${where}`,
+      ...params,
+    );
+    const items = await store.all<Record<string, unknown>>(
+      `SELECT m.token,m.quote,m.pool_id,m.stage,m.market_live,m.fair_id,m.bonding_bps,m.real_quote,m.grad_target,m.price_quote_x18,m.price_usd6,m.fdv_usd6,m.volume_24h_quote,m.volume_24h_usd6,m.trades_24h,m.lifetime_rewards,m.image,m.description,m.updated_ts,
+              t.symbol,t.name,t.creator,t.ticker,t.factory_version,t.rewards_mode,t.supply,
+              q.symbol as quote_symbol, q.decimals as quote_decimals
+       FROM markets m
+       LEFT JOIN tokens t ON t.address=m.token
+       LEFT JOIN quote_assets q ON q.token=m.quote
+       ${where}
+       ORDER BY ${order}
+       LIMIT ? OFFSET ?`,
+      ...params,
+      limit,
+      offset,
+    );
+    json(res, 200, { items, total: Number(total?.n ?? 0), request_id: rid }, rid);
     return;
   }
   if (url.pathname === "/quote-assets") {
@@ -477,6 +552,40 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     json(res, 200, { sseClients: sse.size, request_id: rid }, rid);
     return;
   }
+  const tickerMatch = url.pathname.match(/^\/ticker\/([^/]+)$/);
+  if (tickerMatch) {
+    const parsed = tryNormalizeTicker(decodeURIComponent(tickerMatch[1] ?? ""));
+    if (!parsed.ok) {
+      json(res, 400, { error: parsed.reason, request_id: rid }, rid);
+      return;
+    }
+    const row = await store.get<Record<string, unknown>>("SELECT * FROM tickers WHERE ticker=?", parsed.ticker);
+    const tok = await store.get<Record<string, unknown>>("SELECT * FROM tokens WHERE ticker=? ORDER BY created_ts DESC", parsed.ticker);
+    json(
+      res,
+      200,
+      {
+        ticker: parsed.ticker,
+        reserved: ["CORE", "REACTOR", "USDC", "ZEC", "WBTC", "EURC"].includes(parsed.ticker),
+        record: row ?? null,
+        token: tok ?? null,
+        available: !row || (Number(row.permanent) !== 1 && Number(row.locked_until ?? 0) <= Math.floor(Date.now() / 1000)),
+        request_id: rid,
+      },
+      rid,
+    );
+    return;
+  }
+  if (url.pathname === "/launch/admit" && req.method === "POST") {
+    const body = await readBody(req);
+    const out = await admit(store, {
+      ...body,
+      ip: String(req.socket.remoteAddress ?? ""),
+      turnstile: String(body.turnstile ?? body.cfTurnstile ?? ""),
+    });
+    json(res, out.decision === "DENY" ? 403 : 200, { ...out, request_id: rid, bond: "FUTURE — refundable launch bond is not collected" }, rid);
+    return;
+  }
   if (url.pathname === "/pricing/health") {
     if (!pricingLimit.allow("health")) {
       json(res, 429, { error: "rate limited" }, rid);
@@ -521,6 +630,10 @@ async function loop(store: Store) {
 }
 
 const store = await openStore();
+{
+  const pools = await store.all<{ pool_id: string; token: string; quote: string }>("SELECT pool_id, token, quote FROM pool_relationships");
+  for (const p of pools) tokenByPool.set(p.pool_id, { token: p.token, quote: p.quote });
+}
 await refreshQuotes(store).catch((e) => console.error("quote refresh", e));
 setInterval(() => refreshQuotes(store).catch(() => undefined), 60_000);
 

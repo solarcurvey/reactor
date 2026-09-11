@@ -1,0 +1,259 @@
+import type { Store } from "./db.ts";
+
+export const SCHEMA_VERSION = 3;
+
+const V1_TABLES = `
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  id INTEGER PRIMARY KEY,
+  applied_ts INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS indexer_state (
+  k TEXT PRIMARY KEY,
+  v TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS tokens (
+  address TEXT PRIMARY KEY,
+  symbol TEXT,
+  name TEXT,
+  decimals INTEGER,
+  creator TEXT,
+  quote TEXT,
+  mode INTEGER,
+  rewards_mode INTEGER,
+  supply TEXT,
+  ticker TEXT,
+  factory_version INTEGER,
+  created_block INTEGER,
+  created_tx TEXT,
+  created_ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS markets (
+  token TEXT PRIMARY KEY,
+  quote TEXT,
+  pool_id TEXT,
+  stage TEXT,
+  market_live INTEGER,
+  fair_id TEXT,
+  bonding_bps INTEGER,
+  real_quote TEXT,
+  grad_target TEXT,
+  price_quote_x18 TEXT,
+  price_usd6 TEXT,
+  fdv_usd6 TEXT,
+  volume_24h_quote TEXT,
+  volume_24h_usd6 TEXT,
+  trades_24h INTEGER,
+  lifetime_rewards TEXT,
+  image TEXT,
+  description TEXT,
+  updated_ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS quote_assets (
+  token TEXT PRIMARY KEY,
+  symbol TEXT,
+  name TEXT,
+  decimals INTEGER,
+  category INTEGER,
+  enabled INTEGER,
+  usd_peg_one INTEGER,
+  hop_via_usdc INTEGER,
+  reactor_native INTEGER,
+  parent_quote TEXT,
+  quarantined INTEGER
+);
+CREATE TABLE IF NOT EXISTS pool_relationships (
+  pool_id TEXT PRIMARY KEY,
+  token TEXT,
+  quote TEXT,
+  venue TEXT,
+  fee INTEGER,
+  hooks TEXT,
+  exists_onchain INTEGER,
+  approved INTEGER,
+  created_block INTEGER
+);
+CREATE TABLE IF NOT EXISTS trades (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  chain_id INTEGER,
+  block INTEGER,
+  tx TEXT,
+  log_index INTEGER,
+  token TEXT,
+  quote TEXT,
+  side TEXT,
+  source TEXT,
+  amount_in TEXT,
+  amount_out TEXT,
+  notional_quote TEXT,
+  price_quote_x18 TEXT,
+  sqrt_price TEXT,
+  holders_fee TEXT,
+  flywheel_fee TEXT,
+  core_fee TEXT,
+  ts INTEGER,
+  UNIQUE(chain_id, tx, log_index)
+);
+CREATE TABLE IF NOT EXISTS candles (
+  token TEXT NOT NULL,
+  interval_sec INTEGER NOT NULL,
+  t INTEGER NOT NULL,
+  o TEXT, h TEXT, l TEXT, c TEXT,
+  v TEXT,
+  n INTEGER,
+  PRIMARY KEY (token, interval_sec, t)
+);
+CREATE TABLE IF NOT EXISTS bonding_states (
+  token TEXT PRIMARY KEY,
+  real_quote TEXT,
+  grad_target TEXT,
+  inventory TEXT,
+  ready INTEGER,
+  graduated INTEGER,
+  bonding_bps INTEGER,
+  updated_ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS graduations (
+  token TEXT PRIMARY KEY,
+  pool_id TEXT,
+  quote_lp TEXT,
+  token_lp TEXT,
+  block INTEGER,
+  tx TEXT,
+  ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS reward_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token TEXT, amount TEXT, block INTEGER, tx TEXT, ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS claims (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token TEXT, account TEXT, amount TEXT, block INTEGER, tx TEXT, ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS selfburn (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token TEXT, quote TEXT, amount TEXT, burned TEXT, kind TEXT, block INTEGER, tx TEXT, ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS flywheel (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  quote TEXT, amount TEXT, usdc_in TEXT, kind TEXT, block INTEGER, tx TEXT, ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS core_buybacks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  quote TEXT, quote_in TEXT, core_out TEXT, block INTEGER, tx TEXT, ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS top10_epochs (
+  epoch_id TEXT PRIMARY KEY, pot TEXT, n INTEGER, finalized INTEGER, paused INTEGER, reason TEXT, ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS targets (
+  epoch_id TEXT, rank INTEGER, token TEXT, weight_bps INTEGER, mark_usdc TEXT, PRIMARY KEY (epoch_id, rank)
+);
+CREATE TABLE IF NOT EXISTS keeper_operations (
+  id TEXT PRIMARY KEY, kind TEXT, status TEXT, hash TEXT, nonce TEXT, receipt TEXT, note TEXT, request_id TEXT, op_id TEXT, ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS guardian_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, payload TEXT, block INTEGER, tx TEXT, ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS route_venues (
+  id TEXT PRIMARY KEY, token_in TEXT, token_out TEXT, adapter TEXT, kind TEXT, data TEXT, pool_id TEXT,
+  exists_onchain INTEGER, approved INTEGER, reliability_bps INTEGER
+);
+CREATE TABLE IF NOT EXISTS external_price_marks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT
+);
+CREATE TABLE IF NOT EXISTS metadata (
+  token TEXT PRIMARY KEY, image TEXT, description TEXT, website TEXT, twitter TEXT, telegram TEXT, media_id TEXT
+);
+CREATE TABLE IF NOT EXISTS leader_locks (
+  name TEXT PRIMARY KEY, owner TEXT, ts INTEGER, lease_until INTEGER
+);
+CREATE TABLE IF NOT EXISTS alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, level TEXT, code TEXT, detail TEXT, ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS tickers (
+  ticker TEXT PRIMARY KEY,
+  token TEXT,
+  factory TEXT,
+  factory_version INTEGER,
+  locked_until INTEGER,
+  permanent INTEGER,
+  reserved INTEGER
+);
+CREATE TABLE IF NOT EXISTS launch_auths (
+  digest TEXT PRIMARY KEY,
+  auth_id TEXT,
+  creator TEXT,
+  ticker TEXT,
+  quote TEXT,
+  factory TEXT,
+  decision TEXT,
+  ts INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_trades_token_ts ON trades(token, ts);
+CREATE INDEX IF NOT EXISTS idx_trades_id ON trades(chain_id, tx, log_index);
+CREATE INDEX IF NOT EXISTS idx_candles_token ON candles(token, interval_sec, t);
+CREATE INDEX IF NOT EXISTS idx_markets_stage ON markets(stage);
+CREATE INDEX IF NOT EXISTS idx_markets_quote ON markets(quote);
+CREATE INDEX IF NOT EXISTS idx_markets_updated ON markets(updated_ts);
+CREATE INDEX IF NOT EXISTS idx_tokens_ticker ON tokens(ticker);
+CREATE INDEX IF NOT EXISTS idx_keeper_status ON keeper_operations(status, ts);
+CREATE INDEX IF NOT EXISTS idx_venues_pair ON route_venues(token_in, token_out);
+`;
+
+export async function applyMigrations(store: Store): Promise<number> {
+  await store.exec(
+    store.dialect === "postgres"
+      ? `CREATE TABLE IF NOT EXISTS schema_migrations (id INTEGER PRIMARY KEY, applied_ts BIGINT NOT NULL)`
+      : `CREATE TABLE IF NOT EXISTS schema_migrations (id INTEGER PRIMARY KEY, applied_ts INTEGER NOT NULL)`,
+  );
+  const row = await store.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
+  let current = Number(row?.n ?? 0);
+  if (current === 0) {
+    const existing = await store.get<{ n: number }>("SELECT COUNT(*) as n FROM sqlite_master WHERE type='table' AND name='tokens'").catch(() => undefined);
+    const sql = store.dialect === "postgres" ? postgres(V1_TABLES) : V1_TABLES;
+    await store.exec(sql);
+    if (!existing || Number(existing.n) === 0 || current === 0) {
+      await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 1, Math.floor(Date.now() / 1000));
+      current = 1;
+    }
+  }
+  if (current < 2) {
+    for (const stmt of [
+      "ALTER TABLE tokens ADD COLUMN ticker TEXT",
+      "ALTER TABLE tokens ADD COLUMN factory_version INTEGER",
+      "ALTER TABLE trades ADD COLUMN chain_id INTEGER",
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 2, Math.floor(Date.now() / 1000));
+    current = 2;
+  }
+  if (current < 3) {
+    await store.exec(
+      `CREATE TABLE IF NOT EXISTS tickers (
+        ticker TEXT PRIMARY KEY, token TEXT, factory TEXT, factory_version INTEGER,
+        locked_until INTEGER, permanent INTEGER, reserved INTEGER
+      )`,
+    );
+    await store.exec(
+      `CREATE TABLE IF NOT EXISTS launch_auths (
+        digest TEXT PRIMARY KEY, auth_id TEXT, creator TEXT, ticker TEXT, quote TEXT, factory TEXT, decision TEXT, ts INTEGER
+      )`,
+    );
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 3, Math.floor(Date.now() / 1000));
+    current = 3;
+  }
+  return current;
+}
+
+function postgres(sql: string): string {
+  return sql.replace(/INTEGER PRIMARY KEY AUTOINCREMENT/g, "BIGSERIAL PRIMARY KEY").replace(/AUTOINCREMENT/g, "");
+}
+
+/** @deprecated use applyMigrations */
+export function sqliteSchema(): string {
+  return V1_TABLES;
+}
+
+export function postgresSchema(): string {
+  return postgres(V1_TABLES);
+}

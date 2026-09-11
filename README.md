@@ -61,10 +61,15 @@ Addresses land in `deployments/local.json` after the demo script.
 
 We **do not claim Arc Testnet success** unless transactions appear on [testnet.arcscan.app](https://testnet.arcscan.app).
 
-## Docs
+In-app docs: [`/docs`](http://127.0.0.1:43147/docs) (sidebar, search, TOC). Source: `docs/`. `llms.txt` at `/llms.txt`.
+
+## Protocol notes
 
 | File | Contents |
 | --- | --- |
+| `TICKER_REGISTRY.md` | Global ticker lock + normalize |
+| `FACTORY_VERSIONING.md` | Immutable factories; new launches only |
+| `LAUNCH_ADMISSION.md` | EIP-712 + Turnstile + throttle |
 | `CORE_GENESIS.md` | CORE 10/90 genesis, vesting, 2.5/1.0 book |
 | `CORE_LIQUIDITY_DESIGN.md` | Single-sided CORE/USDC ticks and lock |
 | `CURVE_DESIGN.md` | Frozen Instant bonding constants and sim |

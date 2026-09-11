@@ -8,7 +8,7 @@ import {Top10Ranker} from "../../src/libraries/Top10Ranker.sol";
 /// @notice Offchain ranker + onchain structural submit. Material vs irrelevant inactivity.
 contract Top10ApiTest is Base {
     function _tok(string memory s) internal returns (address token) {
-        (token,) = factory.instantLaunch(
+        (token,) = _instant(
             ReactorFactory.InstantParams({
                 name: s,
                 symbol: s,
@@ -104,7 +104,9 @@ contract Top10ApiTest is Base {
         assertEq(w[0], 10_000);
         assertFalse(pause);
         uint256 sum;
-        for (uint256 i; i < w.length; i++) sum += w[i];
+        for (uint256 i; i < w.length; i++) {
+            sum += w[i];
+        }
         assertEq(sum, 10_000);
     }
 
@@ -126,7 +128,8 @@ contract Top10ApiTest is Base {
 
     function test_43_onchainRejectsApiGuessIfUngraduated() public {
         address token = _tok("G");
-        (address[] memory t, uint256[] memory w,) = Top10Ranker.rank(_one(token, false, false, 400_000e6, true), 250_000e6);
+        (address[] memory t, uint256[] memory w,) =
+            Top10Ranker.rank(_one(token, false, false, 400_000e6, true), 250_000e6);
         assertEq(t.length, 0);
         t = new address[](1);
         w = new uint256[](1);
@@ -140,7 +143,8 @@ contract Top10ApiTest is Base {
     function test_43_onchainAcceptsGraduatedWeights() public {
         address token = _tok("OK");
         _fillAndGraduate(alice, token);
-        (address[] memory t, uint256[] memory w,) = Top10Ranker.rank(_one(token, true, false, 400_000e6, true), 250_000e6);
+        (address[] memory t, uint256[] memory w,) =
+            Top10Ranker.rank(_one(token, true, false, 400_000e6, true), 250_000e6);
         vm.prank(keeper);
         flywheel.submitEpoch(0, t, w);
         assertEq(flywheel.ranked(0), token);

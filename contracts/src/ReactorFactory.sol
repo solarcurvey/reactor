@@ -24,6 +24,9 @@ import {FlywheelVault} from "./FlywheelVault.sol";
 import {BuybackVault} from "./BuybackVault.sol";
 import {ReactorGuardian} from "./ReactorGuardian.sol";
 import {LaunchPricing} from "./libraries/LaunchPricing.sol";
+import {LaunchAuthorization} from "./libraries/LaunchAuthorization.sol";
+import {Ticker} from "./libraries/Ticker.sol";
+import {TickerRegistry} from "./TickerRegistry.sol";
 import {CurveMath} from "./libraries/CurveMath.sol";
 
 contract ReactorFactory {
@@ -37,14 +40,19 @@ contract ReactorFactory {
     QuoteAssetRegistry public immutable registry;
     address public immutable core;
     ReactorGuardian public immutable auth;
+    TickerRegistry public immutable tickers;
+    uint32 public constant FACTORY_VERSION = 1;
 
     InstantCurve public curve;
     SelfBurnVault public selfBurn;
     mapping(address => bool) public standardMode;
     mapping(bytes32 => bool) public usedPricing;
     bytes32 public immutable pricingDomain;
+    bytes32 public immutable authDomain;
 
     uint256 public launchCount;
+    mapping(address => uint32) public tokenFactoryVersion;
+    mapping(address => string) public tokenTicker;
 
     enum LaunchMode {
         Instant,
@@ -105,6 +113,7 @@ contract ReactorFactory {
     event BatchFairLaunchFinalized(uint256 indexed fairId, uint256 totalBids, uint256 auctionTokens);
     event OfficialPoolCreated(address indexed token, PoolId indexed poolId, LaunchMode mode);
     event MetadataSet(address indexed token, string image, string description);
+    event LaunchAuthorized(address indexed token, string ticker, bytes32 authId, uint32 factoryVersion);
 
     error BadQuote();
     error BadParams();
@@ -124,6 +133,8 @@ contract ReactorFactory {
     error CurveUnbound();
     error LaunchesArePaused();
     error NeedPricingAuth();
+    error NeedLaunchAuth();
+    error FactoryInactive();
 
     constructor(
         IPoolManager manager_,
@@ -132,7 +143,8 @@ contract ReactorFactory {
         ReactorLiquidityVault vault_,
         QuoteAssetRegistry registry_,
         address core_,
-        ReactorGuardian auth_
+        ReactorGuardian auth_,
+        TickerRegistry tickers_
     ) {
         poolManager = manager_;
         hook = hook_;
@@ -141,6 +153,8 @@ contract ReactorFactory {
         registry = registry_;
         core = core_;
         auth = auth_;
+        if (address(tickers_) == address(0)) revert BadParams();
+        tickers = tickers_;
         fairVault = new FairClaimVault(address(this));
         pricingDomain = keccak256(
             abi.encode(
@@ -151,6 +165,7 @@ contract ReactorFactory {
                 address(this)
             )
         );
+        authDomain = tickers_.domainSeparator();
     }
 
     function bindCurve(InstantCurve curve_, SelfBurnVault selfBurn_) external {
@@ -208,13 +223,8 @@ contract ReactorFactory {
         string telegram;
     }
 
-    /// @notice Rewards Instant. Protocol owns supply/decimals/curve/FDV. Optional `devBuyQuote`.
-    function instantLaunch(InstantParams calldata p) external returns (address token, PoolId poolId) {
-        auth.requireLaunchesOpen();
-        (token, poolId,) = _instantLaunch(p, true, p.devBuyQuote, 1, _emptyAuth(), "");
-    }
-
-    function instantLaunchPriced(InstantParams calldata p, LaunchPricing.Auth calldata a, bytes calldata sig)
+    /// @notice Rewards Instant. Every launch needs a short-lived LaunchAuthorization (USDC included).
+    function instantLaunch(InstantParams calldata p, LaunchAuthorization.Auth calldata a, bytes calldata sig)
         external
         returns (address token, PoolId poolId)
     {
@@ -223,12 +233,7 @@ contract ReactorFactory {
     }
 
     /// @notice Standard Instant (2% buy+burn). Same curve constants as Rewards.
-    function launchStandard(InstantParams calldata p) external returns (address token, PoolId poolId) {
-        auth.requireLaunchesOpen();
-        (token, poolId,) = _instantLaunch(p, false, p.devBuyQuote, 1, _emptyAuth(), "");
-    }
-
-    function launchStandardPriced(InstantParams calldata p, LaunchPricing.Auth calldata a, bytes calldata sig)
+    function launchStandard(InstantParams calldata p, LaunchAuthorization.Auth calldata a, bytes calldata sig)
         external
         returns (address token, PoolId poolId)
     {
@@ -237,26 +242,44 @@ contract ReactorFactory {
     }
 
     /// @notice Atomic create + curve init + optional creator purchase (full 3.5%). Reverts if token-out > 5%.
-    function launchAndBuy(InstantParams calldata p, bool rewards, uint256 minOut)
-        external
-        returns (address token, PoolId poolId, uint256 tokensOut)
-    {
-        auth.requireLaunchesOpen();
-        return _instantLaunch(p, rewards, p.devBuyQuote, minOut, _emptyAuth(), "");
-    }
-
-    function launchAndBuyPriced(
+    function launchAndBuy(
         InstantParams calldata p,
         bool rewards,
         uint256 minOut,
-        LaunchPricing.Auth calldata a,
+        LaunchAuthorization.Auth calldata a,
         bytes calldata sig
     ) external returns (address token, PoolId poolId, uint256 tokensOut) {
         auth.requireLaunchesOpen();
         return _instantLaunch(p, rewards, p.devBuyQuote, minOut, a, sig);
     }
 
-    function _emptyAuth() internal pure returns (LaunchPricing.Auth memory a) {}
+    /// @dev Legacy names — same as instantLaunch / launchStandard / launchAndBuy.
+    function instantLaunchPriced(InstantParams calldata p, LaunchAuthorization.Auth calldata a, bytes calldata sig)
+        external
+        returns (address token, PoolId poolId)
+    {
+        auth.requireLaunchesOpen();
+        (token, poolId,) = _instantLaunch(p, true, p.devBuyQuote, 1, a, sig);
+    }
+
+    function launchStandardPriced(InstantParams calldata p, LaunchAuthorization.Auth calldata a, bytes calldata sig)
+        external
+        returns (address token, PoolId poolId)
+    {
+        auth.requireLaunchesOpen();
+        (token, poolId,) = _instantLaunch(p, false, p.devBuyQuote, 1, a, sig);
+    }
+
+    function launchAndBuyPriced(
+        InstantParams calldata p,
+        bool rewards,
+        uint256 minOut,
+        LaunchAuthorization.Auth calldata a,
+        bytes calldata sig
+    ) external returns (address token, PoolId poolId, uint256 tokensOut) {
+        auth.requireLaunchesOpen();
+        return _instantLaunch(p, rewards, p.devBuyQuote, minOut, a, sig);
+    }
 
     function _usdPegOne(address quote) internal view returns (bool) {
         return registry.isUsdPegOne(quote);
@@ -271,19 +294,35 @@ contract ReactorFactory {
         bool rewards,
         uint256 quoteIn,
         uint256 minOut,
-        LaunchPricing.Auth memory a,
+        LaunchAuthorization.Auth memory a,
         bytes memory sig
     ) internal returns (address token, PoolId poolId, uint256 tokensOut) {
         if (address(curve) == address(0)) revert CurveUnbound();
         if (!registry.canLaunch(p.quote)) revert BuybackRouteRequired();
         if (p.quote == core) revert CoreForbidden();
+        if (!tickers.isActiveFactory(address(this))) revert FactoryInactive();
         uint256 supply = ReactorConstants.DEFAULT_SUPPLY;
         uint8 dec = ReactorConstants.DEFAULT_DECIMALS;
+        string memory ticker = Ticker.normalize(p.symbol);
+        uint8 qdec = IERC20MinimalExt(p.quote).decimals();
+        uint256 vq0 = _virtualQuote0(p.quote, qdec, a);
+        bytes32 digest_ = LaunchAuthorization.verify(
+            auth,
+            authDomain,
+            address(this),
+            msg.sender,
+            p.quote,
+            qdec,
+            LaunchAuthorization.INSTANT_CURVE_V1,
+            ticker,
+            a,
+            sig
+        );
 
         token = address(
             new ReactorToken(
                 p.name,
-                p.symbol,
+                ticker,
                 dec,
                 supply,
                 p.quote,
@@ -295,14 +334,16 @@ contract ReactorFactory {
                 true
             )
         );
+        tickers.claimOnLaunch(ticker, token, digest_);
+        tokenFactoryVersion[token] = FACTORY_VERSION;
+        tokenTicker[token] = ticker;
         _setMeta(token, p.image, p.description, p.website, p.twitter, p.telegram);
         _excludeSinks(token);
         if (address(selfBurn) != address(0)) ReactorToken(token).excludeProtocol(address(selfBurn));
         ReactorToken(token).excludeProtocol(address(curve));
-        emit TokenCreated(token, msg.sender, p.name, p.symbol, supply);
+        emit TokenCreated(token, msg.sender, p.name, ticker, supply);
+        emit LaunchAuthorized(token, ticker, a.authId, FACTORY_VERSION);
 
-        uint8 qdec = IERC20MinimalExt(p.quote).decimals();
-        uint256 vq0 = _checkPricing(p.quote, a, sig);
         curve.open(token, p.quote, msg.sender, rewards, qdec, supply, vq0);
         standardMode[token] = !rewards;
 
@@ -345,20 +386,29 @@ contract ReactorFactory {
         string telegram;
     }
 
-    function createFairLaunch(FairParams calldata p) external returns (address token, uint256 fairId) {
+    function createFairLaunch(FairParams calldata p, LaunchAuthorization.Auth calldata a, bytes calldata sig)
+        external
+        returns (address token, uint256 fairId)
+    {
         auth.requireLaunchesOpen();
         if (!registry.canLaunch(p.quote)) revert BuybackRouteRequired();
         if (p.quote == core) revert CoreForbidden();
+        if (!tickers.isActiveFactory(address(this))) revert FactoryInactive();
         uint256 supply = p.supply == 0 ? ReactorConstants.DEFAULT_SUPPLY : p.supply;
         uint8 dec = p.decimals == 0 ? ReactorConstants.DEFAULT_DECIMALS : p.decimals;
         uint64 duration = p.duration == 0 ? ReactorConstants.DEFAULT_FAIR_DURATION : p.duration;
         uint16 auctionBps = p.auctionBps == 0 ? ReactorConstants.DEFAULT_AUCTION_BPS : p.auctionBps;
         if (auctionBps != ReactorConstants.DEFAULT_AUCTION_BPS) revert AuctionBpsLocked();
+        string memory ticker = Ticker.normalize(p.symbol);
+        uint8 qdec = IERC20MinimalExt(p.quote).decimals();
+        bytes32 digest_ = LaunchAuthorization.verify(
+            auth, authDomain, address(this), msg.sender, p.quote, qdec, LaunchAuthorization.FAIR_V1, ticker, a, sig
+        );
 
         token = address(
             new ReactorToken(
                 p.name,
-                p.symbol,
+                ticker,
                 dec,
                 supply,
                 p.quote,
@@ -370,9 +420,13 @@ contract ReactorFactory {
                 false
             )
         );
+        tickers.claimOnLaunch(ticker, token, digest_);
+        tokenFactoryVersion[token] = FACTORY_VERSION;
+        tokenTicker[token] = ticker;
         _setMeta(token, p.image, p.description, p.website, p.twitter, p.telegram);
         _excludeSinks(token);
-        emit TokenCreated(token, msg.sender, p.name, p.symbol, supply);
+        emit TokenCreated(token, msg.sender, p.name, ticker, supply);
+        emit LaunchAuthorized(token, ticker, a.authId, FACTORY_VERSION);
 
         fairId = ++launchCount;
         uint256 auctionTokens = (supply * auctionBps) / ReactorConstants.BPS_DENOMINATOR;
@@ -503,29 +557,19 @@ contract ReactorFactory {
         return allTokens.length;
     }
 
-    /// @notice usdPegOne assets use protocol USDC-6 geometry. Everyone else needs a unique signed digest.
-    function _checkPricing(address quote, LaunchPricing.Auth memory a, bytes memory sig)
+    /// @notice usdPegOne uses protocol geometry (auth still required). Everyone else uses signed virtualQuote0.
+    function _virtualQuote0(address quote, uint8 qdec, LaunchAuthorization.Auth memory a)
         internal
+        view
         returns (uint256 virtualQuote0)
     {
-        uint8 qdec = IERC20MinimalExt(quote).decimals();
         if (_usdPegOne(quote)) {
-            return CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, qdec);
+            uint256 expected = CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, qdec);
+            if (a.virtualQuote0 != 0 && a.virtualQuote0 != expected) revert LaunchAuthorization.WrongParams();
+            return expected;
         }
-        if (sig.length == 0) revert NeedPricingAuth();
+        if (a.virtualQuote0 == 0) revert NeedPricingAuth();
         if (!registry.isEnabled(quote)) revert LaunchPricing.Quarantined();
-        LaunchPricing.verify(
-            auth,
-            pricingDomain,
-            address(this),
-            msg.sender,
-            quote,
-            qdec,
-            LaunchPricing.INSTANT_CURVE_V1,
-            a,
-            sig,
-            usedPricing
-        );
         return a.virtualQuote0;
     }
 
@@ -536,9 +580,10 @@ contract ReactorFactory {
 
     /// @notice USD-equivalent virtual quote₀. `quoteUsd6` is USDC-6 per 1 whole quote token.
     function virtualQuote0ForUsd(address quote, uint256 quoteUsd6) external view returns (uint256) {
-        return CurveMath.virtualQuote0ForUsd(
-            ReactorConstants.DEFAULT_SUPPLY, IERC20MinimalExt(quote).decimals(), quoteUsd6
-        );
+        return
+            CurveMath.virtualQuote0ForUsd(
+                ReactorConstants.DEFAULT_SUPPLY, IERC20MinimalExt(quote).decimals(), quoteUsd6
+            );
     }
 
     function _validateLaunch(address quote, uint256 supply, uint8, uint256) internal view {
@@ -559,8 +604,10 @@ contract ReactorFactory {
     }
 
     function _registerNativeQuote(address token) internal {
-        try registry.registerNative(token, ReactorToken(token).symbol(), ReactorToken(token).name(), ReactorToken(token).decimals())
-        {} catch {}
+        try registry.registerNative(
+            token, ReactorToken(token).symbol(), ReactorToken(token).name(), ReactorToken(token).decimals()
+        ) {}
+            catch {}
     }
 
     function isGraduatedReactor(address token) public view returns (bool) {

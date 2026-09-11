@@ -102,7 +102,7 @@ contract ProtocolExemptReentrancyTest is Base {
             twitter: "",
             telegram: ""
         });
-        (address token,) = factory.launchStandard(p);
+        (address token,) = _standard(p);
         vm.startPrank(alice);
         mal.approve(address(curve), type(uint256).max);
         curve.buy(token, 80_000e6, 1);
@@ -133,7 +133,7 @@ contract ProtocolExemptReentrancyTest is Base {
     function test_userSwapWhileExemptFlagSetRevertsDirectly() public {
         // Isolated: if a caller already holds the latch, swap refuses even without the lock.
         // The public path cannot set the latch; this documents WalletExemptForbidden on swap.
-        (address token,) = factory.instantLaunch(
+        (address token,) = _instant(
             ReactorFactory.InstantParams({
                 name: "N",
                 symbol: "N",

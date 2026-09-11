@@ -10,6 +10,11 @@ Guardian is immutable. Keeper is replaceable by Guardian.
 | --- | --- | --- |
 | `ReactorGuardian` | `setKeeper` | Replace designated Keeper |
 | `ReactorGuardian` | `setPricingSigner` | Launch-pricing EIP-712 signer (starts as Keeper) |
+| `ReactorGuardian` | `setLaunchSigner` | LaunchAuthorization signer. Falls back to pricingSigner until set. ≠ Keeper ≠ Safe |
+| `ReactorGuardian` | `bindTickerRegistry` | One-time global `TickerRegistry` |
+| `ReactorGuardian` | `authorizeFactory` / `deprecateFactory` | New launches only; V1 tokens untouched |
+| `ReactorGuardian` | `permanentlyLockTicker` | One-way; not an oracle |
+| `TickerRegistry` | `claimOnLaunch` | Active factory only; 24h lock + consume digest |
 | `ReactorGuardian` | `pauseLaunches` / `pauseKeeper` / `pauseTrading` | Brake pedal |
 | `ReactorGuardian` | `setAdapter` | Reviewed routing adapters. V1 has no `setHook`. |
 | `QuoteAssetRegistry` | `bindFactory` | One-time |

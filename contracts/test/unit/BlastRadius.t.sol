@@ -22,7 +22,7 @@ contract BlastRadiusTest is Base {
     }
 
     function test_selfBurn_chunksNotFullPot() public {
-        (address token,) = factory.launchStandard(
+        (address token,) = _standard(
             ReactorFactory.InstantParams({
                 name: "SB",
                 symbol: "SB",
