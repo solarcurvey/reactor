@@ -10,6 +10,7 @@ contract FlushFuzzTest is Base {
     function testFuzz_flushRejectsArbitraryPair(address spoof, uint8 dec) public {
         dec = uint8(bound(dec, 6, 18));
         address zcat = _instantZcat(40_000e8);
+        _fillAndGraduate(alice, zcat);
         _buy(alice, zcat, address(zec), 400e8);
         MockERC20 junk = new MockERC20("J", "J", dec, 0, address(this));
         if (spoof == zcat || spoof == address(0) || spoof == address(zec) || spoof == address(usdc)) {
@@ -25,6 +26,7 @@ contract FlushFuzzTest is Base {
     function testFuzz_flushCallerOrder(address caller) public {
         vm.assume(caller != address(0));
         address zcat = _instantZcat(40_000e8);
+        _fillAndGraduate(alice, zcat);
         _buy(alice, zcat, address(zec), 300e8);
         vm.prank(caller);
         hook.flush(zcat);
@@ -48,6 +50,8 @@ contract FlushFuzzTest is Base {
                 telegram: ""
             })
         );
+        _fillAndGraduate(alice, zcat);
+        _fillAndGraduate(bob, ucat);
         _buy(alice, zcat, address(zec), 800e8);
         _buy(bob, ucat, address(usdc), 800e6);
         hook.flush(zcat);

@@ -15,8 +15,8 @@ This repository is the V1 MVP: contracts, tests, indexer, and consumer web app.
 
 A complete economic loop:
 
-1. Instant or Fair launch
-2. Trade on the official hooked pool
+1. Instant (bonding → v4) or Fair launch
+2. Trade on the curve, then the official hooked pool after graduation
 3. Holders claim quote rewards (no staking)
 4. Permissionless CORE buyback and burn
 5. UI that shows only onchain numbers

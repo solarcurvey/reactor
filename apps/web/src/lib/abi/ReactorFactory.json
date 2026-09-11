@@ -111,6 +111,29 @@
   },
   {
     "type": "function",
+    "name": "bindCurve",
+    "inputs": [
+      {
+        "name": "curve_",
+        "type": "address",
+        "internalType": "contract InstantCurve"
+      },
+      {
+        "name": "selfBurn_",
+        "type": "address",
+        "internalType": "contract SelfBurnVault"
+      },
+      {
+        "name": "keepers_",
+        "type": "address",
+        "internalType": "contract KeeperReserve"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "claimFairTokens",
     "inputs": [
       {
@@ -153,6 +176,19 @@
         "name": "",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "configurator",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -260,6 +296,37 @@
       }
     ],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "creditTokenRewards",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "curve",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract InstantCurve"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -473,6 +540,126 @@
   },
   {
     "type": "function",
+    "name": "isRewards",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "launchAndBuy",
+    "inputs": [
+      {
+        "name": "p",
+        "type": "tuple",
+        "internalType": "struct ReactorFactory.InstantParams",
+        "components": [
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "decimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "supply",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "quote",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "fdvQuoteRaw",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "devBuyQuote",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "image",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "description",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "website",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "twitter",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "telegram",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      },
+      {
+        "name": "rewards",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "minOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "poolId",
+        "type": "bytes32",
+        "internalType": "PoolId"
+      },
+      {
+        "name": "tokensOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "launchCount",
     "inputs": [],
     "outputs": [
@@ -480,6 +667,111 @@
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "launchStandard",
+    "inputs": [
+      {
+        "name": "p",
+        "type": "tuple",
+        "internalType": "struct ReactorFactory.InstantParams",
+        "components": [
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "decimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "supply",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "quote",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "fdvQuoteRaw",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "devBuyQuote",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "image",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "description",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "website",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "twitter",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "telegram",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "poolId",
+        "type": "bytes32",
+        "internalType": "PoolId"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "metaFrozen",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -525,6 +817,24 @@
   },
   {
     "type": "function",
+    "name": "onGraduated",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "poolId",
+        "type": "bytes32",
+        "internalType": "PoolId"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "poolManager",
     "inputs": [],
     "outputs": [
@@ -558,6 +868,19 @@
         "name": "",
         "type": "address",
         "internalType": "contract ReactorRouter"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "selfBurn",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract SelfBurnVault"
       }
     ],
     "stateMutability": "view"
@@ -599,6 +922,25 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "standardMode",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -720,6 +1062,25 @@
   },
   {
     "type": "event",
+    "name": "CurveBound",
+    "inputs": [
+      {
+        "name": "curve",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "selfBurn",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "FairBid",
     "inputs": [
       {
@@ -742,6 +1103,43 @@
       },
       {
         "name": "totalBids",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "InstantLaunchCreated",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "quote",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "rewards",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "gradTarget",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -894,6 +1292,11 @@
   },
   {
     "type": "error",
+    "name": "AlreadyBound",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "AlreadyFinalized",
     "inputs": []
   },
@@ -939,12 +1342,37 @@
   },
   {
     "type": "error",
+    "name": "CurveUnbound",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InstantFdvRange",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidPrice",
     "inputs": []
   },
   {
     "type": "error",
+    "name": "MetaFrozen",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotConfigurator",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotCreator",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotCurve",
     "inputs": []
   },
   {

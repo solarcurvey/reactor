@@ -58,10 +58,11 @@ contract SecurityTest is Base {
         address token = _instantZcat(40_000e8);
         uint256 out1 = _buy(alice, token, address(zec), 200e8);
         _buy(bob, token, address(zec), 8_000e8);
-        _approveRouter(alice, address(zec), 200e8);
+        vm.prank(alice);
+        zec.approve(address(curve), 200e8);
         vm.prank(alice);
         vm.expectRevert();
-        router.swap(_key(token, address(zec)), address(zec) < token, -int256(200e8), out1, alice);
+        curve.buy(token, 200e8, out1);
     }
 
     function test_partialFillRejectedAtInstantEdge() public {
@@ -110,6 +111,9 @@ contract SecurityTest is Base {
         hook.flush(address(fake));
         vm.expectRevert(ReactorHook.UnknownLaunch.selector);
         hook.flush(address(usdc), address(fake));
+        vm.expectRevert(ReactorHook.UnknownLaunch.selector);
+        hook.flush(address(usdc), zcat);
+        _fillAndGraduate(alice, zcat);
         vm.expectRevert(ReactorHook.QuoteMismatch.selector);
         hook.flush(address(usdc), zcat);
     }
@@ -175,7 +179,7 @@ contract SecurityTest is Base {
                 telegram: ""
             })
         );
-        _buy(alice, ucat, address(usdc), 80_000e6);
+        _buy(alice, ucat, address(usdc), 5_000e6);
         uint256 acc = buyback.accrued(address(usdc));
         assertGt(acc, 0);
 
@@ -208,7 +212,7 @@ contract SecurityTest is Base {
                 telegram: ""
             })
         );
-        _buy(alice, ucat, address(usdc), 50_000e6);
+        _buy(alice, ucat, address(usdc), 5_000e6);
         buyback.execute(address(usdc));
         uint256 mid = buyback.accrued(address(usdc));
         buyback.execute(address(usdc));
@@ -253,9 +257,9 @@ contract SecurityTest is Base {
             })
         );
 
-        _buy(alice, zcat, address(zec), 8_000e8);
-        _buy(bob, giga, address(usdc), 40_000e6);
-        _buy(carol, meme, address(btc), 5e8);
+        _buy(alice, zcat, address(zec), 4_000e8);
+        _buy(bob, giga, address(usdc), 4_000e6);
+        _buy(carol, meme, address(btc), 1e8);
 
         assertEq(ReactorToken(zcat).quoteAsset(), address(zec));
         assertEq(ReactorToken(giga).quoteAsset(), address(usdc));

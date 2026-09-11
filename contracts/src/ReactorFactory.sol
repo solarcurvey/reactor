@@ -18,6 +18,10 @@ import {ReactorConstants} from "./ReactorConstants.sol";
 import {LaunchMath} from "./libraries/LaunchMath.sol";
 import {LiquidityAmounts} from "./libraries/LiquidityAmounts.sol";
 import {IERC20MinimalExt} from "./interfaces/IERC20MinimalExt.sol";
+import {InstantCurve} from "./InstantCurve.sol";
+import {SelfBurnVault} from "./SelfBurnVault.sol";
+import {KeeperReserve} from "./KeeperReserve.sol";
+import {FlywheelVault} from "./FlywheelVault.sol";
 
 contract ReactorFactory {
     using StateLibrary for IPoolManager;
@@ -29,6 +33,11 @@ contract ReactorFactory {
     FairClaimVault public immutable fairVault;
     QuoteAssetRegistry public immutable registry;
     address public immutable core;
+    address public immutable configurator;
+
+    InstantCurve public curve;
+    SelfBurnVault public selfBurn;
+    mapping(address => bool) public standardMode;
 
     uint256 public launchCount;
 
@@ -82,6 +91,10 @@ contract ReactorFactory {
     event TokenCreated(address indexed token, address indexed creator, string name, string symbol, uint256 supply);
     event LaunchCreated(address indexed token, LaunchMode mode, address indexed quote);
     event InstantMarketOpened(address indexed token, PoolId indexed poolId, uint256 fdvQuoteRaw, uint256 devBuy);
+    event InstantLaunchCreated(
+        address indexed token, address indexed quote, address indexed creator, bool rewards, uint256 gradTarget
+    );
+    event CurveBound(address curve, address selfBurn);
     event BatchFairLaunchCreated(uint256 indexed fairId, address indexed token, uint64 startTime, uint64 endTime);
     event FairBid(uint256 indexed fairId, address indexed bidder, uint256 amount, uint256 totalBids);
     event BatchFairLaunchFinalized(uint256 indexed fairId, uint256 totalBids, uint256 auctionTokens);
@@ -101,6 +114,10 @@ contract ReactorFactory {
     error BuybackRouteRequired();
     error InstantFdvRange();
     error MetaFrozen();
+    error AlreadyBound();
+    error NotCurve();
+    error CurveUnbound();
+    error NotConfigurator();
 
     constructor(
         IPoolManager manager_,
@@ -116,7 +133,40 @@ contract ReactorFactory {
         vault = vault_;
         registry = registry_;
         core = core_;
+        configurator = msg.sender;
         fairVault = new FairClaimVault(address(this));
+    }
+
+    function bindCurve(InstantCurve curve_, SelfBurnVault selfBurn_, KeeperReserve keepers_) external {
+        if (msg.sender != configurator) revert NotConfigurator();
+        if (address(curve) != address(0)) revert AlreadyBound();
+        if (address(curve_) == address(0) || address(selfBurn_) == address(0)) revert BadParams();
+        curve = curve_;
+        selfBurn = selfBurn_;
+        vault.bindCurve(address(curve_));
+        curve_.bindSelfBurn(selfBurn_, keepers_);
+        address fw = address(hook.flywheelVault());
+        if (fw != address(0)) FlywheelVault(fw).setCurve(address(curve_));
+        emit CurveBound(address(curve_), address(selfBurn_));
+    }
+
+    function isRewards(address token) external view returns (bool) {
+        return !standardMode[token];
+    }
+
+    function creditTokenRewards(address token, uint256 amount) external {
+        if (msg.sender != address(curve)) revert NotCurve();
+        ReactorToken(token).creditRewards(amount);
+    }
+
+    function onGraduated(address token, PoolId poolId) external {
+        if (msg.sender != address(curve)) revert NotCurve();
+        TokenInfo storage info = tokenInfo[token];
+        if (info.token == address(0) || info.marketLive) revert BadParams();
+        info.poolId = poolId;
+        info.marketLive = true;
+        emit InstantMarketOpened(token, poolId, 0, 0);
+        emit OfficialPoolCreated(token, poolId, LaunchMode.Instant);
     }
 
     struct InstantParams {
@@ -134,12 +184,33 @@ contract ReactorFactory {
         string telegram;
     }
 
+    /// @notice Rewards Instant. Protocol owns supply/decimals/curve/FDV. Optional `devBuyQuote`.
     function instantLaunch(InstantParams calldata p) external returns (address token, PoolId poolId) {
-        _validateLaunch(p.quote, p.supply, p.decimals, p.fdvQuoteRaw);
-        uint256 supply = p.supply == 0 ? ReactorConstants.DEFAULT_SUPPLY : p.supply;
-        uint8 dec = p.decimals == 0 ? ReactorConstants.DEFAULT_DECIMALS : p.decimals;
-        uint256 fdv = p.fdvQuoteRaw;
-        if (fdv == 0 && p.quote == registry.usdc()) fdv = ReactorConstants.INSTANT_FDV_USDC_DEFAULT;
+        (token, poolId,) = _instantLaunch(p, true, p.devBuyQuote, 1);
+    }
+
+    /// @notice Standard Instant (2% buy+burn). Same curve constants as Rewards.
+    function launchStandard(InstantParams calldata p) external returns (address token, PoolId poolId) {
+        (token, poolId,) = _instantLaunch(p, false, p.devBuyQuote, 1);
+    }
+
+    /// @notice Atomic create + curve init + optional creator purchase (full 3.5%). Reverts if token-out > 5%.
+    function launchAndBuy(InstantParams calldata p, bool rewards, uint256 minOut)
+        external
+        returns (address token, PoolId poolId, uint256 tokensOut)
+    {
+        return _instantLaunch(p, rewards, p.devBuyQuote, minOut);
+    }
+
+    function _instantLaunch(InstantParams calldata p, bool rewards, uint256 quoteIn, uint256 minOut)
+        internal
+        returns (address token, PoolId poolId, uint256 tokensOut)
+    {
+        if (address(curve) == address(0)) revert CurveUnbound();
+        if (!registry.canLaunch(p.quote)) revert BuybackRouteRequired();
+        if (p.quote == core) revert CoreForbidden();
+        uint256 supply = ReactorConstants.DEFAULT_SUPPLY;
+        uint8 dec = ReactorConstants.DEFAULT_DECIMALS;
 
         token = address(
             new ReactorToken(
@@ -152,44 +223,39 @@ contract ReactorFactory {
                 address(poolManager),
                 address(vault),
                 address(0),
-                address(vault),
+                address(curve),
                 true
             )
         );
         _setMeta(token, p.image, p.description, p.website, p.twitter, p.telegram);
         _excludeSinks(token);
+        if (address(selfBurn) != address(0)) ReactorToken(token).excludeProtocol(address(selfBurn));
+        ReactorToken(token).excludeProtocol(address(curve));
         emit TokenCreated(token, msg.sender, p.name, p.symbol, supply);
 
-        PoolKey memory key = _poolKey(token, p.quote);
-        uint160 sqrtP = LaunchMath.sqrtPriceFromFdv(token, p.quote, supply, fdv);
-        poolManager.initialize(key, sqrtP);
-        poolId = key.toId();
-
-        int24 startTick = TickMath.getTickAtSqrtPrice(sqrtP);
-        (int24 lo, int24 hi) = LaunchMath.singleSidedRange(token, p.quote, startTick, ReactorConstants.TICK_SPACING);
-        uint128 liq = LaunchMath.liquidityForSingleSided(token, p.quote, lo, hi, supply);
-        vault.lockLiquidity(key, lo, hi, int256(uint256(liq)));
+        uint8 qdec = IERC20MinimalExt(p.quote).decimals();
+        curve.open(token, p.quote, msg.sender, rewards, qdec, supply);
+        standardMode[token] = !rewards;
 
         tokenInfo[token] = TokenInfo({
             token: token,
             quote: p.quote,
             creator: msg.sender,
             mode: LaunchMode.Instant,
-            poolId: poolId,
-            marketLive: true,
+            poolId: PoolId.wrap(bytes32(0)),
+            marketLive: false,
             fairId: 0
         });
         allTokens.push(token);
         emit LaunchCreated(token, LaunchMode.Instant, p.quote);
-        emit InstantMarketOpened(token, poolId, fdv, p.devBuyQuote);
-        emit OfficialPoolCreated(token, poolId, LaunchMode.Instant);
+        emit InstantLaunchCreated(token, p.quote, msg.sender, rewards, 0);
 
-        if (p.devBuyQuote > 0) {
-            IERC20MinimalExt(p.quote).transferFrom(msg.sender, address(this), p.devBuyQuote);
-            IERC20MinimalExt(p.quote).approve(address(router), p.devBuyQuote);
-            bool zfo = p.quote < token;
-            router.swap(key, zfo, -int256(p.devBuyQuote), 1, msg.sender);
+        if (quoteIn > 0) {
+            IERC20MinimalExt(p.quote).transferFrom(msg.sender, address(curve), quoteIn);
+            tokensOut = curve.launchDevBuy(token, msg.sender, quoteIn);
+            if (tokensOut < minOut) revert BadParams();
         }
+        poolId = PoolId.wrap(bytes32(0));
     }
 
     struct FairParams {
@@ -364,19 +430,10 @@ contract ReactorFactory {
         return allTokens.length;
     }
 
-    function _validateLaunch(address quote, uint256 supply, uint8, uint256 fdv) internal view {
+    function _validateLaunch(address quote, uint256 supply, uint8, uint256) internal view {
         if (!registry.canLaunch(quote)) revert BuybackRouteRequired();
         if (quote == core) revert CoreForbidden();
         if (supply == 1) revert BadParams();
-        address usdc = registry.usdc();
-        if (quote == usdc) {
-            uint256 use = fdv == 0 ? ReactorConstants.INSTANT_FDV_USDC_DEFAULT : fdv;
-            if (use < ReactorConstants.INSTANT_FDV_USDC_MIN || use > ReactorConstants.INSTANT_FDV_USDC_MAX) {
-                revert InstantFdvRange();
-            }
-        } else if (fdv == 0) {
-            revert BadParams();
-        }
     }
 
     function _poolKey(address token, address quote) internal view returns (PoolKey memory key) {

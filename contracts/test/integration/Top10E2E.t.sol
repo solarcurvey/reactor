@@ -36,6 +36,8 @@ contract Top10E2ETest is Base {
         FlywheelVault fw = new FlywheelVault(address(hook), address(usdc), address(core), pm, address(router));
         fw.bind(ReactorFactory(address(list)), push, keepers);
         keepers.setCaller(address(fw), true);
+        router.setProtocolVault(address(fw), true);
+        _fillAndGraduate(alice, token);
         list.add(token);
         push.push(token, 400_000e6);
 
@@ -66,6 +68,9 @@ contract Top10E2ETest is Base {
         FlywheelVault fw = new FlywheelVault(address(hook), address(usdc), address(core), pm, address(router));
         fw.bind(ReactorFactory(address(list)), push, keepers);
         keepers.setCaller(address(fw), true);
+        router.setProtocolVault(address(fw), true);
+        _fillAndGraduate(alice, a);
+        _fillAndGraduate(alice, b);
         list.add(a);
         list.add(b);
         push.push(a, 400_000e6);
@@ -92,7 +97,7 @@ contract Top10E2ETest is Base {
 
     function test_executeCoreBuybackBurnsCoreSupply() public {
         address token = _instantUsdc("COREX", "CRX");
-        _buy(alice, token, address(usdc), 80_000e6);
+        _buy(alice, token, address(usdc), 5_000e6);
         uint256 acc = buyback.accrued(address(usdc));
         assertGt(acc, 0);
         uint256 coreBefore = core.totalSupply();
@@ -105,7 +110,7 @@ contract Top10E2ETest is Base {
 
     function test_executeCoreBuybackCooldownNoSecondBurn() public {
         address token = _instantUsdc("COREY", "CRY");
-        _buy(alice, token, address(usdc), 80_000e6);
+        _buy(alice, token, address(usdc), 5_000e6);
         buyback.executeCoreBuyback(address(usdc));
         uint256 coreMid = core.totalSupply();
         uint256 accMid = buyback.accrued(address(usdc));

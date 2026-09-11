@@ -43,7 +43,7 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     decimals: 18,
     supply: 1_000_000_000n * 10n ** 18n,
     image: "",
-    description: "USDC Instant. Starting FDV $25k — not a Top-10 rank input.",
+    description: "USDC Instant. Protocol ~$5k start FDV on the bonding curve — not a Top-10 rank input.",
     website: "",
     twitter: "",
     telegram: "",

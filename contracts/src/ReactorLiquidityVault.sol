@@ -14,6 +14,7 @@ contract ReactorLiquidityVault is IUnlockCallback {
     IPoolManager public immutable poolManager;
     address public immutable owner;
     address public factory;
+    address public curve;
 
     mapping(PoolId => bool) public locked;
     mapping(PoolId => int24) public tickLowerOf;
@@ -29,7 +30,7 @@ contract ReactorLiquidityVault is IUnlockCallback {
     error NotOwner();
 
     modifier onlyFactory() {
-        if (msg.sender != factory) revert NotFactory();
+        if (msg.sender != factory && msg.sender != curve) revert NotFactory();
         _;
     }
 
@@ -44,6 +45,13 @@ contract ReactorLiquidityVault is IUnlockCallback {
         if (factory_ == address(0)) revert NotFactory();
         factory = factory_;
         emit FactoryBound(factory_);
+    }
+
+    function bindCurve(address curve_) external {
+        if (msg.sender != factory) revert NotFactory();
+        if (curve != address(0)) revert AlreadyBound();
+        if (curve_ == address(0)) revert NotFactory();
+        curve = curve_;
     }
 
     /// @notice Add liquidity owned by this vault. Tokens must already sit here.

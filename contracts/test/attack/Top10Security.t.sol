@@ -12,6 +12,7 @@ import {FeeMath} from "../../src/libraries/FeeMath.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {Currency} from "v4-core/types/Currency.sol";
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
+import {MarketOracle} from "../../src/MarketOracle.sol";
 
 /// @notice Highest-risk §44 / §54 security cases for Top-10, keepers, routing, pots.
 contract Top10SecurityTest is Base {
@@ -26,6 +27,7 @@ contract Top10SecurityTest is Base {
         fw = new FlywheelVault(address(hook), address(usdc), address(core), pm, address(router));
         fw.bind(ReactorFactory(address(list)), push, keepers);
         keepers.setCaller(address(fw), true);
+        router.setProtocolVault(address(fw), true);
         usdc.approve(address(keepers), type(uint256).max);
         keepers.fund(10_000e6);
     }
@@ -64,7 +66,11 @@ contract Top10SecurityTest is Base {
                 telegram: ""
             })
         );
+        assertFalse(oracle.qualifiesTop10(token), "ungraduated Instant is not Top-10");
         _buy(alice, token, address(usdc), 1_000e6);
+        vm.expectRevert(MarketOracle.NoMarket.selector);
+        oracle.record(token);
+        _fillAndGraduate(alice, token);
         oracle.record(token);
         (uint256 mcap, bool ok) = oracle.twapMcapUsdc(token);
         assertFalse(ok, "n<2 must reject");
@@ -89,15 +95,15 @@ contract Top10SecurityTest is Base {
                 telegram: ""
             })
         );
-        _buy(alice, token, address(usdc), 500e6);
+        _fillAndGraduate(alice, token);
         oracle.record(token);
         vm.warp(block.timestamp + 31);
         oracle.record(token);
         (uint256 mcap, bool ok) = oracle.twapMcapUsdc(token);
         assertTrue(ok, "n>=2 + USDC path");
-        assertTrue(mcap != 25_000e6, "rank input is TWAP*supply, not Instant FDV");
+        assertTrue(mcap != 5_000e6, "rank input is TWAP*supply, not Instant start FDV");
         assertLt(mcap, ReactorConstants.TOP10_MCAP_FLOOR_USDC);
-        assertFalse(oracle.qualifiesTop10(token), "Instant starting FDV is not a Top-10 ticket");
+        assertFalse(oracle.qualifiesTop10(token), "Instant start/grad FDV is not a Top-10 ticket");
     }
 
     function test_coreNeverTop10AndExecuteSkips() public view {
@@ -149,6 +155,7 @@ contract Top10SecurityTest is Base {
                 telegram: ""
             })
         );
+        _fillAndGraduate(alice, token);
         _seedPot(5_000e6);
         _rank(token, 400_000e6);
         _warpFinalize();
@@ -206,7 +213,7 @@ contract Top10SecurityTest is Base {
         assertEq(h, 200e8);
         assertEq(f, 100e8);
         assertEq(c, 50e8);
-        hook.flush(token);
+        if (curve.graduatedOf(token)) hook.flush(token);
         assertEq(flywheel.quoteAccrued(address(zec)), f);
         assertEq(buyback.accrued(address(zec)), c);
         assertGe(zec.balanceOf(token), h);
@@ -231,6 +238,7 @@ contract Top10SecurityTest is Base {
                 telegram: ""
             })
         );
+        _fillAndGraduate(alice, token);
         _seedPot(8_000e6);
         _rank(token, 500_000e6);
         _warpFinalize();
@@ -260,22 +268,18 @@ contract Top10SecurityTest is Base {
             twitter: "",
             telegram: ""
         });
-        vm.expectRevert(ReactorFactory.InstantFdvRange.selector);
-        factory.instantLaunch(p);
-        p.fdvQuoteRaw = 60_000e6;
-        vm.expectRevert(ReactorFactory.InstantFdvRange.selector);
-        factory.instantLaunch(p);
-        p.fdvQuoteRaw = 25_000e6;
+        // Creator FDV / supply knobs are ignored. Same protocol curve for every Instant.
         (address token,) = factory.instantLaunch(p);
-        assertTrue(token != address(0));
         p.symbol = "FDV2";
-        p.fdvQuoteRaw = 10_000e6;
-        (address lo,) = factory.instantLaunch(p);
-        assertTrue(lo != address(0));
-        p.symbol = "FDV3";
-        p.fdvQuoteRaw = 50_000e6;
-        (address hi,) = factory.instantLaunch(p);
-        assertTrue(hi != address(0));
+        p.fdvQuoteRaw = 60_000e6;
+        p.supply = 2_000_000_000 ether;
+        (address other,) = factory.instantLaunch(p);
+        assertEq(ReactorToken(token).totalSupply(), ReactorConstants.DEFAULT_SUPPLY);
+        assertEq(ReactorToken(other).totalSupply(), ReactorConstants.DEFAULT_SUPPLY);
+        (,,,,,,, uint256 vqA,,,,,,,) = curve.curves(token);
+        (,,,,,,, uint256 vqB,,,,,,,) = curve.curves(other);
+        assertEq(vqA, vqB);
+        assertTrue(token != address(0) && other != address(0));
     }
 
     function test_rank11GetsZero() public {
@@ -335,7 +339,7 @@ contract Top10SecurityTest is Base {
     function test_keepersCannotPullHolderOrFeeBuckets() public {
         address token = _instantZcat(40_000e8);
         _buy(alice, token, address(zec), 1_000e8);
-        hook.flush(token);
+        if (curve.graduatedOf(token)) hook.flush(token);
         uint256 tokenZec = zec.balanceOf(token);
         uint256 fwZec = flywheel.quoteAccrued(address(zec));
         uint256 bbZec = buyback.accrued(address(zec));

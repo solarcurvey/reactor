@@ -8,7 +8,7 @@ Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy,
 - Home is a **board**, not a landing page: live filters, dense token cards, one featured rail.
 - Cards: icon, ticker, quote badge, FDV/mcap, 24h, volume, spark. One primary action.
 - Token page is **trading-first**: chart + ticket above fold; social/meta below.
-- Launch is a short wizard: quote → mode → confirm. No essay.
+- Instant form is compact: image, name, ticker, description, quote, EARNS X vs BUY+BURN, optional Dev Buy. No curve knobs.
 
 ## Interaction
 
@@ -27,6 +27,6 @@ Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy,
 | --- | --- |
 | Board + filters | Home + IGNITE + THE REACTOR |
 | Pair badge | EARNS {QUOTE} |
-| Bonding / curve | Instant / Batch Fair Launch (honest names) |
+| Bonding / curve | Instant bonding % + quote raised / to grad, then seamless v4 |
 | Platform token | CORE dashboard + 0.5% buy/burn |
 | Points / flywheel | 1% Top-10 flywheel |

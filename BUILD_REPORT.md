@@ -10,7 +10,7 @@ Run at: 2026-09-11T00:37:56Z
 
 | Slice | Location |
 | --- | --- |
-| Instant launch (v4 from trade #1, 0% LP, hooked) | `ReactorFactory.instantLaunch` |
+| Instant bonding → locked v4 graduation | `InstantCurve` + `ReactorFactory.instantLaunch` / `launchAndBuy` |
 | Batch Fair Launch (pro-rata timed sale, not CCA) | `ReactorFactory` + `FairClaimVault` |
 | Holder rewards (O(1), no staking, persist on transfer) | `ReactorToken` |
 | CORE buyback-and-burn (accrue, `execute` / `executeCoreBuyback`) | `BuybackVault` + hookless CORE/USDC |

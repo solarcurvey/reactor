@@ -7,6 +7,8 @@ import buybackAbi from "./abi/BuybackVault.json";
 import hookAbi from "./abi/ReactorHook.json";
 import erc20Abi from "./abi/MockERC20.json";
 import coreAbi from "./abi/TestCORE.json";
+import curveAbi from "./abi/InstantCurve.json";
+import selfBurnAbi from "./abi/SelfBurnVault.json";
 
 export const factory = {
   address: addresses.ReactorFactory,
@@ -40,5 +42,7 @@ export const core = {
 
 export const erc20 = { abi: erc20Abi } as const;
 export const token = { abi: tokenAbi } as const;
+export const curve = { abi: curveAbi } as const;
+export const selfBurn = { abi: selfBurnAbi } as const;
 
-export { factoryAbi, routerAbi, tokenAbi, registryAbi, buybackAbi, hookAbi, erc20Abi, coreAbi };
+export { factoryAbi, routerAbi, tokenAbi, registryAbi, buybackAbi, hookAbi, erc20Abi, coreAbi, curveAbi, selfBurnAbi };

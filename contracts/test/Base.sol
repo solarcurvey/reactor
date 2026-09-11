@@ -27,6 +27,8 @@ import {HookMiner} from "../src/libraries/HookMiner.sol";
 import {LaunchMath} from "../src/libraries/LaunchMath.sol";
 import {LiquidityAmounts} from "../src/libraries/LiquidityAmounts.sol";
 import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
+import {InstantCurve, IInstantFactory} from "../src/InstantCurve.sol";
+import {SelfBurnVault} from "../src/SelfBurnVault.sol";
 
 contract Base is Test {
     using StateLibrary for PoolManager;
@@ -45,6 +47,8 @@ contract Base is Test {
     MarketOracle public oracle;
     KeeperReserve public keepers;
     ReactorFactory public factory;
+    InstantCurve public curve;
+    SelfBurnVault public selfBurn;
 
     address public alice = makeAddr("alice");
     address public bob = makeAddr("bob");
@@ -116,6 +120,17 @@ contract Base is Test {
         vault.bindFactory(address(factory));
         oracle = new MarketOracle(pm, hook, registry, address(usdc), address(core));
         flywheel.bind(factory, oracle, keepers);
+
+        curve = new InstantCurve(IInstantFactory(address(factory)), hook, router, vault, registry, pm);
+        selfBurn = new SelfBurnVault(address(factory), address(hook), curve, router);
+        factory.bindCurve(curve, selfBurn, keepers);
+        hook.bindCurve(address(curve));
+        hook.bindSelfBurn(address(selfBurn));
+        buyback.setCurve(address(curve));
+        router.setProtocolVault(address(selfBurn), true);
+        router.setProtocolVault(address(flywheel), true);
+        router.setProtocolVault(address(buyback), true);
+        keepers.setCaller(address(curve), true);
 
         _seedCorePool();
         _seedHop(address(zec), 100_000e8, 5_000_000e6, zecUsdcKey);
@@ -218,6 +233,16 @@ contract Base is Test {
     }
 
     function _buy(address who, address token, address quote, uint256 amountIn) public returns (uint256 outAmt) {
+        if (curve.existsOf(token) && !curve.graduatedOf(token)) {
+            if (curve.readyOf(token)) {
+                curve.graduate(token);
+            } else {
+                vm.prank(who);
+                IERC20Like(quote).approve(address(curve), amountIn);
+                vm.prank(who);
+                return curve.buy(token, amountIn, 1);
+            }
+        }
         address c0 = token < quote ? token : quote;
         _approveRouter(who, quote, amountIn);
         vm.prank(who);
@@ -225,11 +250,52 @@ contract Base is Test {
     }
 
     function _sell(address who, address token, address quote, uint256 amountIn) public returns (uint256 outAmt) {
+        if (curve.existsOf(token) && !curve.graduatedOf(token)) {
+            vm.prank(who);
+            ReactorToken(token).approve(address(curve), amountIn);
+            vm.prank(who);
+            return curve.sell(token, amountIn, 1);
+        }
         address c0 = token < quote ? token : quote;
         vm.prank(who);
         ReactorToken(token).approve(address(router), amountIn);
         vm.prank(who);
         outAmt = router.swap(_key(token, quote), token == c0, -int256(amountIn), 1, who);
+    }
+
+    function _fillAndGraduate(address who, address token) internal {
+        if (!curve.existsOf(token) || curve.graduatedOf(token)) return;
+        address quote = _quoteOf(token);
+        for (uint256 i; i < 6 && !curve.readyOf(token); i++) {
+            uint256 realQuote = curve.realQuoteOf(token);
+            uint256 gradTarget = curve.gradTargetOf(token);
+            if (realQuote >= gradTarget) break;
+            uint256 need = gradTarget - realQuote;
+            uint256 userPay = (need * 10_000) / 9_650 + need / 50 + 1;
+            _bondToward(who, token, quote, userPay);
+        }
+        if (curve.readyOf(token) && !curve.graduatedOf(token)) {
+            curve.graduate(token);
+        }
+    }
+
+    function _bondToward(address who, address token, address quote, uint256 userPay) internal {
+        vm.prank(who);
+        IERC20Like(quote).approve(address(curve), userPay);
+        vm.prank(who);
+        try curve.buy(token, userPay, 1) {}
+        catch {
+            uint256 half = userPay / 2;
+            if (half == 0) return;
+            vm.prank(who);
+            IERC20Like(quote).approve(address(curve), half);
+            vm.prank(who);
+            try curve.buy(token, half, 1) {} catch {}
+        }
+    }
+
+    function _quoteOf(address token) internal view returns (address q) {
+        (, q,,,,,) = factory.tokenInfo(token);
     }
 }
 

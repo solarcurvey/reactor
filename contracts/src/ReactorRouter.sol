@@ -12,6 +12,10 @@ import {IERC20MinimalExt} from "./interfaces/IERC20MinimalExt.sol";
 /// @notice Unlock-callback router. V1 swaps are exact-input only with a nonzero minOut.
 contract ReactorRouter is IUnlockCallback {
     IPoolManager public immutable poolManager;
+    address public immutable configurator;
+
+    mapping(address => bool) public protocolVault;
+    uint256 public protocolExempt;
 
     error NotManager();
     error Slippage();
@@ -20,9 +24,20 @@ contract ReactorRouter is IUnlockCallback {
     error ExactOutDisabled();
     error MinOutRequired();
     error IncompleteFill();
+    error NotVault();
+    error NotConfigurator();
+
+    event ProtocolVaultSet(address indexed vault, bool allowed);
 
     constructor(IPoolManager manager_) {
         poolManager = manager_;
+        configurator = msg.sender;
+    }
+
+    function setProtocolVault(address vault, bool allowed) external {
+        if (msg.sender != configurator) revert NotConfigurator();
+        protocolVault[vault] = allowed;
+        emit ProtocolVaultSet(vault, allowed);
     }
 
     /// @param amountSpecified must be negative (exact in). Exact-out is disabled in V1.
@@ -30,12 +45,35 @@ contract ReactorRouter is IUnlockCallback {
         external
         returns (uint256 amountOut)
     {
+        return _swap(msg.sender, key, zeroForOne, amountSpecified, minOut, recipient);
+    }
+
+    /// @notice Self-burn / Top-10 / CORE vaults only. Sets a transient latch the hook reads.
+    /// Users calling `swap` never set `protocolExempt`. Revert rolls the latch back.
+    function protocolSwap(PoolKey calldata key, bool zeroForOne, int256 amountSpecified, uint256 minOut, address recipient)
+        external
+        returns (uint256 amountOut)
+    {
+        if (!protocolVault[msg.sender]) revert NotVault();
+        protocolExempt = 1;
+        amountOut = _swap(msg.sender, key, zeroForOne, amountSpecified, minOut, recipient);
+        protocolExempt = 0;
+    }
+
+    function _swap(
+        address payer,
+        PoolKey calldata key,
+        bool zeroForOne,
+        int256 amountSpecified,
+        uint256 minOut,
+        address recipient
+    ) internal returns (uint256 amountOut) {
         if (amountSpecified == 0) revert ZeroAmount();
         if (amountSpecified > 0) revert ExactOutDisabled();
         if (minOut == 0) revert MinOutRequired();
         bytes memory ret = poolManager.unlock(
             abi.encode(
-                uint8(0), msg.sender, recipient, key, zeroForOne, amountSpecified, minOut, int24(0), int24(0), int256(0)
+                uint8(0), payer, recipient, key, zeroForOne, amountSpecified, minOut, int24(0), int24(0), int256(0)
             )
         );
         amountOut = abi.decode(ret, (uint256));

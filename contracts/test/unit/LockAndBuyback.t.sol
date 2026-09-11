@@ -47,7 +47,7 @@ contract LockAndBuybackTest is Base {
                 telegram: ""
             })
         );
-        _buy(alice, ucat, address(usdc), 50_000e6);
+        _buy(alice, ucat, address(usdc), 5_000e6);
         uint256 acc = buyback.accrued(address(usdc));
         uint256 supplyBefore = core.totalSupply();
         buyback.execute(address(usdc));

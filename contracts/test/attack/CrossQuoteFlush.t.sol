@@ -70,6 +70,7 @@ contract CrossQuoteFlushTest is Base {
 
     function test_canonicalFlushPaysOnlyMatchingQuote() public {
         address zcat = _instantZcat(80_000e8);
+        _fillAndGraduate(alice, zcat);
         _rawBuy(alice, zcat, address(zec), 3_000e8);
         uint256 pending = hook.pendingTokenRewards(zcat);
         assertGt(pending, 0);
@@ -81,6 +82,7 @@ contract CrossQuoteFlushTest is Base {
 
     function test_exploit_flushUsdcIntoZcat_mustRevert() public {
         address zcat = _instantZcat(80_000e8);
+        _fillAndGraduate(alice, zcat);
         _rawBuy(alice, zcat, address(zec), 3_000e8);
 
         uint256 pendingZec = hook.pendingTokenRewards(zcat);

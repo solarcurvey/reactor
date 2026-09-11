@@ -28,6 +28,7 @@ contract FlywheelVault {
     ReactorFactory public factory;
     MarketOracle public oracle;
     KeeperReserve public reserve;
+    address public curve;
 
     mapping(address => uint256) public quoteAccrued;
     uint256 public usdcPot;
@@ -76,8 +77,14 @@ contract FlywheelVault {
         reserve = reserve_;
     }
 
+    function setCurve(address curve_) external {
+        if (msg.sender != address(factory)) revert Bad();
+        if (curve != address(0) || curve_ == address(0)) revert Bad();
+        curve = curve_;
+    }
+
     function accrue(address quote, uint256 amount) external {
-        if (msg.sender != hook) revert NotHook();
+        if (msg.sender != hook && msg.sender != curve) revert NotHook();
         if (amount == 0) return;
         quoteAccrued[quote] += amount;
         lifetimeAccrued += amount;
@@ -227,7 +234,7 @@ contract FlywheelVault {
         });
         uint256 before = IERC20MinimalExt(token).balanceOf(address(this));
         IERC20MinimalExt(quote).approve(address(router), quoteIn);
-        try router.swap(key, quote < token, -int256(quoteIn), 1, address(this)) {}
+        try router.protocolSwap(key, quote < token, -int256(quoteIn), 1, address(this)) {}
         catch {
             IERC20MinimalExt(quote).approve(address(router), 0);
             return 0;
