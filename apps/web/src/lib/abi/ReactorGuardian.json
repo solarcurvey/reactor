@@ -1,57 +1,306 @@
-
-╭-------------+----------------------------------------------+--------------------------------------------------------------------╮
-| Type        | Signature                                    | Selector                                                           |
-+=================================================================================================================================+
-| event       | AdapterSet(address,bool)                     | 0x85ff5d10aa202e69f691155a2050fed648b2d67f85e35d1279510cc434023736 |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| event       | KeeperPause(bool)                            | 0x9110c65df98cbfde2ba78e7ef7573fd660b495eb7dfbfd695ee12ca7a362194b |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| event       | KeeperReplaced(address,address)              | 0x2e1becacc3eaa8adff8807ff511881e3f781f2a1cf3031e8f8b8f9d7b346b1f4 |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| event       | LaunchesPause(bool)                          | 0x59148f6a9c33d32a48da59177c79d3104897e8d0e6cb98569c50a11fc8b21dae |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| event       | TradingPause(bool)                           | 0x177e0a1f8a9673cee304217343cc4298afbe92245efdb82ce28670900eacf4ff |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| error       | KeeperIsPaused()                             | 0xc1515a73                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| error       | LaunchesArePaused()                          | 0x3a1455a0                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| error       | NotGuardian()                                | 0xef6d0f02                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| error       | NotKeeper()                                  | 0xf512b278                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| error       | TradingIsPaused()                            | 0x6af3eee6                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| error       | ZeroAddress()                                | 0xd92e233d                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| function    | adapterApproved(address) view returns (bool) | 0x15b26a29                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| function    | guardian() view returns (address)            | 0x452a9320                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| function    | keeper() view returns (address)              | 0xaced1661                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| function    | keeperPaused() view returns (bool)           | 0xc7696763                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| function    | launchesPaused() view returns (bool)         | 0x3bc340c2                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| function    | pauseKeeper(bool) nonpayable                 | 0x0126636c                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| function    | pauseLaunches(bool) nonpayable               | 0x07a4f6e3                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| function    | pauseTrading(bool) nonpayable                | 0x365ec5e5                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| function    | requireKeeper(address) view                  | 0x087a3470                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| function    | requireLaunchesOpen() view                   | 0x97dbdf02                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| function    | requireTradingOpen() view                    | 0x018c8bbb                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| function    | setAdapter(address,bool) nonpayable          | 0x332f6465                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| function    | setKeeper(address) nonpayable                | 0x748747e6                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| function    | tradingPaused() view returns (bool)          | 0x53e23e2e                                                         |
-|-------------+----------------------------------------------+--------------------------------------------------------------------|
-| constructor | constructor(address,address) nonpayable      |                                                                    |
-╰-------------+----------------------------------------------+--------------------------------------------------------------------╯
-
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "guardian_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "keeper_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "adapterApproved",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "guardian",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "keeper",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "keeperPaused",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "launchesPaused",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pauseKeeper",
+    "inputs": [
+      {
+        "name": "paused",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "pauseLaunches",
+    "inputs": [
+      {
+        "name": "paused",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "pauseTrading",
+    "inputs": [
+      {
+        "name": "paused",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "requireKeeper",
+    "inputs": [
+      {
+        "name": "caller",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "requireLaunchesOpen",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "requireTradingOpen",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "setAdapter",
+    "inputs": [
+      {
+        "name": "adapter",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "approved",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setKeeper",
+    "inputs": [
+      {
+        "name": "next",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "tradingPaused",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "AdapterSet",
+    "inputs": [
+      {
+        "name": "adapter",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "approved",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "KeeperPause",
+    "inputs": [
+      {
+        "name": "paused",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "KeeperReplaced",
+    "inputs": [
+      {
+        "name": "previous",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "next",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LaunchesPause",
+    "inputs": [
+      {
+        "name": "paused",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TradingPause",
+    "inputs": [
+      {
+        "name": "paused",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "KeeperIsPaused",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "LaunchesArePaused",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotGuardian",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotKeeper",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TradingIsPaused",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  }
+]

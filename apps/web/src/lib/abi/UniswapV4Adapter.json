@@ -1,15 +1,80 @@
-
-╭-------------+-----------------------------------------------------------------------------------------+------------╮
-| Type        | Signature                                                                               | Selector   |
-+====================================================================================================================+
-| error       | BadPool()                                                                               | 0xb2c02722 |
-|-------------+-----------------------------------------------------------------------------------------+------------|
-| error       | NotPositive()                                                                           | 0xa8ef8c95 |
-|-------------+-----------------------------------------------------------------------------------------+------------|
-| function    | router() view returns (IReactorSwapper)                                                 | 0xf887ea40 |
-|-------------+-----------------------------------------------------------------------------------------+------------|
-| function    | swapExactIn(address,address,uint256,uint256,address,bytes) nonpayable returns (uint256) | 0xf6dcb92d |
-|-------------+-----------------------------------------------------------------------------------------+------------|
-| constructor | constructor(IReactorSwapper) nonpayable                                                 |            |
-╰-------------+-----------------------------------------------------------------------------------------+------------╯
-
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "router_",
+        "type": "address",
+        "internalType": "contract IReactorSwapper"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "router",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IReactorSwapper"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "swapExactIn",
+    "inputs": [
+      {
+        "name": "tokenIn",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenOut",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amountIn",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "minOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "recipient",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "data",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "amountOut",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "error",
+    "name": "BadPool",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotPositive",
+    "inputs": []
+  }
+]
