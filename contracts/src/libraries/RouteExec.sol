@@ -11,15 +11,29 @@ library RouteExec {
     error ZeroOut();
     error DeltaIn();
     error DeltaOut();
+    /// @notice eth_call preview. Always reverts so a broadcast cannot settle with probe floors.
+    error PreviewHops(uint256[] hopOuts, uint256 finalOut);
 
     function run(ReactorGuardian auth, RouteGuard.Hop[] memory hops, address tokenIn, address tokenOut, uint256 amountIn, uint256 minOut)
         internal
         returns (uint256 amountOut)
     {
+        (amountOut,) = runRecorded(auth, hops, tokenIn, tokenOut, amountIn, minOut);
+    }
+
+    function runRecorded(
+        ReactorGuardian auth,
+        RouteGuard.Hop[] memory hops,
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 minOut
+    ) internal returns (uint256 amountOut, uint256[] memory hopOuts) {
         RouteGuard.validate(auth, hops, tokenIn, tokenOut);
+        hopOuts = new uint256[](hops.length);
         if (hops.length == 0) {
             if (amountIn < minOut) revert ZeroOut();
-            return amountIn;
+            return (amountIn, hopOuts);
         }
 
         uint256 inBefore = IERC20MinimalExt(tokenIn).balanceOf(address(this));
@@ -28,7 +42,6 @@ library RouteExec {
         if (minOut == 0) revert ZeroOut();
 
         uint256 currentAmt = amountIn;
-        address currentTok = tokenIn;
         for (uint256 i; i < hops.length; i++) {
             RouteGuard.Hop memory h = hops[i];
             if (h.minOut == 0) revert ZeroOut();
@@ -46,10 +59,9 @@ library RouteExec {
             if (hopOutAfter <= hopOutBefore) revert DeltaOut();
             uint256 actual = hopOutAfter - hopOutBefore;
             if (actual < hopMin) revert ZeroOut();
+            hopOuts[i] = actual;
             currentAmt = actual;
-            currentTok = h.tokenOut;
         }
-        currentTok;
 
         uint256 inAfter = IERC20MinimalExt(tokenIn).balanceOf(address(this));
         uint256 outAfter = IERC20MinimalExt(tokenOut).balanceOf(address(this));
@@ -57,5 +69,17 @@ library RouteExec {
         if (outAfter <= outBefore) revert DeltaOut();
         amountOut = outAfter - outBefore;
         if (amountOut < minOut) revert ZeroOut();
+    }
+
+    /// @dev Probe each hop with minOut=1, then revert with per-hop outs. State is undone.
+    function preview(ReactorGuardian auth, RouteGuard.Hop[] memory hops, address tokenIn, address tokenOut, uint256 amountIn)
+        internal
+    {
+        RouteGuard.Hop[] memory probe = hops;
+        for (uint256 i; i < probe.length; i++) {
+            probe[i].minOut = 1;
+        }
+        (uint256 finalOut, uint256[] memory hopOuts) = runRecorded(auth, probe, tokenIn, tokenOut, amountIn, 1);
+        revert PreviewHops(hopOuts, finalOut);
     }
 }

@@ -141,6 +141,7 @@ pnpm --filter indexer watchdog
 | Frontrun binds | `test/attack/FrontrunBind.t.sol` |
 | Launch pricing | `test/attack/LaunchPricing.t.sol` |
 | Routing deltas / hooks | `test/attack/RoutingDeltas.t.sol` |
+| Nested hop floors | `test/attack/HopFloors.t.sol` |
 
 ## Final-pass regressions (user list)
 
@@ -166,6 +167,7 @@ pnpm --filter indexer watchdog
 | 18 | Protocol-exempt reentrancy blocked | `ProtocolExemptReentrancy.t.sol` |
 | 19 | Safe genesis payload | `SafeGenesis.t.sol`, `VerifyGenesis.s.sol` |
 | 20 | Deployer no post-genesis privilege | same |
+| 21 | Nested hop floors from per-hop sim, not last-leg/dust | `HopFloors.t.sol`, `stampHopMinOuts`, `applyMinOuts` |
 
 ## Arc smoke
 

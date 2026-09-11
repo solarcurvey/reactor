@@ -219,7 +219,7 @@ forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0.1:8545 --broadc
 6. Pricing-signer compromise authorizing a non-$1 curve with a wrong `virtualQuote0` (operational; no onchain USD oracle)
 7. Offchain Top-10 / 10–15m VWAP window bugs (fail-closed only when a **material** candidate is unvalued)
 8. **Codex: protocolExempt reentrancy** — latch + `nonReentrant` + `WalletExemptForbidden`. Named malicious token callback in `ProtocolExemptReentrancy.t.sol`
-9. Intermediate nested-hop floors: last hop / vault `minOut` is sim-derived; per-hop quoter is residual
+9. Intermediate nested-hop floors: `previewSettleQuote` / `previewTop10Hops` / `previewExecuteHops` revert with per-hop outs (`RouteExec.PreviewHops`). Keeper stamps each hop via `stampHopMinOuts`. Last-leg reuse is rejected. Tests: `HopFloors.t.sol`.
 
 ## §43 Self-audit (this pass)
 

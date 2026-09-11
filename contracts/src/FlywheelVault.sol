@@ -104,25 +104,65 @@ contract FlywheelVault {
         returns (uint256 usdcReceived)
     {
         if (minOut == 0 && quote != usdc) revert Bad();
-        uint256 amt = quoteAccrued[quote];
-        uint256 bal = IERC20MinimalExt(quote).balanceOf(address(this));
-        if (bal < amt) amt = bal;
+        uint256 amt = settleTake(quote);
         if (amt == 0) revert Bad();
         if (lastSettleAt[quote] != 0 && block.timestamp < lastSettleAt[quote] + ReactorConstants.KEEPER_COOLDOWN) {
             revert Bad();
         }
-        uint256 chunk = (amt * ReactorConstants.MAX_CHUNK_BPS) / ReactorConstants.BPS_DENOMINATOR;
-        if (chunk == 0) chunk = amt;
-        if (
-            chunk >= ReactorConstants.DEFAULT_SETTLE_THRESHOLD && amt > chunk
-                && amt - chunk >= ReactorConstants.DEFAULT_SETTLE_THRESHOLD
-        ) amt = chunk;
         quoteAccrued[quote] -= amt;
         uint256 got = RouteExec.run(auth, hops, quote, usdc, amt, quote == usdc ? amt : minOut);
         usdcPot += got;
         lastSettleAt[quote] = uint64(block.timestamp);
         usdcReceived = got;
         emit QuoteSettled(quote, got);
+    }
+
+    /// @notice Keeper eth_call: per-hop outs then revert. Never broadcast — probe floors would be dust.
+    function previewSettleQuote(address quote, RouteGuard.Hop[] calldata hops) external onlyKeeper {
+        uint256 amt = settleTake(quote);
+        if (amt == 0) revert Bad();
+        RouteExec.preview(auth, hops, quote, usdc, amt);
+    }
+
+    /// @notice Keeper eth_call: USDC→quote hop outs then revert.
+    function previewTop10Hops(address token, RouteGuard.Hop[] calldata hops) external onlyKeeper {
+        uint256 share = top10Share(token);
+        (address t, address quote, bool exists) = ReactorHook(hook).marketOfToken(token);
+        if (!exists || t != token || share == 0) revert Bad();
+        if (quote == usdc) {
+            uint256[] memory empty;
+            revert RouteExec.PreviewHops(empty, share);
+        }
+        RouteExec.preview(auth, hops, usdc, quote, share);
+    }
+
+    function settleTake(address quote) public view returns (uint256 amt) {
+        amt = quoteAccrued[quote];
+        uint256 bal = IERC20MinimalExt(quote).balanceOf(address(this));
+        if (bal < amt) amt = bal;
+        if (amt == 0) return 0;
+        uint256 chunk = (amt * ReactorConstants.MAX_CHUNK_BPS) / ReactorConstants.BPS_DENOMINATOR;
+        if (chunk == 0) chunk = amt;
+        if (
+            chunk >= ReactorConstants.DEFAULT_SETTLE_THRESHOLD && amt > chunk
+                && amt - chunk >= ReactorConstants.DEFAULT_SETTLE_THRESHOLD
+        ) amt = chunk;
+    }
+
+    function top10Share(address token) public view returns (uint256 share) {
+        if (!epochFinalized || token == core || bought[epoch][token]) return 0;
+        uint256 w;
+        bool found;
+        for (uint256 i; i < 10; i++) {
+            if (ranked[i] == token) {
+                w = weights[i];
+                found = true;
+                break;
+            }
+        }
+        if (!found || w == 0 || weightSum == 0 || usdcPot == 0 || epochPot == 0) return 0;
+        share = (epochPot * w) / weightSum;
+        if (share > usdcPot) share = usdcPot;
     }
 
     /// @notice Publish API-computed Top-10. Structural checks only — no mcap / oracle.

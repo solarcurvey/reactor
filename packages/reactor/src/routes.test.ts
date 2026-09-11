@@ -1,4 +1,4 @@
-import { planRoute, RouteReject, MAX_LEGS } from "./routes.ts";
+import { planRoute, RouteReject, MAX_LEGS, applyMinOuts } from "./routes.ts";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -51,4 +51,19 @@ const adapters = new Set([ADAPTER]);
   assert(threw, "quarantined mid-hop rejected");
 }
 assert(MAX_LEGS === 3, "max 3");
+{
+  const r = planRoute(ZCAT, USDC, edges, quotes, { protocol: true, adapters });
+  const stamped = applyMinOuts(r, [80_000_000n, 5_000_000n]);
+  assert(stamped.hops[0]!.minOut === 80_000_000n && stamped.hops[1]!.minOut === 5_000_000n, "per-hop floors");
+}
+{
+  const r = planRoute(ZCAT, USDC, edges, quotes, { protocol: true, adapters });
+  let threw = false;
+  try {
+    applyMinOuts(r, [5_000_000n, 5_000_000n]);
+  } catch {
+    threw = true;
+  }
+  assert(threw, "applyMinOuts rejects last-leg reuse");
+}
 console.log("routes tests ok");

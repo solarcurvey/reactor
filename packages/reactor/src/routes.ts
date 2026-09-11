@@ -113,9 +113,14 @@ export function planRoute(
 }
 
 export function applyMinOuts(route: PlannedRoute, minOuts: bigint[]): PlannedRoute {
+  if (minOuts.length !== route.hops.length) throw new RouteReject("need one minOut per hop");
+  if (minOuts.some((m) => m <= 1n)) throw new RouteReject("hop minOut must exceed dust");
+  if (minOuts.length > 1 && minOuts.slice(0, -1).some((m) => m === minOuts[minOuts.length - 1])) {
+    throw new RouteReject("intermediate minOut must not reuse last-leg");
+  }
   return {
     ...route,
-    hops: route.hops.map((h, i) => ({ ...h, minOut: minOuts[i] ?? h.minOut })),
+    hops: route.hops.map((h, i) => ({ ...h, minOut: minOuts[i]! })),
   };
 }
 

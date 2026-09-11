@@ -120,15 +120,8 @@ contract BuybackVault {
         if (lastExecuteAt[quote] != 0 && block.timestamp < uint256(lastExecuteAt[quote]) + ReactorConstants.BUYBACK_COOLDOWN) {
             revert Bad();
         }
-        uint256 avail = accrued[quote];
-        uint256 bal = IERC20MinimalExt(quote).balanceOf(address(this));
-        if (bal < avail) avail = bal;
-        uint256 chunk = (avail * ReactorConstants.BUYBACK_MAX_CHUNK_BPS) / ReactorConstants.BPS_DENOMINATOR;
-        uint256 reserve = (avail * ReactorConstants.BUYBACK_MIN_RESERVE_BPS) / ReactorConstants.BPS_DENOMINATOR;
-        uint256 amount = chunk;
-        if (avail < reserve) revert Bad();
-        if (avail - amount < reserve) amount = avail - reserve;
-        if (amount < threshold) revert Bad();
+        uint256 amount = executeTake(quote);
+        if (amount == 0) revert Bad();
 
         accrued[quote] -= amount;
         uint256 usdcIn;
@@ -146,6 +139,25 @@ contract BuybackVault {
         _burn(coreOut);
         coreBought = coreOut;
         emit BuybackExecuted(quote, amount, coreOut, msg.sender);
+    }
+
+    /// @notice Keeper eth_call: per-hop outs then revert. Do not broadcast.
+    function previewExecuteHops(address quote, RouteGuard.Hop[] calldata hops) external onlyKeeper {
+        uint256 amount = executeTake(quote);
+        if (amount == 0 || quote == usdc) revert Bad();
+        RouteExec.preview(auth, hops, quote, usdc, amount);
+    }
+
+    function executeTake(address quote) public view returns (uint256 amount) {
+        uint256 avail = accrued[quote];
+        uint256 bal = IERC20MinimalExt(quote).balanceOf(address(this));
+        if (bal < avail) avail = bal;
+        uint256 chunk = (avail * ReactorConstants.BUYBACK_MAX_CHUNK_BPS) / ReactorConstants.BPS_DENOMINATOR;
+        uint256 reserve = (avail * ReactorConstants.BUYBACK_MIN_RESERVE_BPS) / ReactorConstants.BPS_DENOMINATOR;
+        amount = chunk;
+        if (avail < reserve) return 0;
+        if (avail - amount < reserve) amount = avail - reserve;
+        if (amount < threshold) return 0;
     }
 
     function nextEligibleAt(address quote) external view returns (uint64) {

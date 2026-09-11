@@ -8,7 +8,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { erc20, router, token as tokenC, curve, userRoute } from "@/lib/contracts";
 import { officialPoolKey, buyZeroForOne, hooklessHopKey, encodePoolKey } from "@/lib/pool";
-import { planRoute } from "../../../../packages/reactor/src/routes.ts";
+import { applyMinOuts, planRoute } from "../../../../packages/reactor/src/routes.ts";
 import { feeSplit, formatUnitsSafe, parseUnitsSafe } from "@/lib/utils";
 import type { LaunchToken } from "@/lib/hooks";
 import { addresses } from "@/lib/addresses";
@@ -75,6 +75,55 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   }
   const routePreview = usdcRoute ? usdcHops() : [];
   const split = feeSplit(parsed);
+
+  async function stampUserHops(
+    amountIn: bigint,
+    slipBps: bigint,
+    hops: { adapter: `0x${string}`; tokenIn: `0x${string}`; tokenOut: `0x${string}`; minOut: bigint; data: `0x${string}` }[],
+    bonding: boolean,
+  ) {
+    if (!client || !address) throw new Error("Connect a wallet to quote hops.");
+    let amt = amountIn;
+    if (side === "sell") {
+      const first = bonding
+        ? await client.simulateContract({
+            address: t.curve!,
+            abi: curve.abi,
+            functionName: "sell",
+            args: [t.token, amountIn, 1n],
+            account: address,
+          })
+        : await client.simulateContract({
+            ...router,
+            functionName: "swap",
+            args: [
+              officialPoolKey(t.token, t.quote),
+              !buyZeroForOne(t.token, t.quote),
+              -amountIn,
+              1n,
+              address,
+            ],
+            account: address,
+          });
+      amt = first.result as bigint;
+    }
+    const outs: bigint[] = [];
+    for (const h of hops) {
+      const key = hooklessHopKey(h.tokenIn, h.tokenOut);
+      const zf1 = h.tokenIn.toLowerCase() === key.currency0.toLowerCase();
+      const sim = await client.simulateContract({
+        ...router,
+        functionName: "swap",
+        args: [key, zf1, -amt, 1n, address],
+        account: address,
+      });
+      const out = sim.result as bigint;
+      if (out <= 1n) throw new Error("hop quote is dust");
+      outs.push(out);
+      amt = out;
+    }
+    return applyMinOuts({ hops, path: [], reason: "user" }, outs.map((o) => (o * (10_000n - slipBps)) / 10_000n)).hops;
+  }
 
   async function refreshQuote() {
     setError(null);
@@ -148,11 +197,15 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       }
       const slipBps = BigInt(Math.max(1, Math.floor(Number(slippage || "1") * 100)));
       const minOut = (quotedOut * (10_000n - slipBps)) / 10_000n;
-      if (minOut === 0n) {
-        setError("minOut is zero after slippage. Increase size or tighten decimals.");
+      if (minOut === 0n || minOut === 1n) {
+        setError("minOut is dust after slippage. Increase size or tighten decimals.");
         return;
       }
       const bonding = Boolean(t.bonding && t.curve && !t.marketLive);
+      let liveHops = usdcHops();
+      if (usdcRoute && liveHops.length > 0) {
+        liveHops = await stampUserHops(parsed, slipBps, liveHops, bonding);
+      }
       const spender = usdcRoute && userRoute.address ? userRoute.address : bonding ? t.curve! : addresses.ReactorRouter;
       const asset = side === "buy" ? (usdcRoute ? addresses.USDC : t.quote) : t.token;
       const allowance = (await client.readContract({
@@ -179,8 +232,8 @@ export function TradePanel({ t }: { t: LaunchToken }) {
               functionName: side === "buy" ? "buy" : "sell",
               args:
                 side === "buy"
-                  ? [t.token, parsed, usdcHops(), minOut, deadline]
-                  : [t.token, parsed, usdcHops(), 1n, minOut, deadline],
+                  ? [t.token, parsed, liveHops, minOut, deadline]
+                  : [t.token, parsed, liveHops, minOut, minOut, deadline],
             })
           : bonding
             ? await writeContractAsync({
