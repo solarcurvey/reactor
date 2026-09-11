@@ -14,6 +14,9 @@ test("token terminal quotes via API surface", async ({ page }) => {
   const heading = page.getByRole("heading").first();
   await expect(heading).toBeVisible();
   await expect(page.getByRole("button", { name: /Quote/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^15m$/i })).toBeVisible();
+  await expect(page.getByText(/OHLCV/i)).toBeVisible();
+  await expect(page.getByText(/Trade tape/i)).toBeVisible();
   await page.getByPlaceholder("0.0").fill("1");
   await expect(page.getByRole("button", { name: /Quote/i })).toBeDisabled();
   await expect(page.locator("body")).toContainText(/Quoted out|quote API|Connect|3\.5%/i);

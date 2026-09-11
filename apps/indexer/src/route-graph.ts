@@ -108,6 +108,73 @@ export async function loadQuoteMetas(store: Store): Promise<Map<string, QuoteMet
   return m;
 }
 
+/** Protocol / hookless RouteGraph only. Used by POST /quote maintenance kinds and the Keeper. */
+export async function planFeeExemptRoute(
+  store: Store,
+  tokenIn: string,
+  tokenOut: string,
+  adapters: Set<string>,
+): Promise<PlannedRoute> {
+  if (tokenIn.toLowerCase() === tokenOut.toLowerCase()) {
+    return { hops: [], path: [tokenIn.toLowerCase()], reason: "identity" };
+  }
+  const edges = await loadEdges(store, "any");
+  const usable = edges.filter((e) => e.kind === "protocol" || e.kind === "hookless");
+  const quotes = await loadQuoteMetas(store);
+  return planRoute(tokenIn, tokenOut, usable, quotes, { protocol: true, adapters });
+}
+
+export async function syncOfficialFactoryVenues(
+  store: Store,
+  venues: Array<{ token: string; quote: string; protocol: string; user?: string; hook: string; poolId?: string }>,
+) {
+  for (const v of venues) {
+    const data = poolKeyBytes(v.token as `0x${string}`, v.quote as `0x${string}`, 0, v.hook as `0x${string}`);
+    await persistVenue(store, {
+      tokenIn: v.quote,
+      tokenOut: v.token,
+      adapter: v.protocol,
+      kind: "protocol",
+      data,
+      poolId: v.poolId,
+      exists: true,
+      approved: true,
+    });
+    await persistVenue(store, {
+      tokenIn: v.token,
+      tokenOut: v.quote,
+      adapter: v.protocol,
+      kind: "protocol",
+      data,
+      poolId: v.poolId,
+      exists: true,
+      approved: true,
+    });
+    if (v.user) {
+      await persistVenue(store, {
+        tokenIn: v.quote,
+        tokenOut: v.token,
+        adapter: v.user,
+        kind: "user",
+        data,
+        poolId: v.poolId,
+        exists: true,
+        approved: true,
+      });
+      await persistVenue(store, {
+        tokenIn: v.token,
+        tokenOut: v.quote,
+        adapter: v.user,
+        kind: "user",
+        data,
+        poolId: v.poolId,
+        exists: true,
+        approved: true,
+      });
+    }
+  }
+}
+
 export async function planAndScore(
   store: Store,
   tokenIn: string,
