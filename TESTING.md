@@ -164,7 +164,7 @@ pnpm --filter indexer watchdog
 | 10 | External spot does not control mark | VWAP window + `fuseExternalUsd6` |
 | 11 | Nested ValuationEngine + cycle reject | `valuation.test.ts` |
 | 12 | EURC not $1 | `LaunchPricing.t.sol` |
-| 13 | Only usdPegOne bypass | Factory + registry |
+| 13 | USDC still requires LaunchAuthorization | `LaunchAuthorization.t.sol` §95 |
 | 14 | Concurrent auths + no replay | `LaunchPricing.t.sol` |
 | 15 | Bonding nested USDC buy/sell | `UserRoute.t.sol` |
 | 16 | Keeper LOCAL + ARC_TESTNET | `keeper.ts` modes; 5042 disabled |
@@ -177,6 +177,10 @@ pnpm --filter indexer watchdog
 | 23 | Keeper executes frozen onchain epoch, not latest API | `frozenEpochTargets` in `keeper.minout.test.ts` |
 | 24 | lastGoodFdvQuote accepts 3 historical samples | `marketdata.test.ts` |
 | 25 | CAT/ZCAT nested e2e (not CAT/USDC) | `CurrentArchitecture.t.sol` |
+| 94 | Ticker normalize + 24h lock + no squat | `TickerRegistry.t.sol` |
+| 95 | LaunchAuthorization every launch, unique authId | `LaunchAuthorization.t.sol` |
+| 96 | Factory version persist; deprecate new-only | `TickerRegistry.t.sol` |
+| 97 | Permanent lock one-way, not an oracle | `TickerRegistry.t.sol` |
 
 ## Arc smoke
 

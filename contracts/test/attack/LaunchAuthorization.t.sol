@@ -11,8 +11,14 @@ contract LaunchAuthorizationTest is Base {
     function test_95_usdc_requires_auth() public {
         LaunchAuthorization.Auth memory empty;
         ReactorFactory.InstantParams memory p = _p("US1", address(usdc));
-        vm.expectRevert(LaunchAuthorization.BadSigner.selector);
+        vm.expectRevert(LaunchAuthorization.Expired.selector);
         factory.instantLaunch(p, empty, "");
+        empty.deadline = block.timestamp + 15 minutes;
+        vm.expectRevert(LaunchAuthorization.WrongFactory.selector);
+        factory.instantLaunch(p, empty, "");
+        (LaunchAuthorization.Auth memory a,) = _launchAuth("US1", address(usdc));
+        vm.expectRevert(LaunchAuthorization.BadSigner.selector);
+        factory.instantLaunch(p, a, hex"11");
         (address token,) = _instant(p);
         assertEq(factory.tokenTicker(token), "US1");
     }
@@ -72,7 +78,7 @@ contract LaunchAuthorizationTest is Base {
             twitter: "",
             telegram: ""
         });
-        vm.expectRevert(LaunchAuthorization.BadSigner.selector);
+        vm.expectRevert(LaunchAuthorization.Expired.selector);
         factory.createFairLaunch(p, empty, "");
         (address token, uint256 id) = _fair(p);
         assertTrue(token != address(0) && id > 0);

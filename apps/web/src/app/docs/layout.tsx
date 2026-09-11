@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { DOCS } from "@/lib/docs";
+import { DOCS } from "@/lib/docs-nav";
 
 export default function DocsLayout({ children }: { children: React.ReactNode }) {
   const path = usePathname();

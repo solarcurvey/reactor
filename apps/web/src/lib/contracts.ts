@@ -21,9 +21,13 @@ export const launchAbi = parseAbi([
   `function createFairLaunch((string name,string symbol,uint8 decimals,uint256 supply,address quote,uint64 duration,uint16 auctionBps,uint256 minRaise,string image,string description,string website,string twitter,string telegram) p, ${launchAuthTuple} a, bytes sig) returns (address token, uint256 fairId)`,
 ]);
 
+const factoryAbiArr = Array.isArray(factoryAbi)
+  ? factoryAbi
+  : ((factoryAbi as { abi?: unknown[] }).abi ?? []);
+
 export const factory = {
   address: addresses.ReactorFactory,
-  abi: [...(factoryAbi as readonly unknown[]), ...launchAbi] as typeof factoryAbi,
+  abi: [...factoryAbiArr, ...launchAbi] as typeof factoryAbi,
 } as const;
 
 export const router = {

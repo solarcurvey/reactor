@@ -3,12 +3,10 @@ import { keccak256, toBytes } from "viem";
 import type { Store } from "./db.ts";
 import {
   evaluateAdmission,
-  isReservedTicker,
-  normalizeTicker,
-  tryNormalizeTicker,
   type AdmissionDecision,
   type IssuanceLevel,
-} from "../../../packages/reactor/src/index.ts";
+} from "../../../packages/reactor/src/admission.ts";
+import { isReservedTicker, normalizeTicker, tryNormalizeTicker } from "../../../packages/reactor/src/ticker.ts";
 
 const WINDOW_MS = 60 * 60 * 1000;
 const hits = new Map<string, number[]>();

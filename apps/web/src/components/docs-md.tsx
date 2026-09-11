@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { slugify } from "@/lib/docs";
+import { slugify } from "@/lib/docs-nav";
 
 function inline(text: string) {
   const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g);

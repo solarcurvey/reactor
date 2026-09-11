@@ -16,6 +16,7 @@ import { ValuationService, type QuoteNode } from "../../../packages/reactor/src/
 import { consensusUsd6, StaticProvider } from "../../../packages/reactor/src/pricing.ts";
 import { priceQuoteX18FromSqrt } from "../../../packages/reactor/src/prices.ts";
 import { admit, tryNormalizeTicker } from "./admission.ts";
+import { isReservedTicker, RESERVED_TICKERS } from "../../../packages/reactor/src/ticker.ts";
 
 const PORT = Number(process.env.INDEXER_PORT ?? 43148);
 const addrs = deployment.addresses as Record<string, string>;
@@ -566,10 +567,12 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       200,
       {
         ticker: parsed.ticker,
-        reserved: ["CORE", "REACTOR", "USDC", "ZEC", "WBTC", "EURC"].includes(parsed.ticker),
+        reserved: isReservedTicker(parsed.ticker),
         record: row ?? null,
         token: tok ?? null,
-        available: !row || (Number(row.permanent) !== 1 && Number(row.locked_until ?? 0) <= Math.floor(Date.now() / 1000)),
+        available:
+          !isReservedTicker(parsed.ticker) &&
+          (!row || (Number(row.permanent) !== 1 && Number(row.locked_until ?? 0) <= Math.floor(Date.now() / 1000))),
         request_id: rid,
       },
       rid,
@@ -630,6 +633,23 @@ async function loop(store: Store) {
 }
 
 const store = await openStore();
+{
+  const now = Math.floor(Date.now() / 1000);
+  for (const t of RESERVED_TICKERS) {
+    await store.run(
+      `INSERT INTO tickers(ticker,token,factory,factory_version,locked_until,permanent,reserved)
+       VALUES(?,?,?,?,?,?,?) ON CONFLICT(ticker) DO UPDATE SET permanent=1, reserved=1, locked_until=excluded.locked_until`,
+      t,
+      "",
+      "",
+      0,
+      2 ** 31 - 1,
+      1,
+      1,
+    );
+  }
+  void now;
+}
 {
   const pools = await store.all<{ pool_id: string; token: string; quote: string }>("SELECT pool_id, token, quote FROM pool_relationships");
   for (const p of pools) tokenByPool.set(p.pool_id, { token: p.token, quote: p.quote });

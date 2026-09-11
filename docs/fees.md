@@ -1,5 +1,7 @@
 # Nested fees (honest)
 
+> Official REACTOR legs charge **3.5% in quote**. Nested official hops stack. The UI must never collapse them into one “0.30%” Uniswap fee.
+
 Official REACTOR legs charge **3.5% in quote**. User hops through official pools pay that on **each** official leg. Protocol vault hops (`ProtocolV4Adapter`) are fee-exempt and must not mint a new 2/1/0.5.
 
 ## Disclosure
