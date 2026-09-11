@@ -16,6 +16,7 @@ contract ReactorRouter is IUnlockCallback {
     error NotManager();
     error Slippage();
     error ZeroAmount();
+    error FlushFailed(bytes data);
 
     constructor(IPoolManager manager_) {
         poolManager = manager_;
@@ -30,6 +31,8 @@ contract ReactorRouter is IUnlockCallback {
         bytes memory ret =
             poolManager.unlock(abi.encode(uint8(0), msg.sender, recipient, key, zeroForOne, amountSpecified, minOut, int24(0), int24(0), int256(0)));
         amountOut = abi.decode(ret, (uint256));
+        // Flush after unlock so the hook can take ERC-6909 claims as locker.
+        _flushHook(key);
     }
 
     function addLiquidity(PoolKey calldata key, int24 tickLower, int24 tickUpper, int256 liquidityDelta)
@@ -95,7 +98,6 @@ contract ReactorRouter is IUnlockCallback {
             outAmt = uint256(uint128(delta.amount0()));
         }
         if (outAmt < minOut) revert Slippage();
-        _flushHook(key);
         return abi.encode(outAmt);
     }
 
@@ -104,10 +106,10 @@ contract ReactorRouter is IUnlockCallback {
         if (h == address(0)) return;
         address c0 = Currency.unwrap(key.currency0);
         address c1 = Currency.unwrap(key.currency1);
-        (bool ok,) = h.call(abi.encodeWithSignature("flush(address,address)", c0, c1));
-        ok;
-        (ok,) = h.call(abi.encodeWithSignature("flush(address,address)", c1, c0));
-        ok;
+        (bool ok, bytes memory err) = h.call(abi.encodeWithSignature("flush(address,address)", c0, c1));
+        if (!ok) revert FlushFailed(err);
+        (ok, err) = h.call(abi.encodeWithSignature("flush(address,address)", c1, c0));
+        if (!ok) revert FlushFailed(err);
     }
 
     function _handle(Currency currency, address payer, address recipient, int128 amount) internal {

@@ -50,6 +50,8 @@ REACTOR requires: arbitrary curated ERC-20 quote, REACTOR hook from trade #1, **
 
 **Consequences.** Auction UX matches the product (create → bid → finalize → MARKET LIVE). We do not pretend CCA factory output is a REACTOR official market. Revisit if Uniswap ships a hooked + ERC-20-quote Instant/CCA strategy on Arc.
 
+**Follow-up (2026-09-11).** Router flush must run *after* `unlock` returns. Burn ERC-6909 before `take`. Hook address is CREATE2-mined and changes with hook bytecode.
+
 ---
 
 ## ADR-003 — Holder rewards are O(1) reward-per-share inside the launch token

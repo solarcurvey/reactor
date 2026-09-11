@@ -1,0 +1,170 @@
+{
+  "network": "local-arc-compatible",
+  "claimedArcTestnet": false,
+  "chainId": 5042002,
+  "rpc": "http://127.0.0.1:8545",
+  "startedAt": "2026-09-11T00:37:56.233Z",
+  "addresses": {
+    "PoolManager": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    "QuoteAssetRegistry": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "TestCORE": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+    "USDC": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+    "ZEC": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+    "BTC": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+    "NVDA": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+    "ReactorLiquidityVault": "0x0B306BF915C4d645ff596e518fAf3F9669b97016",
+    "ReactorRouter": "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
+    "ReactorHook": "0x27Cf52D1606345AaE2837c4a667fD57C68B9B0cc",
+    "BuybackVault": "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+    "ReactorFactory": "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d"
+  },
+  "steps": [
+    {
+      "step": "1_connect",
+      "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "alice": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "bob": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "carol": "0x90F79bf6EB2c4f870365E785982E1f101E93b906"
+    },
+    {
+      "step": "2_verify_deploy",
+      "factory": "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d",
+      "factoryCodeBytes": 38474
+    },
+    {
+      "step": "3_testcore",
+      "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+      "totalSupply": "1000000000000000000000000000"
+    },
+    {
+      "step": "4_core_liquidity",
+      "poolManagerCore": "4999999999999999999816395",
+      "note": "CORE/USDC hookless pool seeded at deploy"
+    },
+    {
+      "step": "5_register_usdc",
+      "usdc": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+      "enabled": true
+    },
+    {
+      "step": "6_register_zec",
+      "zec": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+      "enabled": true
+    },
+    {
+      "step": "7_instant_zcat",
+      "tx": "0xe5658c695586351a454a2c5ff851e5ca49e8a95a44612508ad8a9d5226c3d4da",
+      "token": "0x553BED26A78b94862e53945941e4ad6E4F2497da",
+      "poolId": "0x2ffbfbc6603aee92647bd3669a5278cbbaf7a1aaea8730beae1b36d886e2db5c",
+      "quote": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
+    },
+    {
+      "step": "8_multi_buy",
+      "aliceTx": "0x587e97d369b0b6a74e028e504c77963705b9d8fbe10045d0e3cb3407c6581752",
+      "bobTx": "0x67deddbeb2650a2b63e5f6150313bf06c830936f3e8c64eebc395c9ac124e719",
+      "aliceTokens": "35065878413933156892998327",
+      "bobTokens": "22042221810019548296740889",
+      "expectedFeeAlice": {
+        "holders": "6000000000",
+        "buyback": "3000000000",
+        "fee": "9000000000"
+      },
+      "expectedFeeBob": {
+        "holders": "4000000000",
+        "buyback": "2000000000",
+        "fee": "6000000000"
+      }
+    },
+    {
+      "step": "9_sell",
+      "tx": "0x0f23913a9644febfb006e778854f1e7862cc4cc12ecd9625a32434733420bede",
+      "sold": "8766469603483289223249581"
+    },
+    {
+      "step": "10_zec_rewards",
+      "alicePending": "10960737387",
+      "lifetimeRewards": "11564651717",
+      "expectedHoldersFromBuys": "10000000000",
+      "note": "Sell also credits 2% of its quote notional; lifetime >= buy holders."
+    },
+    {
+      "step": "11_buyback_reserve_zec",
+      "accruedZec": "5782325858",
+      "expectedBuybackFromBuys": "5000000000",
+      "note": "ZEC route unset (CORE pool is USDC). Reserve pending — by design."
+    },
+    {
+      "step": "12_tax_free_transfer",
+      "tx": "0xecf80d5a48ba8b72eb5f77799852518f78591ca53b0dcf0742e5de27257b2efb",
+      "sent": "2629940881044986766974874",
+      "aliceDelta": "2629940881044986766974874"
+    },
+    {
+      "step": "13_trade_after_transfer",
+      "tx": "0x9c6f96c17ac8e2efcf2c379d8c5aefeef20896a767ac4eead5a36ba68fbcbbfa",
+      "carolRewardsBefore": "0",
+      "carolRewardsAfter": "54403230"
+    },
+    {
+      "step": "14_claim",
+      "tx": "0x72e798767cec8ece8046bfd4ad78b9ffa33f3b064a14e68fe013b4aaf10d2d51"
+    },
+    {
+      "step": "15_usdc_reserve_for_buyback",
+      "ucat": "0x624dC0EcEFD94640D316eE3ACfD147Ed9B764638",
+      "usdcReserve": "100000000",
+      "vaultUsdc": "100000000",
+      "expected": "100000000"
+    },
+    {
+      "step": "16_core_burn",
+      "tx": "0xd2676007e1dcfa23a005d89a0010753399240dcb2dbce30bb8e225a72e2e0b33",
+      "burnedBefore": "0",
+      "burnedAfter": "99698012021646250883",
+      "delta": "99698012021646250883"
+    },
+    {
+      "step": "17_fair_create",
+      "tx": "0x52a10e63e15579b69bffaef089a70af29adee013d46c456c2157d72e552de1c8",
+      "fairId": "1",
+      "token": "0x94cD1b4DeA480E09A1e0d83f6C92b9A5C6136171"
+    },
+    {
+      "step": "18_bids",
+      "alice": "0xaf62460eeb48e292596ad71e2f58441e9c8bdb1d589c96437b4613c5c4d26cd0",
+      "bob": "0x27a5967e4d26a921f3b80c660a399da1fb596eb7f11445de416a10009f50eb18",
+      "buybackUnchanged": true
+    },
+    {
+      "step": "19_finalize",
+      "tx": "0xa7d8cb2efaadc4e916db15f102ab12beb133a67ae42fda35f4f1c858c29c087e",
+      "marketLive": true
+    },
+    {
+      "step": "20_migrate",
+      "poolId": "0x8f840150366ed9da56a5c50c399556cde6de11cfea59f5eb45c49fba5fe46a67",
+      "marketLive": true
+    },
+    {
+      "step": "21_post_migration_trade",
+      "tx": "0xe66795bb5e6c9d28ef2aff274b4254972185d5f61d11afd799c80b78ff984ed3"
+    },
+    {
+      "step": "22_three_percent_after_only",
+      "accruedDelta": "200000000",
+      "expectedBuyback": "200000000",
+      "auctionCharged": false
+    },
+    {
+      "step": "23_onchain_truth",
+      "zcatOfficial": [
+        "0x553BED26A78b94862e53945941e4ad6E4F2497da",
+        "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+        true
+      ],
+      "note": "UI reads the same factory/token/vault views. No fabricated stats."
+    }
+  ],
+  "finishedAt": "2026-09-11T00:40:04.671Z",
+  "success": true
+}
