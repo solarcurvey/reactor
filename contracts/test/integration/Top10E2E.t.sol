@@ -102,7 +102,7 @@ contract Top10E2ETest is Base {
         uint256 accMid = buyback.accrued(address(usdc));
         vm.prank(keeper);
         vm.expectRevert();
-        buyback.executeCoreBuyback(address(usdc), _hop(address(usdc), address(core), coreKey), 1);
+        buyback.executeCoreBuyback(address(usdc), _emptyHops(), 1);
         assertEq(core.totalSupply(), coreMid);
         assertEq(buyback.accrued(address(usdc)), accMid);
     }

@@ -97,6 +97,19 @@
   },
   {
     "type": "function",
+    "name": "bindExecutor",
+    "inputs": [
+      {
+        "name": "executor_",
+        "type": "address",
+        "internalType": "contract CoreBuybackExecutor"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "bindFactory",
     "inputs": [
       {
@@ -243,6 +256,19 @@
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "executor",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract CoreBuybackExecutor"
       }
     ],
     "stateMutability": "view"

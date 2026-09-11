@@ -12,7 +12,8 @@ Evidence file: `deployments/e2e-evidence.json` (regenerate with `pnpm --filter i
 | Instant bonding → ready-lock → graduate → locked v4 | `InstantCurve` + priced/unsigned factory launch |
 | Batch Fair Launch (pro-rata timed sale, not CCA) | `ReactorFactory` + `FairClaimVault` |
 | Holder rewards (O(1); genesis 2% → SelfBurn if eligible=0) | `ReactorToken` + `SelfBurnVault` |
-| CORE buy+burn via `burn()` only | `BuybackVault` |
+| CORE genesis 100M vest + 900M locked official CORE/USDC | `CoreVesting` + `CoreLiquidityVault` |
+| CORE buy+burn via `burn()` only; official book 2.5/1.0 | `BuybackVault` + `CoreBuybackExecutor` |
 | Top-10 flywheel (1%; offchain discovery, structural onchain) | `FlywheelVault` + `apps/web` marketdata API |
 | User USDC router (not a vault) | `UserRouteExecutor` |
 | Designated Keeper + immutable Guardian | `ReactorGuardian` |

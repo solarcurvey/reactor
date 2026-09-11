@@ -3,12 +3,7 @@
     "type": "constructor",
     "inputs": [
       {
-        "name": "supply",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "recipient",
+        "name": "genesisAuthority_",
         "type": "address",
         "internalType": "address"
       }
@@ -104,6 +99,50 @@
         "name": "",
         "type": "uint8",
         "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "genesis",
+    "inputs": [
+      {
+        "name": "vesting",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "lpVault",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "genesisAuthority",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "minted",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -227,6 +266,37 @@
   },
   {
     "type": "event",
+    "name": "Genesis",
+    "inputs": [
+      {
+        "name": "vesting",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "lpVault",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "vestingAmt",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "lpAmt",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "Transfer",
     "inputs": [
       {
@@ -249,5 +319,20 @@
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AlreadyMinted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Bad",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotGenesis",
+    "inputs": []
   }
 ]

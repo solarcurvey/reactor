@@ -17,7 +17,10 @@ Guardian is immutable. Keeper is replaceable by Guardian.
 | `QuoteAssetRegistry` | `setUsdc` | One-time (same address may be re-set) |
 | `QuoteAssetRegistry` | `register` / `setEnabled` / `setIcon` / `setBuybackRoute` | External quotes |
 | `ReactorFactory` | `bindCurve` | One-time |
-| `ReactorHook` | `bindFactory` / `bindBuyback` / `bindFlywheel` / `bindCurve` / `bindSelfBurn` | One-time each |
+| `ReactorHook` | `bindFactory` / `bindBuyback` / `bindFlywheel` / `bindCurve` / `bindSelfBurn` / `bindCoreVault` | One-time each |
+| `CoreVesting` | `activateLaunch` | One-time T0 freeze when constructed with `t0=0` |
+| `CoreLiquidityVault` | `initializeAndLock` | One-time |
+| `BuybackVault` | `bindExecutor` | One-time `CoreBuybackExecutor` |
 | `ReactorLiquidityVault` | `bindFactory` | One-time |
 | `BuybackVault` | `bindFactory` | One-time |
 | `FlywheelVault` | `bind` | One-time |

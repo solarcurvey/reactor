@@ -9,6 +9,7 @@ import {QuoteAssetRegistry} from "./QuoteAssetRegistry.sol";
 import {ReactorGuardian} from "./ReactorGuardian.sol";
 import {RouteGuard} from "./libraries/RouteGuard.sol";
 import {RouteExec} from "./libraries/RouteExec.sol";
+import {CoreBuybackExecutor} from "./CoreBuybackExecutor.sol";
 
 /// @notice 0.5% CORE pot. Designated Keeper routes quote → CORE via approved adapters, then burns.
 contract BuybackVault {
@@ -22,6 +23,7 @@ contract BuybackVault {
     uint256 public immutable threshold;
     address public factory;
     address public curve;
+    CoreBuybackExecutor public executor;
 
     mapping(address => uint256) public accrued;
     mapping(address => uint64) public lastExecuteAt;
@@ -85,6 +87,12 @@ contract BuybackVault {
         curve = curve_;
     }
 
+    function bindExecutor(CoreBuybackExecutor executor_) external {
+        if (msg.sender != auth.guardian()) revert ReactorGuardian.NotGuardian();
+        if (address(executor) != address(0) || address(executor_) == address(0)) revert AlreadySet();
+        executor = executor_;
+    }
+
     function accrue(address quote, uint256 amount) external {
         if (msg.sender != hook && msg.sender != curve) revert NotHook();
         if (amount == 0) return;
@@ -115,7 +123,16 @@ contract BuybackVault {
         if (amount < threshold) revert Bad();
 
         accrued[quote] -= amount;
-        uint256 coreOut = RouteExec.run(auth, hops, quote, core, amount, minOut);
+        uint256 usdcIn;
+        if (quote == usdc) {
+            if (hops.length != 0) revert Bad();
+            usdcIn = amount;
+        } else {
+            usdcIn = RouteExec.run(auth, hops, quote, usdc, amount, hops[hops.length - 1].minOut);
+        }
+        IERC20MinimalExt(usdc).approve(address(executor), usdcIn);
+        uint256 coreOut = executor.buy(usdcIn, minOut);
+        IERC20MinimalExt(usdc).approve(address(executor), 0);
         lastExecuteAt[quote] = uint64(block.timestamp);
         lifetimePurchased += coreOut;
         _burn(coreOut);

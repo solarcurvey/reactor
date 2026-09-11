@@ -5,7 +5,10 @@
 | Contract | Upgradeable | Custody | Role |
 | --- | --- | --- | --- |
 | `ReactorToken` | No | Holds claimable quote | Fixed-supply ERC-20 + O(1) rewards |
-| `TestCORE` | No | None | Platform token; mint once to deployer |
+| `TestCORE` | No | None | Platform token; genesis 100M vest + 900M LP; mint once |
+| `CoreVesting` | No | 100M CORE | Immutable beneficiary; T0 launch; 30d cliff 0 then 10×30d linear |
+| `CoreLiquidityVault` | No | Official CORE/USDC LP | Single-sided 900M lock; no withdraw |
+| `CoreBuybackExecutor` | No | Transient USDC | Only fee-exempt official CORE buy |
 | `MockERC20` | No | Optional faucet mint (test) | Labeled mock quotes (ZEC/BTC/NVDA) |
 | `ReactorGuardian` | No | None | Immutable Guardian + replaceable Keeper + pauses + adapters |
 | `QuoteAssetRegistry` | No | None | External quotes Guardian-curated; native quotes from graduation |

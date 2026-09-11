@@ -30,6 +30,10 @@ import {ReactorGuardian} from "../src/ReactorGuardian.sol";
 import {UniswapV4Adapter} from "../src/adapters/UniswapV4Adapter.sol";
 import {RoutingRegistry} from "../src/RoutingRegistry.sol";
 import {UserRouteExecutor} from "../src/UserRouteExecutor.sol";
+import {CoreVesting} from "../src/CoreVesting.sol";
+import {CoreLiquidityVault} from "../src/CoreLiquidityVault.sol";
+import {CoreBuybackExecutor} from "../src/CoreBuybackExecutor.sol";
+import {RouteGuard} from "../src/libraries/RouteGuard.sol";
 
 contract Deploy is Script {
     struct Addresses {
@@ -52,6 +56,9 @@ contract Deploy is Script {
         UniswapV4Adapter v4Adapter;
         RoutingRegistry routes;
         UserRouteExecutor userRouter;
+        CoreVesting vesting;
+        CoreLiquidityVault coreLp;
+        CoreBuybackExecutor coreBuyback;
     }
 
     function run() external {
@@ -71,9 +78,10 @@ contract Deploy is Script {
 
     function _deployCore(address deployer, address guardian, address keeper) internal returns (Addresses memory a) {
         a.auth = new ReactorGuardian(guardian, keeper);
+        a.auth.pauseLaunches(true);
         a.pm = new PoolManager(deployer);
         a.registry = new QuoteAssetRegistry(a.auth);
-        a.core = new TestCORE(1_000_000_000 ether, deployer);
+        a.core = new TestCORE(deployer);
         a.usdc = new MockERC20("USD Coin", "USDC", 6, 0, deployer);
         a.zec = new MockERC20("Mock ZEC", "ZEC", 8, 0, deployer);
         a.btc = new MockERC20("Mock BTC", "BTC", 8, 0, deployer);
@@ -120,6 +128,11 @@ contract Deploy is Script {
         );
         a.hook = new ReactorHook{salt: salt}(a.pm, a.registry, address(a.core), address(a.vault), a.auth);
         require(address(a.hook) == hookAddr, "HOOK");
+        a.vesting = new CoreVesting(address(a.core), a.auth, 0);
+        a.coreLp = new CoreLiquidityVault(a.pm, a.auth, a.hook, address(a.core), address(a.usdc));
+        a.hook.bindCoreVault(address(a.coreLp));
+        a.core.genesis(address(a.vesting), address(a.coreLp));
+        a.coreLp.initializeAndLock();
         a.v4Adapter = new UniswapV4Adapter(IReactorSwapper(address(a.router)), a.auth, address(a.hook));
         a.auth.setAdapter(address(a.v4Adapter), true);
         a.buyback = new BuybackVault(
@@ -146,17 +159,42 @@ contract Deploy is Script {
         a.factory.bindCurve(a.curve, a.selfBurn);
         a.hook.bindCurve(address(a.curve));
         a.hook.bindSelfBurn(address(a.selfBurn));
+        a.coreBuyback = new CoreBuybackExecutor(
+            a.auth, a.hook, IReactorSwapper(address(a.router)), address(a.core), address(a.usdc), address(a.buyback)
+        );
+        a.buyback.bindExecutor(a.coreBuyback);
         a.router.setProtocolVault(address(a.selfBurn), true);
         a.router.setProtocolVault(address(a.flywheel), true);
-        a.router.setProtocolVault(address(a.buyback), true);
+        a.router.setProtocolVault(address(a.coreBuyback), true);
         a.router.sealProtocolVaults();
         a.userRouter = new UserRouteExecutor(a.auth, a.hook, IReactorSwapper(address(a.router)), address(a.usdc));
+        _verifyGenesis(a);
+        _tinyBuyback(a);
+        a.auth.pauseLaunches(false);
+        a.vesting.activateLaunch();
+    }
+
+    function _verifyGenesis(Addresses memory a) internal view {
+        require(a.core.totalSupply() == 1_000_000_000 ether, "CORE_SUPPLY");
+        require(a.core.balanceOf(address(a.vesting)) == 100_000_000 ether, "VEST");
+        require(a.core.balanceOf(msg.sender) == 0, "DEPLOYER_CORE");
+        require(a.core.balanceOf(a.auth.guardian()) == 0, "GUARDIAN_CORE");
+        require(a.core.balanceOf(a.auth.keeper()) == 0, "KEEPER_CORE");
+        (address t, address q, bool live) = a.hook.marketOfToken(address(a.core));
+        require(live && t == address(a.core) && q == address(a.usdc), "CORE_MARKET");
+    }
+
+    function _tinyBuyback(Addresses memory a) internal {
+        uint256 inAmt = 100e6;
+        IERC20MinimalExt(address(a.usdc)).approve(address(a.router), inAmt);
+        a.router.swap(a.coreLp.poolKey(), address(a.usdc) < address(a.core), -int256(inAmt), 1, msg.sender);
+        uint256 supplyBefore = a.core.totalSupply();
+        RouteGuard.Hop[] memory hops = new RouteGuard.Hop[](0);
+        a.buyback.execute(address(a.usdc), hops, 1);
+        require(a.core.totalSupply() < supplyBefore, "BURN");
     }
 
     function _seedRoutes(Addresses memory a) internal {
-        PoolKey memory coreKey = _hookless(address(a.core), address(a.usdc));
-        _seed(a.router, coreKey, address(a.core), 5_000_000 ether, address(a.usdc), 5_000_000e6);
-
         PoolKey memory zecHop = _hookless(address(a.zec), address(a.usdc));
         _seed(a.router, zecHop, address(a.zec), 200_000e8, address(a.usdc), 10_000_000e6);
 
@@ -212,6 +250,9 @@ contract Deploy is Script {
         console2.log("SelfBurnVault", address(a.selfBurn));
         console2.log("V4Adapter", address(a.v4Adapter));
         console2.log("UserRouteExecutor", address(a.userRouter));
+        console2.log("CoreVesting", address(a.vesting));
+        console2.log("CoreLiquidityVault", address(a.coreLp));
+        console2.log("CoreBuybackExecutor", address(a.coreBuyback));
         console2.log("FairVault", address(a.factory.fairVault()));
         console2.log("RoutingRegistry", address(a.routes));
         _write(a);
@@ -247,6 +288,9 @@ contract Deploy is Script {
             _kv("V4Adapter", address(a.v4Adapter)),
             _kv("RoutingRegistry", address(a.routes)),
             _kv("UserRouteExecutor", address(a.userRouter)),
+            _kv("CoreVesting", address(a.vesting)),
+            _kv("CoreLiquidityVault", address(a.coreLp)),
+            _kv("CoreBuybackExecutor", address(a.coreBuyback)),
             _kvLast("FairClaimVault", a.factory.fairVault()),
             "  },\n",
             '  "hookFlags": "0x30CC",\n',

@@ -141,6 +141,7 @@ Visual review (1440×900 and 390×844) is in `review/`. Instant is a **single co
 | UserRouteExecutor | **SHIPPED** | `UserRoute.t.sol` |
 | CORE `burn()` only | **SHIPPED** | dead-address fallback removed |
 | Dead V1 oracle/reserve | **DELETED** | git history only |
+| CORE genesis 10/90 | **SHIPPED** | Not Instant. Vest + locked official CORE/USDC. `CoreGenesis.t.sol` §28 / §29 |
 
 Local Anvil redeploy (hardening bytecode; **not** Arc Testnet):
 

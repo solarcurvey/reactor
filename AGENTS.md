@@ -5,6 +5,7 @@ Instructions for humans and coding agents working in this repo.
 ## Product invariants (do not “simplify away”)
 
 - Instant Launch is **bonding curve → ready → frozen → graduate → locked v4**, not single-sided v4 from trade #1. Creators have no supply/FDV/fee knobs.
+- CORE is **not** Instant: genesis 100M vest + 900M locked official CORE/USDC. Never Top-10. Official CORE book is 2.5% burn + 1% flywheel.
 - When `ready`, no buys or sells until `graduate`. Terminal fees apply only to executed gross quote.
 - Non-$1 quotes need a short-lived signed `LaunchPricingAuthorization`. No onchain ZEC/USD oracle.
 - If Rewards `eligibleSupply==0`, 2% goes to SelfBurn, not the first holder.

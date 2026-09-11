@@ -64,6 +64,8 @@ Every row is implemented in-repo. Re-run the matching file after any curve / fee
 | 39.29 | No cycles | same |
 | 39.30 | Flywheel / SelfBurn / CORE chunk + cooldown | `BlastRadius.t.sol`, vaults |
 | 39.31 | CORE `burn()` only (no dead-address) | `BuybackVault._burn`, `Top10E2E.t.sol` |
+| 28.xx | CORE genesis 35 cases | `test/unit/CoreGenesis.t.sol` |
+| 29.xx | CORE stateful invariants | `test/invariant/CoreInvariant.t.sol` |
 | 39.32 | UserRoute `minFinalOut` + deadline; not a vault | `UserRoute.t.sol` |
 | 39.33 | Top-10 structural: no CORE, no dupes, ≤10, weights 100% | `Top10Security.t.sol`, `Top10Api.t.sol` |
 | 39.34 | Fee 3.5% → 2/1/0.5 | `FeeInvariant.t.sol` |

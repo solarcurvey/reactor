@@ -16,6 +16,18 @@ library FeeMath {
         fee = holders + flywheel + coreAmt;
     }
 
+    /// @notice Official CORE/USDC: 0% holders + 1% flywheel + 2.5% buy+burn. Still 3.5% total.
+    function splitCore(uint256 quoteNotional)
+        internal
+        pure
+        returns (uint256 holders, uint256 flywheel, uint256 coreAmt, uint256 fee)
+    {
+        holders = 0;
+        flywheel = (quoteNotional * ReactorConstants.FLYWHEEL_FEE_BPS) / ReactorConstants.BPS_DENOMINATOR;
+        coreAmt = (quoteNotional * ReactorConstants.CORE_MARKET_BURN_BPS) / ReactorConstants.BPS_DENOMINATOR;
+        fee = flywheel + coreAmt;
+    }
+
     function netOf(uint256 gross) internal pure returns (uint256) {
         (,,, uint256 fee) = split(gross);
         return gross - fee;

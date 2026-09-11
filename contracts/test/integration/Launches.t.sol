@@ -82,11 +82,16 @@ contract LaunchesTest is Base {
         assertGt(ReactorToken(token).pendingRewards(alice), 0);
     }
 
-    function test_hooklessCoreSwapNoReactorFee() public {
-        uint256 before = buyback.lifetimeAccrued();
+    function test_officialCoreSwapConsolidates25BurnAnd10Flywheel() public {
+        uint256 bb0 = buyback.lifetimeAccrued();
+        uint256 fw0 = flywheel.lifetimeAccrued();
         usdc.approve(address(router), 1_000e6);
         bool zfo = address(usdc) < address(core);
         router.swap(coreKey, zfo, -int256(1_000e6), 1, address(this));
-        assertEq(buyback.lifetimeAccrued(), before);
+        uint256 bb = buyback.lifetimeAccrued() - bb0;
+        uint256 fw = flywheel.lifetimeAccrued() - fw0;
+        assertEq(bb, 25e6);
+        assertEq(fw, 10e6);
+        assertEq(bb + fw, 35e6);
     }
 }

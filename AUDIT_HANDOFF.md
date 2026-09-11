@@ -21,7 +21,7 @@
 
 ## Overview
 
-REACTOR launches ERC-20s into Official REACTOR Pools: Uniswap v4 pools with `fee = 0`, `tickSpacing = 60`, and `ReactorHook`. The hook charges **3.5% of quote notional** via custom accounting (not an LP fee): 2% holders **or** SelfBurn, 1% Top-10 flywheel, 0.5% CORE buy+burn.
+REACTOR launches ERC-20s into Official REACTOR Pools: Uniswap v4 pools with `fee = 0`, `tickSpacing = 60`, and `ReactorHook`. The hook charges **3.5% of quote notional** via custom accounting (not an LP fee): 2% holders **or** SelfBurn, 1% Top-10 flywheel, 0.5% CORE buy+burn. Official **CORE/USDC** consolidates to **2.5% buy+burn + 1% flywheel** (no holder 2% — that would double-target CORE). Official **CORE/USDC** consolidates to **2.5% buy+burn + 1% flywheel** (no holder 2%). CORE is genesis 100M vest + 900M locked LP — not Instant, never Top-10.
 
 **Instant** is bonding curve → ready → **frozen** (no buy/sell) → permissionless `graduate` → locked v4. Not single-sided v4 from trade #1. Protocol owns supply (1B / 18 dec), curve constants, start FDV, and the 2/1/0.5 split. Creator picks image / name / ticker / description / quote / Rewards vs Standard / optional Dev Buy ≤5% token-out (full 3.5%).
 
@@ -45,7 +45,10 @@ REACTOR launches ERC-20s into Official REACTOR Pools: Uniswap v4 pools with `fee
 | `RoutingRegistry` | `contracts/src/RoutingRegistry.sol` | View over Guardian-approved adapters |
 | `QuoteAssetRegistry` | `contracts/src/QuoteAssetRegistry.sol` | External quotes Guardian-curated; native from graduation |
 | `UserRouteExecutor` | `contracts/src/UserRouteExecutor.sol` | User USDC routing; **not** a protocol vault |
-| `TestCORE` | `contracts/src/TestCORE.sol` | Platform token, mint once; `burn(uint256)` |
+| `TestCORE` | `contracts/src/TestCORE.sol` | Genesis mint 100M vest + 900M LP; `burn()`; no mint-all-to-deployer |
+| `CoreVesting` | `contracts/src/CoreVesting.sol` | Immutable beneficiary; T0 launch; 30d cliff 0 then 300d linear |
+| `CoreLiquidityVault` | `contracts/src/CoreLiquidityVault.sol` | Permanent single-sided CORE/USDC lock |
+| `CoreBuybackExecutor` | `contracts/src/CoreBuybackExecutor.sol` | Only fee-exempt official CORE buy |
 | `MockERC20` | `contracts/src/MockERC20.sol` | Test quotes (open mint) |
 | `PoolManager` | Uniswap v4-core | BUSL-1.1, non-production |
 

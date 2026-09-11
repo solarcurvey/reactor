@@ -8,7 +8,7 @@ Official REACTOR pool only. External pools have no protocol charge.
 | REACTOR economic fee | **3.5% of actual quote notional** |
 | Holders | **2.00%** same quote, never converted |
 | Top-10 flywheel | **1.00%** async `FlywheelVault` |
-| CORE buy + burn | **0.50%** isolated `coreBalance[quote]` |
+| CORE buy + burn | **0.50%** on non-CORE markets. Official CORE/USDC consolidates to **2.50%** buy+burn + **1%** flywheel (no holder 2%). |
 | Creator / treasury / referral / creation | **0** |
 | Transfer tax | **0** |
 

@@ -35,6 +35,9 @@ import {IReactorSwapper} from "../src/interfaces/IReactorSwapper.sol";
 import {LaunchPricing} from "../src/libraries/LaunchPricing.sol";
 import {CurveMath} from "../src/libraries/CurveMath.sol";
 import {UserRouteExecutor} from "../src/UserRouteExecutor.sol";
+import {CoreVesting} from "../src/CoreVesting.sol";
+import {CoreLiquidityVault} from "../src/CoreLiquidityVault.sol";
+import {CoreBuybackExecutor} from "../src/CoreBuybackExecutor.sol";
 
 contract Base is Test {
     using StateLibrary for PoolManager;
@@ -57,6 +60,9 @@ contract Base is Test {
     UniswapV4Adapter public v4Adapter;
     RoutingRegistry public routes;
     UserRouteExecutor public userRouter;
+    CoreVesting public coreVesting;
+    CoreLiquidityVault public coreLp;
+    CoreBuybackExecutor public coreBuyback;
 
     address public guardian;
     address public keeper;
@@ -67,6 +73,10 @@ contract Base is Test {
     address public carol = makeAddr("carol");
 
     PoolKey internal coreKey;
+
+    function officialCoreKey() public view returns (PoolKey memory) {
+        return coreKey;
+    }
     PoolKey internal zecUsdcKey;
     PoolKey internal btcUsdcKey;
 
@@ -80,7 +90,7 @@ contract Base is Test {
 
         pm = new PoolManager(address(this));
         registry = new QuoteAssetRegistry(auth);
-        core = new TestCORE(1_000_000_000 ether, address(this));
+        core = new TestCORE(address(this));
         usdc = new MockERC20("USD Coin", "USDC", 6, 0, address(this));
         zec = new MockERC20("Mock ZEC", "ZEC", 8, 0, address(this));
         btc = new MockERC20("Mock BTC", "BTC", 8, 0, address(this));
@@ -119,6 +129,14 @@ contract Base is Test {
         hook = new ReactorHook{salt: salt}(pm, registry, address(core), address(vault), auth);
         require(address(hook) == hookAddr, "hook salt");
 
+        coreVesting = new CoreVesting(address(core), auth, 0);
+        coreLp = new CoreLiquidityVault(pm, auth, hook, address(core), address(usdc));
+        hook.bindCoreVault(address(coreLp));
+        core.genesis(address(coreVesting), address(coreLp));
+        coreLp.initializeAndLock();
+        coreVesting.activateLaunch();
+        coreKey = coreLp.poolKey();
+
         v4Adapter = new UniswapV4Adapter(IReactorSwapper(address(router)), auth, address(hook));
         auth.setAdapter(address(v4Adapter), true);
 
@@ -148,38 +166,16 @@ contract Base is Test {
         factory.bindCurve(curve, selfBurn);
         hook.bindCurve(address(curve));
         hook.bindSelfBurn(address(selfBurn));
+        coreBuyback = new CoreBuybackExecutor(auth, hook, IReactorSwapper(address(router)), address(core), address(usdc), address(buyback));
+        buyback.bindExecutor(coreBuyback);
         router.setProtocolVault(address(selfBurn), true);
         router.setProtocolVault(address(flywheel), true);
-        router.setProtocolVault(address(buyback), true);
+        router.setProtocolVault(address(coreBuyback), true);
         router.sealProtocolVaults();
         userRouter = new UserRouteExecutor(auth, hook, IReactorSwapper(address(router)), address(usdc));
 
-        _seedCorePool();
         _seedHop(address(zec), 100_000e8, 5_000_000e6, zecUsdcKey);
         _seedHop(address(btc), 100e8, 6_000_000e6, btcUsdcKey);
-    }
-
-    function _seedCorePool() internal {
-        address a = address(core) < address(usdc) ? address(core) : address(usdc);
-        address b = address(core) < address(usdc) ? address(usdc) : address(core);
-        coreKey = PoolKey({
-            currency0: Currency.wrap(a),
-            currency1: Currency.wrap(b),
-            fee: 3000,
-            tickSpacing: 60,
-            hooks: IHooks(address(0))
-        });
-        uint256 coreAmt = 10_000_000 ether;
-        uint256 usdcAmt = 10_000_000e6;
-        uint160 sqrtP = LaunchMath.encodeSqrtPriceX96(
-            address(core) < address(usdc) ? usdcAmt : coreAmt, address(core) < address(usdc) ? coreAmt : usdcAmt
-        );
-        pm.initialize(coreKey, sqrtP);
-        _addFullRange(
-            coreKey,
-            address(core) < address(usdc) ? coreAmt : usdcAmt,
-            address(core) < address(usdc) ? usdcAmt : coreAmt
-        );
     }
 
     function _seedHop(address quote, uint256 quoteAmt, uint256 usdcAmt, PoolKey storage key) internal {
@@ -261,11 +257,11 @@ contract Base is Test {
     function _keeperCore(address quote) internal {
         vm.prank(keeper);
         if (quote == address(usdc)) {
-            buyback.execute(quote, _hop(address(usdc), address(core), coreKey), 1);
+            buyback.execute(quote, _emptyHops(), 1);
         } else if (quote == address(zec)) {
-            buyback.execute(quote, _twoHops(address(zec), address(usdc), zecUsdcKey, address(core), coreKey), 1);
+            buyback.execute(quote, _hop(address(zec), address(usdc), zecUsdcKey), 1);
         } else {
-            buyback.execute(quote, _twoHops(quote, address(usdc), btcUsdcKey, address(core), coreKey), 1);
+            buyback.execute(quote, _hop(quote, address(usdc), btcUsdcKey), 1);
         }
     }
 

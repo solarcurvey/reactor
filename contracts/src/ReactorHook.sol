@@ -43,6 +43,7 @@ contract ReactorHook is IHooks, IUnlockCallback {
     ISelfBurnSink public selfBurn;
     address public factory;
     address public curve;
+    address public coreLpVault;
     ReactorGuardian public immutable auth;
 
     struct OfficialMarket {
@@ -152,6 +153,13 @@ contract ReactorHook is IHooks, IUnlockCallback {
         selfBurn = ISelfBurnSink(vault_);
     }
 
+    function bindCoreVault(address vault_) external {
+        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (coreLpVault != address(0)) revert AlreadyBound();
+        if (vault_ == address(0)) revert NotFactory();
+        coreLpVault = vault_;
+    }
+
     function hookFlags() public pure returns (uint160) {
         return uint160(
             Hooks.BEFORE_INITIALIZE_FLAG | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG
@@ -166,14 +174,19 @@ contract ReactorHook is IHooks, IUnlockCallback {
         onlyPoolManager
         returns (bytes4)
     {
-        if (sender != factory && sender != curve) revert NotFactory();
         if (key.fee != ReactorConstants.LP_FEE) revert InvalidPool();
         if (key.tickSpacing != ReactorConstants.TICK_SPACING) revert InvalidPool();
 
         address c0 = Currency.unwrap(key.currency0);
         address c1 = Currency.unwrap(key.currency1);
-        if (c0 == core || c1 == core) revert CoreForbidden();
+        if (c0 == core || c1 == core) {
+            if (sender != coreLpVault) revert CoreForbidden();
+            address other = c0 == core ? c1 : c0;
+            if (other != registry.usdc() || other == address(0)) revert InvalidPool();
+            return IHooks.beforeInitialize.selector;
+        }
 
+        if (sender != factory && sender != curve) revert NotFactory();
         bool q0 = registry.isEnabled(c0);
         bool q1 = registry.isEnabled(c1);
         if (q0 == q1) revert InvalidPool();
@@ -221,7 +234,9 @@ contract ReactorHook is IHooks, IUnlockCallback {
 
         uint256 notional =
             params.amountSpecified < 0 ? uint256(-params.amountSpecified) : uint256(params.amountSpecified);
-        (uint256 holders, uint256 flywheel, uint256 coreAmt, uint256 fee) = FeeMath.split(notional);
+        (uint256 holders, uint256 flywheel, uint256 coreAmt, uint256 fee) = m.token == core
+            ? FeeMath.splitCore(notional)
+            : FeeMath.split(notional);
         if (fee == 0) {
             return (IHooks.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
         }
@@ -249,7 +264,9 @@ contract ReactorHook is IHooks, IUnlockCallback {
 
         int128 quoteDelta = specifiedIs0 ? delta.amount1() : delta.amount0();
         if (quoteDelta < 0) quoteDelta = -quoteDelta;
-        (uint256 holders, uint256 flywheel, uint256 coreAmt, uint256 fee) = FeeMath.split(uint256(uint128(quoteDelta)));
+        (uint256 holders, uint256 flywheel, uint256 coreAmt, uint256 fee) = m.token == core
+            ? FeeMath.splitCore(uint256(uint128(quoteDelta)))
+            : FeeMath.split(uint256(uint128(quoteDelta)));
         if (fee == 0) return (IHooks.afterSwap.selector, 0);
         Currency quoteC = specifiedIs0 ? key.currency1 : key.currency0;
         poolManager.mint(address(this), quoteC.toId(), fee);
