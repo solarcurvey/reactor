@@ -95,24 +95,18 @@ async function readTokens(client: NonNullable<ReturnType<typeof usePublicClient>
       functionName: "allTokens",
       args: [BigInt(i)],
     })) as `0x${string}`;
-    const info = (await client.readContract({
+    const rawInfo = await client.readContract({
       ...factory,
       functionName: "tokenInfo",
       args: [addr],
-    })) as {
-      token: `0x${string}`;
-      quote: `0x${string}`;
-      creator: `0x${string}`;
-      mode: number;
-      poolId: `0x${string}`;
-      marketLive: boolean;
-      fairId: bigint;
-    };
-    const meta = (await client.readContract({
+    });
+    const info = unwrapTokenInfo(rawInfo);
+    const rawMeta = await client.readContract({
       ...factory,
       functionName: "metadata",
       args: [addr],
-    })) as { image: string; description: string; website: string; twitter: string; telegram: string };
+    });
+    const meta = unwrapMeta(rawMeta);
     const [name, symbol, decimals, supply, lifetimeRewards] = (await Promise.all([
       client.readContract({ address: addr, abi: token.abi, functionName: "name" }),
       client.readContract({ address: addr, abi: token.abi, functionName: "symbol" }),
@@ -124,12 +118,12 @@ async function readTokens(client: NonNullable<ReturnType<typeof usePublicClient>
     let quoteDecimals = 18;
     try {
       quoteSymbol = (await client.readContract({
-        address: info[1],
+        address: info.quote,
         abi: erc20.abi,
         functionName: "symbol",
       })) as string;
       quoteDecimals = (await client.readContract({
-        address: info[1],
+        address: info.quote,
         abi: erc20.abi,
         functionName: "decimals",
       })) as number;
@@ -159,6 +153,57 @@ async function readTokens(client: NonNullable<ReturnType<typeof usePublicClient>
     });
   }
   return tokens.reverse();
+}
+
+function field(raw: unknown, name: string, index: number) {
+  if (Array.isArray(raw)) return raw[index];
+  if (raw && typeof raw === "object") {
+    const rec = raw as Record<string, unknown>;
+    if (Object.prototype.hasOwnProperty.call(rec, name) && rec[name] !== undefined) return rec[name];
+    if (rec[index] !== undefined) return rec[index];
+    if (rec[String(index)] !== undefined) return rec[String(index)];
+  }
+  return undefined;
+}
+
+function unwrapTokenInfo(raw: unknown) {
+  return {
+    token: field(raw, "token", 0) as `0x${string}`,
+    quote: field(raw, "quote", 1) as `0x${string}`,
+    creator: field(raw, "creator", 2) as `0x${string}`,
+    mode: Number(field(raw, "mode", 3) ?? 0),
+    poolId: field(raw, "poolId", 4) as `0x${string}`,
+    marketLive: Boolean(field(raw, "marketLive", 5)),
+    fairId: BigInt(field(raw, "fairId", 6) as bigint | number | string | undefined ?? 0),
+  };
+}
+
+function unwrapMeta(raw: unknown) {
+  return {
+    image: String(field(raw, "image", 0) ?? ""),
+    description: String(field(raw, "description", 1) ?? ""),
+    website: String(field(raw, "website", 2) ?? ""),
+    twitter: String(field(raw, "twitter", 3) ?? ""),
+    telegram: String(field(raw, "telegram", 4) ?? ""),
+  };
+}
+
+export function unwrapFair(raw: unknown) {
+  return {
+    token: field(raw, "token", 0) as `0x${string}`,
+    quote: field(raw, "quote", 1) as `0x${string}`,
+    creator: field(raw, "creator", 2) as `0x${string}`,
+    startTime: BigInt(field(raw, "startTime", 3) as bigint | number | string ?? 0),
+    endTime: BigInt(field(raw, "endTime", 4) as bigint | number | string ?? 0),
+    auctionBps: Number(field(raw, "auctionBps", 5) ?? 0),
+    minRaise: BigInt(field(raw, "minRaise", 6) as bigint | number | string ?? 0),
+    totalBids: BigInt(field(raw, "totalBids", 7) as bigint | number | string ?? 0),
+    auctionTokens: BigInt(field(raw, "auctionTokens", 8) as bigint | number | string ?? 0),
+    lpTokens: BigInt(field(raw, "lpTokens", 9) as bigint | number | string ?? 0),
+    finalized: Boolean(field(raw, "finalized", 10)),
+    migrated: Boolean(field(raw, "migrated", 11)),
+    poolId: field(raw, "poolId", 12) as `0x${string}`,
+  };
 }
 
 export function useQuotes() {

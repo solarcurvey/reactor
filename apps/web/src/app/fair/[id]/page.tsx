@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { parseUnitsSafe, formatUnitsSafe } from "@/lib/utils";
-import { useLaunchTokens } from "@/lib/hooks";
+import { unwrapFair, useLaunchTokens } from "@/lib/hooks";
 
 export default function FairPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,21 +30,8 @@ export default function FairPage() {
   });
 
   const launch = tokens?.find((t) => t.fairId === fairId);
-  const row = fl as
-    | {
-        token: `0x${string}`;
-        quote: `0x${string}`;
-        startTime: bigint;
-        endTime: bigint;
-        minRaise: bigint;
-        totalBids: bigint;
-        finalized: boolean;
-        migrated: boolean;
-      }
-    | undefined;
-
-  if (!row) return <p className="text-sm text-zinc-500">Loading auction…</p>;
-
+  if (!fl) return <p className="text-sm text-zinc-500">Loading auction…</p>;
+  const row = unwrapFair(fl);
   const { token, quote, startTime: start, endTime: end, minRaise, totalBids, finalized, migrated } = row;
   const qdec = launch?.quoteDecimals ?? 8;
   const qsym = launch?.quoteSymbol ?? "QUOTE";
