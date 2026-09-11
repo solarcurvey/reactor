@@ -1,67 +1,556 @@
-
-╭-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------╮
-| Type        | Signature                                                                                                | Selector                                                           |
-+=============================================================================================================================================================================================+
-| event       | Approval(address,address,uint256)                                                                        | 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925 |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| event       | RewardClaimed(address,address,uint256)                                                                   | 0x0aa4d283470c904c551d18bb894d37e17674920f3261a7f854be501e25f421b7 |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| event       | RewardsCredited(uint256,uint256)                                                                         | 0xb2d9f75cfd54712c69c409a660e3c5ade56c25cc3b32d70ee27c9f82f679bd12 |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| event       | Transfer(address,address,uint256)                                                                        | 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| error       | Insufficient()                                                                                           | 0x1dc930eb                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| error       | NotHook()                                                                                                | 0xc72cfc38                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| error       | ZeroAddress()                                                                                            | 0xd92e233d                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | accRewardPerShare() view returns (uint256)                                                               | 0x939d6237                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | allowance(address,address) view returns (uint256)                                                        | 0xdd62ed3e                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | approve(address,uint256) nonpayable returns (bool)                                                       | 0x095ea7b3                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | balanceOf(address) view returns (uint256)                                                                | 0x70a08231                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | claimRewards(address) nonpayable returns (uint256)                                                       | 0xef5cfb8c                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | creditRewards(uint256) nonpayable                                                                        | 0x525402e1                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | decimals() view returns (uint8)                                                                          | 0x313ce567                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | eligibleSupply() view returns (uint256)                                                                  | 0x6ade07b0                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | excludedBalance() view returns (uint256)                                                                 | 0xfc046941                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | hook() view returns (address)                                                                            | 0x7f5a7c7b                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | leftoverRewards() view returns (uint256)                                                                 | 0x419528a7                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | lifetimeRewards() view returns (uint256)                                                                 | 0x6aff1a7a                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | name() view returns (string)                                                                             | 0x06fdde03                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | pendingRewards(address) view returns (uint256)                                                           | 0x31d7a262                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | poolManager() view returns (address)                                                                     | 0xdc4c90d3                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | quoteAsset() view returns (address)                                                                      | 0xfdf262b7                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | rewardDebt(address) view returns (uint256)                                                               | 0x5873eb9b                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | rewardExcluded(address) view returns (bool)                                                              | 0x5d101773                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | storedRewards(address) view returns (uint256)                                                            | 0x1fa20064                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | symbol() view returns (string)                                                                           | 0x95d89b41                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | totalSupply() view returns (uint256)                                                                     | 0x18160ddd                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | transfer(address,uint256) nonpayable returns (bool)                                                      | 0xa9059cbb                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | transferFrom(address,address,uint256) nonpayable returns (bool)                                          | 0x23b872dd                                                         |
-|-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| constructor | constructor(string,string,uint8,uint256,address,address,address,address,address,address,bool) nonpayable |                                                                    |
-╰-------------+----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------╯
-
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "name_",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "symbol_",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "decimals_",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "supply",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "quote",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "hook_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "poolManager_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "liquidityVault",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "buybackVault",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "recipient",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "excludeRecipient",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "accRewardPerShare",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "allowance",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "approve",
+    "inputs": [
+      {
+        "name": "spender",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "balanceOf",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "claimRewards",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "creditRewards",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "decimals",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "eligibleSupply",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "excludedBalance",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "hook",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "leftoverRewards",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lifetimeRewards",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "name",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pendingRewards",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "poolManager",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "quoteAsset",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rewardDebt",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rewardExcluded",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "storedRewards",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "symbol",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "totalSupply",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "transfer",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferFrom",
+    "inputs": [
+      {
+        "name": "from",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "Approval",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "spender",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RewardClaimed",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RewardsCredited",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "accRewardPerShare",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Transfer",
+    "inputs": [
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "Insufficient",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotHook",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  }
+]

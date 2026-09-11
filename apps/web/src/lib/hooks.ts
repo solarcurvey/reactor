@@ -255,15 +255,13 @@ export function useCoreStats() {
             ...buyback,
             functionName: "preview",
             args: [addresses.USDC],
-          }) as Promise<{ amount?: bigint; minCoreOut?: bigint; reason?: number } | readonly [bigint, bigint, number]>,
+          }) as Promise<readonly [bigint, bigint, number]>,
         ]);
-      const prev = Array.isArray(preview)
-        ? { amount: preview[0], minCoreOut: preview[1], reason: Number(preview[2]) }
-        : {
-            amount: preview.amount ?? 0n,
-            minCoreOut: preview.minCoreOut ?? 0n,
-            reason: Number(preview.reason ?? 0),
-          };
+      const prev = {
+        amount: preview[0],
+        minCoreOut: preview[1],
+        reason: Number(preview[2]),
+      };
       return { supply, burnedBal, accruedUsdc, lifetimeAccrued, lifetimeBurned, threshold, purchased, preview: prev };
     },
     refetchInterval: 8_000,
