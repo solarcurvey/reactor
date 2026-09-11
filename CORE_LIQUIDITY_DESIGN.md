@@ -49,16 +49,18 @@ First USDC buys move price toward the range and fill from the 900M ask. Impact i
 Source: `CoreLiquiditySimTest.test_quantitativeBuyImpactsAtGenesis` + `test_fdvLadderBuyImpacts`.
 Start FDV is frozen at **$100,000**. Do not casually raise it. If a rung is unreachable with the 900M single-sided ask, the table records the highest FDV the book actually reached.
 
-Numbers are filled from the Foundry run on this HEAD (see BUILD_REPORT). Columns are **CORE out** and **FDV after** the listed USDC buy, snapshot/reverted so sizes do not stack.
+Numbers from `CoreLiquiditySimTest` on this HEAD. Each spend is snapshot/reverted (sizes do not stack). FDV is 1B × official sqrtPrice (USDC-6). CORE is token1 in the local fixture (start tick +368432, range `[-887220, 368340]`, spacing 60).
 
-| Book FDV (approx) | $100 buy CORE out | $1k | $10k | $100k | Notes |
-| --- | --- | --- | --- | --- | --- |
-| $100k genesis | see test logs | see test logs | see test logs | see test logs | Pathological impact is intended at T0 |
-| ~$1M | test | test | test | test | After walking the ask |
-| ~$10M | test | test | test | test | May require large USDC |
-| ~$100M | test | test | test | test | May be unreachable; document actual FDV |
+| Book FDV (actual) | $100 → CORE | FDV after | $1k → CORE | FDV after | $10k → CORE | FDV after | $100k → CORE | FDV after |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **$100,000** genesis | 955,145 | $101,139 | 9,461,083 | $103,080 | 86,433,306 | $123,508 | 463,615,155 | $429,282 |
+| **$1,348,991** (walk; target $1M) | 71,514 | $1,349,775 | 713,277 | $1,356,843 | 6,951,490 | $1,428,531 | 55,428,060 | $2,246,913 |
+| **$28,947,985** (walk; target $10M) | 3,333 | $28,951,617 | 33,315 | $28,984,315 | 331,278 | $29,312,308 | 3,136,793 | $32,693,729 |
+| **$700,909,503** (walk; target $100M) | 138 | $700,927,374 | 1,377 | $701,088,223 | 13,750 | $702,697,736 | 135,945 | $718,894,354 |
 
-`$100k` buy at `$100k` FDV is buying the entire advertised cap — expect extreme CORE out and a large FDV jump. That is not a reason to raise genesis FDV.
+Walk chunks overshoot the $10M / $100M labels — the book is continuous and a single large fill jumps FDV. **Genesis stays $100k.** The $100k-FDV / $100k-buy row (463.6M CORE, FDV → $429k) is the intended thin-ask pathology, not a reason to raise T0 FDV.
+
+Implied average CORE price at genesis: $100 / 955,145 ≈ $0.000105 (vs $0.000100 mid) after 3.5% official fee + impact. At the ~$701M book a $100k buy moves FDV +2.6%.
 
 ## Forbidden
 

@@ -9,7 +9,7 @@
 | --- | --- |
 | Branch | `cursor/final-grok-completion-5e6c` |
 | Parent | `1a3b3b6` |
-| Forge | re-run this pass (`via_ir`); count in the commit message / below after CI |
+| Forge | **282 passed**, 0 failed, 1 skipped (`forge test --offline`, Foundry 1.8.1, via_ir) |
 | Invariants | Reward campaign + CORE + fee split still the bound |
 | Frontend | Search + rows, image file upload, RoutePlanner trade preview, PRICE 1m/5m/1h/4h/1d bonding→v4, denser ops |
 | Backend / indexer | `block.timestamp` swaps; durable `pools`; `/candles` `/ops` `/vwap` |

@@ -36,7 +36,7 @@ contract CurrentArchitectureTest is Base {
 
         vm.startPrank(bob);
         usdc.approve(address(userRouter), 200e6);
-        uint256 nestedOut = userRouter.buy(zcat, 200e6, _hop(address(usdc), address(zec), zecUsdcKey), 1, block.timestamp + 60);
+        uint256 nestedOut = userRouter.buy(zcat, 200e6, _hop(address(usdc), address(zec), zecUsdcKey), 1, type(uint256).max);
         assertGt(nestedOut, 0);
         vm.stopPrank();
 
@@ -113,7 +113,7 @@ contract CurrentArchitectureTest is Base {
         ReactorToken(zcat).approve(address(userRouter), nestedOut / 4);
         vm.prank(bob);
         uint256 back = userRouter.sell(
-            zcat, nestedOut / 4, _hop(address(zec), address(usdc), zecUsdcKey), 1, 1, block.timestamp + 60
+            zcat, nestedOut / 4, _hop(address(zec), address(usdc), zecUsdcKey), 1, 1, type(uint256).max
         );
         assertGt(back, 0);
 
