@@ -83,15 +83,15 @@ export default function HomePage() {
 
       {list.length > 0 && (
         <div className="mt-3 overflow-x-auto rounded-2xl border border-white/8">
-          <table className="w-full min-w-[720px] text-left text-[13px]">
+          <table className="w-full text-left text-[13px]">
             <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.16em] text-zinc-500">
               <tr>
                 <th className="px-3 py-2 font-medium">#</th>
                 <th className="px-3 py-2 font-medium">Token</th>
                 <th className="px-3 py-2 font-medium">Earns</th>
-                <th className="px-3 py-2 font-medium">Mode</th>
-                <th className="px-3 py-2 font-medium">Supply</th>
-                <th className="px-3 py-2 font-medium">Holder rewards</th>
+                <th className="hidden px-3 py-2 font-medium sm:table-cell">Mode</th>
+                <th className="hidden px-3 py-2 font-medium md:table-cell">Supply</th>
+                <th className="hidden px-3 py-2 font-medium md:table-cell">Holder rewards</th>
                 <th className="px-3 py-2 font-medium"></th>
               </tr>
             </thead>
@@ -117,9 +117,13 @@ export default function HomePage() {
                         {t.quoteSymbol ?? "—"}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-zinc-400">{t.mode === 1 ? (t.marketLive ? "Fair · live" : "Fair · auction") : "Instant"}</td>
-                    <td className="px-3 py-2 font-mono text-[12px] text-zinc-300">{formatUnitsSafe(t.supply, t.decimals, 0)}</td>
-                    <td className="px-3 py-2 font-mono text-[12px] text-zinc-300">
+                    <td className="hidden px-3 py-2 text-zinc-400 sm:table-cell">
+                      {t.mode === 1 ? (t.marketLive ? "Fair · live" : "Fair · auction") : "Instant"}
+                    </td>
+                    <td className="hidden px-3 py-2 font-mono text-[12px] text-zinc-300 md:table-cell">
+                      {formatUnitsSafe(t.supply, t.decimals, 0)}
+                    </td>
+                    <td className="hidden px-3 py-2 font-mono text-[12px] text-zinc-300 md:table-cell">
                       {formatUnitsSafe(t.lifetimeRewards ?? 0n, t.quoteDecimals ?? 18, 3)} {t.quoteSymbol}
                     </td>
                     <td className="px-3 py-2 text-right">

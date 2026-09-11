@@ -28,8 +28,11 @@ O(1) magnified dividend-per-share + per-account corrections. Leftover magnified 
 - Instant starting FDV is not a rank input. Instant USDC FDV $10k–$50k (default $25k).
 - Top-10: $250k TWAP mcap floor. If no safe quote/USD path, tradable but not ranked.
 - If `<10` eligible, full pot splits among them. If `0`, pot accumulates.
-- Flywheel buys through the official pool may generate 3.5% fees; they do not recurse the same keeper call.
-- KeeperReserve is isolated USDC bounties — no raid on holder quote.
+- Each ranked name is paid `epochPot * weight / weightSum` (pot snapshotted at `finalizeEpoch`). A later exec cannot shrink an earlier share.
+- `#11` is never ranked and receives zero.
+- Flywheel buys through the official pool may generate 3.5% fees; they do not recurse the same keeper call (`bought[epoch][token]` is set before the swap).
+- KeeperReserve is isolated USDC bounties — no raid on holder quote. Same `op` pays once.
+- Market TWAP needs **n ≥ 2** samples in the last epoch. A single spot print after a pump does not qualify. Instant FDV is never substituted for TWAP mcap.
 
 ## Instant / Fair
 

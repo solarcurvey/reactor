@@ -4,6 +4,7 @@ import { useAccount } from "wagmi";
 import { WalletButton } from "@/components/wallet-button";
 import { Card } from "@/components/ui/card";
 import { shortAddress } from "@/lib/utils";
+import { REVIEW_FIXTURES } from "@/lib/review-fixtures";
 
 export default function WalletPage() {
   const { address, isConnected, chainId } = useAccount();
@@ -28,6 +29,19 @@ export default function WalletPage() {
         </div>
         <WalletButton />
       </Card>
+      {REVIEW_FIXTURES && (
+        <Card className="mt-3 space-y-2 p-4">
+          <div className="text-[11px] uppercase tracking-wider text-amber-200/80">Review · connected sample</div>
+          <div className="flex items-center justify-between text-[13px]">
+            <span className="text-zinc-400">Address</span>
+            <span className="font-mono">0x7099…79C8</span>
+          </div>
+          <div className="flex items-center justify-between text-[13px]">
+            <span className="text-zinc-400">Chain</span>
+            <span className="font-mono">5042002 · local</span>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

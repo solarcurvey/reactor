@@ -94,5 +94,5 @@ export const FIXTURE_RANKS = [
   { rank: 1, symbol: "ZCAT", token: ZCAT, mcap: "$412k", weight: "31%", quote: "ZEC" },
   { rank: 2, symbol: "GIGA", token: GIGA, mcap: "$381k", weight: "28%", quote: "USDC" },
   { rank: 3, symbol: "NEON", token: "0x1111111111111111111111111111111111110004", mcap: "$340k", weight: "25%", quote: "USDC" },
-  { rank: 4, symbol: "VOLT", token: "0x1111111111111111111111111111111111110005", mcap: "$210k", weight: "16%", quote: "BTC" },
+  { rank: 4, symbol: "VOLT", token: "0x1111111111111111111111111111111111110005", mcap: "$290k", weight: "16%", quote: "BTC" },
 ];

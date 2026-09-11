@@ -2,6 +2,8 @@
 
 **This software has not been audited.** Treat every contract as hostile-unreviewed. Do not deploy to Arc Mainnet.
 
+**This pass:** `forge test` **82 passed / 0 failed / 1 skipped**. Slither 0.11.6 on this tree: **142 findings** (16 High / 64 Medium / 54 Low / 8 Info) — see `HARDENING_REPORT.md`. **Arc Public Testnet was not deployed** (no funded deployer key and no faucet in this environment).
+
 ## Overview
 
 REACTOR launches ERC-20s into Official REACTOR Pools: Uniswap v4 pools with `fee = 0`, `tickSpacing = 60`, and `ReactorHook`. The hook charges **3.5% of quote notional** via custom accounting (not an LP fee): 2% holders, 1% Top-10 flywheel, 0.5% CORE buy+burn.
@@ -16,7 +18,11 @@ REACTOR launches ERC-20s into Official REACTOR Pools: Uniswap v4 pools with `fee
 | `ReactorToken` | `contracts/src/ReactorToken.sol` | ERC-20 + O(1) rewards |
 | `ReactorRouter` | `contracts/src/ReactorRouter.sol` | Unlock swaps / liquidity |
 | `ReactorLiquidityVault` | `contracts/src/ReactorLiquidityVault.sol` | Lock-only LP owner |
-| `BuybackVault` | `contracts/src/BuybackVault.sol` | Accrue / execute / burn |
+| `BuybackVault` | `contracts/src/BuybackVault.sol` | Isolated 0.5% CORE pot; `execute` / `executeCoreBuyback` |
+| `FlywheelVault` | `contracts/src/FlywheelVault.sol` | Isolated 1% Top-10 pot; finalize / buy+burn |
+| `MarketOracle` | `contracts/src/MarketOracle.sol` | Permissionless samples; n≥2 TWAP; CORE ineligible |
+| `KeeperReserve` | `contracts/src/KeeperReserve.sol` | Isolated USDC bounties; `paid[op]` once |
+| `RoutingRegistry` | `contracts/src/RoutingRegistry.sol` | Owner routes; USDC hops must be hookless |
 | `QuoteAssetRegistry` | `contracts/src/QuoteAssetRegistry.sol` | Curated quotes |
 | `TestCORE` | `contracts/src/TestCORE.sol` | Platform token, mint once |
 | `MockERC20` | `contracts/src/MockERC20.sol` | Test quotes (open mint) |
@@ -51,9 +57,11 @@ BEFORE_INITIALIZE | AFTER_INITIALIZE | BEFORE_SWAP | AFTER_SWAP
 
 See `ECONOMICS.md` and `FeeMath.split`. Quote notional is the specified amount when quote is specified, else `abs(CL quote delta)`.
 
-Fee claims are minted as ERC-6909 on the hook during the swap (PM may not yet hold the quote ERC-20). `ReactorRouter` calls `hook.flush` **after** the swap unlock returns. Flush opens a new unlock, **burns 6909 then takes ERC-20**, and pays the token (2%) plus `BuybackVault` (1%). Calling flush inside the swap unlock fails (hook is not the locker).
+Fee claims are minted as ERC-6909 on the hook during the swap (PM may not yet hold the quote ERC-20). `ReactorRouter` calls `hook.flush` **after** the swap unlock returns. Flush opens a new unlock, **burns 6909 then takes ERC-20**, and pays the token (2%), `FlywheelVault` (1%), and `BuybackVault` (0.5%). Calling flush inside the swap unlock fails (hook is not the locker).
 
-Rewards: `accRewardPerShare` with `PRECISION = 1e27`. Leftover dust when `eligibleSupply == 0` flushes on the next eligible transfer.
+Rewards: magnified DPS `MAG = 2**128` with per-account `magnifiedDividendCorrections`. Leftover magnified remainder `% eligibleSupply` is never allocated twice. No `outstanding <= backing + 1` slack.
+
+Top-10: `finalizeEpoch` sorts qualifying TWAP mcap desc, fills at most 10 slots, snapshots `epochPot`. Second finalize no-ops. `executeTop10Buyback` marks `bought` before the swap. CORE is skipped. `#11` is not ranked.
 
 ## Lock
 
@@ -70,7 +78,7 @@ Rewards: `accRewardPerShare` with `PRECISION = 1e27`. Leftover dust when `eligib
 | Registry admin | Add/disable quotes, icons |
 | Deployer (one-time binds) | `bindFactory`, `bindBuyback`, `configureRoute` |
 | Anyone | Launch, bid, trade, claim, execute |
-| Nobody | Withdraw LP, mint CORE/launch tokens, change 2/1, redirect CORE, blacklist |
+| Nobody | Withdraw LP, mint CORE/launch tokens, change 2/1/0.5, redirect CORE, blacklist |
 
 ## Trust assumptions
 

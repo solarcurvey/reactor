@@ -13,9 +13,10 @@ Run at: 2026-09-11T00:37:56Z
 | Instant launch (v4 from trade #1, 0% LP, hooked) | `ReactorFactory.instantLaunch` |
 | Batch Fair Launch (pro-rata timed sale, not CCA) | `ReactorFactory` + `FairClaimVault` |
 | Holder rewards (O(1), no staking, persist on transfer) | `ReactorToken` |
-| CORE buyback-and-burn (accrue, permissionless execute) | `BuybackVault` + hookless CORE/USDC |
-| Consumer UI | `apps/web` @ `http://127.0.0.1:43147` |
-| Indexer | `apps/indexer` @ `:43148` |
+| CORE buyback-and-burn (accrue, `execute` / `executeCoreBuyback`) | `BuybackVault` + hookless CORE/USDC |
+| Top-10 flywheel (1% async, TWAP rank, real burns) | `FlywheelVault` + `MarketOracle` |
+| Consumer UI | `apps/web` @ `http://127.0.0.1:43147` (`/`, `/launch`, `/trade`, `/reactor`, `/core`) |
+| Indexer | `apps/indexer` @ `:43148` (`/events`, `/reactor`, swaps with flywheel+coreAmt) |
 
 ## Addresses (local)
 
@@ -64,7 +65,7 @@ Hook CREATE2 address **changes if hook bytecode changes**. Always read `factory.
 
 ## Fee arithmetic (expected vs actual)
 
-Split: `holders = n * 200 / 10000`, `buyback = n * 100 / 10000`.
+Split: `holders = n * 200 / 10000`, `flywheel = n * 100 / 10000`, `core = n * 50 / 10000` (3.5% total). Legacy E2E rows below still show the old 2%/1% CORE-only column labels — treat the 1% column as flywheel+core (1.5%) after the 3.5% cut.
 
 | Swap | Notional (raw) | Expected 2% | Expected 1% | Observed |
 | --- | --- | --- | --- | --- |
@@ -78,12 +79,12 @@ Split: `holders = n * 200 / 10000`, `buyback = n * 100 / 10000`.
 ## Tests
 
 ```
-forge test   # 27 passed (unit, fuzz, invariant, integration, attack, Arc smoke)
+forge test   # 82 passed, 0 failed, 1 skipped (cross-quote historical reproduce)
 ```
 
-Solvency after flush: token quote balance ≥ `lifetimeRewards`; buyback ERC-20 ≥ `accrued`.
+Solvency after flush: token quote balance ≥ outstanding holder rewards (no +1 slack). Flywheel and CORE pots are isolated. Top-10 E2E asserts `token.totalSupply()` and `core.totalSupply()` decrease after execute.
 
-Static analysis: Slither was not run in this environment (optional). Re-run with `slither contracts/src` before any audit.
+Static analysis: Slither 0.11.6 re-run on this HEAD — **142 results** (16 High / 64 Medium / 54 Low / 8 Info). See `HARDENING_REPORT.md`. Not clean. Not an audit.
 
 ## Dependencies
 

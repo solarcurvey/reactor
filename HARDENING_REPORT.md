@@ -110,20 +110,20 @@ export PATH="$PATH:$HOME/.local/bin:$HOME/.foundry/bin"
 slither src --exclude-dependencies --filter-paths lib
 ```
 
-**Ran 2026-09-11.** `slither 0.11.6`. Exit 255 (findings present). `src` analyzed, 44 contracts, 102 detectors, **87 results**.
+**Re-ran 2026-09-11 on HEAD after Top-10 / 3.5% work.** `slither 0.11.6`. Exit 255 (findings present). `src` analyzed, 50 contracts, 102 detectors, **142 results** (up from 87 — new `FlywheelVault`, `MarketOracle`, `KeeperReserve`, `RoutingRegistry` plus prior surfaces).
 
 | Impact | Count | Detectors (top) |
 | --- | --- | --- |
-| High | 12 | unchecked-transfer 11, arbitrary-send-erc20 1 (`Router._handle` `transferFrom(payer,…)`) |
-| Medium | 44 | unused-return 27, incorrect-equality 9, reentrancy-no-eth 6, divide-before-multiply 2 (`creditRewards` leftover — now also capped in `_distributeDist`) |
-| Low | 28 | reentrancy-benign/events, missing-zero-check, timestamp (buyback cooldown / fair end) |
-| Informational | 3 | low-level-calls (router flush try), missing-inheritance, unindexed-event-address |
+| High | 16 | unchecked-transfer 15, arbitrary-send-erc20 1 (`Router._handle` `transferFrom(payer,…)`) |
+| Medium | 64 | unused-return 40, incorrect-equality 11, reentrancy-no-eth 8, uninitialized-local 5 |
+| Low | 54 | reentrancy-benign 15, reentrancy-events 12, missing-zero-check 16, timestamp 9, costly-loop 1 (`finalizeEpoch` over `allTokens`) |
+| Informational | 8 | low-level-calls, missing-inheritance (`IFeeSink` on vaults), redundant-statements, unindexed-event-address |
 
 No fabricated “clean” report. High/medium are mostly style (ignored ERC-20 bools on mocks/internal tokens, CEI event-after-call, `== 0` guards). **Not an audit.** Re-run after bytecode changes; hook CREATE2 will move.
 
 Frontend: `pnpm exec tsc --noEmit` (target ES2020) and `pnpm lint` passed on `apps/web`. Dev server `http://127.0.0.1:43147` returned HTTP 200 after ABI restore.
 
-Visual review (1440×900 and 390×844) is in `review/`. Home hero, Earn step, CORE TESTNET, and no caller minOut were confirmed. `/instant` is not a route — Instant is a step in `/launch`. No layout overflow found.
+Visual review (1440×900 and 390×844) is in `review/`. Home is a **table**, token detail is trading-first (not a homepage reuse), `/reactor` is THE REACTOR, `/trade` is a ticket board, Instant confirm defaults FDV **25000**. Mobile nav hides Trade/Rewards; wordmark text hides on xs.
 
 Local Anvil redeploy (hardening bytecode; **not** Arc Testnet):
 

@@ -310,18 +310,17 @@ export function useSwapSeries(token?: string) {
     queryKey: ["swaps", token],
     enabled: !!token,
     queryFn: async () => {
+      const empty: { t: number; notional: string; holders: string; buyback: string; flywheel?: string; coreAmt?: string; sqrtPrice?: string }[] = [];
+      const fixtures = [
+        { t: 1, notional: "1000000000", holders: "20000000", buyback: "15000000", flywheel: "10000000", coreAmt: "5000000", sqrtPrice: "79228162514264337593543950336" },
+        { t: 2, notional: "2000000000", holders: "40000000", buyback: "30000000", flywheel: "20000000", coreAmt: "10000000", sqrtPrice: "85000000000000000000000000000" },
+        { t: 3, notional: "800000000", holders: "16000000", buyback: "12000000", flywheel: "8000000", coreAmt: "4000000", sqrtPrice: "91000000000000000000000000000" },
+      ];
       const res = await fetch(`${INDEXER_URL}/swaps/${token}`).catch(() => null);
-      if (!res?.ok) {
-        if (REVIEW_FIXTURES && token) {
-          return [
-            { t: 1, notional: "1000000000", holders: "20000000", buyback: "15000000", flywheel: "10000000", coreAmt: "5000000", sqrtPrice: "79228162514264337593543950336" },
-            { t: 2, notional: "2000000000", holders: "40000000", buyback: "30000000", flywheel: "20000000", coreAmt: "10000000", sqrtPrice: "81000000000000000000000000000" },
-            { t: 3, notional: "800000000", holders: "16000000", buyback: "12000000", flywheel: "8000000", coreAmt: "4000000", sqrtPrice: "77000000000000000000000000000" },
-          ];
-        }
-        return [] as { t: number; notional: string; holders: string; buyback: string; flywheel?: string; coreAmt?: string; sqrtPrice?: string }[];
-      }
-      return (await res.json()) as { t: number; notional: string; holders: string; buyback: string; flywheel?: string; coreAmt?: string; sqrtPrice?: string }[];
+      if (!res?.ok) return REVIEW_FIXTURES ? fixtures : empty;
+      const rows = (await res.json()) as typeof empty;
+      if (REVIEW_FIXTURES && rows.length === 0) return fixtures;
+      return rows;
     },
     refetchInterval: 8_000,
   });
