@@ -1,253 +1,39 @@
-[
-  {
-    "type": "constructor",
-    "inputs": [
-      {
-        "name": "factory_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "hook_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "curve_",
-        "type": "address",
-        "internalType": "contract InstantCurve"
-      },
-      {
-        "name": "router_",
-        "type": "address",
-        "internalType": "contract ReactorRouter"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "accrue",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "quote",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "accrued",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "curve",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract InstantCurve"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "execute",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "factory",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "hook",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "lifetimeAccrued",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "lifetimeBurned",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "lock",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "quoteOf",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "router",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract ReactorRouter"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "event",
-    "name": "SelfBurnAccrued",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "quote",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "SelfBurnExecuted",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "quoteIn",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "burned",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "error",
-    "name": "NotAuth",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "Reentrant",
-    "inputs": []
-  }
-]
+
+╭-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------╮
+| Type        | Signature                                                                          | Selector                                                           |
++=======================================================================================================================================================================+
+| event       | SelfBurnAccrued(address,address,uint256)                                           | 0xd243ed0783997f0067491937790eceee5cb0a8c5ba4febb4ec0f0c0b2731bfc5 |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| event       | SelfBurnExecuted(address,uint256,uint256)                                          | 0xf218a9957ba2dc05c3aef0baea2b42803cc036bdf93b4abee28dfbd8d7780231 |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | NotAuth()                                                                          | 0xc14d5d60                                                         |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | Reentrant()                                                                        | 0xed3ba6a6                                                         |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | accrue(address,address,uint256) nonpayable                                         | 0xf42a765f                                                         |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | accrued(address) view returns (uint256)                                            | 0xb148440f                                                         |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | auth() view returns (ReactorGuardian)                                              | 0xde9375f2                                                         |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | curve() view returns (InstantCurve)                                                | 0x7165485d                                                         |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | execute(address) nonpayable                                                        | 0x4b64e492                                                         |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | factory() view returns (address)                                                   | 0xc45a0155                                                         |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | hook() view returns (address)                                                      | 0x7f5a7c7b                                                         |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | lifetimeAccrued() view returns (uint256)                                           | 0x378426a8                                                         |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | lifetimeBurned() view returns (uint256)                                            | 0x1eedc93c                                                         |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | lock() view returns (uint256)                                                      | 0xf83d08ba                                                         |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | quoteOf(address) view returns (address)                                            | 0xcab1ef67                                                         |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | router() view returns (ReactorRouter)                                              | 0xf887ea40                                                         |
+|-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| constructor | constructor(ReactorGuardian,address,address,InstantCurve,ReactorRouter) nonpayable |                                                                    |
+╰-------------+------------------------------------------------------------------------------------+--------------------------------------------------------------------╯
+

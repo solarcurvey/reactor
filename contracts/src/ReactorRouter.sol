@@ -12,7 +12,8 @@ import {IERC20MinimalExt} from "./interfaces/IERC20MinimalExt.sol";
 /// @notice Unlock-callback router. V1 swaps are exact-input only with a nonzero minOut.
 contract ReactorRouter is IUnlockCallback {
     IPoolManager public immutable poolManager;
-    address public immutable configurator;
+    address public immutable bootstrap;
+    bool public protocolVaultsSealed;
 
     mapping(address => bool) public protocolVault;
     uint256 public protocolExempt;
@@ -25,19 +26,31 @@ contract ReactorRouter is IUnlockCallback {
     error MinOutRequired();
     error IncompleteFill();
     error NotVault();
-    error NotConfigurator();
+    error NotBootstrap();
+    error Sealed();
+    error WalletExemptForbidden();
 
     event ProtocolVaultSet(address indexed vault, bool allowed);
+    event ProtocolVaultsSealed();
 
     constructor(IPoolManager manager_) {
         poolManager = manager_;
-        configurator = msg.sender;
+        bootstrap = msg.sender;
     }
 
+    /// @notice One-shot deploy wiring. Cannot mark an EOA. Guardian cannot call this after seal.
     function setProtocolVault(address vault, bool allowed) external {
-        if (msg.sender != configurator) revert NotConfigurator();
+        if (protocolVaultsSealed) revert Sealed();
+        if (msg.sender != bootstrap) revert NotBootstrap();
+        if (allowed && vault.code.length == 0) revert WalletExemptForbidden();
         protocolVault[vault] = allowed;
         emit ProtocolVaultSet(vault, allowed);
+    }
+
+    function sealProtocolVaults() external {
+        if (msg.sender != bootstrap) revert NotBootstrap();
+        protocolVaultsSealed = true;
+        emit ProtocolVaultsSealed();
     }
 
     /// @param amountSpecified must be negative (exact in). Exact-out is disabled in V1.

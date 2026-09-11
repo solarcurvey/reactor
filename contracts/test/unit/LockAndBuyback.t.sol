@@ -21,9 +21,10 @@ contract LockAndBuybackTest is Base {
     }
 
     function test_buybackCannotRedirect() public {
-        vm.expectRevert();
-        buyback.configureCoreRoute(coreKey);
         assertEq(buyback.core(), address(core));
+        vm.prank(alice);
+        vm.expectRevert();
+        buyback.execute(address(usdc), _hop(address(usdc), address(core), coreKey), 1);
     }
 
     function test_hookBits() public view {
@@ -50,7 +51,7 @@ contract LockAndBuybackTest is Base {
         _buy(alice, ucat, address(usdc), 5_000e6);
         uint256 acc = buyback.accrued(address(usdc));
         uint256 supplyBefore = core.totalSupply();
-        buyback.execute(address(usdc));
+        _keeperCore(address(usdc));
         assertLt(core.totalSupply(), supplyBefore);
         assertGt(buyback.lifetimeBurned(), 0);
         assertLt(buyback.accrued(address(usdc)), acc);
@@ -62,7 +63,7 @@ contract LockAndBuybackTest is Base {
         uint256 before = buyback.accrued(address(zec));
         assertGt(before, 0);
         uint256 supplyBefore = core.totalSupply();
-        buyback.execute(address(zec));
+        _keeperCore(address(zec));
         assertLt(core.totalSupply(), supplyBefore);
         assertGt(buyback.lifetimeBurned(), 0);
         assertLt(buyback.accrued(address(zec)), before);

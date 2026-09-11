@@ -20,7 +20,9 @@ Hostile-reader notes for Codex / external review. **Not an audit.**
 | Malicious creator | Reclaim LP, hidden mint, tax, exclude holders |
 | Malicious hook caller | Charge unofficial pools, steal deltas |
 | Malicious quote | Fee-on-transfer, rebase, 6-vs-18 confusion |
-| Compromised registry admin | List a hostile quote |
+| Compromised Guardian | Halt launches/trading/Keeper; quarantine quotes; disable adapters. Cannot withdraw LP or redirect pots. |
+| Compromised Keeper | Waste a pot on a bad route/`minOut` within hop/bucket bounds. Cannot config, withdraw, or change fees. |
+| Compromised registry admin | Retired — quotes are Guardian (external) or factory-native. |
 | PoolManager (Uniswap) | Trusted v4 singleton; BUSL; not our code |
 
 ## Controls
@@ -30,12 +32,12 @@ Hostile-reader notes for Codex / external review. **Not an audit.**
 3. **Hook only charges `officialPool`.** Initialize gated to factory + 0% fee + registered quote.
 4. **Fee always quote** via specified/unspecified split (ADR-006).
 5. **Rewards O(1)**; debt synced on every transfer; excluded set immutable.
-6. **Buyback CORE target immutable**; USDC→CORE plus quote→USDC hops; caller cannot set minOut; reference deviation / cooldown / chunk / reserve; reentrancy guard; execute no-ops on failure.
+6. **Buyback CORE target immutable**; designated Keeper routes via approved adapters (≤3 hops); tokenIn from bucket; recipient is the vault then burn; cooldown / chunk / reserve; reentrancy guard.
 7. **Batch Fair finalize once**; `FairClaimVault` eligible; auction has no hook.
 10. **Canonical flush** — quote derived from `marketOfToken`; two-arg flush reverts on mismatch.
 11. **Exact-in + nonzero minOut + incomplete-fill revert** on the router.
 12. **Binds are owner + freeze**, not first-caller-wins.
-8. **Registry admin cannot** withdraw, mint, or change fee BPS.
+8. **Guardian cannot** withdraw, mint, change fee BPS, set Top-10, or take fee exemption as a wallet. See `GUARDIAN_MODEL.md`.
 9. **FoT / rebase quotes:** `creditRewards` / vault `accrue` measure actual received; shortfall reverts. Rebasing quotes are unsupported (document + do not register).
 
 ## Residual risks (highest first)

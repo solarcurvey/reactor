@@ -9,8 +9,8 @@ import {Currency} from "v4-core/types/Currency.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
 import {ReactorToken} from "./ReactorToken.sol";
-import {KeeperReserve} from "./KeeperReserve.sol";
 import {ReactorHook} from "./ReactorHook.sol";
+import {ReactorGuardian} from "./ReactorGuardian.sol";
 import {ReactorRouter} from "./ReactorRouter.sol";
 import {ReactorLiquidityVault} from "./ReactorLiquidityVault.sol";
 import {QuoteAssetRegistry} from "./QuoteAssetRegistry.sol";
@@ -39,8 +39,8 @@ contract InstantCurve {
     QuoteAssetRegistry public immutable registry;
     IPoolManager public immutable poolManager;
     address public immutable usdc;
+    ReactorGuardian public immutable auth;
     SelfBurnVault public selfBurn;
-    KeeperReserve public keepers;
 
     struct Curve {
         address token;
@@ -93,7 +93,8 @@ contract InstantCurve {
         ReactorRouter router_,
         ReactorLiquidityVault vault_,
         QuoteAssetRegistry registry_,
-        IPoolManager pm
+        IPoolManager pm,
+        ReactorGuardian auth_
     ) {
         factory = factory_;
         hook = hook_;
@@ -102,13 +103,13 @@ contract InstantCurve {
         registry = registry_;
         poolManager = pm;
         usdc = registry_.usdc();
+        auth = auth_;
     }
 
-    function bindSelfBurn(SelfBurnVault s, KeeperReserve k) external {
+    function bindSelfBurn(SelfBurnVault s) external {
         if (msg.sender != address(factory)) revert NotFactory();
         if (address(selfBurn) != address(0)) revert Bad();
         selfBurn = s;
-        keepers = k;
     }
 
     function open(
@@ -144,6 +145,7 @@ contract InstantCurve {
     }
 
     function buy(address token, uint256 quoteIn, uint256 minOut) external returns (uint256 tokensOut) {
+        auth.requireTradingOpen();
         return _buy(token, msg.sender, quoteIn, minOut, false, false);
     }
 
@@ -161,6 +163,7 @@ contract InstantCurve {
     }
 
     function sell(address token, uint256 tokenIn, uint256 minOut) external returns (uint256 quoteOut) {
+        auth.requireTradingOpen();
         return _sell(token, msg.sender, tokenIn, minOut, false, true);
     }
 
@@ -218,12 +221,10 @@ contract InstantCurve {
         vault.lockLiquidity(key, lo, hi, int256(uint256(liq)));
         factory.onGraduated(token, poolId);
         emit GraduationCompleted(token, poolId, quoteLp, tokenLp);
-        if (address(keepers) != address(0)) {
-            try keepers.tryPay(keccak256(abi.encode("grad", token)), tx.origin, 0) {} catch {}
-        }
     }
 
     function buyWithUsdc(address token, uint256 usdcIn, uint256 minTokenOut) external returns (uint256 tokensOut) {
+        auth.requireTradingOpen();
         Curve storage c = curves[token];
         if (c.token == address(0)) revert Bad();
         IERC20MinimalExt(usdc).transferFrom(msg.sender, address(this), usdcIn);
@@ -241,6 +242,7 @@ contract InstantCurve {
     }
 
     function sellToUsdc(address token, uint256 tokenIn, uint256 minUsdc) external returns (uint256 usdcOut) {
+        auth.requireTradingOpen();
         Curve storage c = curves[token];
         uint256 quoteOut;
         if (c.graduated) {

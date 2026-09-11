@@ -26,13 +26,13 @@ O(1) magnified dividend-per-share + per-account corrections. Leftover magnified 
 
 - CORE is never Top-10 eligible (contract-level).
 - Instant starting FDV is not a rank input. Protocol Instant start is ~$5k USDC FDV on a bonding curve (see `CURVE_DESIGN.md`). Ungraduated Instant tokens are not Top-10 eligible.
-- Top-10: $250k TWAP mcap floor. If no safe quote/USD path, tradable but not ranked.
+- Top-10 ranks and weights are computed **offchain** by the REACTOR API (~5 min). Operational floor ~$250k on a defensible mark. Nested quote USD is resolved offchain. If a mark is unreliable the API skips the token or pauses the epoch — it never guesses.
+- The designated Keeper publishes `epochId + targets + weights`. The contract checks structure only (graduated REACTOR tokens, not CORE, no dupes, ≤10, weights sum 100% if ≥1). It does **not** verify market caps.
 - If `<10` eligible, full pot splits among them. If `0`, pot accumulates.
-- Each ranked name is paid `epochPot * weight / weightSum` (pot snapshotted at `finalizeEpoch`). A later exec cannot shrink an earlier share.
-- `#11` is never ranked and receives zero.
-- Flywheel buys through the official pool may generate 3.5% fees; they do not recurse the same keeper call (`bought[epoch][token]` is set before the swap).
-- KeeperReserve is isolated USDC bounties — no raid on holder quote. Same `op` pays once.
-- Market TWAP needs **n ≥ 2** samples in the last epoch. A single spot print after a pump does not qualify. Instant FDV is never substituted for TWAP mcap.
+- Each ranked name is paid `epochPot * weight / weightSum` (pot snapshotted at `submitEpoch`). A later exec cannot shrink an earlier share.
+- `#11` is never submitted and receives zero.
+- Flywheel official-pool buys may generate 3.5% fees; they do not recurse the same slot (`bought[epoch][token]` is set before the swap).
+- There is no KeeperReserve and no bounty. Route/`minOut` are operational Keeper risk. See `KEEPER_MODEL.md`.
 
 ## Instant / Fair
 

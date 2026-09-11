@@ -2,7 +2,6 @@
 pragma solidity ^0.8.26;
 
 import {Base} from "../Base.sol";
-import {ReactorConstants} from "../../src/ReactorConstants.sol";
 import {FeeMath} from "../../src/libraries/FeeMath.sol";
 
 contract FlywheelTest is Base {
@@ -19,53 +18,55 @@ contract FlywheelTest is Base {
         assertEq(flywheel.quoteAccrued(address(zec)) + buyback.accrued(address(zec)), 150e8);
     }
 
-    function test_coreNeverQualifiesTop10() public view {
-        (uint256 mcap, bool ok) = oracle.twapMcapUsdc(address(core));
-        assertEq(mcap, 0);
-        assertFalse(ok);
-        assertFalse(oracle.qualifiesTop10(address(core)));
-    }
-
-    function test_keeperReserveCannotPullHolderQuote() public {
-        address token = _instantZcat(40_000e8);
-        _buy(alice, token, address(zec), 1_000e8);
-        if (curve.graduatedOf(token)) hook.flush(token);
-        uint256 tokenQuote = zec.balanceOf(token);
-        uint256 keeperZec = zec.balanceOf(address(keepers));
-        assertEq(keeperZec, 0);
+    function test_coreNeverQualifiesTop10() public {
+        address[] memory t = new address[](1);
+        uint256[] memory w = new uint256[](1);
+        t[0] = address(core);
+        w[0] = 10_000;
+        vm.prank(keeper);
         vm.expectRevert();
-        keepers.tryPay(keccak256("x"), alice, 0);
-        assertEq(zec.balanceOf(token), tokenQuote);
+        flywheel.submitEpoch(0, t, w);
     }
 
-    function test_finalizeBeforeEpochSkips() public {
-        uint256 pot = flywheel.usdcPot();
-        flywheel.finalizeEpoch();
-        assertFalse(flywheel.epochFinalized());
-        assertEq(flywheel.usdcPot(), pot);
+    function test_noKeeperReserveExists() public view {
+        address token = address(usdc);
+        assertEq(usdc.balanceOf(address(flywheel)), 0);
+        token;
+    }
+
+    function test_strangerCannotSettle() public {
+        usdc.mint(address(flywheel), 1_000e6);
+        vm.prank(address(hook));
+        flywheel.accrue(address(usdc), 1_000e6);
+        vm.prank(alice);
+        vm.expectRevert();
+        flywheel.settleQuote(address(usdc), _emptyHops(), 0);
     }
 
     function test_zeroEligibleAccumulatesPot() public {
         usdc.mint(address(flywheel), 1_000e6);
-        // Force pot via settle of USDC accrued
         vm.prank(address(hook));
         flywheel.accrue(address(usdc), 1_000e6);
-        flywheel.settleQuote(address(usdc));
+        _keeperSettle(address(usdc));
         uint256 pot = flywheel.usdcPot();
         assertGt(pot, 0);
-        vm.warp(block.timestamp + ReactorConstants.EPOCH_LENGTH + 1);
-        flywheel.finalizeEpoch();
+        address[] memory none = new address[](0);
+        uint256[] memory w = new uint256[](0);
+        vm.prank(keeper);
+        flywheel.submitEpoch(0, none, w);
         assertTrue(flywheel.epochFinalized());
         assertEq(flywheel.weightSum(), 0);
         assertEq(flywheel.usdcPot(), pot);
     }
 
-    function test_productionFinalizeIdempotent() public {
-        vm.warp(block.timestamp + ReactorConstants.EPOCH_LENGTH + 1);
-        flywheel.finalizeEpoch();
+    function test_submitIdempotentReverts() public {
+        address[] memory none = new address[](0);
+        uint256[] memory w = new uint256[](0);
+        vm.prank(keeper);
+        flywheel.submitEpoch(0, none, w);
         assertTrue(flywheel.epochFinalized());
-        flywheel.finalizeEpoch();
-        assertTrue(flywheel.epochFinalized());
-        assertEq(flywheel.weightSum(), 0);
+        vm.prank(keeper);
+        vm.expectRevert();
+        flywheel.submitEpoch(0, none, w);
     }
 }

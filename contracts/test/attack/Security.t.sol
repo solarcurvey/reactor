@@ -188,11 +188,11 @@ contract SecurityTest is Base {
         bool zfo = address(usdc) < address(core);
         router.swap(coreKey, zfo, -int256(4_000_000e6), 1, address(this));
 
-        uint256 deadBefore = IERC20Like(address(core)).balanceOf(ReactorConstants.DEAD);
         uint256 accBefore = buyback.accrued(address(usdc));
-        buyback.execute(address(usdc));
-        assertEq(buyback.accrued(address(usdc)), accBefore, "manipulated execute must no-op");
-        assertEq(IERC20Like(address(core)).balanceOf(ReactorConstants.DEAD), deadBefore);
+        vm.prank(alice);
+        vm.expectRevert();
+        buyback.execute(address(usdc), _hop(address(usdc), address(core), coreKey), 1);
+        assertEq(buyback.accrued(address(usdc)), accBefore, "non-keeper cannot spend CORE pot");
     }
 
     function test_staleRefAndCooldown() public {
@@ -213,12 +213,14 @@ contract SecurityTest is Base {
             })
         );
         _buy(alice, ucat, address(usdc), 5_000e6);
-        buyback.execute(address(usdc));
+        _keeperCore(address(usdc));
         uint256 mid = buyback.accrued(address(usdc));
-        buyback.execute(address(usdc));
+        vm.prank(keeper);
+        vm.expectRevert();
+        buyback.execute(address(usdc), _hop(address(usdc), address(core), coreKey), 1);
         assertEq(buyback.accrued(address(usdc)), mid, "cooldown");
         vm.warp(block.timestamp + ReactorConstants.BUYBACK_COOLDOWN + 1);
-        buyback.execute(address(usdc));
+        _keeperCore(address(usdc));
         assertLt(buyback.accrued(address(usdc)), mid);
     }
 
@@ -270,11 +272,11 @@ contract SecurityTest is Base {
 
         uint256 burnedBefore = buyback.lifetimeBurned();
         uint256 supplyBefore = core.totalSupply();
-        buyback.execute(address(usdc));
+        _keeperCore(address(usdc));
         vm.warp(block.timestamp + ReactorConstants.BUYBACK_COOLDOWN + 1);
-        buyback.execute(address(zec));
+        _keeperCore(address(zec));
         vm.warp(block.timestamp + ReactorConstants.BUYBACK_COOLDOWN + 1);
-        buyback.execute(address(btc));
+        _keeperCore(address(btc));
         assertGt(buyback.lifetimeBurned(), burnedBefore);
         assertLt(core.totalSupply(), supplyBefore);
     }
@@ -414,9 +416,11 @@ contract SecurityTest is Base {
     function test_buybackReentrancyGuarded() public {
         address token = _instantZcat(80_000e8);
         _buy(alice, token, address(zec), 8_000e8);
-        ReenterBuyback att = new ReenterBuyback(buyback);
-        vm.prank(address(att));
-        buyback.execute(address(zec));
+        vm.prank(alice);
+        vm.expectRevert();
+        buyback.execute(address(zec), _twoHops(address(zec), address(usdc), zecUsdcKey, address(core), coreKey), 1);
+        _keeperCore(address(zec));
+        assertGt(buyback.lifetimeBurned(), 0);
     }
 
     function test_flashLiquidityCannotUnlock() public {
@@ -427,14 +431,3 @@ contract SecurityTest is Base {
     }
 }
 
-contract ReenterBuyback {
-    BuybackVault immutable vault;
-
-    constructor(BuybackVault v) {
-        vault = v;
-    }
-
-    fallback() external {
-        try vault.execute(address(0)) {} catch {}
-    }
-}

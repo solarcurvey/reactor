@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import {IERC20MinimalExt} from "./interfaces/IERC20MinimalExt.sol";
 import {ReactorConstants} from "./ReactorConstants.sol";
 
-/// @notice Isolated USDC bounty pot. Cannot pull holder or fee vault balances.
+/// @notice RETIRED. No bounties. Designated Keeper is unpaid onchain. Do not wire this contract.
 contract KeeperReserve {
     address public immutable usdc;
     address public immutable owner;

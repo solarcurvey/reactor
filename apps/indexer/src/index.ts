@@ -82,7 +82,8 @@ const events = [
   parseAbiItem("event COREBurned(uint256 amount)"),
   parseAbiItem("event FlywheelAccrued(address indexed quote, uint256 amount)"),
   parseAbiItem("event QuoteSettled(address indexed quote, uint256 usdcIn)"),
-  parseAbiItem("event EpochFinalized(uint256 indexed epoch, uint256 n, uint256 pot)"),
+  parseAbiItem("event EpochSubmitted(uint256 indexed epochId, uint256 n, uint256 pot)"),
+  parseAbiItem("event EpochRolled(uint256 indexed epochId)"),
   parseAbiItem("event Top10Buy(uint256 indexed epoch, address indexed token, uint256 usdcIn, uint256 burned)"),
   parseAbiItem("event Skipped(address indexed target, string reason)"),
 ];
@@ -186,7 +187,7 @@ const server = createServer((req, res) => {
   }
   if (url.pathname === "/reactor") {
     const rows = db
-      .prepare("SELECT * FROM events WHERE name IN ('FlywheelAccrued','QuoteSettled','EpochFinalized','Top10Buy','Skipped','COREBurned','BuybackExecuted') ORDER BY id DESC LIMIT 80")
+      .prepare("SELECT * FROM events WHERE name IN ('FlywheelAccrued','QuoteSettled','EpochSubmitted','EpochRolled','Top10Buy','COREBurned','BuybackExecuted') ORDER BY id DESC LIMIT 80")
       .all();
     res.end(JSON.stringify({ events: rows }));
     return;

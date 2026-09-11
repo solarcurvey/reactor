@@ -331,7 +331,7 @@ export function useCoreStats() {
     queryKey: ["core-stats"],
     enabled: !!client,
     queryFn: async () => {
-      const [supply, burnedBal, accruedUsdc, lifetimeAccrued, lifetimeBurned, threshold, purchased, preview] =
+      const [supply, burnedBal, accruedUsdc, lifetimeAccrued, lifetimeBurned, threshold, purchased] =
         await Promise.all([
           client!.readContract({ ...core, functionName: "totalSupply" }) as Promise<bigint>,
           client!.readContract({
@@ -348,18 +348,8 @@ export function useCoreStats() {
           client!.readContract({ ...buyback, functionName: "lifetimeBurned" }) as Promise<bigint>,
           client!.readContract({ ...buyback, functionName: "threshold" }) as Promise<bigint>,
           client!.readContract({ ...buyback, functionName: "lifetimePurchased" }) as Promise<bigint>,
-          client!.readContract({
-            ...buyback,
-            functionName: "preview",
-            args: [addresses.USDC],
-          }) as Promise<readonly [bigint, bigint, number]>,
         ]);
-      const prev = {
-        amount: preview[0],
-        minCoreOut: preview[1],
-        reason: Number(preview[2]),
-      };
-      return { supply, burnedBal, accruedUsdc, lifetimeAccrued, lifetimeBurned, threshold, purchased, preview: prev };
+      return { supply, burnedBal, accruedUsdc, lifetimeAccrued, lifetimeBurned, threshold, purchased };
     },
     refetchInterval: 8_000,
   });

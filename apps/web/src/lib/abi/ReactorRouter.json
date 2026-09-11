@@ -1,371 +1,55 @@
-[
-  {
-    "type": "constructor",
-    "inputs": [
-      {
-        "name": "manager_",
-        "type": "address",
-        "internalType": "contract IPoolManager"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "addLiquidity",
-    "inputs": [
-      {
-        "name": "key",
-        "type": "tuple",
-        "internalType": "struct PoolKey",
-        "components": [
-          {
-            "name": "currency0",
-            "type": "address",
-            "internalType": "Currency"
-          },
-          {
-            "name": "currency1",
-            "type": "address",
-            "internalType": "Currency"
-          },
-          {
-            "name": "fee",
-            "type": "uint24",
-            "internalType": "uint24"
-          },
-          {
-            "name": "tickSpacing",
-            "type": "int24",
-            "internalType": "int24"
-          },
-          {
-            "name": "hooks",
-            "type": "address",
-            "internalType": "contract IHooks"
-          }
-        ]
-      },
-      {
-        "name": "tickLower",
-        "type": "int24",
-        "internalType": "int24"
-      },
-      {
-        "name": "tickUpper",
-        "type": "int24",
-        "internalType": "int24"
-      },
-      {
-        "name": "liquidityDelta",
-        "type": "int256",
-        "internalType": "int256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "delta",
-        "type": "int256",
-        "internalType": "BalanceDelta"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "configurator",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "poolManager",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IPoolManager"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "protocolExempt",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "protocolSwap",
-    "inputs": [
-      {
-        "name": "key",
-        "type": "tuple",
-        "internalType": "struct PoolKey",
-        "components": [
-          {
-            "name": "currency0",
-            "type": "address",
-            "internalType": "Currency"
-          },
-          {
-            "name": "currency1",
-            "type": "address",
-            "internalType": "Currency"
-          },
-          {
-            "name": "fee",
-            "type": "uint24",
-            "internalType": "uint24"
-          },
-          {
-            "name": "tickSpacing",
-            "type": "int24",
-            "internalType": "int24"
-          },
-          {
-            "name": "hooks",
-            "type": "address",
-            "internalType": "contract IHooks"
-          }
-        ]
-      },
-      {
-        "name": "zeroForOne",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "amountSpecified",
-        "type": "int256",
-        "internalType": "int256"
-      },
-      {
-        "name": "minOut",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "recipient",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "amountOut",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "protocolVault",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "setProtocolVault",
-    "inputs": [
-      {
-        "name": "vault",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "allowed",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "swap",
-    "inputs": [
-      {
-        "name": "key",
-        "type": "tuple",
-        "internalType": "struct PoolKey",
-        "components": [
-          {
-            "name": "currency0",
-            "type": "address",
-            "internalType": "Currency"
-          },
-          {
-            "name": "currency1",
-            "type": "address",
-            "internalType": "Currency"
-          },
-          {
-            "name": "fee",
-            "type": "uint24",
-            "internalType": "uint24"
-          },
-          {
-            "name": "tickSpacing",
-            "type": "int24",
-            "internalType": "int24"
-          },
-          {
-            "name": "hooks",
-            "type": "address",
-            "internalType": "contract IHooks"
-          }
-        ]
-      },
-      {
-        "name": "zeroForOne",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "amountSpecified",
-        "type": "int256",
-        "internalType": "int256"
-      },
-      {
-        "name": "minOut",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "recipient",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "amountOut",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "unlockCallback",
-    "inputs": [
-      {
-        "name": "raw",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "event",
-    "name": "ProtocolVaultSet",
-    "inputs": [
-      {
-        "name": "vault",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "allowed",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "error",
-    "name": "ExactOutDisabled",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "FlushFailed",
-    "inputs": [
-      {
-        "name": "data",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "IncompleteFill",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "MinOutRequired",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NotConfigurator",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NotManager",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NotVault",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "Slippage",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ZeroAmount",
-    "inputs": []
-  }
-]
+
+╭-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------╮
+| Type        | Signature                                                                      | Selector                                                           |
++===================================================================================================================================================================+
+| event       | ProtocolVaultSet(address,bool)                                                 | 0x7d17485a64d912fe0f17893b7c02fc16cd70d795bd2b5fe4d11595dfbce59dcd |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| event       | ProtocolVaultsSealed()                                                         | 0xe13773bc733b06ffa8099ee05dfcfd5b25366655b5137a196288f06e3aa751c1 |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | ExactOutDisabled()                                                             | 0xd11ed7ab                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | FlushFailed(bytes)                                                             | 0xd86ed2ba                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | IncompleteFill()                                                               | 0x586d22a4                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | MinOutRequired()                                                               | 0xe4b1632c                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | NotBootstrap()                                                                 | 0x3cc3c31e                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | NotManager()                                                                   | 0xc0fc8a8a                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | NotVault()                                                                     | 0x62df0545                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | Sealed()                                                                       | 0x1b2d71eb                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | Slippage()                                                                     | 0x7dd37f70                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | WalletExemptForbidden()                                                        | 0x84dfa955                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| error       | ZeroAmount()                                                                   | 0x1f2a2005                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | addLiquidity(PoolKey,int24,int24,int256) nonpayable returns (BalanceDelta)     | 0xe2e6fcbe                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | bootstrap() view returns (address)                                             | 0xfb969b0a                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | poolManager() view returns (IPoolManager)                                      | 0xdc4c90d3                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | protocolExempt() view returns (uint256)                                        | 0xca91e2d8                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | protocolSwap(PoolKey,bool,int256,uint256,address) nonpayable returns (uint256) | 0xb6f720df                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | protocolVault(address) view returns (bool)                                     | 0x01b320ea                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | protocolVaultsSealed() view returns (bool)                                     | 0xec0bb203                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | sealProtocolVaults() nonpayable                                                | 0x8901ef60                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | setProtocolVault(address,bool) nonpayable                                      | 0x2b6f8a7b                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | swap(PoolKey,bool,int256,uint256,address) nonpayable returns (uint256)         | 0x07e32f8a                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| function    | unlockCallback(bytes) nonpayable returns (bytes)                               | 0x91dd7346                                                         |
+|-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| constructor | constructor(IPoolManager) nonpayable                                           |                                                                    |
+╰-------------+--------------------------------------------------------------------------------+--------------------------------------------------------------------╯
+
