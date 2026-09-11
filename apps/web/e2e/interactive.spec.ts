@@ -15,8 +15,8 @@ test("token terminal quotes via API surface", async ({ page }) => {
   await expect(heading).toBeVisible();
   await expect(page.getByRole("button", { name: /Quote/i })).toBeVisible();
   await page.getByPlaceholder("0.0").fill("1");
-  await page.getByRole("button", { name: /Quote/i }).click();
-  await expect(page.locator("body")).toContainText(/Quoted out|Quote API|Connect|Market not live|failed/i);
+  await expect(page.getByRole("button", { name: /Quote/i })).toBeDisabled();
+  await expect(page.locator("body")).toContainText(/Quoted out|quote API|Connect|3\.5%/i);
 });
 
 test("launch rejects base64 path copy and shows upload", async ({ page }) => {

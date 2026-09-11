@@ -34,30 +34,32 @@
 
 CORE liquidity doc marked **APPROVED WORKING MAINNET CONFIG — SUBJECT TO AUDIT** for the frozen ~$100k book.
 
-## Tests
+## Tests (this pass)
 
-Run on this branch (see commit after forge/ts):
+| Suite | Result |
+| --- | --- |
+| `pnpm --filter indexer test` | 7/7 ok (keeper minOut, persist, schema/store, quote/keys, routes, valuation, prices) |
+| `npx tsx apps/web/src/lib/top10.test.ts` | 7/7 ok (CORE skip, material unvalued pause, weights) |
+| `npx tsx apps/web/src/lib/marketdata.test.ts` | ok |
+| Playwright interactive + smoke + capture | **10 passed / 0 failed** (5 interactive, 4 smoke, 1 capture) |
+| `cd contracts && forge test` | **301 passed, 0 failed, 1 skipped** (`SafeGenesisTest` = 8). Foundry 1.8.1, via_ir. |
 
-```
-pnpm --filter indexer test     # keeper minOut + persist + schema + quote/keys + routes + valuation + prices
-npx tsx apps/web/src/lib/top10.test.ts
-npx tsx apps/web/src/lib/marketdata.test.ts
-cd contracts && forge fmt && forge build && forge test
-```
+Valuation tests require the nested product (CAT = $0.50, not ZEC $50). Accidental tree-wide `forge fmt` was **reverted**; no hook / fee / curve / split Solidity landed in this pass.
 
-Expected: existing forge suite plus new SafeGenesis key-isolation tests. Valuation tests now require nested price product (CAT = $0.50, not ZEC $50).
+Review screenshots regenerated at 1440 and 390 under `review/`. Zip sha256:
+
+`c571f467cf23e9bebb7dabfea31361fda67daeeb956e53324a514cad2ee44ee9`
 
 ## Honest gaps
 
 - No live Arc Testnet txs. No public mainnet.
 - `sharp` is optional; without it, media validates and stores original bytes (webp if already webp).
 - R2/S3 PUT is env-stubbed; local disk + `MEDIA_CDN_BASE` is the working path.
-- Quote API maintenance/TOP10/CORE kinds return a reserved error — Keeper still simulates via existing preview fns.
-- Homepage quote symbols depend on indexer `quote_assets` refresh (RPC) or fixtures.
-- Token-detail still reads some wallet/claim state from chain (correct; balances are onchain truth).
-- Playwright capture screenshots need a running web + `NEXT_PUBLIC_REVIEW_FIXTURES=1`.
-- Postgres is implemented and untested against a live `postgres` in this environment (SQLite is the local proof).
-- Keeper still writes a heartbeat JSON for the watchdog; jobs themselves are SQL.
+- Quote API maintenance/TOP10/CORE/SELFBURN kinds return a reserved error — Keeper still simulates via existing preview fns.
+- Token-detail still reads some wallet/claim state from chain (correct; balances are onchain truth). Token chart uses `/swaps` trade prints, not the full `/candles` series (candles API exists).
+- Postgres dialect is implemented and **untested against a live postgres** in this environment (SQLite is the local proof).
+- Keeper still writes a heartbeat JSON for the independent watchdog; jobs themselves are SQL.
+- Homepage “Review fixtures — not on-chain” banner stays on while seeded `0x1111…` rows are present.
 - Mainnet remains blocked: BUSL v4-core, no PoolManager on 5042, no audit, no KMS/HSM, no Safe rehearsal.
 
 ## Not built (by brief)
