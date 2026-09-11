@@ -42,7 +42,7 @@ UI: Ops off public nav; Docs in primary nav; launch ticker live status; Lightwei
 | `forge test` | **318 passed / 0 failed** (1 skipped) |
 | `pnpm --filter indexer test` | ok (keeper, persist, schema, quote-api, routes, valuation, prices, ticker) |
 | `tsx apps/web/src/lib/constants-sync.test.ts` | ok |
-| Playwright | browsers installed in this pass if missing; smoke includes `/docs` |
+| Playwright | **10 passed / 0 failed** (smoke + interactive, including `/docs`) |
 
 ## Honest gaps
 
