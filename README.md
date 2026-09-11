@@ -60,6 +60,8 @@ We **do not claim Arc Testnet success** unless transactions appear on [testnet.a
 
 | File | Contents |
 | --- | --- |
+| `CORE_GENESIS.md` | CORE 10/90 genesis, vesting, 2.5/1.0 book |
+| `CORE_LIQUIDITY_DESIGN.md` | Single-sided CORE/USDC ticks and lock |
 | `CURVE_DESIGN.md` | Frozen Instant bonding constants and sim |
 | `GUARDIAN_MODEL.md` | Only privileged security authority |
 | `KEEPER_MODEL.md` | Designated Keeper, routing, Top-10 trust |

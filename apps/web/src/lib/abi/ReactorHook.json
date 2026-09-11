@@ -845,6 +845,19 @@
   },
   {
     "type": "function",
+    "name": "bindCoreVault",
+    "inputs": [
+      {
+        "name": "vault_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "bindCurve",
     "inputs": [
       {
@@ -911,6 +924,19 @@
   {
     "type": "function",
     "name": "core",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "coreLpVault",
     "inputs": [],
     "outputs": [
       {

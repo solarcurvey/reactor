@@ -191,7 +191,7 @@ contract SecurityTest is Base {
         uint256 accBefore = buyback.accrued(address(usdc));
         vm.prank(alice);
         vm.expectRevert();
-        buyback.execute(address(usdc), _hop(address(usdc), address(core), coreKey), 1);
+        buyback.execute(address(usdc), _emptyHops(), 1);
         assertEq(buyback.accrued(address(usdc)), accBefore, "non-keeper cannot spend CORE pot");
     }
 
@@ -217,7 +217,7 @@ contract SecurityTest is Base {
         uint256 mid = buyback.accrued(address(usdc));
         vm.prank(keeper);
         vm.expectRevert();
-        buyback.execute(address(usdc), _hop(address(usdc), address(core), coreKey), 1);
+        buyback.execute(address(usdc), _emptyHops(), 1);
         assertEq(buyback.accrued(address(usdc)), mid, "cooldown");
         vm.warp(block.timestamp + ReactorConstants.BUYBACK_COOLDOWN + 1);
         _keeperCore(address(usdc));
@@ -419,7 +419,7 @@ contract SecurityTest is Base {
         _buy(alice, token, address(zec), 8_000e8);
         vm.prank(alice);
         vm.expectRevert();
-        buyback.execute(address(zec), _twoHops(address(zec), address(usdc), zecUsdcKey, address(core), coreKey), 1);
+        buyback.execute(address(zec), _hop(address(zec), address(usdc), zecUsdcKey), 1);
         _keeperCore(address(zec));
         assertGt(buyback.lifetimeBurned(), 0);
     }

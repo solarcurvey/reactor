@@ -9,7 +9,9 @@ library ReactorConstants {
     uint16 internal constant HOLDER_FEE_BPS = 200;
     uint16 internal constant FLYWHEEL_FEE_BPS = 100;
     uint16 internal constant CORE_FEE_BPS = 50;
-    /// @dev Legacy alias — do not treat as CORE-only. Equals flywheel + core (1.5%).
+    /// @dev Official CORE/USDC market: 2.5% buy+burn (holders 2% + protocol 0.5% consolidated).
+    uint16 internal constant CORE_MARKET_BURN_BPS = 250;
+    /// @dev Legacy alias — do not treat as CORE-only. Equals flywheel + core (1.5%) on non-CORE markets.
     uint16 internal constant BUYBACK_FEE_BPS = 150;
 
     uint24 internal constant LP_FEE = 0;
@@ -58,4 +60,13 @@ library ReactorConstants {
     uint16 internal constant BUYBACK_MIN_RESERVE_BPS = MIN_RESERVE_BPS;
     uint16 internal constant BUYBACK_MAX_REF_DEV_BPS = MAX_REF_DEV_BPS;
     uint256 internal constant DEFAULT_BUYBACK_THRESHOLD = DEFAULT_SETTLE_THRESHOLD;
+
+    /// @dev CORE genesis — not Instant. See CORE_GENESIS.md / CORE_LIQUIDITY_DESIGN.md.
+    uint256 internal constant CORE_VESTING_AMOUNT = 100_000_000 ether;
+    uint256 internal constant CORE_LP_AMOUNT = 900_000_000 ether;
+    uint256 internal constant CORE_START_FDV_USDC = 100_000e6;
+    uint64 internal constant CORE_CLIFF = 30 days;
+    /// @dev 10 months of 30 days after the cliff. Zero unlock at day 30.
+    uint64 internal constant CORE_VEST_DURATION = 300 days;
+    address internal constant CORE_VESTING_BENEFICIARY = 0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406;
 }

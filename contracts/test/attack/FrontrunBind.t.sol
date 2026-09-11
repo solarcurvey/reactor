@@ -61,6 +61,8 @@ contract FrontrunBindTest is Base {
         hook.bindCurve(alice);
         vm.expectRevert(ReactorHook.NotGuardian.selector);
         hook.bindSelfBurn(alice);
+        vm.expectRevert(ReactorHook.NotGuardian.selector);
+        hook.bindCoreVault(alice);
         vm.stopPrank();
         vm.expectRevert(ReactorHook.AlreadyBound.selector);
         hook.bindFactory(address(factory));

@@ -55,7 +55,8 @@ test.describe("review screenshots", () => {
     await both(page, "reactor");
 
     await page.goto("/core");
-    await expect(page.locator("h1").first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^CORE$/ })).toBeVisible();
+    await expect(page.getByText(/never Top-10|not Instant/i).first()).toBeVisible();
     await both(page, "core");
 
     await page.goto("/quote/USDC");

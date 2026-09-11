@@ -44,7 +44,7 @@ contract KeeperMinOutTest is Base {
         buyback.accrue(address(usdc), 1_000e6);
         vm.prank(keeper);
         vm.expectRevert(BuybackVault.MinOutRequired.selector);
-        buyback.execute(address(usdc), _hop(address(usdc), address(core), coreKey), 0);
+        buyback.execute(address(usdc), _emptyHops(), 0);
     }
 
     function test_top10MinOutZeroReverts() public {
@@ -107,7 +107,7 @@ contract KeeperMinOutTest is Base {
         uint256 snap = vm.snapshotState();
         uint256 core0 = core.totalSupply();
         vm.prank(keeper);
-        buyback.execute(address(usdc), _hop(address(usdc), address(core), coreKey), 1);
+        buyback.execute(address(usdc), _emptyHops(), 1);
         uint256 quoted = core0 - core.totalSupply();
         assertGt(quoted, 1);
         vm.revertToState(snap);
@@ -119,7 +119,7 @@ contract KeeperMinOutTest is Base {
 
         vm.prank(keeper);
         vm.expectRevert();
-        buyback.execute(address(usdc), _hop(address(usdc), address(core), coreKey), quoted);
+        buyback.execute(address(usdc), _emptyHops(), quoted);
     }
 
     function test_sandwichTop10_quotedMinOutReverts() public {

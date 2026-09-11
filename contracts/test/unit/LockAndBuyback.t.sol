@@ -24,7 +24,7 @@ contract LockAndBuybackTest is Base {
         assertEq(buyback.core(), address(core));
         vm.prank(alice);
         vm.expectRevert();
-        buyback.execute(address(usdc), _hop(address(usdc), address(core), coreKey), 1);
+        buyback.execute(address(usdc), _emptyHops(), 1);
     }
 
     function test_hookBits() public view {

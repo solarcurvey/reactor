@@ -27,6 +27,9 @@ export type Deployment = {
     UserRouteExecutor?: `0x${string}`;
     V4Adapter?: `0x${string}`;
     RoutingRegistry?: `0x${string}`;
+    CoreVesting?: `0x${string}`;
+    CoreLiquidityVault?: `0x${string}`;
+    CoreBuybackExecutor?: `0x${string}`;
   };
   hookFlags: string;
   v4Core: string;
