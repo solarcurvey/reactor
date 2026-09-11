@@ -19,6 +19,9 @@ library GenesisVerify {
     error Peg();
     error Fees();
     error NotSealed();
+    error KeyReuse();
+    error NotWired();
+    error Adapter();
 
     function verifyProduction(
         ReactorGuardian auth,
@@ -56,5 +59,31 @@ library GenesisVerify {
         if (ReactorConstants.CORE_FEE_BPS != 50) revert Fees();
         if (ReactorConstants.PROTOCOL_FEE_BPS != 350) revert Fees();
         if (!registry.isUsdPegOne(registry.usdc())) revert Peg();
+    }
+
+    /// @notice Production Safe MultiSend must leave keys isolated and every one-time bind set.
+    function verifyFullyWired(
+        ReactorGuardian auth,
+        address expectedSafe,
+        address expectedKeeper,
+        address expectedPricingSigner,
+        address deployer,
+        address userAdapter,
+        address protocolAdapter,
+        address factory,
+        address curve,
+        address selfBurn,
+        address routeExecutor
+    ) internal view {
+        if (expectedSafe == deployer) revert DeployerPrivilege();
+        if (auth.guardian() != expectedSafe) revert BadGuardian();
+        if (auth.keeper() != expectedKeeper) revert BadKeeper();
+        if (expectedPricingSigner == address(0) || expectedPricingSigner == expectedKeeper) revert KeyReuse();
+        if (auth.pricingSigner() != expectedPricingSigner) revert KeyReuse();
+        if (!auth.adapterApproved(userAdapter) || !auth.adapterApproved(protocolAdapter)) revert Adapter();
+        if (factory == address(0) || curve == address(0) || selfBurn == address(0) || routeExecutor == address(0)) {
+            revert NotWired();
+        }
+        if (!auth.launchesPaused()) revert LaunchesNotPaused();
     }
 }

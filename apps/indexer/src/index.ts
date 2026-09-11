@@ -1,160 +1,58 @@
-import { createPublicClient, http, parseAbiItem } from "viem";
-import { DatabaseSync } from "node:sqlite";
-import { createServer } from "node:http";
-import { mkdirSync, existsSync, readFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { parseAbiItem } from "viem";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { existsSync, readFileSync } from "node:fs";
 import deployment from "./deployment.json" with { type: "json" };
+import { openStore, type Store } from "./db.ts";
+import { rpcFromEnv } from "./rpc.ts";
+import { SseHub } from "./sse.ts";
+import { ObjectStore, publicMediaUrl } from "./media.ts";
+import { RateLimit, SECURITY_HEADERS, logLine, requestId } from "./obs.ts";
+import { curvePriceX18, getState, recordTrade, setState, upsertMarket, upsertToken } from "./ingest.ts";
+import { buildQuote } from "./quote-service.ts";
+import { persistVenue } from "./route-graph.ts";
+import { fillContinuous, CANDLE_INTERVALS } from "../../../packages/reactor/src/prices.ts";
+import { raiseAlert, recentAlerts } from "./alerts.ts";
+import { ValuationService, type QuoteNode } from "../../../packages/reactor/src/valuation.ts";
+import { consensusUsd6, StaticProvider } from "../../../packages/reactor/src/pricing.ts";
 
-const RPC = process.env.NEXT_PUBLIC_RPC_URL ?? deployment.rpc;
 const PORT = Number(process.env.INDEXER_PORT ?? 43148);
-const DB_PATH = process.env.INDEXER_DB ?? new URL("../data/reactor.sqlite", import.meta.url).pathname;
-
-mkdirSync(dirname(DB_PATH), { recursive: true });
-const db = new DatabaseSync(DB_PATH);
-db.exec(`
-  CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
-  CREATE TABLE IF NOT EXISTS events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    block INTEGER,
-    tx TEXT,
-    name TEXT,
-    token TEXT,
-    payload TEXT
-  );
-  CREATE TABLE IF NOT EXISTS swaps (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    block INTEGER,
-    tx TEXT,
-    token TEXT,
-    quote TEXT,
-    holders TEXT,
-    buyback TEXT,
-    flywheel TEXT,
-    coreAmt TEXT,
-    notional TEXT,
-    sqrtPrice TEXT,
-    ts INTEGER
-  );
-  CREATE TABLE IF NOT EXISTS pools (
-    poolId TEXT PRIMARY KEY,
-    token TEXT NOT NULL,
-    quote TEXT,
-    createdBlock INTEGER
-  );
-`);
-for (const col of ["sqrtPrice", "flywheel", "coreAmt"]) {
-  try {
-    db.exec(`ALTER TABLE swaps ADD COLUMN ${col} TEXT`);
-  } catch {
-    /* already present */
-  }
-}
-try {
-  db.exec(`ALTER TABLE swaps ADD COLUMN ts INTEGER`);
-} catch {
-  /* already present */
-}
-for (const col of ["tokensOut TEXT", "source TEXT", "px TEXT"]) {
-  try {
-    db.exec(`ALTER TABLE swaps ADD COLUMN ${col}`);
-  } catch {
-    /* already present */
-  }
-}
-
-const client = createPublicClient({
-  transport: http(RPC),
-});
-
-const factory = deployment.addresses.ReactorFactory as `0x${string}`;
-const hook = deployment.addresses.ReactorHook as `0x${string}`;
-const buyback = deployment.addresses.BuybackVault as `0x${string}`;
-const flywheel = (deployment.addresses as { FlywheelVault?: string }).FlywheelVault as `0x${string}` | undefined;
-const poolManager = (deployment.addresses as { PoolManager?: string }).PoolManager as `0x${string}` | undefined;
-const instantCurve = (deployment.addresses as { InstantCurve?: string }).InstantCurve as `0x${string}` | undefined;
-const selfBurn = (deployment.addresses as { SelfBurnVault?: string }).SelfBurnVault as `0x${string}` | undefined;
+const addrs = deployment.addresses as Record<string, string>;
+const RPC = process.env.RPC_URL ?? process.env.NEXT_PUBLIC_RPC_URL ?? deployment.rpc;
+const client = rpcFromEnv(deployment.chainId, RPC);
+const sse = new SseHub();
+const media = new ObjectStore(new URL("../data/media", import.meta.url).pathname);
+const quoteLimit = new RateLimit(60_000, Number(process.env.QUOTE_RPM ?? 60));
+const uploadLimit = new RateLimit(60_000, Number(process.env.UPLOAD_RPM ?? 20));
+const pricingLimit = new RateLimit(60_000, Number(process.env.PRICING_RPM ?? 30));
 
 const events = [
   parseAbiItem("event TokenCreated(address indexed token, address indexed creator, string name, string symbol, uint256 supply)"),
   parseAbiItem("event LaunchCreated(address indexed token, uint8 mode, address indexed quote)"),
-  parseAbiItem("event InstantMarketOpened(address indexed token, bytes32 indexed poolId, uint256 fdvQuoteRaw, uint256 devBuy)"),
   parseAbiItem("event InstantLaunchCreated(address indexed token, address indexed quote, address indexed creator, bool rewardsMode, uint256 gradTarget)"),
-  parseAbiItem("event DevBuyExecuted(address indexed token, address indexed creator, uint256 quoteIn, uint256 tokensOut)"),
+  parseAbiItem("event InstantMarketOpened(address indexed token, bytes32 indexed poolId, uint256 fdvQuoteRaw, uint256 devBuy)"),
   parseAbiItem("event CurveBuy(address indexed token, address indexed buyer, uint256 quoteIn, uint256 tokensOut, uint256 fee)"),
   parseAbiItem("event CurveSell(address indexed token, address indexed seller, uint256 tokensIn, uint256 quoteOut, uint256 fee)"),
   parseAbiItem("event BondingProgress(address indexed token, uint256 realQuote, uint256 gradTarget, uint256 inventory)"),
-  parseAbiItem("event GraduationTriggered(address indexed token, uint256 realQuote)"),
   parseAbiItem("event GraduationCompleted(address indexed token, bytes32 indexed poolId, uint256 quoteLp, uint256 tokenLp)"),
-  parseAbiItem("event SelfBurnAccrued(address indexed token, address indexed quote, uint256 amount)"),
-  parseAbiItem("event SelfBurnExecuted(address indexed token, uint256 quoteIn, uint256 burned)"),
-  parseAbiItem("event QuoteRouted(address indexed token, address indexed user, address tokenIn, address tokenOut, uint256 amountIn)"),
-  parseAbiItem("event RewardsCredited(uint256 amount, uint256 magnifiedDividendPerShare)"),
-  parseAbiItem("event RewardClaimed(address indexed account, address indexed to, uint256 amount)"),
-  parseAbiItem("event BatchFairLaunchCreated(uint256 indexed fairId, address indexed token, uint64 startTime, uint64 endTime)"),
-  parseAbiItem("event BatchFairLaunchFinalized(uint256 indexed fairId, uint256 totalBids, uint256 auctionTokens)"),
-  parseAbiItem("event Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint24 fee)"),
   parseAbiItem("event OfficialPoolCreated(address indexed token, bytes32 indexed poolId, uint8 mode)"),
   parseAbiItem("event SwapFeeAccrued(bytes32 indexed poolId, address indexed quote, uint256 holders, uint256 flywheel, uint256 coreAmt, uint256 notional)"),
+  parseAbiItem("event Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint24 fee)"),
   parseAbiItem("event RewardClaimed(address indexed account, address indexed to, uint256 amount)"),
-  parseAbiItem("event BuybackAccrued(address indexed quote, uint256 amount)"),
-  parseAbiItem("event BuybackExecuted(address indexed quote, uint256 quoteIn, uint256 coreOut, address indexed caller)"),
-  parseAbiItem("event COREBurned(uint256 amount)"),
+  parseAbiItem("event SelfBurnAccrued(address indexed token, address indexed quote, uint256 amount)"),
+  parseAbiItem("event SelfBurnExecuted(address indexed token, uint256 quoteIn, uint256 burned)"),
   parseAbiItem("event FlywheelAccrued(address indexed quote, uint256 amount)"),
   parseAbiItem("event QuoteSettled(address indexed quote, uint256 usdcIn)"),
   parseAbiItem("event EpochSubmitted(uint256 indexed epochId, uint256 n, uint256 pot)"),
-  parseAbiItem("event EpochRolled(uint256 indexed epochId)"),
   parseAbiItem("event Top10Buy(uint256 indexed epoch, address indexed token, uint256 usdcIn, uint256 burned)"),
-  parseAbiItem("event Skipped(address indexed target, string reason)"),
+  parseAbiItem("event BuybackExecuted(address indexed quote, uint256 quoteIn, uint256 coreOut, address indexed caller)"),
+  parseAbiItem("event COREBurned(uint256 amount)"),
 ];
 
-function lastBlock(): bigint {
-  const row = db.prepare("SELECT v FROM meta WHERE k='block'").get() as { v: string } | undefined;
-  return row ? BigInt(row.v) : 0n;
-}
-
-function setBlock(b: bigint) {
-  db.prepare("INSERT INTO meta(k,v) VALUES('block',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").run(b.toString());
-}
-
-const tokenByPool = new Map<string, string>();
+const factory = addrs.ReactorFactory as `0x${string}`;
+const hook = addrs.ReactorHook as `0x${string}`;
+const tokenByPool = new Map<string, { token: string; quote: string }>();
 const blockTs = new Map<number, number>();
-
-function loadPoolsFromDb() {
-  tokenByPool.clear();
-  const rows = db.prepare("SELECT poolId, token FROM pools").all() as Array<{ poolId: string; token: string }>;
-  for (const r of rows) tokenByPool.set(r.poolId, r.token);
-  const fromEvents = db
-    .prepare("SELECT payload FROM events WHERE name IN ('OfficialPoolCreated','GraduationCompleted')")
-    .all() as Array<{ payload: string }>;
-  for (const ev of fromEvents) {
-    try {
-      const p = JSON.parse(ev.payload) as { poolId?: string; token?: string };
-      if (p.poolId && p.token) {
-        tokenByPool.set(String(p.poolId), String(p.token));
-        db.prepare("INSERT OR IGNORE INTO pools(poolId,token,quote,createdBlock) VALUES(?,?,?,?)").run(
-          String(p.poolId),
-          String(p.token),
-          "",
-          0,
-        );
-      }
-    } catch {
-      /* skip */
-    }
-  }
-}
-
-function rememberPool(poolId: string, token: string, quote: string, block: number) {
-  tokenByPool.set(poolId, token);
-  db.prepare("INSERT INTO pools(poolId,token,quote,createdBlock) VALUES(?,?,?,?) ON CONFLICT(poolId) DO UPDATE SET token=excluded.token").run(
-    poolId,
-    token,
-    quote,
-    block,
-  );
-}
-
-loadPoolsFromDb();
+const quoteDec = new Map<string, number>();
 
 async function chainTs(blockNumber: bigint): Promise<number> {
   const n = Number(blockNumber);
@@ -166,240 +64,473 @@ async function chainTs(blockNumber: bigint): Promise<number> {
   return ts;
 }
 
-async function tick() {
+function json(res: ServerResponse, code: number, body: unknown, rid?: string) {
+  res.statusCode = code;
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.setHeader(k, v);
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "content-type,x-request-id,authorization,x-ops-token");
+  res.setHeader("Content-Type", "application/json");
+  if (rid) res.setHeader("x-request-id", rid);
+  res.end(JSON.stringify(body));
+}
+
+function opsOk(req: IncomingMessage): boolean {
+  const token = process.env.OPS_TOKEN;
+  if (!token) return process.env.REACTOR_ENV === "LOCAL" || process.env.NODE_ENV !== "production";
+  const hdr = String(req.headers["x-ops-token"] ?? req.headers.authorization ?? "");
+  return hdr === token || hdr === `Bearer ${token}`;
+}
+
+async function tick(store: Store) {
   const head = await client.getBlockNumber();
-  let from = lastBlock();
-  if (from > 0n) from += 1n;
+  const last = BigInt((await getState(store, "block")) ?? "0");
+  let from = last > 0n ? last + 1n : 0n;
   if (from > head) return;
   const to = head - from > 2000n ? from + 2000n : head;
-
-  const watch = [factory, hook, buyback];
-  if (flywheel) watch.push(flywheel);
-  if (poolManager) watch.push(poolManager);
-  if (instantCurve) watch.push(instantCurve);
-  if (selfBurn) watch.push(selfBurn);
-
-  const logs = await client.getLogs({
-    address: watch,
-    events,
-    fromBlock: from,
-    toBlock: to,
-  });
-
-  const insertEv = db.prepare("INSERT INTO events(block,tx,name,token,payload) VALUES(?,?,?,?,?)");
-  const insertSw = db.prepare(
-    "INSERT INTO swaps(block,tx,token,quote,holders,buyback,flywheel,coreAmt,notional,sqrtPrice,ts,tokensOut,source,px) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-  );
+  const watch = [factory, hook, addrs.BuybackVault, addrs.FlywheelVault, addrs.InstantCurve, addrs.SelfBurnVault, addrs.PoolManager]
+    .filter(Boolean) as `0x${string}`[];
+  const logs = await client.getLogs({ address: watch, events, fromBlock: from, toBlock: to });
   const lastSqrt = new Map<string, string>();
 
   for (const log of logs) {
     const name = log.eventName ?? "unknown";
     const args = (log.args ?? {}) as Record<string, unknown>;
     const token = String(args.token ?? "");
-    if ((name === "OfficialPoolCreated" || name === "GraduationCompleted") && args.poolId) {
-      rememberPool(String(args.poolId), token, String(args.quote ?? ""), Number(log.blockNumber));
-    }
-    if (name === "Swap" && args.id && args.sqrtPriceX96) {
-      lastSqrt.set(String(args.id), String(args.sqrtPriceX96));
-    }
-    insertEv.run(
-      Number(log.blockNumber),
-      log.transactionHash,
-      name,
-      token,
-      JSON.stringify(args, (_, v) => (typeof v === "bigint" ? v.toString() : v)),
-    );
-    if (name === "SwapFeeAccrued") {
-      const poolId = String(args.poolId ?? "");
-      const fly = String(args.flywheel ?? "0");
-      const coreAmt = String(args.coreAmt ?? "0");
-      const ts = await chainTs(log.blockNumber);
-      insertSw.run(
-        Number(log.blockNumber),
-        log.transactionHash,
-        tokenByPool.get(poolId) ?? "",
-        String(args.quote ?? ""),
-        String(args.holders ?? "0"),
-        String(args.buyback ?? fly),
-        fly,
-        coreAmt,
-        String(args.notional ?? "0"),
-        lastSqrt.get(poolId) ?? "",
+    const ts = await chainTs(log.blockNumber);
+    const tx = log.transactionHash;
+    const block = Number(log.blockNumber);
+
+    if (name === "TokenCreated") {
+      await upsertToken(store, {
+        address: token,
+        name: String(args.name ?? ""),
+        symbol: String(args.symbol ?? ""),
+        supply: String(args.supply ?? ""),
+        creator: String(args.creator ?? ""),
+        block,
+        tx,
         ts,
-        "",
-        "v4",
-        "",
+      });
+      sse.publish({ type: "launch", data: { token, name: args.name, symbol: args.symbol, tx } });
+    }
+    if (name === "LaunchCreated" || name === "InstantLaunchCreated") {
+      await upsertToken(store, { address: token, quote: String(args.quote ?? ""), creator: String(args.creator ?? ""), rewardsMode: Boolean(args.rewardsMode ?? true), block, tx, ts });
+      await upsertMarket(store, { token, quote: String(args.quote ?? ""), stage: "bonding", gradTarget: String(args.gradTarget ?? ""), ts });
+    }
+    if (name === "OfficialPoolCreated" || name === "GraduationCompleted") {
+      const poolId = String(args.poolId ?? "");
+      tokenByPool.set(poolId, { token: token.toLowerCase(), quote: String(args.quote ?? "") });
+      await store.run(
+        `INSERT INTO pool_relationships(pool_id,token,quote,venue,fee,hooks,exists_onchain,approved,created_block)
+         VALUES(?,?,?,?,?,?,1,1,?) ON CONFLICT(pool_id) DO UPDATE SET exists_onchain=1, approved=1`,
+        poolId,
+        token.toLowerCase(),
+        String(args.quote ?? "").toLowerCase(),
+        "official_v4",
+        0,
+        hook ?? "",
+        block,
       );
+      await upsertMarket(store, { token, poolId, stage: "v4", marketLive: true, ts });
+      const protocol = (addrs.ProtocolV4Adapter ?? addrs.V4Adapter) as `0x${string}` | undefined;
+      const user = (addrs.V4Adapter ?? addrs.UniswapV4Adapter) as `0x${string}` | undefined;
+      const quote = String(args.quote ?? "");
+      if (protocol && quote && hook) {
+        const { poolKeyBytes } = await import("./route-graph.ts");
+        const data = poolKeyBytes(token as `0x${string}`, quote as `0x${string}`, 0, hook);
+        await persistVenue(store, { tokenIn: quote, tokenOut: token, adapter: protocol, kind: "protocol", data, poolId, exists: true, approved: true });
+        await persistVenue(store, { tokenIn: token, tokenOut: quote, adapter: protocol, kind: "protocol", data, poolId, exists: true, approved: true });
+        if (user) {
+          await persistVenue(store, { tokenIn: quote, tokenOut: token, adapter: user, kind: "user", data, poolId, exists: true, approved: true });
+          await persistVenue(store, { tokenIn: token, tokenOut: quote, adapter: user, kind: "user", data, poolId, exists: true, approved: true });
+        }
+      }
+      if (name === "GraduationCompleted") {
+        await store.run(
+          `INSERT INTO graduations(token,pool_id,quote_lp,token_lp,block,tx,ts) VALUES(?,?,?,?,?,?,?)
+           ON CONFLICT(token) DO UPDATE SET pool_id=excluded.pool_id`,
+          token.toLowerCase(),
+          poolId,
+          String(args.quoteLp ?? "0"),
+          String(args.tokenLp ?? "0"),
+          block,
+          tx,
+          ts,
+        );
+        sse.publish({ type: "graduation", data: { token, poolId, tx } });
+      }
+    }
+    if (name === "Swap" && args.id && args.sqrtPriceX96) lastSqrt.set(String(args.id), String(args.sqrtPriceX96));
+    if (name === "BondingProgress") {
+      await store.run(
+        `INSERT INTO bonding_states(token,real_quote,grad_target,inventory,ready,graduated,bonding_bps,updated_ts)
+         VALUES(?,?,?,?,0,0,0,?) ON CONFLICT(token) DO UPDATE SET real_quote=excluded.real_quote, grad_target=excluded.grad_target, inventory=excluded.inventory, updated_ts=excluded.updated_ts`,
+        token.toLowerCase(),
+        String(args.realQuote ?? "0"),
+        String(args.gradTarget ?? "0"),
+        String(args.inventory ?? "0"),
+        ts,
+      );
+      await upsertMarket(store, { token, realQuote: String(args.realQuote ?? "0"), gradTarget: String(args.gradTarget ?? "0"), stage: "bonding", ts });
+      sse.publish({ type: "bonding", data: { token, realQuote: args.realQuote, gradTarget: args.gradTarget } });
     }
     if (name === "CurveBuy" || name === "CurveSell") {
-      const ts = await chainTs(log.blockNumber);
       const quoteIn = String(args.quoteIn ?? args.quoteOut ?? "0");
       const tokens = String(args.tokensOut ?? args.tokensIn ?? "0");
-      let px = "";
-      try {
-        const q = BigInt(quoteIn);
-        const t = BigInt(tokens);
-        if (t > 0n) px = ((q * 10n ** 18n) / t).toString();
-      } catch {
-        px = "";
-      }
-      insertSw.run(
-        Number(log.blockNumber),
-        log.transactionHash,
+      const mkt = await store.get<{ quote: string }>("SELECT quote FROM markets WHERE token=?", token.toLowerCase());
+      const q = mkt?.quote ?? "";
+      const qDec = quoteDec.get(q) ?? 18;
+      const px = curvePriceX18(quoteIn, tokens, qDec, 18);
+      await recordTrade(store, sse, {
+        block,
+        tx,
         token,
-        String(args.quote ?? ""),
-        "0",
-        "0",
-        "0",
-        "0",
-        quoteIn,
-        "",
+        quote: q,
+        side: name === "CurveBuy" ? "buy" : "sell",
+        source: "curve",
+        amountIn: name === "CurveBuy" ? quoteIn : tokens,
+        amountOut: name === "CurveBuy" ? tokens : quoteIn,
+        notionalQuote: quoteIn,
+        priceQuoteX18: px,
         ts,
-        tokens,
-        "curve",
-        px,
+      });
+    }
+    if (name === "SwapFeeAccrued") {
+      const poolId = String(args.poolId ?? "");
+      const mapped = tokenByPool.get(poolId);
+      const q = String(args.quote ?? mapped?.quote ?? "");
+      await recordTrade(store, sse, {
+        block,
+        tx,
+        token: mapped?.token ?? "",
+        quote: q,
+        side: "swap",
+        source: "v4",
+        amountIn: String(args.notional ?? "0"),
+        amountOut: "0",
+        notionalQuote: String(args.notional ?? "0"),
+        priceQuoteX18: "0",
+        sqrtPrice: lastSqrt.get(poolId) ?? "",
+        holders: String(args.holders ?? "0"),
+        flywheel: String(args.flywheel ?? "0"),
+        core: String(args.coreAmt ?? "0"),
+        ts,
+      });
+    }
+    if (name === "RewardClaimed") {
+      await store.run("INSERT INTO claims(token,account,amount,block,tx,ts) VALUES(?,?,?,?,?,?)", token.toLowerCase(), String(args.account ?? ""), String(args.amount ?? "0"), block, tx, ts);
+      sse.publish({ type: "rewards", data: { token, account: args.account, amount: args.amount, tx } });
+    }
+    if (name === "SelfBurnAccrued" || name === "SelfBurnExecuted") {
+      await store.run("INSERT INTO selfburn(token,quote,amount,burned,kind,block,tx,ts) VALUES(?,?,?,?,?,?,?,?)", token.toLowerCase(), String(args.quote ?? ""), String(args.amount ?? args.quoteIn ?? "0"), String(args.burned ?? "0"), name, block, tx, ts);
+      sse.publish({ type: "burn", data: { token, name, tx } });
+    }
+    if (name === "FlywheelAccrued" || name === "QuoteSettled") {
+      await store.run("INSERT INTO flywheel(quote,amount,usdc_in,kind,block,tx,ts) VALUES(?,?,?,?,?,?,?)", String(args.quote ?? "").toLowerCase(), String(args.amount ?? "0"), String(args.usdcIn ?? "0"), name, block, tx, ts);
+    }
+    if (name === "EpochSubmitted") {
+      await store.run(
+        `INSERT INTO top10_epochs(epoch_id,pot,n,finalized,paused,reason,ts) VALUES(?,?,?,0,0,'',?)
+         ON CONFLICT(epoch_id) DO UPDATE SET pot=excluded.pot, n=excluded.n`,
+        String(args.epochId ?? "0"),
+        String(args.pot ?? "0"),
+        Number(args.n ?? 0),
+        ts,
+      );
+      sse.publish({ type: "top10", data: { epochId: args.epochId, pot: args.pot } });
+    }
+    if (name === "BuybackExecuted" || name === "COREBurned") {
+      await store.run("INSERT INTO core_buybacks(quote,quote_in,core_out,block,tx,ts) VALUES(?,?,?,?,?,?)", String(args.quote ?? "").toLowerCase(), String(args.quoteIn ?? "0"), String(args.coreOut ?? args.amount ?? "0"), block, tx, ts);
+      sse.publish({ type: "core", data: { name, tx } });
+    }
+  }
+  await setState(store, "block", to.toString());
+}
+
+async function refreshQuotes(store: Store) {
+  const registry = addrs.QuoteAssetRegistry as `0x${string}` | undefined;
+  if (!registry) return;
+  const registryAbi = [
+    { name: "count", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+    { name: "list", type: "function", stateMutability: "view", inputs: [{ type: "uint256" }], outputs: [{ type: "address" }] },
+    {
+      name: "get",
+      type: "function",
+      stateMutability: "view",
+      inputs: [{ type: "address" }],
+      outputs: [
+        { type: "address" }, { type: "string" }, { type: "string" }, { type: "uint8" }, { type: "string" }, { type: "uint8" },
+        { type: "bool" }, { type: "bool" }, { type: "bool" }, { type: "bool" }, { type: "bool" }, { type: "bool" }, { type: "bool" },
+      ],
+    },
+  ] as const;
+  try {
+    const n = Number(await client.readContract({ address: registry, abi: registryAbi, functionName: "count" }));
+    for (let i = 0; i < n; i++) {
+      const token = (await client.readContract({ address: registry, abi: registryAbi, functionName: "list", args: [BigInt(i)] })) as `0x${string}`;
+      const g = (await client.readContract({ address: registry, abi: registryAbi, functionName: "get", args: [token] })) as readonly unknown[];
+      quoteDec.set(token.toLowerCase(), Number(g[3]));
+      await store.run(
+        `INSERT INTO quote_assets(token,symbol,name,decimals,category,enabled,usd_peg_one,hop_via_usdc,reactor_native,parent_quote,quarantined)
+         VALUES(?,?,?,?,?,?,?,?,?,'',?)
+         ON CONFLICT(token) DO UPDATE SET enabled=excluded.enabled, usd_peg_one=excluded.usd_peg_one, hop_via_usdc=excluded.hop_via_usdc, quarantined=excluded.quarantined`,
+        token.toLowerCase(),
+        String(g[1]),
+        String(g[2]),
+        Number(g[3]),
+        Number(g[5]),
+        Boolean(g[6]) ? 1 : 0,
+        Boolean(g[12]) ? 1 : 0,
+        Boolean(g[10]) ? 1 : 0,
+        Boolean(g[11]) ? 1 : 0,
+        Boolean(g[7]) && !Boolean(g[6]) ? 1 : 0,
       );
     }
-  }
-  setBlock(to);
-}
-
-async function loop() {
-  try {
-    await tick();
   } catch (e) {
-    console.error("index tick", e);
+    await raiseAlert(store, "P1", "quote_refresh", String(e));
   }
-  setTimeout(loop, 2500);
 }
 
-const server = createServer(async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+async function valuationNodes(store: Store): Promise<ValuationService> {
+  const quotes = await store.all<{ token: string; symbol: string; decimals: number; usd_peg_one: number; parent_quote: string; quarantined: number }>("SELECT * FROM quote_assets");
+  const markets = await store.all<{ token: string; quote: string; price_quote_x18: string }>("SELECT token,quote,price_quote_x18 FROM markets");
+  const nodes = new Map<string, QuoteNode>();
+  for (const q of quotes) {
+    nodes.set(q.token.toLowerCase(), {
+      token: q.token,
+      symbol: q.symbol,
+      decimals: Number(q.decimals),
+      usdPegOne: q.usd_peg_one === 1,
+      quarantined: q.quarantined === 1,
+      parentQuote: q.parent_quote || undefined,
+    });
+  }
+  for (const m of markets) {
+    if (!m.quote || !m.price_quote_x18 || m.price_quote_x18 === "0") continue;
+    const key = m.token.toLowerCase();
+    const prev = nodes.get(key) ?? { token: m.token, symbol: m.token.slice(0, 6), decimals: 18, usdPegOne: false };
+    nodes.set(key, { ...prev, parentQuote: m.quote.toLowerCase(), priceInParentX18: BigInt(m.price_quote_x18) });
+  }
+  return new ValuationService(nodes);
+}
+
+async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
+  const rid = requestId({ headers: req.headers as Record<string, string | string[] | undefined> });
+  if (req.method === "OPTIONS") {
+    json(res, 204, {}, rid);
+    return;
+  }
   const url = new URL(req.url ?? "/", `http://127.0.0.1:${PORT}`);
-  if (url.pathname === "/keeper") {
-    const beatPath = process.env.KEEPER_HEARTBEAT ?? new URL("../data/keeper-heartbeat.json", import.meta.url).pathname;
-    if (!existsSync(beatPath)) {
-      res.end(JSON.stringify({ ok: false, reason: "no heartbeat" }));
+
+  if (url.pathname === "/stream") {
+    sse.attach(req, res);
+    return;
+  }
+  if (url.pathname.startsWith("/m/")) {
+    const file = media.get(url.pathname.slice(3));
+    if (!file) {
+      res.statusCode = 404;
+      res.end();
       return;
     }
-    res.end(readFileSync(beatPath, "utf8"));
+    res.setHeader("Content-Type", file.type);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.end(file.buf);
     return;
   }
   if (url.pathname === "/health") {
-    const row = db.prepare("SELECT v FROM meta WHERE k='block'").get() as { v: string } | undefined;
-    const pools = (db.prepare("SELECT COUNT(*) as n FROM pools").get() as { n: number }).n;
+    const indexed = Number((await getState(store, "block")) ?? 0);
     const head = await client.getBlockNumber().catch(() => 0n);
-    const indexed = Number(row?.v ?? 0);
-    res.end(
-      JSON.stringify({
-        ok: true,
-        block: indexed,
-        head: Number(head),
-        lag: Number(head) - indexed,
-        pools,
-        network: deployment.network,
-      }),
+    const markets = (await store.get<{ n: number }>("SELECT COUNT(*) as n FROM markets"))?.n ?? 0;
+    json(res, 200, { ok: true, block: indexed, head: Number(head), lag: Number(head) - indexed, markets, dialect: store.dialect, network: deployment.network, request_id: rid }, rid);
+    return;
+  }
+  if (url.pathname === "/markets") {
+    const q = url.searchParams.get("q")?.toLowerCase() ?? "";
+    const stage = url.searchParams.get("stage") ?? "";
+    const quote = url.searchParams.get("quote")?.toLowerCase() ?? "";
+    const sort = url.searchParams.get("sort") ?? "new";
+    const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 40)));
+    const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0));
+    const rows = await store.all<Record<string, unknown>>("SELECT * FROM markets");
+    const tokens = await store.all<Record<string, unknown>>("SELECT * FROM tokens");
+    const quotes = await store.all<{ token: string; symbol: string; decimals: number }>("SELECT token,symbol,decimals FROM quote_assets");
+    const tok = new Map(tokens.map((t) => [String(t.address).toLowerCase(), t]));
+    const qmeta = new Map(quotes.map((q) => [String(q.token).toLowerCase(), q]));
+    let list = rows.map((m) => {
+      const q = qmeta.get(String(m.quote).toLowerCase());
+      return { ...m, ...(tok.get(String(m.token).toLowerCase()) ?? {}), quote_symbol: q?.symbol ?? "", quote_decimals: q?.decimals ?? 18 };
+    });
+    if (q) list = list.filter((m) => `${m.symbol}${m.name}${m.token}${m.quote}`.toLowerCase().includes(q));
+    if (stage === "bonding") list = list.filter((m) => m.stage === "bonding");
+    if (stage === "v4" || stage === "trending") list = list.filter((m) => m.market_live === 1 || m.stage === "v4");
+    if (quote) list = list.filter((m) => String(m.quote).includes(quote));
+    if (sort === "vol") list.sort((a, b) => Number(b.volume_24h_usd6 ?? 0) - Number(a.volume_24h_usd6 ?? 0));
+    else list.sort((a, b) => Number(b.updated_ts ?? 0) - Number(a.updated_ts ?? 0));
+    json(res, 200, { items: list.slice(offset, offset + limit), total: list.length, request_id: rid }, rid);
+    return;
+  }
+  if (url.pathname === "/quote-assets") {
+    json(res, 200, { items: await store.all("SELECT * FROM quote_assets WHERE enabled=1"), request_id: rid }, rid);
+    return;
+  }
+  if (url.pathname === "/valuation") {
+    const token = url.searchParams.get("token") ?? addrs.USDC;
+    const svc = await valuationNodes(store);
+    json(res, 200, { ...svc.quoteUsd6(token), usd6: svc.quoteUsd6(token).usd6.toString(), request_id: rid }, rid);
+    return;
+  }
+  if (url.pathname === "/quote" && req.method === "POST") {
+    const ip = String(req.socket.remoteAddress ?? "x");
+    if (!quoteLimit.allow(ip)) {
+      json(res, 429, { error: "rate limited", request_id: rid }, rid);
+      return;
+    }
+    const body = await readBody(req);
+    const q = await buildQuote(
+      {
+        store,
+        client,
+        addresses: addrs,
+        quoteSimulator: (process.env.QUOTE_SIMULATOR as `0x${string}`) ?? "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      },
+      body as never,
+      rid,
     );
+    json(res, q.ok ? 200 : 422, q, rid);
     return;
   }
-  if (url.pathname === "/events") {
-    const rows = db.prepare("SELECT * FROM events ORDER BY id DESC LIMIT 200").all();
-    res.end(JSON.stringify(rows));
-    return;
-  }
-  if (url.pathname === "/pools") {
-    const rows = db.prepare("SELECT * FROM pools").all();
-    res.end(JSON.stringify(rows));
-    return;
-  }
-  if (url.pathname === "/reactor") {
-    const rows = db
-      .prepare("SELECT * FROM events WHERE name IN ('FlywheelAccrued','QuoteSettled','EpochSubmitted','EpochRolled','Top10Buy','COREBurned','BuybackExecuted') ORDER BY id DESC LIMIT 80")
-      .all();
-    res.end(JSON.stringify({ events: rows }));
-    return;
-  }
-  const swapMatch = url.pathname.match(/^\/swaps\/(0x[a-fA-F0-9]{40})$/);
-  if (swapMatch) {
-    const rows = db
-      .prepare(
-        "SELECT block as t, ts, notional, holders, buyback, flywheel, coreAmt, tx, sqrtPrice, tokensOut, source, px FROM swaps WHERE lower(token)=lower(?) ORDER BY id ASC",
-      )
-      .all(swapMatch[1]);
-    res.end(JSON.stringify(rows));
-    return;
-  }
-  const vwapMatch = url.pathname.match(/^\/vwap\/(0x[a-fA-F0-9]{40})$/);
-  if (vwapMatch) {
-    const windowSec = Number(url.searchParams.get("window") ?? 720);
-    const head = await client.getBlock({ blockNumber: await client.getBlockNumber() }).catch(() => null);
-    const nowChain = head ? Number(head.timestamp) : 0;
-    const since = nowChain - windowSec;
-    const rows = db
-      .prepare(
-        "SELECT ts, notional, sqrtPrice FROM swaps WHERE lower(token)=lower(?) AND COALESCE(ts,0) >= ? ORDER BY id ASC",
-      )
-      .all(vwapMatch[1], since);
-    res.end(JSON.stringify({ windowSec, samples: rows.length, chainTs: nowChain, rows }));
+  if (url.pathname === "/upload" && req.method === "POST") {
+    const ip = String(req.socket.remoteAddress ?? "x");
+    if (!uploadLimit.allow(ip)) {
+      json(res, 429, { error: "rate limited", request_id: rid }, rid);
+      return;
+    }
+    try {
+      const chunks: Buffer[] = [];
+      for await (const c of req) chunks.push(c as Buffer);
+      const raw = Buffer.concat(chunks);
+      const stored = await media.put(raw, req.headers["content-type"] ?? "application/octet-stream");
+      json(res, 200, { ...stored, publicUrl: publicMediaUrl(stored.uri), request_id: rid }, rid);
+    } catch (e) {
+      json(res, 400, { error: e instanceof Error ? e.message : "upload failed", request_id: rid }, rid);
+    }
     return;
   }
   const candleMatch = url.pathname.match(/^\/candles\/(0x[a-fA-F0-9]{40})$/);
   if (candleMatch) {
-    const interval = url.searchParams.get("interval") ?? "5m";
-    const sec =
-      interval === "1m" ? 60 : interval === "1h" ? 3600 : interval === "4h" ? 14400 : interval === "1d" ? 86400 : 300;
-    const rows = db
-      .prepare(
-        "SELECT ts, notional, sqrtPrice, px, source FROM swaps WHERE lower(token)=lower(?) AND COALESCE(ts,0) > 0 ORDER BY ts ASC",
-      )
-      .all(candleMatch[1]) as Array<{ ts: number; notional: string; sqrtPrice: string; px: string; source: string }>;
-    type C = { t: number; o: string; h: string; l: string; c: string; v: string; n: number };
-    const out: C[] = [];
-    for (const r of rows) {
-      const bucket = Math.floor(Number(r.ts) / sec) * sec;
-      const px = r.sqrtPrice && r.sqrtPrice !== "0" ? r.sqrtPrice : r.px || "0";
-      const last = out[out.length - 1];
-      if (!last || last.t !== bucket) {
-        out.push({ t: bucket, o: px, h: px, l: px, c: px, v: r.notional ?? "0", n: 1 });
-      } else {
-        last.c = px;
-        if (BigInt(px || "0") > BigInt(last.h || "0")) last.h = px;
-        if (last.l === "0" || BigInt(px || "0") < BigInt(last.l || "0")) last.l = px;
-        last.v = (BigInt(last.v || "0") + BigInt(r.notional || "0")).toString();
-        last.n += 1;
-      }
-    }
-    res.end(JSON.stringify({ interval, sec, candles: out, chainTime: true }));
+    const interval = (url.searchParams.get("interval") ?? "5m") as keyof typeof CANDLE_INTERVALS;
+    const sec = CANDLE_INTERVALS[interval] ?? 300;
+    const token = candleMatch[1]!.toLowerCase();
+    const rows = await store.all<{ t: number; o: string; h: string; l: string; c: string; v: string; n: number }>(
+      "SELECT t,o,h,l,c,v,n FROM candles WHERE token=? AND interval_sec=? ORDER BY t ASC",
+      token,
+      sec,
+    );
+    const now = Math.floor(Date.now() / 1000);
+    const filled = rows.length ? fillContinuous(rows, sec, rows[0]!.t, Math.max(rows[rows.length - 1]!.t, now)) : [];
+    json(res, 200, { interval, sec, candles: filled, chainTime: true, request_id: rid }, rid);
+    return;
+  }
+  const swapMatch = url.pathname.match(/^\/swaps\/(0x[a-fA-F0-9]{40})$/);
+  if (swapMatch) {
+    const rows = await store.all(
+      "SELECT block as t, ts, notional_quote as notional, holders_fee as holders, flywheel_fee as flywheel, core_fee as coreAmt, tx, sqrt_price as sqrtPrice, amount_out as tokensOut, source, price_quote_x18 as px FROM trades WHERE token=? ORDER BY id ASC",
+      swapMatch[1]!.toLowerCase(),
+    );
+    json(res, 200, rows, rid);
     return;
   }
   if (url.pathname === "/ops") {
+    if (!opsOk(req)) {
+      json(res, 401, { error: "ops auth required", request_id: rid }, rid);
+      return;
+    }
     const beatPath = process.env.KEEPER_HEARTBEAT ?? new URL("../data/keeper-heartbeat.json", import.meta.url).pathname;
-    const row = db.prepare("SELECT v FROM meta WHERE k='block'").get() as { v: string } | undefined;
-    const pools = (db.prepare("SELECT COUNT(*) as n FROM pools").get() as { n: number }).n;
-    const swaps = (db.prepare("SELECT COUNT(*) as n FROM swaps").get() as { n: number }).n;
+    const indexed = Number((await getState(store, "block")) ?? 0);
     const head = await client.getBlockNumber().catch(() => 0n);
-    const headBlk = await client.getBlock({ blockNumber: head }).catch(() => null);
-    res.end(
-      JSON.stringify({
-        indexer: {
-          block: Number(row?.v ?? 0),
-          head: Number(head),
-          lag: Number(head) - Number(row?.v ?? 0),
-          pools,
-          swaps,
-          chainTs: headBlk ? Number(headBlk.timestamp) : 0,
-        },
+    json(
+      res,
+      200,
+      {
+        indexer: { block: indexed, head: Number(head), lag: Number(head) - indexed, markets: (await store.get<{ n: number }>("SELECT COUNT(*) as n FROM markets"))?.n, dialect: store.dialect },
         keeper: existsSync(beatPath) ? JSON.parse(readFileSync(beatPath, "utf8")) : null,
-        pricing: { usdPegOneOnly: true, stablecoinsAreNotDollar: true },
-      }),
+        jobs: await store.all("SELECT * FROM keeper_operations ORDER BY ts DESC LIMIT 40"),
+        alerts: await recentAlerts(store),
+        pricing: { usdPegOneOnly: true, signer: process.env.PRICING_SIGNER_URL ?? "isolated", request_id: rid },
+      },
+      rid,
     );
     return;
   }
-  res.statusCode = 404;
-  res.end(JSON.stringify({ error: "not found" }));
-});
+  if (url.pathname === "/keeper") {
+    const beatPath = process.env.KEEPER_HEARTBEAT ?? new URL("../data/keeper-heartbeat.json", import.meta.url).pathname;
+    json(res, 200, existsSync(beatPath) ? JSON.parse(readFileSync(beatPath, "utf8")) : { ok: false, reason: "no heartbeat" }, rid);
+    return;
+  }
+  if (url.pathname === "/reactor") {
+    const rows = await store.all("SELECT * FROM flywheel ORDER BY id DESC LIMIT 40");
+    json(res, 200, { events: rows, request_id: rid }, rid);
+    return;
+  }
+  if (url.pathname === "/events") {
+    json(res, 200, { sseClients: sse.size, request_id: rid }, rid);
+    return;
+  }
+  if (url.pathname === "/pricing/health") {
+    if (!pricingLimit.allow("health")) {
+      json(res, 429, { error: "rate limited" }, rid);
+      return;
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const zec = Number(process.env.ZEC_USD6 ?? 50_000_000);
+    const fused = await consensusUsd6(
+      [new StaticProvider("local-static", new Map([["ZEC", { usd6: BigInt(zec), ts: now }]]))],
+      "ZEC",
+      now,
+    );
+    json(res, 200, { ...fused, usd6: fused.usd6.toString(), request_id: rid }, rid);
+    return;
+  }
+  json(res, 404, { error: "not found", request_id: rid }, rid);
+}
 
+function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (c) => chunks.push(c as Buffer));
+    req.on("end", () => {
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"));
+      } catch (e) {
+        reject(e);
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+async function loop(store: Store) {
+  try {
+    await tick(store);
+  } catch (e) {
+    console.error("index tick", e);
+    await raiseAlert(store, "P1", "index_tick", String(e)).catch(() => undefined);
+  }
+  setTimeout(() => loop(store), 2500);
+}
+
+const store = await openStore();
+await refreshQuotes(store).catch((e) => console.error("quote refresh", e));
+setInterval(() => refreshQuotes(store).catch(() => undefined), 60_000);
+
+const server = createServer((req, res) => {
+  handle(store, req, res).catch((e) => {
+    logLine({ err: String(e), path: req.url });
+    json(res, 500, { error: "internal" }, requestId({ headers: req.headers as Record<string, string | string[] | undefined> }));
+  });
+});
 server.listen(PORT, "127.0.0.1", () => {
-  console.log(`indexer on http://127.0.0.1:${PORT} db=${DB_PATH} pools=${tokenByPool.size}`);
-  loop();
+  logLine({ msg: "indexer listening", port: PORT, dialect: store.dialect });
+  loop(store);
 });

@@ -11,8 +11,11 @@ import { privateKeyToAccount } from "viem/accounts";
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
 import { dirname } from "node:path";
 import { defineChain } from "viem";
+import { hostname } from "node:os";
 import deployment from "./deployment.json" with { type: "json" };
 import { planRoute, type MarketEdge, type QuoteMeta, type Hop } from "../../../packages/reactor/src/routes.ts";
+import { openStore, type Store } from "./db.ts";
+import { assertKeySeparation, saveJob } from "./keeper-jobs.ts";
 
 /**
  * Designated Keeper daemon.
@@ -25,6 +28,8 @@ const RPC = process.env.NEXT_PUBLIC_RPC_URL ?? deployment.rpc;
 const API = process.env.REACTOR_TOP10_URL ?? "http://127.0.0.1:43147/api/reactor/top10";
 const HEARTBEAT = process.env.KEEPER_HEARTBEAT ?? new URL("../data/keeper-heartbeat.json", import.meta.url).pathname;
 const STATE = process.env.KEEPER_STATE ?? new URL("../data/keeper-state.json", import.meta.url).pathname;
+const OWNER = `${hostname()}:${process.pid}`;
+let jobStore: Store | undefined;
 const INTERVAL = Number(process.env.KEEPER_INTERVAL_MS ?? 60_000);
 const LOCAL_CHAIN = 5042002;
 const MAINNET_CHAIN = 5042;
@@ -133,14 +138,25 @@ function keeperKey(chainId: number): `0x${string}` | null {
   const env = process.env.KEEPER_PRIVATE_KEY;
   if (env) {
     if (env.length < 10) throw new Error("KEEPER_PRIVATE_KEY malformed");
+    assertKeySeparation({ keeper: env, pricing: process.env.PRICING_SIGNER_PK, guardian: process.env.GUARDIAN_PK });
     return env as `0x${string}`;
   }
-  if (chainId === LOCAL_CHAIN && MODE === "LOCAL") return ANVIL0;
+  if (chainId === LOCAL_CHAIN && MODE === "LOCAL" && (process.env.REACTOR_ENV ?? "LOCAL").toUpperCase() === "LOCAL") return ANVIL0;
   if (chainId === LOCAL_CHAIN && MODE === "ARC_TESTNET") return null;
   return null;
 }
 
-function loadState(): KeeperState {
+async function loadState(): Promise<KeeperState> {
+  if (jobStore) {
+    const rows = await jobStore.all<{ id: string; status: string; hash: string; nonce: string; receipt: string; note: string; ts: number }>(
+      "SELECT id,status,hash,nonce,receipt,note,ts FROM keeper_operations",
+    );
+    const jobs: Record<string, JobState> = {};
+    for (const r of rows) {
+      jobs[r.id] = { status: r.status as JobState["status"], hash: r.hash, nonce: r.nonce, receipt: r.receipt, note: r.note, ts: Number(r.ts) };
+    }
+    return { jobs };
+  }
   if (!existsSync(STATE)) return { jobs: {} };
   try {
     return JSON.parse(readFileSync(STATE, "utf8")) as KeeperState;
@@ -149,7 +165,11 @@ function loadState(): KeeperState {
   }
 }
 
-function saveState(s: KeeperState) {
+async function saveState(s: KeeperState) {
+  if (jobStore) {
+    for (const [id, job] of Object.entries(s.jobs)) await saveJob(jobStore, id, job);
+    return;
+  }
   mkdirSync(dirname(STATE), { recursive: true });
   writeFileSync(STATE, JSON.stringify(s, null, 2));
 }
@@ -205,7 +225,7 @@ async function submitOnce(state: KeeperState, id: string, send: () => Promise<He
           ? { status: "done", hash: prev.hash, nonce: prev.nonce, receipt: receipt.status, ts: Date.now() }
           : { status: "failed", hash: prev.hash, nonce: prev.nonce, receipt: receipt.status, ts: Date.now(), note: "receipt reverted" };
       state.jobs[id] = next;
-      saveState(state);
+      await saveState(state);
       return next;
     } catch {
       state.jobs[id] = {
@@ -215,14 +235,14 @@ async function submitOnce(state: KeeperState, id: string, send: () => Promise<He
         ts: Date.now(),
         note: "rpc ambiguous — will not double-exec",
       };
-      saveState(state);
+      await saveState(state);
       return state.jobs[id]!;
     }
   }
   if (MODE === "DRY_RUN") {
     const dry: JobState = { status: "done", ts: Date.now(), note: "DRY_RUN" };
     state.jobs[id] = dry;
-    saveState(state);
+    await saveState(state);
     return dry;
   }
   let hash: Hex;
@@ -231,11 +251,11 @@ async function submitOnce(state: KeeperState, id: string, send: () => Promise<He
   } catch (e) {
     const failed: JobState = { status: "failed", ts: Date.now(), note: String(e) };
     state.jobs[id] = failed;
-    saveState(state);
+    await saveState(state);
     return failed;
   }
   state.jobs[id] = { status: "pending", hash, ts: Date.now() };
-  saveState(state);
+  await saveState(state);
   try {
     const receipt = await client.waitForTransactionReceipt({ hash, timeout: 60_000 });
     const next: JobState =
@@ -243,11 +263,11 @@ async function submitOnce(state: KeeperState, id: string, send: () => Promise<He
         ? { status: "done", hash, receipt: receipt.status, ts: Date.now() }
         : { status: "failed", hash, receipt: receipt.status, ts: Date.now(), note: "receipt reverted" };
     state.jobs[id] = next;
-    saveState(state);
+    await saveState(state);
     return next;
   } catch {
     state.jobs[id] = { status: "ambiguous", hash, ts: Date.now(), note: "no receipt — not retrying" };
-    saveState(state);
+    await saveState(state);
     return state.jobs[id]!;
   }
 }
@@ -322,43 +342,18 @@ async function discoverEdges(metas: Map<string, QuoteMeta>, usdc: `0x${string}`)
   const factory = addrs.ReactorFactory as `0x${string}` | undefined;
   if (!protocol) return edges;
 
-  for (const [k, m] of metas) {
-    if (k === usdc.toLowerCase()) continue;
-    if (m.quarantined) continue;
-    const token = m.token as `0x${string}`;
-    if (m.reactorNative) continue;
-    if (!m.hopViaUsdc) continue;
-    edges.push({
-      from: token,
-      to: usdc,
-      adapter: protocol,
-      kind: "protocol",
-      data: poolKeyBytes(token, usdc, 3000, "0x0000000000000000000000000000000000000000"),
-      usable: true,
-    });
-    edges.push({
-      from: usdc,
-      to: token,
-      adapter: protocol,
-      kind: "protocol",
-      data: poolKeyBytes(token, usdc, 3000, "0x0000000000000000000000000000000000000000"),
-      usable: true,
-    });
-    if (user) {
+  /* hopViaUsdc edges are only loaded from durable proven venues — never invented here. */
+  if (jobStore) {
+    const rows = await jobStore.all<{ token_in: string; token_out: string; adapter: string; kind: string; data: string }>(
+      "SELECT token_in, token_out, adapter, kind, data FROM route_venues WHERE exists_onchain=1 AND approved=1",
+    );
+    for (const r of rows) {
       edges.push({
-        from: token,
-        to: usdc,
-        adapter: user,
-        kind: "user",
-        data: poolKeyBytes(token, usdc, 3000, "0x0000000000000000000000000000000000000000"),
-        usable: true,
-      });
-      edges.push({
-        from: usdc,
-        to: token,
-        adapter: user,
-        kind: "user",
-        data: poolKeyBytes(token, usdc, 3000, "0x0000000000000000000000000000000000000000"),
+        from: r.token_in,
+        to: r.token_out,
+        adapter: r.adapter,
+        kind: r.kind as MarketEdge["kind"],
+        data: r.data as `0x${string}`,
         usable: true,
       });
     }
@@ -488,7 +483,15 @@ async function tick() {
     writeBeat({ ok: false, reason: "mainnet disabled" });
     throw new Error("mainnet disabled");
   }
-  const state = loadState();
+  if (jobStore) {
+    const locked = await jobStore.tryAdvisoryLock("reactor-keeper", OWNER, 50_000);
+    if (!locked) {
+      writeBeat({ ok: true, reason: "standby — not leader", chainId });
+      return;
+    }
+  }
+  try {
+  const state = await loadState();
   const flywheel = addrs.FlywheelVault as `0x${string}` | undefined;
   const selfBurn = addrs.SelfBurnVault as `0x${string}` | undefined;
   const buyback = addrs.BuybackVault as `0x${string}` | undefined;
@@ -842,6 +845,9 @@ async function tick() {
     submitted,
     jobs,
   });
+  } finally {
+    if (jobStore) await jobStore.releaseLock("reactor-keeper", OWNER).catch(() => undefined);
+  }
 }
 
 async function loop() {
@@ -857,5 +863,13 @@ async function loop() {
 
 if (process.env.KEEPER_TEST !== "1") {
   console.log(`keeper daemon mode=${MODE} → ${API} heartbeat ${HEARTBEAT}`);
-  loop();
+  openStore()
+    .then((s) => {
+      jobStore = s;
+      loop();
+    })
+    .catch((e) => {
+      console.error("keeper store failed — refuse start", e);
+      process.exit(1);
+    });
 }

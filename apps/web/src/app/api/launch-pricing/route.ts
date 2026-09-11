@@ -1,221 +1,34 @@
 import { NextResponse } from "next/server";
-import { createPublicClient, http, parseAbi, type PublicClient } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { randomBytes } from "node:crypto";
-import { arcLocal } from "@/lib/chain";
-import { addresses } from "@/lib/addresses";
-import { factory } from "@/lib/contracts";
-import { fdvQuoteRaw, readSqrtPriceX96 } from "@/lib/marketdata";
-import { poolId } from "@/lib/pool";
-import { valueQuoteUsd6, fuseExternalUsd6, type QuoteNode } from "../../../../../../packages/reactor/src/valuation";
-import { officialPoolKey } from "@/lib/pool";
 
 /**
- * Short-lived unique EIP-712 LaunchPricingAuthorization for non-usdPegOne quotes.
- * virtualQuote0 targets ~$5k USD-equivalent. No serial quote nonce.
+ * Next never holds the pricing key. Proxies to the isolated signer.
+ * FAIL if the signer is down. Anvil fallback is forbidden unless REACTOR_ENV=LOCAL
+ * on the signer process itself.
  */
-const ANVIL0 = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" as const;
-
-const factoryAbi = parseAbi([
-  "function virtualQuote0ForUsd(address quote, uint256 quoteUsd6) view returns (uint256)",
-  "function instantCurveConfig() view returns (bytes32)",
-]);
-
-const erc20Abi = parseAbi(["function decimals() view returns (uint8)"]);
-const registryAbi = parseAbi([
-  "function usdc() view returns (address)",
-  "function isUsdPegOne(address) view returns (bool)",
-  "function get(address) view returns (address token, string symbol, string name, uint8 decimals, string icon, uint8 category, bool enabled, bool exists, bool rewardsEnabled, bool buybackRouteEnabled, bool hopViaUsdc, bool reactorNative, bool usdPegOne)",
-]);
-
 export async function POST(req: Request) {
-  try {
-    const body = (await req.json()) as { quote?: string; creator?: string };
-    const quote = body.quote as `0x${string}` | undefined;
-    const creator = (body.creator ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
-    if (!quote || !/^0x[0-9a-fA-F]{40}$/.test(quote)) {
-      return NextResponse.json({ error: "quote required" }, { status: 400 });
-    }
-
-    const client = createPublicClient({ chain: arcLocal, transport: http(arcLocal.rpcUrls.default.http[0]) });
-    const peg = await client.readContract({
-      address: addresses.QuoteAssetRegistry,
-      abi: registryAbi,
-      functionName: "isUsdPegOne",
-      args: [quote],
-    });
-    if (peg) {
-      return NextResponse.json({ needsAuth: false, reason: "usdPegOne — unsigned Instant is allowed" });
-    }
-
-    const asset = await client.readContract({
-      address: addresses.QuoteAssetRegistry,
-      abi: registryAbi,
-      functionName: "get",
-      args: [quote],
-    });
-    if (Number(asset[5]) === 4 && !Boolean(asset[12])) {
-      // Stablecoins category is NOT $1 (EURC).
-    }
-
-    const quoteDecimals = Number(
-      await client.readContract({ address: quote, abi: erc20Abi, functionName: "decimals" }),
-    );
-    const quoteUsd6 = await hopQuoteUsd6(client as PublicClient, quote, quoteDecimals);
-    if (quoteUsd6 === 0n) {
-      return NextResponse.json(
-        { error: "cannot price quote — valuation unavailable, launch disabled for this quote", needsAuth: true },
-        { status: 422 },
-      );
-    }
-
-    const [virtualQuote0, curveConfig] = await Promise.all([
-      client.readContract({
-        address: addresses.ReactorFactory,
-        abi: factoryAbi,
-        functionName: "virtualQuote0ForUsd",
-        args: [quote, quoteUsd6],
-      }),
-      client.readContract({
-        address: addresses.ReactorFactory,
-        abi: factoryAbi,
-        functionName: "instantCurveConfig",
-      }),
-    ]);
-
-    const pk = (process.env.PRICING_SIGNER_PK ?? ANVIL0) as `0x${string}`;
-    const account = privateKeyToAccount(pk);
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 5 * 60);
-    const chainId = BigInt(arcLocal.id);
-    const salt = (`0x${randomBytes(32).toString("hex")}`) as `0x${string}`;
-    const auth = {
-      factory: addresses.ReactorFactory,
-      creator,
-      quote,
-      quoteDecimals,
-      virtualQuote0: virtualQuote0.toString(),
-      curveConfig,
-      salt,
-      deadline: deadline.toString(),
-    };
-
-    const signature = await account.signTypedData({
-      domain: {
-        name: "REACTOR",
-        version: "1",
-        chainId: Number(chainId),
-        verifyingContract: addresses.ReactorFactory,
-      },
-      types: {
-        LaunchPricingAuthorization: [
-          { name: "factory", type: "address" },
-          { name: "creator", type: "address" },
-          { name: "quote", type: "address" },
-          { name: "quoteDecimals", type: "uint8" },
-          { name: "virtualQuote0", type: "uint256" },
-          { name: "curveConfig", type: "bytes32" },
-          { name: "salt", type: "bytes32" },
-          { name: "deadline", type: "uint256" },
-          { name: "chainId", type: "uint256" },
-        ],
-      },
-      primaryType: "LaunchPricingAuthorization",
-      message: {
-        factory: addresses.ReactorFactory,
-        creator,
-        quote,
-        quoteDecimals,
-        virtualQuote0,
-        curveConfig,
-        salt,
-        deadline,
-        chainId,
-      },
-    });
-
-    return NextResponse.json({
-      needsAuth: true,
-      auth,
-      signature,
-      signer: account.address,
-      quoteUsd6: quoteUsd6.toString(),
-      ttlSec: 300,
-      trust: "Operational launch-pricing signer. Not an onchain USD oracle. Unique digest. usdPegOne-only $1 bypass.",
-    });
-  } catch (e) {
+  const url = process.env.PRICING_SIGNER_URL;
+  const local = (process.env.REACTOR_ENV ?? "").toUpperCase() === "LOCAL";
+  if (!url && !local) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "pricing sign failed", needsAuth: true },
-      { status: 500 },
+      { error: "pricing signer unavailable — launch disabled", needsAuth: true },
+      { status: 503 },
     );
   }
-}
-
-async function hopQuoteUsd6(
-  client: PublicClient,
-  quote: `0x${string}`,
-  qDec: number,
-): Promise<bigint> {
-  const usdc = addresses.USDC;
-  if (quote.toLowerCase() === usdc.toLowerCase()) return 1_000_000n;
-
-  const sources: Array<{ usd6: bigint; ts: number; name: string }> = [];
-  const now = Math.floor(Date.now() / 1000);
-
-  const hop = {
-    currency0: (quote.toLowerCase() < usdc.toLowerCase() ? quote : usdc) as `0x${string}`,
-    currency1: (quote.toLowerCase() < usdc.toLowerCase() ? usdc : quote) as `0x${string}`,
-    fee: 3000,
-    tickSpacing: 60,
-    hooks: "0x0000000000000000000000000000000000000000" as `0x${string}`,
-  };
-  const hopSqrt = await readSqrtPriceX96(client, poolId(hop));
-  if (hopSqrt) {
-    const quoteIs0 = quote.toLowerCase() < usdc.toLowerCase();
-    const one = 10n ** BigInt(qDec);
-    const usd6 = fdvQuoteRaw(hopSqrt, one, quoteIs0);
-    if (usd6 > 0n) sources.push({ usd6, ts: now, name: "arc-hop" });
-  }
-
+  const target = url ?? "http://127.0.0.1:43149";
   try {
-    const info = (await client.readContract({ ...factory, functionName: "tokenInfo", args: [quote] })) as readonly unknown[];
-    const parent = String(info[1]) as `0x${string}`;
-    const live = Boolean(info[5]);
-    if (live && parent) {
-      const key = officialPoolKey(quote, parent);
-      const sqrt = await readSqrtPriceX96(client, poolId(key));
-      if (sqrt) {
-        const quoteIs0 = quote.toLowerCase() < parent.toLowerCase();
-        const one = 10n ** BigInt(qDec);
-        const fdvParent = fdvQuoteRaw(sqrt, one, quoteIs0);
-        const parentUsd = await hopQuoteUsd6(client, parent, Number(await client.readContract({ address: parent, abi: erc20Abi, functionName: "decimals" }).catch(() => 18)));
-        if (parentUsd > 0n && fdvParent > 0n) {
-          const parentDec = Number(await client.readContract({ address: parent, abi: erc20Abi, functionName: "decimals" }).catch(() => 18));
-          const usd6 = (fdvParent * parentUsd) / 10n ** BigInt(parentDec);
-          if (usd6 > 0n) sources.push({ usd6, ts: now, name: "nested-official" });
-        }
-      }
-    }
+    const body = await req.text();
+    const res = await fetch(target, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-request-id": req.headers.get("x-request-id") ?? "" },
+      body,
+      signal: AbortSignal.timeout(8_000),
+    });
+    const json = await res.json();
+    return NextResponse.json(json, { status: res.status });
   } catch {
-    /* no official parent */
+    return NextResponse.json(
+      { error: "pricing signer unavailable — launch disabled", needsAuth: true },
+      { status: 503 },
+    );
   }
-
-  const fused = fuseExternalUsd6(sources, now);
-  if (!fused.ok) return 0n;
-
-  const nodes = new Map<string, QuoteNode>([
-    [usdc.toLowerCase(), { token: usdc, symbol: "USDC", decimals: 6, usdPegOne: true }],
-    [
-      quote.toLowerCase(),
-      {
-        token: quote,
-        symbol: "Q",
-        decimals: qDec,
-        usdPegOne: false,
-        externalUsd6: fused.usd6,
-        externalOk: true,
-      },
-    ],
-  ]);
-  const valued = valueQuoteUsd6(quote, nodes);
-  return valued.ok ? valued.usd6 : 0n;
 }

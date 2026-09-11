@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { useLaunchTokens } from "@/lib/hooks";
 import { formatUnitsSafe } from "@/lib/utils";
 import { REVIEW_FIXTURES } from "@/lib/review-fixtures";
+import { useReactorStream } from "@/lib/sse";
 
 const filters = ["Trending", "New", "Bonding", "Rewards", "Buy+Burn", "Batch Fair", "USDC-quoted"] as const;
 
 export default function HomePage() {
   const { data, isLoading, isError, error, refetch } = useLaunchTokens();
+  const live = useReactorStream();
   const [filter, setFilter] = useState<(typeof filters)[number]>("New");
   const [q, setQ] = useState("");
 
@@ -82,11 +84,13 @@ export default function HomePage() {
             placeholder="Search name / ticker / quote"
             className="h-8 w-44 rounded-full border border-white/10 bg-black/30 px-3 text-[12px] text-zinc-200 outline-none placeholder:text-zinc-600"
           />
-          <span className="text-[11px] tabular-nums text-zinc-500">{list.length} markets</span>
+          <span className="text-[11px] tabular-nums text-zinc-500">
+            {list.length} markets · {live.ok ? "live" : "polling"}
+          </span>
         </div>
       </div>
 
-      {isLoading && <p className="mt-8 text-sm text-zinc-500">Reading launches from chain…</p>}
+      {isLoading && <p className="mt-8 text-sm text-zinc-500">Loading indexed markets…</p>}
       {isError && !REVIEW_FIXTURES && (
         <div className="mt-8 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
           Could not read the factory. Is Anvil running on 127.0.0.1:8545?
@@ -109,7 +113,8 @@ export default function HomePage() {
                 <th className="px-3 py-2 font-medium">Token</th>
                 <th className="px-3 py-2 font-medium">Earns</th>
                 <th className="hidden px-3 py-2 font-medium sm:table-cell">Mode</th>
-                <th className="hidden px-3 py-2 font-medium md:table-cell">Supply</th>
+                <th className="hidden px-3 py-2 font-medium md:table-cell">Price</th>
+                <th className="hidden px-3 py-2 font-medium lg:table-cell">24h</th>
                 <th className="hidden px-3 py-2 font-medium md:table-cell">Holder rewards</th>
                 <th className="px-3 py-2 font-medium"></th>
               </tr>
@@ -154,7 +159,14 @@ export default function HomePage() {
                           : "Instant · v4"}
                     </td>
                     <td className="hidden px-3 py-2 font-mono text-[12px] text-zinc-300 md:table-cell">
-                      {formatUnitsSafe(t.supply, t.decimals, 0)}
+                      {t.priceQuoteX18 && t.priceQuoteX18 !== "0"
+                        ? formatUnitsSafe(BigInt(t.priceQuoteX18), 18, 6)
+                        : "—"}
+                    </td>
+                    <td className="hidden px-3 py-2 font-mono text-[12px] text-zinc-400 lg:table-cell">
+                      {t.volume24hUsd6 && t.volume24hUsd6 !== "0"
+                        ? `$${formatUnitsSafe(BigInt(t.volume24hUsd6), 6, 0)}`
+                        : "—"}
                     </td>
                     <td className="hidden px-3 py-2 font-mono text-[12px] text-zinc-300 md:table-cell">
                       {formatUnitsSafe(t.lifetimeRewards ?? 0n, t.quoteDecimals ?? 18, 3)} {t.quoteSymbol}

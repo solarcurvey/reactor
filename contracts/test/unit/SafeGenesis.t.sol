@@ -85,7 +85,38 @@ contract SafeGenesisTest is Base {
         assertTrue(g.launchesPaused());
     }
 
+    function test_verifyFullyWiredRejectsKeyReuse() public {
+        address safe = makeAddr("FINAL_SAFE");
+        address k = makeAddr("PROD_KEEPER");
+        address deployer = makeAddr("EOA_DEPLOYER");
+        ReactorGuardian g = new ReactorGuardian(safe, k);
+        vm.expectRevert(GenesisVerify.KeyReuse.selector);
+        this._verifyWired(g, safe, k, k, deployer);
+    }
+
+    function test_verifyFullyWiredDistinctKeysAndAdapters() public {
+        address safe = makeAddr("FINAL_SAFE");
+        address k = makeAddr("PROD_KEEPER");
+        address pricing = makeAddr("PRICING_SIGNER");
+        address deployer = makeAddr("EOA_DEPLOYER");
+        assertTrue(safe != deployer && pricing != k);
+        ReactorGuardian g = new ReactorGuardian(safe, k);
+        vm.prank(safe);
+        g.setPricingSigner(pricing);
+        vm.prank(safe);
+        g.setAdapter(address(v4Adapter), true);
+        vm.prank(safe);
+        g.setAdapter(address(protocolAdapter), true);
+        this._verifyWired(g, safe, k, pricing, deployer);
+    }
+
     function _verifyAs(address safe, address k, address deployer) external view {
         GenesisVerify.verifyProduction(auth, safe, k, deployer, core, coreVesting, coreLp, registry, router);
+    }
+
+    function _verifyWired(ReactorGuardian g, address safe, address k, address pricing, address deployer) external view {
+        GenesisVerify.verifyFullyWired(
+            g, safe, k, pricing, deployer, address(v4Adapter), address(protocolAdapter), address(factory), address(curve), address(selfBurn), address(userRouter)
+        );
     }
 }

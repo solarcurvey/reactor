@@ -1,8 +1,11 @@
 /**
- * Shared ValuationEngine — Top-10, launch pricing, UI, quote ecosystem, route sanity.
- * Recursive nested quotes (CAT / ZCAT / ZEC / USD). Rejects cycles. Max depth 3.
+ * ONE ValuationService — Top-10, launch pricing, UI analytics, quote ecosystem.
+ * Recursive nested CAT → ZCAT → ZEC → USD with ancestry.
+ * Never copies parent USD. Each hop must have priceInParentX18 or a live external mark.
  * Only usdPegOne assets are $1. EURC / Stablecoins category is not.
  */
+
+import { X18, usd6FromPriceQuote } from "./prices.ts";
 
 export const MAX_VALUATION_DEPTH = 3;
 export const USDC_ONE = 1_000_000n;
@@ -14,10 +17,20 @@ export type QuoteNode = {
   usdPegOne: boolean;
   quarantined?: boolean;
   parentQuote?: string;
+  /** Quote-normalized price of 1 whole token in the parent, 18 decimals. */
+  priceInParentX18?: bigint;
   /** Offchain multi-source USD-6 per 1 whole token. */
   externalUsd6?: bigint;
   externalOk?: boolean;
   externalStale?: boolean;
+};
+
+export type AncestryStep = {
+  token: string;
+  symbol: string;
+  usd6: string;
+  source: string;
+  priceInParentX18?: string;
 };
 
 export type ValuationResult = {
@@ -26,6 +39,7 @@ export type ValuationResult = {
   reason: string;
   depth: number;
   path: string[];
+  ancestry: AncestryStep[];
 };
 
 export class CycleError extends Error {
@@ -42,48 +56,101 @@ export function valueQuoteUsd6(
 ): ValuationResult {
   const key = token.toLowerCase();
   const path = [...stack, key];
+  const empty: AncestryStep[] = [];
   if (depth > MAX_VALUATION_DEPTH) {
-    return { usd6: 0n, ok: false, reason: "max depth", depth, path };
+    return { usd6: 0n, ok: false, reason: "max depth", depth, path, ancestry: empty };
   }
   if (stack.has(key)) {
     throw new CycleError(key);
   }
   const node = nodes.get(key);
-  if (!node) return { usd6: 0n, ok: false, reason: "unknown quote", depth, path };
-  if (node.quarantined) return { usd6: 0n, ok: false, reason: "quarantined", depth, path };
-  if (node.usdPegOne) return { usd6: USDC_ONE, ok: true, reason: "usdPegOne", depth, path };
+  if (!node) return { usd6: 0n, ok: false, reason: "unknown quote", depth, path, ancestry: empty };
+  if (node.quarantined) return { usd6: 0n, ok: false, reason: "quarantined", depth, path, ancestry: empty };
+
+  if (node.usdPegOne) {
+    return {
+      usd6: USDC_ONE,
+      ok: true,
+      reason: "usdPegOne",
+      depth,
+      path,
+      ancestry: [{ token: key, symbol: node.symbol, usd6: USDC_ONE.toString(), source: "usdPegOne" }],
+    };
+  }
 
   if (node.externalOk && node.externalUsd6 && node.externalUsd6 > 0n && !node.externalStale) {
-    return { usd6: node.externalUsd6, ok: true, reason: "external", depth, path };
+    return {
+      usd6: node.externalUsd6,
+      ok: true,
+      reason: "external",
+      depth,
+      path,
+      ancestry: [{ token: key, symbol: node.symbol, usd6: node.externalUsd6.toString(), source: "external" }],
+    };
   }
 
   if (node.parentQuote) {
+    if (!node.priceInParentX18 || node.priceInParentX18 <= 0n) {
+      return { usd6: 0n, ok: false, reason: "missing parent price — refuse parent-only USD", depth, path, ancestry: empty };
+    }
     stack.add(key);
     const parent = valueQuoteUsd6(node.parentQuote, nodes, depth + 1, stack);
     stack.delete(key);
     if (!parent.ok) return { ...parent, depth, path };
-    return { usd6: parent.usd6, ok: true, reason: `nested:${parent.reason}`, depth: depth + 1, path };
+    const usd6 = usd6FromPriceQuote(node.priceInParentX18, parent.usd6);
+    if (usd6 === 0n) {
+      return { usd6: 0n, ok: false, reason: "nested product underflow", depth, path, ancestry: parent.ancestry };
+    }
+    return {
+      usd6,
+      ok: true,
+      reason: `nested:${parent.reason}`,
+      depth: depth + 1,
+      path,
+      ancestry: [
+        ...parent.ancestry,
+        {
+          token: key,
+          symbol: node.symbol,
+          usd6: usd6.toString(),
+          source: `×${node.priceInParentX18.toString()}`,
+          priceInParentX18: node.priceInParentX18.toString(),
+        },
+      ],
+    };
   }
 
-  return { usd6: 0n, ok: false, reason: "unpriced", depth, path };
+  return { usd6: 0n, ok: false, reason: "unpriced", depth, path, ancestry: empty };
 }
 
-/** Multi-source + Arc sanity. Fail closed on stale / deviation. */
-export function fuseExternalUsd6(sources: Array<{ usd6: bigint; ts: number; name: string }>, now: number, maxAgeSec = 120, maxDevBps = 150): {
-  usd6: bigint;
-  ok: boolean;
-  reason: string;
-} {
+export type ExternalTick = { usd6: bigint; ts: number; name: string };
+
+/** Multi-source median + staleness + deviation + optional Arc sanity band. */
+export function fuseExternalUsd6(
+  sources: ExternalTick[],
+  now: number,
+  maxAgeSec = 120,
+  maxDevBps = 150,
+  arcUsd6?: bigint,
+  arcMaxDevBps = 400,
+): { usd6: bigint; ok: boolean; reason: string; n: number } {
   const fresh = sources.filter((s) => s.usd6 > 0n && now - s.ts <= maxAgeSec);
-  if (fresh.length === 0) return { usd6: 0n, ok: false, reason: "stale or empty" };
-  const mid = fresh.map((s) => s.usd6).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))[Math.floor(fresh.length / 2)]!;
+  if (fresh.length === 0) return { usd6: 0n, ok: false, reason: "stale or empty", n: 0 };
+  const sorted = fresh.map((s) => s.usd6).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const mid = sorted[Math.floor(sorted.length / 2)]!;
   for (const s of fresh) {
     const diff = s.usd6 > mid ? s.usd6 - mid : mid - s.usd6;
     if ((diff * 10_000n) / mid > BigInt(maxDevBps)) {
-      return { usd6: 0n, ok: false, reason: `deviation ${s.name}` };
+      return { usd6: 0n, ok: false, reason: `deviation ${s.name}`, n: fresh.length };
     }
   }
-  return { usd6: mid, ok: true, reason: `fused ${fresh.length}` };
+  if (arcUsd6 && arcUsd6 > 0n) {
+    const diff = mid > arcUsd6 ? mid - arcUsd6 : arcUsd6 - mid;
+    if ((diff * 10_000n) / arcUsd6 > BigInt(arcMaxDevBps)) {
+      return { usd6: 0n, ok: false, reason: "arc sanity", n: fresh.length };
+    }
+  }
+  return { usd6: mid, ok: true, reason: `fused ${fresh.length}`, n: fresh.length };
 }
 
 export function virtualQuote0ForUsd(supply: bigint, quoteDecimals: number, quoteUsd6: bigint): bigint {
@@ -91,3 +158,38 @@ export function virtualQuote0ForUsd(supply: bigint, quoteDecimals: number, quote
   if (quoteUsd6 === 0n) return 0n;
   return (qUsdc * 10n ** BigInt(quoteDecimals)) / quoteUsd6;
 }
+
+/** Single service used by Top-10, launch pricing, UI, quote ecosystem. */
+export class ValuationService {
+  constructor(private nodes: Map<string, QuoteNode>) {}
+
+  setNodes(nodes: Map<string, QuoteNode>) {
+    this.nodes = nodes;
+  }
+
+  quoteUsd6(token: string): ValuationResult {
+    return valueQuoteUsd6(token, this.nodes);
+  }
+
+  tokenUsd6(priceQuoteX18: bigint, quote: string): ValuationResult {
+    const q = valueQuoteUsd6(quote, this.nodes);
+    if (!q.ok) return q;
+    const usd6 = usd6FromPriceQuote(priceQuoteX18, q.usd6);
+    return { ...q, usd6, ok: usd6 > 0n, reason: usd6 > 0n ? `token:${q.reason}` : "unpriced token" };
+  }
+
+  ancestry(token: string): AncestryStep[] {
+    return valueQuoteUsd6(token, this.nodes).ancestry;
+  }
+
+  degraded(): boolean {
+    for (const n of this.nodes.values()) {
+      if (n.usdPegOne) continue;
+      if (n.externalStale) return true;
+      if (n.parentQuote && (!n.priceInParentX18 || n.priceInParentX18 <= 0n) && !n.externalOk) return true;
+    }
+    return false;
+  }
+}
+
+void X18;

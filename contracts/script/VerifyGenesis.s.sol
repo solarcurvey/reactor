@@ -40,6 +40,24 @@ contract VerifyGenesis is Script {
         require(auth.launchesPaused(), "launches must stay paused until Safe enables");
         require(core.balanceOf(deployer) == 0 && core.balanceOf(expectedSafe) == 0 && core.balanceOf(expectedKeeper) == 0, "core dust");
 
+        address pricing = vm.envOr("EXPECTED_PRICING_SIGNER", address(0));
+        if (pricing != address(0)) {
+            GenesisVerify.verifyFullyWired(
+                auth,
+                expectedSafe,
+                expectedKeeper,
+                pricing,
+                deployer,
+                vm.envAddress("USER_ADAPTER"),
+                vm.envAddress("PROTOCOL_ADAPTER"),
+                vm.envAddress("FACTORY"),
+                vm.envAddress("CURVE"),
+                vm.envAddress("SELF_BURN"),
+                vm.envAddress("USER_ROUTER")
+            );
+            require(auth.pricingSigner() != expectedKeeper, "pricing signer reused keeper");
+        }
+
         address factory = vm.envOr("FACTORY", address(0));
         if (factory != address(0)) {
             require(ReactorFactory(factory).instantCurveConfig() == keccak256("REACTOR.InstantCurve.v1"), "curve");
