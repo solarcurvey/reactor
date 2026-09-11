@@ -120,9 +120,9 @@ contract TokenTest is Base {
                 uint256 gap = outstanding - backing;
                 if (gap > maxOverBacking) maxOverBacking = gap;
             }
-            assertLe(outstanding, backing + 32);
-            assertLe(outstanding, ReactorToken(token).lifetimeRewards() + 32);
+            assertLe(outstanding, backing + 1);
+            assertLe(outstanding, ReactorToken(token).lifetimeRewards() + 1);
         }
-        assertLe(maxOverBacking, 32);
+        assertLe(maxOverBacking, 1);
     }
 }

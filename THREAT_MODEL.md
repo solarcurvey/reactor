@@ -41,7 +41,7 @@ Hostile-reader notes for Codex / external review. **Not an audit.**
 ## Residual risks (highest first)
 
 1. **Hook custom accounting** — wrong sign on `BeforeSwapDelta` / afterSwap unspecified delta can steal from swappers or insolvent the hook. V1 tests cover exact-in buy/sell × token0/token1 (exact-out disabled).
-2. **Reward solvency (floor dust)** — `accRewardPerShare` uses `1e27` floors; leftover holds the complementary remainder. Per-holder `pending` can exceed the pro-rata increment by 1 raw per credit. Stateful campaign allows **32 raw** slack (measured gaps 2 and 9; +1000 was an unjustified widen). A last claimer can be short a few wei. Credit is booked in the hook before ERC-20 lands (`pendingTokenRewards` counts as backing). **Not production-invariant-complete.**
+2. **Reward solvency (floor dust)** — Uncapped `acc += (dist * P) / S` over-assigned because `(S * ΣI) / P ≥ Σ((S * I) / P)` (~1 raw/credit; +1000 slack hid it). Acc is now capped; `rewardDebt` is last synced acc. Campaign slack **1 raw**. Last claimer can still be short leftover dust. Credit is booked before ERC-20 lands. **Not production-invariant-complete.**
 3. **CREATE2 hook bits** — a mis-mined address silently skips callbacks (0% charged) or enables extra callbacks.
 4. **Single-sided launch price** — extreme FDV vs 1e9 supply can clamp to TickMath edges and look “wrong” versus the UI valuation.
 5. **Buyback sandwich** — permissionless `execute(quote)`; caller cannot set size or minOut. Reference is last-good spot, not a multi-block TWAP. First observation can be manipulated if the CORE pool is thin. Failure no-ops.

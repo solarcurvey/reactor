@@ -24,6 +24,9 @@ contract ReactorToken is IReactorToken {
     uint256 public excludedBalance;
     uint256 public lifetimeRewards;
 
+    /// @dev Last synced `accRewardPerShare` (not `floor(bal * acc / P)`).
+    /// Storing the floor-product let `floor(bal*(acc+Δ)/P) - floor(bal*acc/P)`
+    /// exceed `floor(bal*Δ/P)` by 1 raw per unsynced credit and sum above lifetime.
     mapping(address => uint256) public rewardDebt;
     mapping(address => uint256) public storedRewards;
 
@@ -109,9 +112,7 @@ contract ReactorToken is IReactorToken {
             emit RewardsCredited(amount, accRewardPerShare);
             return;
         }
-        uint256 increment = (dist * ReactorConstants.REWARD_PRECISION) / supply;
-        accRewardPerShare += increment;
-        leftoverRewards = dist - (increment * supply) / ReactorConstants.REWARD_PRECISION;
+        _distributeDist(dist, supply);
         emit RewardsCredited(amount, accRewardPerShare);
     }
 
@@ -174,9 +175,22 @@ contract ReactorToken is IReactorToken {
         uint256 dist = leftoverRewards;
         uint256 supply = eligibleSupply();
         if (dist == 0 || supply == 0) return;
-        uint256 increment = (dist * ReactorConstants.REWARD_PRECISION) / supply;
+        _distributeDist(dist, supply);
+    }
+
+    /// @dev Raise `acc` by at most the amount whose combined floor
+    /// `(supply * acc) / P` does not exceed prior assigned + `dist`.
+    /// Naive `acc += (dist * P) / supply` over-assigns because
+    /// `(S * ΣI) / P` can exceed `Σ((S * I) / P)` by 1 raw per credit.
+    function _distributeDist(uint256 dist, uint256 supply) internal {
+        uint256 p = ReactorConstants.REWARD_PRECISION;
+        uint256 oldAssigned = (supply * accRewardPerShare) / p;
+        uint256 increment = (dist * p) / supply;
         accRewardPerShare += increment;
-        leftoverRewards = dist - (increment * supply) / ReactorConstants.REWARD_PRECISION;
+        uint256 maxAssigned = oldAssigned + dist;
+        uint256 cap = ((maxAssigned + 1) * p - 1) / supply;
+        if (accRewardPerShare > cap) accRewardPerShare = cap;
+        leftoverRewards = maxAssigned - (supply * accRewardPerShare) / p;
     }
 
     function _accrue(address account) internal {
@@ -190,14 +204,14 @@ contract ReactorToken is IReactorToken {
             rewardDebt[account] = 0;
             return;
         }
-        rewardDebt[account] = (balanceOf[account] * accRewardPerShare) / ReactorConstants.REWARD_PRECISION;
+        rewardDebt[account] = accRewardPerShare;
     }
 
     function _unpaid(address account) internal view returns (uint256) {
         if (rewardExcluded[account]) return 0;
-        uint256 accumulated = (balanceOf[account] * accRewardPerShare) / ReactorConstants.REWARD_PRECISION;
-        uint256 debt = rewardDebt[account];
-        return accumulated > debt ? accumulated - debt : 0;
+        uint256 userAcc = rewardDebt[account];
+        if (accRewardPerShare <= userAcc) return 0;
+        return (balanceOf[account] * (accRewardPerShare - userAcc)) / ReactorConstants.REWARD_PRECISION;
     }
 
     function _exclude(address account) internal {
