@@ -51,6 +51,9 @@ const flywheelAbi = parseAbi([
   "function usdcPot() view returns (uint256)",
   "function quoteAccrued(address) view returns (uint256)",
   `function settleQuote(address quote, ${hopTuple} hops, uint256 minOut) returns (uint256 usdcReceived)`,
+  `function previewSettleQuote(address quote, ${hopTuple} hops)`,
+  `function previewTop10Hops(address token, ${hopTuple} hops)`,
+  "error PreviewHops(uint256[] hopOuts, uint256 finalOut)",
   "function submitEpoch(uint256 epochId, address[] targets, uint256[] weights_)",
   `function executeTop10Buyback(address token, ${hopTuple} hops, uint256 minTargetOut) returns (uint256 targetBought)`,
   "function rollEpoch()",
@@ -64,6 +67,8 @@ const selfBurnAbi = parseAbi([
 const buybackAbi = parseAbi([
   "function accrued(address) view returns (uint256)",
   `function execute(address quote, ${hopTuple} hops, uint256 minOut) returns (uint256 coreBought)`,
+  `function previewExecuteHops(address quote, ${hopTuple} hops)`,
+  "error PreviewHops(uint256[] hopOuts, uint256 finalOut)",
 ]);
 const factoryAbi = parseAbi([
   "function allTokensLength() view returns (uint256)",
@@ -386,15 +391,76 @@ function hopsOrEmpty(tokenIn: `0x${string}`, tokenOut: `0x${string}`, edges: Mar
   return planned.hops.map((h) => ({ ...h, minOut: 1n }));
 }
 
-/** Last hop gets sim-derived minOut. Intermediate hops never ship 0/1. */
-export function stampProductionHops(hops: Hop[], finalMinOut: bigint): Hop[] {
-  if (finalMinOut <= 1n) throw new Error("production minOut must exceed dust");
+/** One simulated out per hop. Never reuse last-leg as an intermediate floor. */
+export function stampHopMinOuts(hops: Hop[], hopSimOuts: bigint[], slipBps = SLIP_BPS): Hop[] {
+  if (hops.length !== hopSimOuts.length) throw new Error("need one sim out per hop");
+  if (hops.length === 0) return hops;
+  const lastSim = hopSimOuts[hopSimOuts.length - 1]!;
   return hops.map((h, i) => {
-    if (i === hops.length - 1) return { ...h, minOut: finalMinOut };
-    // Intermediate tokens differ in decimals — fail closed unless a floor above dust is set.
-    if (h.minOut <= 1n) return { ...h, minOut: finalMinOut };
-    return h;
+    const minOut = conservativeMinOut(hopSimOuts[i]!, slipBps);
+    if (i < hops.length - 1 && hopSimOuts[i] === lastSim) {
+      throw new Error("intermediate hop sim equals last-leg — refuse last-leg reuse");
+    }
+    if (i < hops.length - 1 && minOut === conservativeMinOut(lastSim, slipBps) && hopSimOuts[i] !== lastSim) {
+      throw new Error("intermediate floor collapsed to last-leg");
+    }
+    return { ...h, minOut };
   });
+}
+
+/** Single-hop only. Multi-hop must call stampHopMinOuts with per-hop sims. */
+export function stampProductionHops(hops: Hop[], finalMinOut: bigint): Hop[] {
+  if (hops.length > 1) throw new Error("multi-hop requires stampHopMinOuts(per-hop sims)");
+  if (finalMinOut <= 1n) throw new Error("production minOut must exceed dust");
+  if (hops.length === 0) return hops;
+  return [{ ...hops[0]!, minOut: finalMinOut }];
+}
+
+async function previewAndStamp(
+  to: `0x${string}`,
+  abi: typeof flywheelAbi | typeof buybackAbi,
+  fn: "previewSettleQuote" | "previewTop10Hops" | "previewExecuteHops",
+  args: readonly unknown[],
+  account: `0x${string}`,
+  hops: Hop[],
+): Promise<Hop[] | null> {
+  try {
+    await client.simulateContract({
+      address: to,
+      abi,
+      functionName: fn,
+      args: args as never,
+      account,
+    });
+    return null;
+  } catch (e) {
+    const parsed = previewHopsFromError(e);
+    if (!parsed || parsed.hopOuts.length !== hops.length) return null;
+    if (parsed.hopOuts.some((o) => o <= 1n)) return null;
+    try {
+      return stampHopMinOuts(hops, parsed.hopOuts);
+    } catch {
+      return null;
+    }
+  }
+}
+
+function previewHopsFromError(e: unknown): { hopOuts: bigint[]; finalOut: bigint } | null {
+  const stack: unknown[] = [e];
+  while (stack.length) {
+    const cur = stack.pop();
+    if (!cur || typeof cur !== "object") continue;
+    const rec = cur as { errorName?: string; args?: unknown[]; data?: unknown; cause?: unknown };
+    if (rec.errorName === "PreviewHops" && Array.isArray(rec.args) && rec.args.length >= 2) {
+      return {
+        hopOuts: (rec.args[0] as bigint[]).map((x) => BigInt(x)),
+        finalOut: BigInt(rec.args[1] as bigint),
+      };
+    }
+    if (rec.data) stack.push(rec.data);
+    if (rec.cause) stack.push(rec.cause);
+  }
+  return null;
 }
 
 async function tick() {
@@ -541,13 +607,19 @@ async function tick() {
         writeBeat({ ok: false, reason: `no settle route ${q}: ${e}`, jobs });
         continue;
       }
+      let hops2 = hops;
+      if (hops.length > 0) {
+        const stamped = await previewAndStamp(flywheel, flywheelAbi, "previewSettleQuote", [q, hops], account.address, hops);
+        if (!stamped) continue;
+        hops2 = stamped;
+      }
       const probeMin = q.toLowerCase() === usdc.toLowerCase() ? acc : 1n;
       const sim = await client
         .simulateContract({
           address: flywheel,
           abi: flywheelAbi,
           functionName: "settleQuote",
-          args: [q, hops, probeMin],
+          args: [q, hops2, probeMin],
           account: account.address,
         })
         .catch(() => null);
@@ -559,7 +631,6 @@ async function tick() {
         continue;
       }
       if (minOut <= 1n && q.toLowerCase() !== usdc.toLowerCase()) continue;
-      const hops2 = stampProductionHops(hops, minOut);
       await run(
         `settle:${q.toLowerCase()}:${acc.toString()}`,
         flywheel,
@@ -583,12 +654,18 @@ async function tick() {
       } catch {
         continue;
       }
+      let hops2 = hops;
+      if (hops.length > 0) {
+        const stamped = await previewAndStamp(buyback, buybackAbi, "previewExecuteHops", [q, hops], account.address, hops);
+        if (!stamped) continue;
+        hops2 = stamped;
+      }
       const sim = await client
         .simulateContract({
           address: buyback,
           abi: buybackAbi,
           functionName: "execute",
-          args: [q, hops, 1n],
+          args: [q, hops2, 1n],
           account: account.address,
         })
         .catch(() => null);
@@ -599,7 +676,6 @@ async function tick() {
       } catch {
         continue;
       }
-      const hops2 = stampProductionHops(hops, minOut);
       await run(
         `core:${q.toLowerCase()}:${acc.toString()}`,
         buyback,
@@ -663,12 +739,25 @@ async function tick() {
             }
           }
         }
+        let hops2 = hops;
+        if (hops.length > 0) {
+          const stamped = await previewAndStamp(
+            flywheel,
+            flywheelAbi,
+            "previewTop10Hops",
+            [row.token as `0x${string}`, hops],
+            account.address,
+            hops,
+          );
+          if (!stamped) continue;
+          hops2 = stamped;
+        }
         const sim = await client
           .simulateContract({
             address: flywheel,
             abi: flywheelAbi,
             functionName: "executeTop10Buyback",
-            args: [row.token as `0x${string}`, hops, 1n],
+            args: [row.token as `0x${string}`, hops2, 1n],
             account: account.address,
           })
           .catch(() => null);
@@ -679,7 +768,6 @@ async function tick() {
         } catch {
           continue;
         }
-        const hops2 = stampProductionHops(hops, minOut);
         await run(
           `top10:${epoch.toString()}:${row.token.toLowerCase()}`,
           flywheel,
