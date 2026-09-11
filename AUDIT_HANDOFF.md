@@ -2,6 +2,10 @@
 
 **This software has not been audited.** Treat every contract as hostile-unreviewed. Do not deploy to Arc Mainnet (5042). No production claim. No Arc Public Testnet claim.
 
+**Protocol release:** `0.1.0` (`v0.1.0`, `docs/version.json`). **Factory version:** V1 (`FACTORY_VERSION = 1`) — immutable, not the protocol semver.
+
+**Documentation mandate:** any change to contracts, tokenomics, Factory, Guardian/Keeper, routing, launch admission, API, SDK, CORE, tickers, backend trust, or user-facing behavior must update the matching docs in the same commit. See `CONTRIBUTING.md` and `/docs/policy`. CI (`pnpm docs:check`) fails on drifted fees, 1B supply, 5% Dev Buy, 24h ticker lock, Factory labels, protocol version, or deployment tables. Never invent mainnet addresses.
+
 **This pass (final Grok security/ops patch):** public `buyPrefunded` deleted; router-only `buyRouted` with this-call custody; production Safe ≠ deployer; RoutePlanner discovers proven venues; sell `minQuoteOut` ≠ `minFinalOut`; fee preview on official-market quote notional; Keeper executes frozen onchain epoch targets; lastGoodFdvQuote accepts 3 historical samples. Architecture and tokenomics unchanged.
 
 ## Codex first task (attack, do not build)

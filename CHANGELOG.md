@@ -1,0 +1,37 @@
+# Changelog
+
+All **production** REACTOR protocol releases are listed here.  
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).  
+Versioning: [Semantic Versioning](https://semver.org/) for the **protocol release**. Factory versions are separate and immutable.
+
+- Protocol source of truth: `docs/version.json` (`protocolVersion`)
+- Git tag: `vMAJOR.MINOR.PATCH` (see [Versioning](docs/versioning.md) and `CONTRIBUTING.md`)
+- Factory **V1 stays V1 forever**. A new fee split or curve is Factory V2, not a protocol patch.
+
+This file is the current-release baseline. There was no changelog before protocol **0.1.0**.
+
+## [0.1.0] - 2026-09-11
+
+First explicit protocol semver. Pre-audit. **Local Anvil / testnet docs only. Not mainnet.**  
+Git tag: `v0.1.0`. Factory: **V1** (`FACTORY_VERSION = 1`).
+
+Tokenomics are **unchanged**: official 3.5% quote-side charge (2% holders / 1% Top-10 / 0.5% CORE), 1B / 18 supply, Dev Buy ≤5% token-out, 24h global ticker lock.
+
+### Added
+
+- Protocol release version (`docs/version.json`) with generated `/docs/versioning`, `/docs/deployments`, `/docs/changelog`
+- Documentation-mandatory policy (`CONTRIBUTING.md`, `/docs/policy`)
+- CI drift gate (`pnpm docs:check`) for fees, supply, Dev Buy, ticker lock, Factory label, protocol semver, and deployment tables
+- Permanent launch identity (prior commits): global `TickerRegistry`, EIP-712 `LaunchAuthorization`, immutable factory versions, `LaunchAdmission`
+- First-class `/docs` (traders / creators / builders)
+- Production indexer + quote API + consumer UI (prior commits)
+
+### Tokenomics
+
+- No change. Different split = new Factory version, not an edit to V1.
+
+### Known limits (honest)
+
+- Not audited. No public mainnet. Arc Public Testnet not claimed.
+- Top-10 ranks are an offchain API (trust assumption).
+- Committed `deployments/local.json` is a local placeholder dump; some post-identity keys are not in that dump until redeploy.

@@ -1,60 +1,47 @@
-# BUILD REPORT — Permanent launch identity + docs + production UI
+# BUILD REPORT — Protocol versioning, docs policy, CI drift
 
-**Status:** Continue on existing REACTOR Origin repo. Local Anvil 5042002 only.  
+**Status:** Continue on existing REACTOR Origin repo. Parent `b43ebc3`. Local Anvil 5042002 only.  
 **Not audited. Not mainnet. Arc Public Testnet not claimed.**  
-**Parent:** `71c87eb` (production stack pass). Economics / 3.5% / curve / Top-10 / Keeper routing **unchanged**.
+**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
 ## This HEAD
 
 | Item | Value |
 | --- | --- |
-| Branch | `cursor/launch-identity-docs-9632` |
-| Parent | `71c87eb` |
-| Intent | Global TickerRegistry + EIP-712 LaunchAuthorization + factory versioning + LaunchAdmission + first-class `/docs` + indexer/UI production fixes |
-| Solidity | Narrow: ticker / auth / factory versioning + CoreToken rename. No fee / curve / split / Top-10 change. |
-| Mainnet | **Blocked** pending Codex + audits + KMS/Safe rehearsal |
+| Branch | `cursor/docs-versioning-ci-ead6` |
+| Parent | `b43ebc3` |
+| Protocol release | **0.1.0** (`docs/version.json`, tag `v0.1.0`) |
+| Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
+| Intent | Davis docs/versioning/CI: mandatory docs, semver, changelog+tag, generated deployment tables, drift CI |
+| Solidity / tokenomics | **None** |
+| Mainnet | **Blocked** |
 
-## Major A — Permanent launch identity
+## What landed
 
-1. Global `TickerRegistry` (not inside a factory). Canonical ticker: uppercase A–Z0–9, max 10. Shared `Ticker.sol` / `packages/reactor/src/ticker.ts`.
-2. Successful launch → 24h global lock via `claimOnLaunch`. Failed/expired auth does not squat.
-3. Guardian `permanentlyLockTicker` one-way. Not an mcap oracle. Reserved: CORE, REACTOR, USDC, ZEC, WBTC, EURC.
-4. Immutable factory versions. Authorize/deprecate for **new** launches only. Version persisted on every token.
-5. Every launch (including USDC) requires EIP-712 `LaunchAuthorization`. Unique `authId`, digest replay, no serial quote nonce. Launch Signer ≠ Keeper ≠ Guardian Safe.
-6. `LaunchAdmissionService` ALLOW/CHALLENGE/DENY + Turnstile + NORMAL/ELEVATED/ATTACK. No KYC. Refundable bond **FUTURE only**. `GET /ticker/:ticker`. `@reactor/sdk`.
+1. **Docs are mandatory** for contracts, tokenomics, Factory, Guardian/Keeper, routing, admission, API, SDK, CORE, tickers, backend trust, and user-facing changes — `CONTRIBUTING.md`, `/docs/policy`, `AGENTS.md`, `AUDIT_HANDOFF.md`.
+2. **Protocol semver** source of truth: `docs/version.json`. Root `package.json` version must match. Factory V1 is a different, frozen number.
+3. **Generated** `/docs/versioning`, `/docs/deployments`, `/docs/changelog` via `pnpm docs:gen` from version + `deployments/registry.json` + `CHANGELOG.md` + `deployments/local.json`.
+4. **CI** (`pnpm docs:check`, `pnpm test:lib`, `.github/workflows/docs-sync.yml`) fails on drifted fees, 1B supply, 5% Dev Buy, 24h ticker lock, Factory labels, protocol version, stale generated pages, drifted deployment.json copies, or a fabricated mainnet (5042) address.
+5. **CHANGELOG.md** baseline for current HEAD as **0.1.0**. Tagging convention: annotated `vMAJOR.MINOR.PATCH`. Tag `v0.1.0` created for this release.
+6. Deployment tables record Factory version (when applicable), protocol release, address, chain, source tag, date, verification. Local Anvil rows are **placeholders**. Testnet **not claimed**. Mainnet **no addresses**.
 
-Contract tests §94–97 + auth §95.
+## How CI fails on drift
 
-## Major B — Production backend/UI
-
-Indexer: both OfficialPoolCreated forms; durable pool maps; `chainId+txHash+logIndex`; transactional migrations v1–v3; SQL `/markets` pagination; `price_quote_x18` for curve and v4; ValuationService nested multiply; RouteGraph proven edges; Postgres advisory lock via pinned client + lease table; SSE; R2/S3 path with local disk fallback; Safe genesis Batch A → Verify → Batch B; TestCORE → CoreToken (REACTOR CORE / CORE) tokenomics unchanged.
-
-UI: Ops off public nav; Docs in primary nav; launch ticker live status; Lightweight Charts; fixtures for Playwright/390.
-
-## Major C — Docs
-
-`/docs` shell: sidebar, search, TOC, callouts, copy. Source `docs/`. Audience paths Trader / Creator / Builder. Honest: never audited / never trustless. `llms.txt`. CI `constants-sync.test.ts`.
+```bash
+pnpm docs:check
+# examples that must exit 1:
+#  - change PROTOCOL_FEE_BPS copy in docs without the Solidity constant (or vice versa)
+#  - bump package.json version without docs/version.json
+#  - edit docs/deployments.md by hand
+#  - let apps/web/src/lib/deployment.json diverge from deployments/local.json
+#  - put a 0x address in the generated Arc Mainnet section
+```
 
 ## Tests
 
 | Suite | Result |
 | --- | --- |
-| `forge test` | **318 passed / 0 failed** (1 skipped) |
-| `pnpm --filter indexer test` | ok (keeper, persist, schema, quote-api, routes, valuation, prices, ticker) |
-| `tsx apps/web/src/lib/constants-sync.test.ts` | ok |
-| Playwright | **10 passed / 0 failed** (smoke + interactive, including `/docs`) |
-
-## Honest gaps
-
-- No live Arc Testnet in this environment (indexer `eth_blockNumber` to :8545 fails until Anvil is up).
-- No Docker/Postgres daemon here. SQLite is the local proof. `pg-smoke` not re-run.
-- R2/S3 is env-hooked; local disk fallback.
-- Refundable launch bond is **FUTURE** — not collected.
-- `LaunchPricing.sol` library remains unused (legacy). Factory uses `LaunchAuthorization`.
-- `seed-bonding.ts` still needs a full LaunchAuthorization re-sign to launch against a live Anvil.
-- Local tests set Launch Signer = pricing key. Guardian can rotate them apart. Production must.
-- Production accepts **verified** Arc v4 addresses only — none hardcoded.
-- Turnstile is skipped when `REACTOR_ENV=LOCAL` and no `TURNSTILE_SECRET`.
-- Mainnet (5042) remains disabled.
+| `pnpm docs:check` | required green for this pass |
+| Tokenomics / Foundry | not re-run for this docs-only change; last recorded 318 pass at `b43ebc3` |
 
 Mainnet blocked pending Codex + audits + KMS/Safe rehearsal.

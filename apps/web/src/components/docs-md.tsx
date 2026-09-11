@@ -27,6 +27,11 @@ export function DocsMarkdown({ source }: { source: string }) {
   let key = 0;
   while (i < lines.length) {
     const line = lines[i]!;
+    if (line.startsWith("<!--")) {
+      while (i < lines.length && !lines[i]!.includes("-->")) i += 1;
+      i += 1;
+      continue;
+    }
     if (line.startsWith("```")) {
       const lang = line.slice(3).trim();
       const buf: string[] = [];

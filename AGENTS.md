@@ -38,6 +38,10 @@ See `README.md`. Foundry 1.8+, Node 22+, `pnpm`.
 
 Re-run `test/unit/HookFees.t.sol`, `test/attack/*`, and the CREATE2 bit test. Recalculate hook flags if you add a callback. Mine a new salt.
 
-## Docs
+## Docs (mandatory, same commit / same run)
 
-If you change fees, exclusions, launch modes, or addresses, update `ECONOMICS.md`, `DECISIONS.md`, `AUDIT_HANDOFF.md`, and `BUILD_REPORT.md` in the same change.
+Documentation is required for every change to contracts, tokenomics, Factory behavior, Guardian/Keeper powers, routing, launch admission, API behavior, SDK interfaces, CORE, ticker rules, backend trust assumptions, or user-facing behavior. See `CONTRIBUTING.md` and `/docs/policy`.
+
+Also update `AUDIT_HANDOFF.md` and `BUILD_REPORT.md` when the auditor-facing or shipped surface moved.
+
+Protocol semver lives in `docs/version.json`. Factory `FACTORY_VERSION` is a different, immutable number (V1 stays V1). After version or deployment-registry edits: `pnpm docs:gen` and `pnpm docs:check`. CI must fail on drift (fees, 1B supply, 5% Dev Buy, 24h ticker lock, Factory label, protocol version, deployment tables). Never invent mainnet addresses.

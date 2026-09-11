@@ -4,6 +4,8 @@ REACTOR is a token launchpad for **Arc**. Creators launch a market that pays hol
 
 This software is **not audited**. There is **no public mainnet**. Local and test use only.
 
+Protocol release **0.1.0**. Factory **V1** (immutable). See [versioning](/docs/versioning).
+
 ## Paths
 
 | Audience | Start here |
