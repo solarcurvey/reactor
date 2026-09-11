@@ -103,7 +103,7 @@ contract CurveTest is Base {
         assertEq(ReactorToken(token).lifetimeRewards(), 0);
         assertGt(selfBurn.accrued(token), 0);
         uint256 supply = ReactorToken(token).totalSupply();
-        selfBurn.execute(token);
+        _keeperSelfBurn(token);
         assertLt(ReactorToken(token).totalSupply(), supply);
         assertGt(selfBurn.lifetimeBurned(), 0);
     }
@@ -117,7 +117,7 @@ contract CurveTest is Base {
         uint256 acc = selfBurn.accrued(token);
         assertGt(acc, 0);
         uint256 supply = ReactorToken(token).totalSupply();
-        selfBurn.execute(token);
+        _keeperSelfBurn(token);
         assertLt(ReactorToken(token).totalSupply(), supply);
     }
 
@@ -197,12 +197,14 @@ contract CurveTest is Base {
     function test_ungraduatedNotTop10() public {
         (address token,) = factory.instantLaunch(_params("U", "U", address(usdc), 0));
         _buy(alice, token, address(usdc), 2_000e6);
-        assertFalse(oracle.qualifiesTop10(token));
-        (uint256 mcap, bool ok) = oracle.twapMcapUsdc(token);
-        assertFalse(ok);
-        assertEq(mcap, 0);
+        assertFalse(factory.isGraduatedReactor(token));
+        address[] memory t = new address[](1);
+        uint256[] memory w = new uint256[](1);
+        t[0] = token;
+        w[0] = 10_000;
+        vm.prank(keeper);
         vm.expectRevert();
-        oracle.record(token);
+        flywheel.submitEpoch(0, t, w);
     }
 
     function test_usdcHopMinOut() public {

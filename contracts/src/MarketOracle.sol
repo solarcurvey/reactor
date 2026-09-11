@@ -13,7 +13,7 @@ import {QuoteAssetRegistry} from "./QuoteAssetRegistry.sol";
 import {QuoteMath} from "./libraries/QuoteMath.sol";
 import {ReactorConstants} from "./ReactorConstants.sol";
 
-/// @notice Permissionless spot samples. Top-10 requires a USDC-safe path; Instant FDV is never a rank input.
+/// @notice RETIRED. V1 Top-10 ranks are offchain (REACTOR API). Do not wire this contract.
 contract MarketOracle {
     using StateLibrary for IPoolManager;
 

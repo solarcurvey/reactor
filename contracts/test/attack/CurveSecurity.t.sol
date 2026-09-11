@@ -47,7 +47,7 @@ contract CurveSecurityTest is Base {
         _buy(alice, token, address(usdc), 500e6);
         uint256 acc = selfBurn.accrued(token);
         uint256 aliceTok = ReactorToken(token).balanceOf(alice);
-        selfBurn.execute(token);
+        _keeperSelfBurn(token);
         assertEq(ReactorToken(token).balanceOf(alice), aliceTok);
         assertLe(selfBurn.accrued(token), acc);
         assertEq(ReactorToken(token).balanceOf(address(this)), 0);

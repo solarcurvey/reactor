@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-/// @notice Curated quote allowlist. Admin cannot custody funds or change protocol fees.
+import {ReactorGuardian} from "./ReactorGuardian.sol";
+
+/// @notice External quotes are Guardian-curated. Graduated REACTOR tokens register as native quotes
+///         without a per-token Guardian action. Guardian may quarantine any quote.
 contract QuoteAssetRegistry {
     enum Category {
         Crypto,
@@ -9,7 +12,8 @@ contract QuoteAssetRegistry {
         Commodities,
         FX,
         Stablecoins,
-        ArcEcosystem
+        ArcEcosystem,
+        ReactorNative
     }
 
     struct QuoteAsset {
@@ -25,45 +29,52 @@ contract QuoteAssetRegistry {
         bool rewardsEnabled;
         bool buybackRouteEnabled;
         bool hopViaUsdc;
+        bool reactorNative;
     }
 
-    address public admin;
+    ReactorGuardian public immutable auth;
     address public usdc;
+    address public factory;
     mapping(address => QuoteAsset) public assets;
     address[] public list;
 
-    event AdminTransferred(address indexed previous, address indexed next);
-    event QuoteRegistered(address indexed token, string symbol, Category category);
+    event QuoteRegistered(address indexed token, string symbol, Category category, bool reactorNative);
     event QuoteUpdated(address indexed token, bool enabled);
     event BuybackRouteSet(address indexed token, bool enabled, bool hopViaUsdc);
     event UsdcSet(address indexed usdc);
+    event FactoryBound(address factory);
 
-    error NotAdmin();
+    error NotGuardian();
+    error NotFactory();
     error AlreadyRegistered();
     error UnknownQuote();
     error BadUsdc();
+    error AlreadyBound();
 
-    modifier onlyAdmin() {
-        if (msg.sender != admin) revert NotAdmin();
+    modifier onlyGuardian() {
+        if (msg.sender != auth.guardian()) revert NotGuardian();
         _;
     }
 
-    constructor(address admin_) {
-        admin = admin_ == address(0) ? msg.sender : admin_;
+    constructor(ReactorGuardian auth_) {
+        auth = auth_;
     }
 
-    function transferAdmin(address next) external onlyAdmin {
-        emit AdminTransferred(admin, next);
-        admin = next;
+    function bindFactory(address factory_) external {
+        if (factory != address(0)) revert AlreadyBound();
+        if (factory_ == address(0)) revert NotFactory();
+        factory = factory_;
+        emit FactoryBound(factory_);
     }
 
-    function setUsdc(address usdc_) external onlyAdmin {
+    function setUsdc(address usdc_) external onlyGuardian {
         if (usdc_ == address(0)) revert BadUsdc();
         if (usdc != address(0) && usdc != usdc_) revert BadUsdc();
         usdc = usdc_;
         emit UsdcSet(usdc_);
     }
 
+    /// @notice Guardian adds an EXTERNAL quote. Cannot invent a REACTOR-native quote here.
     function register(
         address token,
         string calldata symbol,
@@ -72,8 +83,9 @@ contract QuoteAssetRegistry {
         string calldata icon,
         Category category,
         address usdOracle
-    ) external onlyAdmin {
+    ) external onlyGuardian {
         if (assets[token].exists) revert AlreadyRegistered();
+        if (category == Category.ReactorNative) revert NotGuardian();
         assets[token] = QuoteAsset({
             token: token,
             symbol: symbol,
@@ -86,27 +98,51 @@ contract QuoteAssetRegistry {
             exists: true,
             rewardsEnabled: true,
             buybackRouteEnabled: false,
-            hopViaUsdc: false
+            hopViaUsdc: false,
+            reactorNative: false
         });
         list.push(token);
-        emit QuoteRegistered(token, symbol, category);
+        emit QuoteRegistered(token, symbol, category, false);
     }
 
-    function setEnabled(address token, bool enabled) external onlyAdmin {
+    /// @notice Factory-only. Graduated REACTOR tokens become quotes without Guardian.
+    function registerNative(address token, string calldata symbol, string calldata name, uint8 decimals) external {
+        if (msg.sender != factory) revert NotFactory();
+        if (assets[token].exists) revert AlreadyRegistered();
+        assets[token] = QuoteAsset({
+            token: token,
+            symbol: symbol,
+            name: name,
+            decimals: decimals,
+            icon: "",
+            category: Category.ReactorNative,
+            usdOracle: address(0),
+            enabled: true,
+            exists: true,
+            rewardsEnabled: true,
+            buybackRouteEnabled: true,
+            hopViaUsdc: true,
+            reactorNative: true
+        });
+        list.push(token);
+        emit QuoteRegistered(token, symbol, Category.ReactorNative, true);
+    }
+
+    function setEnabled(address token, bool enabled) external onlyGuardian {
         if (!assets[token].exists) revert UnknownQuote();
         assets[token].enabled = enabled;
         emit QuoteUpdated(token, enabled);
     }
 
-    function setMeta(address token, string calldata icon, address usdOracle) external onlyAdmin {
+    function setIcon(address token, string calldata icon) external onlyGuardian {
         if (!assets[token].exists) revert UnknownQuote();
         assets[token].icon = icon;
-        assets[token].usdOracle = usdOracle;
         emit QuoteUpdated(token, assets[token].enabled);
     }
 
-    function setBuybackRoute(address token, bool enabled, bool hopViaUsdc_) external onlyAdmin {
+    function setBuybackRoute(address token, bool enabled, bool hopViaUsdc_) external onlyGuardian {
         if (!assets[token].exists) revert UnknownQuote();
+        if (assets[token].reactorNative) revert NotGuardian();
         assets[token].buybackRouteEnabled = enabled;
         assets[token].hopViaUsdc = hopViaUsdc_;
         emit BuybackRouteSet(token, enabled, hopViaUsdc_);
@@ -116,10 +152,15 @@ contract QuoteAssetRegistry {
         return assets[token].exists && assets[token].enabled;
     }
 
-    /// @notice V1 launches only against quotes that already have an approved buyback route.
     function canLaunch(address token) public view returns (bool) {
         QuoteAsset storage a = assets[token];
-        return a.exists && a.enabled && a.rewardsEnabled && a.buybackRouteEnabled;
+        if (!a.exists || !a.enabled || !a.rewardsEnabled) return false;
+        if (a.reactorNative) return true;
+        return a.buybackRouteEnabled;
+    }
+
+    function isReactorNative(address token) external view returns (bool) {
+        return assets[token].reactorNative && assets[token].enabled;
     }
 
     function count() external view returns (uint256) {

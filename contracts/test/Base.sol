@@ -15,8 +15,6 @@ import {ReactorRouter} from "../src/ReactorRouter.sol";
 import {ReactorLiquidityVault} from "../src/ReactorLiquidityVault.sol";
 import {BuybackVault} from "../src/BuybackVault.sol";
 import {FlywheelVault} from "../src/FlywheelVault.sol";
-import {MarketOracle} from "../src/MarketOracle.sol";
-import {KeeperReserve} from "../src/KeeperReserve.sol";
 import {IFeeSink} from "../src/interfaces/IFeeSink.sol";
 import {QuoteAssetRegistry} from "../src/QuoteAssetRegistry.sol";
 import {TestCORE} from "../src/TestCORE.sol";
@@ -29,6 +27,11 @@ import {LiquidityAmounts} from "../src/libraries/LiquidityAmounts.sol";
 import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
 import {InstantCurve, IInstantFactory} from "../src/InstantCurve.sol";
 import {SelfBurnVault} from "../src/SelfBurnVault.sol";
+import {ReactorGuardian} from "../src/ReactorGuardian.sol";
+import {UniswapV4Adapter} from "../src/adapters/UniswapV4Adapter.sol";
+import {RoutingRegistry} from "../src/RoutingRegistry.sol";
+import {RouteGuard} from "../src/libraries/RouteGuard.sol";
+import {IReactorSwapper} from "../src/interfaces/IReactorSwapper.sol";
 
 contract Base is Test {
     using StateLibrary for PoolManager;
@@ -44,12 +47,15 @@ contract Base is Test {
     ReactorHook public hook;
     BuybackVault public buyback;
     FlywheelVault public flywheel;
-    MarketOracle public oracle;
-    KeeperReserve public keepers;
     ReactorFactory public factory;
     InstantCurve public curve;
     SelfBurnVault public selfBurn;
+    ReactorGuardian public auth;
+    UniswapV4Adapter public v4Adapter;
+    RoutingRegistry public routes;
 
+    address public guardian;
+    address public keeper;
     address public alice = makeAddr("alice");
     address public bob = makeAddr("bob");
     address public carol = makeAddr("carol");
@@ -59,8 +65,12 @@ contract Base is Test {
     PoolKey internal btcUsdcKey;
 
     function setUp() public virtual {
+        guardian = address(this);
+        keeper = makeAddr("keeper");
+        auth = new ReactorGuardian(guardian, keeper);
+
         pm = new PoolManager(address(this));
-        registry = new QuoteAssetRegistry(address(this));
+        registry = new QuoteAssetRegistry(auth);
         core = new TestCORE(1_000_000_000 ether, address(this));
         usdc = new MockERC20("USD Coin", "USDC", 6, 0, address(this));
         zec = new MockERC20("Mock ZEC", "ZEC", 8, 0, address(this));
@@ -89,17 +99,21 @@ contract Base is Test {
 
         vault = new ReactorLiquidityVault(pm);
         router = new ReactorRouter(pm);
+        v4Adapter = new UniswapV4Adapter(IReactorSwapper(address(router)));
+        routes = new RoutingRegistry(auth);
+        auth.setAdapter(address(v4Adapter), true);
 
         uint160 flags = uint160(
             Hooks.BEFORE_INITIALIZE_FLAG | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG
                 | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG
         );
-        bytes memory ctor = abi.encode(pm, registry, address(core), address(vault), address(this));
+        bytes memory ctor = abi.encode(pm, registry, address(core), address(vault), address(this), auth);
         (address hookAddr, bytes32 salt) = HookMiner.find(address(this), flags, type(ReactorHook).creationCode, ctor);
-        hook = new ReactorHook{salt: salt}(pm, registry, address(core), address(vault), address(this));
+        hook = new ReactorHook{salt: salt}(pm, registry, address(core), address(vault), address(this), auth);
         require(address(hook) == hookAddr, "hook salt");
 
         buyback = new BuybackVault(
+            auth,
             address(core),
             address(hook),
             address(usdc),
@@ -109,34 +123,29 @@ contract Base is Test {
             ReactorConstants.DEFAULT_BUYBACK_THRESHOLD
         );
         hook.bindBuyback(buyback);
-        flywheel = new FlywheelVault(address(hook), address(usdc), address(core), pm, address(router));
+        flywheel = new FlywheelVault(auth, address(hook), address(usdc), address(core), pm, address(router));
         hook.bindFlywheel(IFeeSink(address(flywheel)));
-        keepers = new KeeperReserve(address(usdc), address(this));
-        keepers.setCaller(address(flywheel), true);
-        keepers.setCaller(address(buyback), true);
 
-        factory = new ReactorFactory(pm, hook, router, vault, registry, address(core));
+        factory = new ReactorFactory(pm, hook, router, vault, registry, address(core), auth);
         hook.bindFactory(address(factory));
         vault.bindFactory(address(factory));
-        oracle = new MarketOracle(pm, hook, registry, address(usdc), address(core));
-        flywheel.bind(factory, oracle, keepers);
+        registry.bindFactory(address(factory));
+        flywheel.bind(factory);
+        buyback.bindFactory(address(factory));
 
-        curve = new InstantCurve(IInstantFactory(address(factory)), hook, router, vault, registry, pm);
-        selfBurn = new SelfBurnVault(address(factory), address(hook), curve, router);
-        factory.bindCurve(curve, selfBurn, keepers);
+        curve = new InstantCurve(IInstantFactory(address(factory)), hook, router, vault, registry, pm, auth);
+        selfBurn = new SelfBurnVault(auth, address(factory), address(hook), curve, router);
+        factory.bindCurve(curve, selfBurn);
         hook.bindCurve(address(curve));
         hook.bindSelfBurn(address(selfBurn));
-        buyback.setCurve(address(curve));
         router.setProtocolVault(address(selfBurn), true);
         router.setProtocolVault(address(flywheel), true);
         router.setProtocolVault(address(buyback), true);
-        keepers.setCaller(address(curve), true);
+        router.sealProtocolVaults();
 
         _seedCorePool();
         _seedHop(address(zec), 100_000e8, 5_000_000e6, zecUsdcKey);
         _seedHop(address(btc), 100e8, 6_000_000e6, btcUsdcKey);
-        buyback.configureHopRoute(address(zec), zecUsdcKey);
-        buyback.configureHopRoute(address(btc), btcUsdcKey);
     }
 
     function _seedCorePool() internal {
@@ -160,7 +169,6 @@ contract Base is Test {
             address(core) < address(usdc) ? coreAmt : usdcAmt,
             address(core) < address(usdc) ? usdcAmt : coreAmt
         );
-        buyback.configureCoreRoute(coreKey);
     }
 
     function _seedHop(address quote, uint256 quoteAmt, uint256 usdcAmt, PoolKey storage key) internal {
@@ -196,6 +204,66 @@ contract Base is Test {
         returns (uint160 sqrtP, int24 tick, uint24 protocolFee, uint24 lpFee)
     {
         (sqrtP, tick, protocolFee, lpFee) = pm.getSlot0(key.toId());
+    }
+
+    function _hop(address tokenIn, address tokenOut, PoolKey memory key)
+        internal
+        view
+        returns (RouteGuard.Hop[] memory hops)
+    {
+        hops = new RouteGuard.Hop[](1);
+        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: tokenIn, tokenOut: tokenOut, data: abi.encode(key)});
+    }
+
+    function _twoHops(address a, address b, PoolKey memory keyAb, address c, PoolKey memory keyBc)
+        internal
+        view
+        returns (RouteGuard.Hop[] memory hops)
+    {
+        hops = new RouteGuard.Hop[](2);
+        hops[0] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: a, tokenOut: b, data: abi.encode(keyAb)});
+        hops[1] = RouteGuard.Hop({adapter: address(v4Adapter), tokenIn: b, tokenOut: c, data: abi.encode(keyBc)});
+    }
+
+    function _emptyHops() internal pure returns (RouteGuard.Hop[] memory hops) {
+        hops = new RouteGuard.Hop[](0);
+    }
+
+    function _keeperSettle(address quote) internal {
+        vm.prank(keeper);
+        if (quote == address(usdc)) {
+            flywheel.settleQuote(quote, _emptyHops(), 0);
+        } else if (quote == address(zec)) {
+            flywheel.settleQuote(quote, _hop(address(zec), address(usdc), zecUsdcKey), 1);
+        } else {
+            flywheel.settleQuote(quote, _hop(quote, address(usdc), btcUsdcKey), 1);
+        }
+    }
+
+    function _keeperCore(address quote) internal {
+        vm.prank(keeper);
+        if (quote == address(usdc)) {
+            buyback.execute(quote, _hop(address(usdc), address(core), coreKey), 1);
+        } else if (quote == address(zec)) {
+            buyback.execute(quote, _twoHops(address(zec), address(usdc), zecUsdcKey, address(core), coreKey), 1);
+        } else {
+            buyback.execute(quote, _twoHops(quote, address(usdc), btcUsdcKey, address(core), coreKey), 1);
+        }
+    }
+
+    function _keeperSelfBurn(address token) internal {
+        vm.prank(keeper);
+        selfBurn.execute(token);
+    }
+
+    function _submitTop10(address token) internal {
+        address[] memory t = new address[](1);
+        uint256[] memory w = new uint256[](1);
+        t[0] = token;
+        w[0] = 10_000;
+        uint256 epochId = flywheel.epoch();
+        vm.prank(keeper);
+        flywheel.submitEpoch(epochId, t, w);
     }
 
     function _instantZcat(uint256 fdv) internal returns (address token) {
@@ -302,5 +370,6 @@ contract Base is Test {
 interface IERC20Like {
     function approve(address, uint256) external returns (bool);
     function balanceOf(address) external view returns (uint256);
-    function transfer(address, uint256) external returns (bool);
+    function transfer(address, address) external returns (bool);
 }
+

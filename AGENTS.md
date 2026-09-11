@@ -12,6 +12,8 @@ Instructions for humans and coding agents working in this repo.
 - Rewards are O(1), no staking, persist across transfers.
 - Fair auction has **0%** REACTOR charge; 3.5% starts after one migration.
 - Liquidity vault cannot withdraw. No upgrade backdoor.
+- Exactly one privileged security authority: immutable **Guardian**. Designated **Keeper** for all maintenance. No permissionless keepers, bounties, KeeperReserve, or onchain TWAP/Pyth Top-10.
+- Top-10 ranks are offchain API; contracts check structure only. Do not claim a trustless oracle.
 - Do not deploy to Arc Mainnet (5042).
 - Do not claim the product is audited.
 - Do not use Marvel / Iron Man / “Arc Reactor” branding or proprietary launchpad copy.

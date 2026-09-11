@@ -2,7 +2,7 @@
 
 **This software has not been audited.** Treat every contract as hostile-unreviewed. Do not deploy to Arc Mainnet.
 
-**This pass:** Instant is bonding curve → v4 graduation (not single-sided v4 from t1). `forge test` **102 passed / 0 failed / 1 skipped** after the curve amendment. **Arc Public Testnet was not deployed.**
+**This pass:** Guardian + designated Keeper. No permissionless keepers, bounties, or onchain TWAP Top-10. Instant bonding is preserved. **Arc Public Testnet was not deployed.**
 
 ## Overview
 
@@ -20,12 +20,12 @@ REACTOR launches ERC-20s into Official REACTOR Pools: Uniswap v4 pools with `fee
 | `ReactorToken` | `contracts/src/ReactorToken.sol` | ERC-20 + O(1) rewards |
 | `ReactorRouter` | `contracts/src/ReactorRouter.sol` | Unlock swaps / liquidity |
 | `ReactorLiquidityVault` | `contracts/src/ReactorLiquidityVault.sol` | Lock-only LP owner |
-| `BuybackVault` | `contracts/src/BuybackVault.sol` | Isolated 0.5% CORE pot; `execute` / `executeCoreBuyback` |
-| `FlywheelVault` | `contracts/src/FlywheelVault.sol` | Isolated 1% Top-10 pot; finalize / buy+burn |
-| `MarketOracle` | `contracts/src/MarketOracle.sol` | Permissionless samples; n≥2 TWAP; CORE ineligible |
-| `KeeperReserve` | `contracts/src/KeeperReserve.sol` | Isolated USDC bounties; `paid[op]` once |
-| `RoutingRegistry` | `contracts/src/RoutingRegistry.sol` | Owner routes; USDC hops must be hookless |
-| `QuoteAssetRegistry` | `contracts/src/QuoteAssetRegistry.sol` | Curated quotes |
+| `ReactorGuardian` | `contracts/src/ReactorGuardian.sol` | Immutable Guardian; replaceable Keeper; pauses; adapters |
+| `BuybackVault` | `contracts/src/BuybackVault.sol` | Isolated 0.5% CORE pot; Keeper + approved adapters |
+| `FlywheelVault` | `contracts/src/FlywheelVault.sol` | Isolated 1% Top-10 pot; Keeper submitEpoch / buy+burn |
+| `UniswapV4Adapter` | `contracts/src/adapters/UniswapV4Adapter.sol` | Reviewed v4 hop |
+| `RoutingRegistry` | `contracts/src/RoutingRegistry.sol` | View over Guardian-approved adapters |
+| `QuoteAssetRegistry` | `contracts/src/QuoteAssetRegistry.sol` | External quotes Guardian-curated; native from graduation |
 | `TestCORE` | `contracts/src/TestCORE.sol` | Platform token, mint once |
 | `MockERC20` | `contracts/src/MockERC20.sol` | Test quotes (open mint) |
 | `PoolManager` | Uniswap v4-core | BUSL-1.1, non-production |
@@ -63,7 +63,7 @@ Fee claims are minted as ERC-6909 on the hook during the swap (PM may not yet ho
 
 Rewards: magnified DPS `MAG = 2**128` with per-account `magnifiedDividendCorrections`. Leftover magnified remainder `% eligibleSupply` is never allocated twice. No `outstanding <= backing + 1` slack.
 
-Top-10: `finalizeEpoch` sorts qualifying TWAP mcap desc, fills at most 10 slots, snapshots `epochPot`. Second finalize no-ops. `executeTop10Buyback` marks `bought` before the swap. CORE is skipped. `#11` is not ranked.
+Top-10: REACTOR API ranks offchain. Keeper `submitEpoch` checks structure only (graduated, not CORE, no dupes, ≤10, weights sum 100% if ≥1). Second submit reverts. `executeTop10Buyback` marks `bought` before the swap. See `KEEPER_MODEL.md`.
 
 ## Lock
 
@@ -71,7 +71,7 @@ Top-10: `finalizeEpoch` sorts qualifying TWAP mcap desc, fills at most 10 slots,
 
 ## Buyback
 
-`core` is immutable. Route is a hookless CORE/quote pool set once by the deployer. Wrong-quote `execute` is a no-op (pending). `minCoreOut` + deadline + nonReentrant. CORE is burned to `0xdead`.
+`core` is immutable. Designated Keeper routes quote→CORE via approved adapters (≤3 hops). `minOut` is operational. CORE is burned. See `KEEPER_MODEL.md`.
 
 ## Privileges
 

@@ -11,9 +11,11 @@ import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {Currency} from "v4-core/types/Currency.sol";
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
 import {ReactorConstants} from "./ReactorConstants.sol";
+import {ReactorGuardian} from "./ReactorGuardian.sol";
 
-/// @notice Standard-mode 2% pot. Market-buys the launch token and burns it. Fee-exempt executor.
+/// @notice Standard-mode 2% pot. Designated Keeper market-buys and burns. Fee-exempt executor.
 contract SelfBurnVault {
+    ReactorGuardian public immutable auth;
     address public immutable hook;
     address public immutable factory;
     InstantCurve public immutable curve;
@@ -38,7 +40,8 @@ contract SelfBurnVault {
         lock = 0;
     }
 
-    constructor(address factory_, address hook_, InstantCurve curve_, ReactorRouter router_) {
+    constructor(ReactorGuardian auth_, address factory_, address hook_, InstantCurve curve_, ReactorRouter router_) {
+        auth = auth_;
         factory = factory_;
         hook = hook_;
         curve = curve_;
@@ -55,6 +58,7 @@ contract SelfBurnVault {
     }
 
     function execute(address token) external nonReentrant {
+        auth.requireKeeper(msg.sender);
         uint256 amt = accrued[token];
         address quote = quoteOf[token];
         if (quote == address(0) || amt == 0) return;

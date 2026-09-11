@@ -19,6 +19,7 @@ import {IERC20MinimalExt} from "./interfaces/IERC20MinimalExt.sol";
 import {BuybackVault} from "./BuybackVault.sol";
 import {IFeeSink} from "./interfaces/IFeeSink.sol";
 import {ReactorRouter} from "./ReactorRouter.sol";
+import {ReactorGuardian} from "./ReactorGuardian.sol";
 
 interface IFactoryView {
     function router() external view returns (ReactorRouter);
@@ -42,7 +43,8 @@ contract ReactorHook is IHooks, IUnlockCallback {
     ISelfBurnSink public selfBurn;
     address public factory;
     address public curve;
-    address public immutable owner;
+    address public immutable bootstrap;
+    ReactorGuardian public immutable auth;
 
     struct OfficialMarket {
         address token;
@@ -88,13 +90,15 @@ contract ReactorHook is IHooks, IUnlockCallback {
         QuoteAssetRegistry registry_,
         address core_,
         address liquidityVault_,
-        address owner_
+        address bootstrap_,
+        ReactorGuardian auth_
     ) {
         poolManager = manager_;
         registry = registry_;
         core = core_;
         liquidityVault = liquidityVault_;
-        owner = owner_ == address(0) ? msg.sender : owner_;
+        bootstrap = bootstrap_ == address(0) ? msg.sender : bootstrap_;
+        auth = auth_;
         Hooks.validateHookPermissions(
             this,
             Hooks.Permissions({
@@ -117,35 +121,35 @@ contract ReactorHook is IHooks, IUnlockCallback {
     }
 
     function bindFactory(address factory_) external {
-        if (msg.sender != owner) revert NotOwner();
+        if (msg.sender != bootstrap) revert NotOwner();
         if (factory != address(0)) revert AlreadyBound();
         if (factory_ == address(0)) revert NotFactory();
         factory = factory_;
     }
 
     function bindBuyback(BuybackVault vault_) external {
-        if (msg.sender != owner) revert NotOwner();
+        if (msg.sender != bootstrap) revert NotOwner();
         if (address(buybackVault) != address(0)) revert AlreadyBound();
         if (address(vault_) == address(0)) revert NotFactory();
         buybackVault = vault_;
     }
 
     function bindFlywheel(IFeeSink vault_) external {
-        if (msg.sender != owner) revert NotOwner();
+        if (msg.sender != bootstrap) revert NotOwner();
         if (address(flywheelVault) != address(0)) revert AlreadyBound();
         if (address(vault_) == address(0)) revert NotFactory();
         flywheelVault = vault_;
     }
 
     function bindCurve(address curve_) external {
-        if (msg.sender != owner) revert NotOwner();
+        if (msg.sender != bootstrap) revert NotOwner();
         if (curve != address(0)) revert AlreadyBound();
         if (curve_ == address(0)) revert NotFactory();
         curve = curve_;
     }
 
     function bindSelfBurn(address vault_) external {
-        if (msg.sender != owner) revert NotOwner();
+        if (msg.sender != bootstrap) revert NotOwner();
         if (address(selfBurn) != address(0)) revert AlreadyBound();
         if (vault_ == address(0)) revert NotFactory();
         selfBurn = ISelfBurnSink(vault_);
@@ -203,6 +207,7 @@ contract ReactorHook is IHooks, IUnlockCallback {
         onlyPoolManager
         returns (bytes4, BeforeSwapDelta, uint24)
     {
+        auth.requireTradingOpen();
         OfficialMarket memory m = official[key.toId()];
         if (!m.exists) {
             return (IHooks.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);

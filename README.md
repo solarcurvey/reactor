@@ -3,7 +3,7 @@
 **Launch. Reflect. Burn.**  
 **Choose what your token earns.** Launch markets that pay holders in the quote you pick.
 
-Permissionless token launchpad for **Arc**. Official REACTOR pools are Uniswap v4 markets with a **0% LP fee** and a **3.5% quote-side protocol charge** (2% holders / 1% Top-10 flywheel / 0.5% CORE buy+burn). Built on Arc.
+Token launchpad for **Arc**. Official REACTOR pools are Uniswap v4 markets with a **0% LP fee** and a **3.5% quote-side protocol charge** (2% holders / 1% Top-10 flywheel / 0.5% CORE buy+burn). Maintenance is a designated Keeper. The only security authority is an immutable Guardian. Built on Arc.
 
 > This repository is **not audited**. Do not deploy to Arc Mainnet (chain 5042).
 
@@ -37,8 +37,8 @@ Addresses land in `deployments/local.json` after the demo script.
 1. **Choose a quote** — Instant is a **bonding curve → locked v4 graduation** (creator picks image/name/ticker/description/quote/Standard vs Rewards/optional Dev Buy only). Or **Batch Fair Launch** (pro-rata timed sale → migrate). Not Uniswap CCA.
 2. Trade **exact-in** on the Official REACTOR Pool. The UI simulates, applies slippage, and submits a **nonzero minOut**. Incomplete fills revert.
 3. Claim holder rewards in the quote asset — no staking.
-4. Permissionless CORE buyback (`execute` / `executeCoreBuyback`). Callers cannot set minOut.
-5. THE REACTOR (`/reactor`) — 1% Top-10 flywheel. TWAP mcap floor $250k. CORE never ranks.
+4. Designated Keeper settles flywheel quote→USDC, submits Top-10 epochs, and runs CORE / SelfBurn buy+burn through approved adapters.
+5. THE REACTOR (`/reactor`) — 1% Top-10. API ranks (~5 min, operational $250k floor). Contracts check structure only. CORE never ranks. Not a trustless oracle.
 6. Transfer launch tokens with **zero tax**; rewards persist.
 
 ## Network
@@ -57,6 +57,8 @@ We **do not claim Arc Testnet success** unless transactions appear on [testnet.a
 | File | Contents |
 | --- | --- |
 | `CURVE_DESIGN.md` | Frozen Instant bonding constants and sim |
+| `GUARDIAN_MODEL.md` | Only privileged security authority |
+| `KEEPER_MODEL.md` | Designated Keeper, routing, Top-10 trust |
 | `PROJECT.md` | Product scope |
 | `ARCHITECTURE.md` | Modules and trust boundaries |
 | `ECONOMICS.md` | Immutable 2 / 1 / 0.5 split, flywheel, eligibility |

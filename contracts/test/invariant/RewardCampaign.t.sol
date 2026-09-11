@@ -6,6 +6,7 @@ import {Base, IERC20Like} from "../Base.sol";
 import {ReactorToken} from "../../src/ReactorToken.sol";
 import {ReactorFactory} from "../../src/ReactorFactory.sol";
 import {ReactorConstants} from "../../src/ReactorConstants.sol";
+import {RouteGuard} from "../../src/libraries/RouteGuard.sol";
 
 /// @notice Handler for stateful Foundry invariant campaigns (not a unit test).
 contract RewardHandler {
@@ -112,7 +113,8 @@ contract RewardHandler {
 
     function buybackExec(uint256 which) external {
         address q = which % 2 == 0 ? address(b.usdc()) : address(b.zec());
-        try b.buyback().execute(q) {} catch {}
+        RouteGuard.Hop[] memory hops;
+        try b.buyback().execute(q, hops, 1) {} catch {}
     }
 
     function tokensLength() external view returns (uint256) {
