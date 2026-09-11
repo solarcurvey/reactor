@@ -14,12 +14,13 @@ forge test --match-path test/attack/* -vv
 forge test --match-path test/integration/* -vv
 ```
 
-Web ranker / market-data / keeper / valuation (no RPC):
+Web ranker / market-data / keeper / valuation / indexer schema (no RPC):
 
 ```bash
-KEEPER_TEST=1 pnpm --filter indexer test
+pnpm --filter indexer test
 npx --yes tsx apps/web/src/lib/top10.test.ts
 npx --yes tsx apps/web/src/lib/marketdata.test.ts
+pnpm --filter web test          # Playwright smoke + interactive
 ```
 
 Authoritative current-architecture walk (Foundry, no live chain):

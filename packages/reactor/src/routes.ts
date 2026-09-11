@@ -136,6 +136,33 @@ export function requireProvenPool(exists: boolean, label: string): void {
   if (!exists) throw new RouteReject(`nonexistent fabricated pool ${label}`);
 }
 
+export type ScoredRoute = PlannedRoute & {
+  amountOut: bigint;
+  impactBps: number;
+  gasEstimate: number;
+  reliabilityBps: number;
+  score: number;
+};
+
+/** Higher is better. Never invent venues — caller supplies simulated outs. */
+export function scoreRoute(
+  route: PlannedRoute,
+  opts: { amountOut: bigint; impactBps: number; gasEstimate: number; reliabilityBps: number },
+): ScoredRoute {
+  if (route.hops.length > MAX_LEGS) throw new RouteReject("too many legs");
+  const score =
+    Number(opts.amountOut > 10n ** 18n ? 10n ** 9n : opts.amountOut) -
+    opts.impactBps * 100 -
+    opts.gasEstimate / 1000 +
+    opts.reliabilityBps;
+  return { ...route, ...opts, score };
+}
+
+export function pickBest(routes: ScoredRoute[]): ScoredRoute {
+  if (routes.length === 0) throw new RouteReject("no scored routes");
+  return routes.reduce((a, b) => (b.score > a.score ? b : a));
+}
+
 export function encodeHooklessPoolKey(a: `0x${string}`, b: `0x${string}`): {
   currency0: `0x${string}`;
   currency1: `0x${string}`;

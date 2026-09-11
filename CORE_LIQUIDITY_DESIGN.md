@@ -60,7 +60,7 @@ Numbers from `CoreLiquiditySimTest` on this HEAD. Each spend is snapshot/reverte
 
 Walk chunks overshoot the $10M / $100M labels — the book is continuous and a single large fill jumps FDV. **Genesis stays $100k.** The $100k-FDV / $100k-buy row (463.6M CORE, FDV → $429k) is the intended thin-ask pathology, not a reason to raise T0 FDV.
 
-**Current range accepted.** No change to ~$100k T0 FDV, tick formula, or 900M single-sided ask. This pass re-ran the quantitative ladder and did not alter the frozen range.
+**APPROVED WORKING MAINNET CONFIG — SUBJECT TO AUDIT.** Current range accepted. No change to ~$100k T0 FDV, tick formula, or 900M single-sided ask. This pass re-ran the quantitative ladder and did not alter the frozen range. Mainnet remains blocked pending Codex + audits + KMS/Safe/rehearsal.
 
 Implied average CORE price at genesis: $100 / 955,145 ≈ $0.000105 (vs $0.000100 mid) after 3.5% official fee + impact. At the ~$701M book a $100k buy moves FDV +2.6%.
 

@@ -8,15 +8,18 @@
     "start": "tsx src/index.ts",
     "demo": "tsx src/e2e-current-architecture.ts",
     "e2e": "tsx src/e2e-current-architecture.ts",
-    "test": "KEEPER_TEST=1 tsx src/keeper.minout.test.ts && tsx src/indexer.persist.test.ts && tsx ../../packages/reactor/src/routes.test.ts && tsx ../../packages/reactor/src/valuation.test.ts",
+    "test": "KEEPER_TEST=1 tsx src/keeper.minout.test.ts && tsx src/indexer.persist.test.ts && tsx src/schema.test.ts && tsx src/quote-api.test.ts && tsx ../../packages/reactor/src/routes.test.ts && tsx ../../packages/reactor/src/valuation.test.ts && tsx ../../packages/reactor/src/prices.test.ts",
     "keeper": "tsx src/keeper.ts",
     "keeper:once": "KEEPER_ONCE=1 tsx src/keeper.ts",
+    "signer": "REACTOR_ENV=LOCAL tsx src/pricing-signer.ts",
     "watchdog": "tsx src/watchdog.ts",
     "watchdog:once": "WATCHDOG_ONCE=1 tsx src/watchdog.ts",
-    "seed-bonding": "tsx src/seed-bonding.ts"
+    "seed-bonding": "tsx src/seed-bonding.ts",
+    "seed-review": "tsx src/seed-review.ts"
   },
   "dependencies": {
-    "viem": "^2.56.3"
+    "viem": "^2.56.3",
+    "pg": "^8.16.3"
   },
   "devDependencies": {
     "@types/node": "^22.13.0",
