@@ -406,7 +406,7 @@ contract InstantCurve {
 
     function _payFees(Curve storage c, uint256 bucket2, uint256 fly, uint256 coreAmt) internal {
         if (bucket2 > 0) {
-            if (c.rewardsMode) {
+            if (c.rewardsMode && ReactorToken(c.token).eligibleSupply() > 0) {
                 factory.creditTokenRewards(c.token, bucket2);
                 IERC20MinimalExt(c.quote).transfer(c.token, bucket2);
             } else {

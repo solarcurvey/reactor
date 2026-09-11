@@ -32,6 +32,9 @@ contract TokenTest is Base {
 
     function test_rewardPersistenceAndNoFutureTheft() public {
         address token = _instantZcat(50_000e8);
+        _buy(alice, token, address(zec), 500e8);
+        assertEq(ReactorToken(token).lifetimeRewards(), 0);
+        assertGt(selfBurn.accrued(token), 0);
         _buy(alice, token, address(zec), 5_000e8);
         uint256 pendingBefore = ReactorToken(token).pendingRewards(alice);
         assertGt(pendingBefore, 0);
@@ -84,13 +87,12 @@ contract TokenTest is Base {
             })
         );
         _buy(alice, token, address(usdc), 1_000e6);
-        // First-buy rewards sit in leftover until an eligible holder exists, then flush on transfer.
-        uint256 pending = ReactorToken(token).pendingRewards(alice);
-        uint256 leftover = ReactorToken(token).leftoverRewards();
-        assertEq(ReactorToken(token).lifetimeRewards(), 20e6);
-        assertLe(pending + leftover, 20e6);
-        assertGt(pending + leftover, 0);
+        // Zero-eligible 2% goes to SelfBurn, not leftover rebate.
+        assertEq(ReactorToken(token).lifetimeRewards(), 0);
+        assertEq(selfBurn.accrued(token), 20e6);
         assertEq(buyback.accrued(address(usdc)), 5e6);
+        _buy(bob, token, address(usdc), 1_000e6);
+        assertEq(ReactorToken(token).lifetimeRewards(), 20e6);
     }
 
     /// @notice Swap-path check that outstanding−backing stays in the few-raw range

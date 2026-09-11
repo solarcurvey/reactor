@@ -266,7 +266,9 @@ contract ReactorHook is IHooks, IUnlockCallback {
         uint256 notional
     ) internal {
         if (holders > 0) {
-            if (factory != address(0) && IFactoryView(factory).isRewards(m.token)) {
+            bool rewards = factory != address(0) && IFactoryView(factory).isRewards(m.token);
+            uint256 eligible = IReactorToken(m.token).eligibleSupply();
+            if (rewards && eligible > 0) {
                 pendingTokenRewards[m.token] += holders;
                 IReactorToken(m.token).creditRewards(holders);
             } else if (address(selfBurn) != address(0)) {

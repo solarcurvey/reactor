@@ -73,7 +73,9 @@ contract GuardianP0Test is Base {
         uint256 k0 = usdc.balanceOf(keeper);
         _keeperSettle(address(usdc));
         assertEq(usdc.balanceOf(keeper), k0);
-        assertEq(flywheel.usdcPot(), 1_000e6);
+        assertGt(flywheel.usdcPot(), 0);
+        assertEq(usdc.balanceOf(address(flywheel)), 1_000e6);
+        assertEq(flywheel.usdcPot() + flywheel.quoteAccrued(address(usdc)), 1_000e6);
     }
 
     function test_42_05_top10BurnsNotTransfersToKeeper() public {

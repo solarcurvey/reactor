@@ -23,6 +23,7 @@ contract SelfBurnVault {
 
     mapping(address => uint256) public accrued;
     mapping(address => address) public quoteOf;
+    mapping(address => uint64) public lastExecuteAt;
     uint256 public lifetimeAccrued;
     uint256 public lifetimeBurned;
     uint256 public lock;
@@ -62,13 +63,23 @@ contract SelfBurnVault {
     function execute(address token, uint256 minTargetOut) external nonReentrant {
         auth.requireKeeper(msg.sender);
         if (minTargetOut == 0) revert MinOutRequired();
+        if (lastExecuteAt[token] != 0 && block.timestamp < uint256(lastExecuteAt[token]) + ReactorConstants.KEEPER_COOLDOWN) {
+            revert Bad();
+        }
         uint256 amt = accrued[token];
         address quote = quoteOf[token];
         if (quote == address(0) || amt == 0) revert Bad();
         uint256 bal = IERC20MinimalExt(quote).balanceOf(address(this));
         if (bal < amt) amt = bal;
+        uint256 chunk = (amt * ReactorConstants.MAX_CHUNK_BPS) / ReactorConstants.BPS_DENOMINATOR;
+        if (chunk == 0) chunk = amt;
+        if (
+            chunk >= ReactorConstants.DEFAULT_SETTLE_THRESHOLD && amt > chunk
+                && amt - chunk >= ReactorConstants.DEFAULT_SETTLE_THRESHOLD
+        ) amt = chunk;
         if (amt < ReactorConstants.DEFAULT_SETTLE_THRESHOLD) revert Bad();
         accrued[token] -= amt;
+        lastExecuteAt[token] = uint64(block.timestamp);
         uint256 burned;
         (address t, address q, bool live) = ReactorHook(hook).marketOfToken(token);
         if (live && t == token) {

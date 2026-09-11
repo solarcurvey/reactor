@@ -41,7 +41,9 @@ contract CurveRoutingTest is Base {
         assertEq(h + f + c, fee);
         assertEq(flywheel.quoteAccrued(address(usdc)), f);
         assertEq(buyback.accrued(address(usdc)), c);
-        assertEq(ReactorToken(factory.allTokens(factory.allTokensLength() - 1)).lifetimeRewards(), h);
+        address tok = factory.allTokens(factory.allTokensLength() - 1);
+        assertEq(ReactorToken(tok).lifetimeRewards(), 0);
+        assertEq(selfBurn.accrued(tok), h);
         assertEq(flywheel.usdcPot(), 0);
     }
 

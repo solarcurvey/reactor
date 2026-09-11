@@ -5,6 +5,7 @@ import {Base} from "../Base.sol";
 import {ReactorFactory} from "../../src/ReactorFactory.sol";
 import {ReactorToken} from "../../src/ReactorToken.sol";
 import {QuoteAssetRegistry} from "../../src/QuoteAssetRegistry.sol";
+import {LaunchPricing} from "../../src/libraries/LaunchPricing.sol";
 
 /// @notice Graduated REACTOR tokens become quotes without a per-token Guardian action.
 contract NativeQuoteTest is Base {
@@ -30,23 +31,23 @@ contract NativeQuoteTest is Base {
         assertTrue(registry.isReactorNative(parent));
         assertTrue(registry.canLaunch(parent));
 
+        ReactorFactory.InstantParams memory cp = ReactorFactory.InstantParams({
+            name: "CHILD",
+            symbol: "CHL",
+            decimals: 18,
+            supply: 0,
+            quote: parent,
+            fdvQuoteRaw: 0,
+            devBuyQuote: 0,
+            image: "",
+            description: "quoted in a graduated REACTOR token",
+            website: "",
+            twitter: "",
+            telegram: ""
+        });
+        (LaunchPricing.Auth memory a, bytes memory sig) = _priceAuth(parent);
         vm.prank(alice);
-        (address child,) = factory.instantLaunch(
-            ReactorFactory.InstantParams({
-                name: "CHILD",
-                symbol: "CHL",
-                decimals: 18,
-                supply: 0,
-                quote: parent,
-                fdvQuoteRaw: 0,
-                devBuyQuote: 0,
-                image: "",
-                description: "quoted in a graduated REACTOR token",
-                website: "",
-                twitter: "",
-                telegram: ""
-            })
-        );
+        (address child,) = factory.instantLaunchPriced(cp, a, sig);
         assertEq(ReactorToken(child).quoteAsset(), parent);
         _buy(alice, child, parent, ReactorToken(parent).balanceOf(alice) / 10);
         assertGt(curve.realQuoteOf(child), 0);
