@@ -25,7 +25,10 @@ cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0
 # Apps
 pnpm install
 pnpm --filter indexer dev
-pnpm --filter web dev
+pnpm --filter web dev          # http://127.0.0.1:43147
+# optional
+pnpm --filter indexer keeper
+pnpm --filter indexer watchdog
 ```
 
 Open `http://127.0.0.1:43147`. Connect a wallet to **chain 5042002** (Anvil). Import anvil account 0 if needed.
@@ -37,9 +40,10 @@ Addresses land in `deployments/local.json` after the demo script.
 1. **Choose a quote** — Instant is a **bonding curve → locked v4 graduation** (creator picks image/name/ticker/description/quote/Standard vs Rewards/optional Dev Buy only). Or **Batch Fair Launch** (pro-rata timed sale → migrate). Not Uniswap CCA.
 2. Trade **exact-in** on the Official REACTOR Pool. The UI simulates, applies slippage, and submits a **nonzero minOut**. Incomplete fills revert.
 3. Claim holder rewards in the quote asset — no staking.
-4. Designated Keeper settles flywheel quote→USDC, submits Top-10 epochs, and runs CORE / SelfBurn buy+burn through approved adapters.
-5. THE REACTOR (`/reactor`) — 1% Top-10. API ranks (~5 min, operational $250k floor). Contracts check structure only. CORE never ranks. Not a trustless oracle.
-6. Transfer launch tokens with **zero tax**; rewards persist.
+4. Designated Keeper settles flywheel quote→USDC, submits Top-10 epochs, and runs CORE / SelfBurn buy+burn through approved adapters. Each job takes a **chunk** (20%) + cooldown and a Keeper-supplied `minOut` — not the whole pot, not `minOut=1`.
+5. THE REACTOR (`/reactor`) — 1% Top-10. API **discovers** graduated markets on-chain (official prices, nested quote/USD, $250k floor, fail closed). Contracts check structure only. CORE never ranks. Not a trustless oracle.
+6. Non-USDC Instant launches need a short-lived **signed** `LaunchPricingAuthorization` (Keeper / pricing signer). No onchain ZEC/USD oracle. USDC / listed stables stay unsigned.
+7. Transfer launch tokens with **zero tax**; rewards persist. When Rewards `eligibleSupply==0`, the 2% goes to SelfBurn (not the first holder).
 
 ## Network
 
@@ -71,6 +75,7 @@ We **do not claim Arc Testnet success** unless transactions appear on [testnet.a
 | `BUILD_REPORT.md` | Evidence for this build |
 | `COMPETITIVE_REVIEW.md` | Dated public-source review |
 | `FUTURE.md` | Explicitly not built |
+| `PRIVILEGE_MAP.md` | Guardian / Keeper / one-time slots |
 | `HARDENING_REPORT.md` | P0/P1 findings and proof |
 
 ## License

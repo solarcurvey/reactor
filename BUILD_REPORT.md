@@ -1,22 +1,23 @@
 # BUILD REPORT — REACTOR local Arc-compatible MVP
 
-**Status:** Hardening pass on the existing repo. Prior MVP loop was local Anvil 5042002. Hook bytecode changed — **re-read `factory.hook()` after redeploy**.  
-**Arc Public Testnet:** still not claimed. See `HARDENING_REPORT.md`.
+**Status:** Audit-amendment pass on the existing repo. Local Anvil 5042002 only. Hook bytecode changes — **re-read `factory.hook()` after redeploy**.  
+**Not audited. Not mainnet. Arc Public Testnet not claimed.** See `HARDENING_REPORT.md` and `AUDIT_HANDOFF.md`.
 
-Evidence file: `deployments/e2e-evidence.json`  
-Run at: 2026-09-11T00:37:56Z
+Evidence file: `deployments/e2e-evidence.json` (regenerate with `pnpm --filter indexer demo` after a fresh deploy).
 
 ## What shipped
 
 | Slice | Location |
 | --- | --- |
-| Instant bonding → locked v4 graduation | `InstantCurve` + `ReactorFactory.instantLaunch` / `launchAndBuy` |
+| Instant bonding → ready-lock → graduate → locked v4 | `InstantCurve` + priced/unsigned factory launch |
 | Batch Fair Launch (pro-rata timed sale, not CCA) | `ReactorFactory` + `FairClaimVault` |
-| Holder rewards (O(1), no staking, persist on transfer) | `ReactorToken` |
-| CORE buyback-and-burn (accrue, `execute` / `executeCoreBuyback`) | `BuybackVault` + hookless CORE/USDC |
-| Top-10 flywheel (1% async, TWAP rank, real burns) | `FlywheelVault` + `MarketOracle` |
-| Consumer UI | `apps/web` @ `http://127.0.0.1:43147` (`/`, `/launch`, `/trade`, `/reactor`, `/core`) |
-| Indexer | `apps/indexer` @ `:43148` (`/events`, `/reactor`, swaps with flywheel+coreAmt) |
+| Holder rewards (O(1); genesis 2% → SelfBurn if eligible=0) | `ReactorToken` + `SelfBurnVault` |
+| CORE buy+burn via `burn()` only | `BuybackVault` |
+| Top-10 flywheel (1%; offchain discovery, structural onchain) | `FlywheelVault` + `apps/web` marketdata API |
+| User USDC router (not a vault) | `UserRouteExecutor` |
+| Designated Keeper + immutable Guardian | `ReactorGuardian` |
+| Consumer UI (compact Instant, no FDV slider) | `apps/web` @ `http://127.0.0.1:43147` |
+| Indexer + keeper daemon + watchdog | `apps/indexer` |
 
 ## Addresses (local)
 

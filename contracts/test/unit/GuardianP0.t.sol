@@ -495,14 +495,32 @@ contract GuardianP0Test is Base {
     }
 
     function test_42_privilegedEntrypointsEnumerated() public view {
-        // Guardian-only: setKeeper, pauseLaunches, pauseKeeper, pauseTrading, setAdapter,
-        // registry.register / setEnabled / setIcon / setBuybackRoute / setUsdc,
+        // Guardian-only: setKeeper, setPricingSigner, setHook, pauseLaunches, pauseKeeper,
+        // pauseTrading, setAdapter, registry.register / setEnabled / setIcon / setBuybackRoute / setUsdc,
         // factory.bindCurve (one-shot).
         // Keeper-only: flywheel.settleQuote / submitEpoch / executeTop10Buyback / rollEpoch,
-        // buyback.execute, selfBurn.execute.
+        // buyback.execute / executeCoreBuyback, selfBurn.execute.
         // Guardian one-time binds (sealed after deploy): router.setProtocolVault, hook binds, vault.bindFactory.
         assertEq(auth.guardian(), guardian);
         assertEq(auth.keeper(), keeper);
         assertTrue(router.protocolVaultsSealed());
+    }
+
+    function test_42_pricingSignerAndHook_guardianOnly() public {
+        vm.prank(alice);
+        vm.expectRevert();
+        auth.setPricingSigner(alice);
+        vm.prank(alice);
+        vm.expectRevert();
+        auth.setHook(alice, true);
+        vm.prank(keeper);
+        vm.expectRevert();
+        auth.setPricingSigner(keeper);
+        auth.setPricingSigner(bob);
+        assertEq(auth.pricingSigner(), bob);
+        auth.setHook(address(0xBEEF), true);
+        assertTrue(auth.hookApproved(address(0xBEEF)));
+        auth.setHook(address(0xBEEF), false);
+        auth.setPricingSigner(pricingSigner);
     }
 }

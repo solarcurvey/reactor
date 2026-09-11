@@ -48,11 +48,15 @@ Guardrails:
 - `tokenOut` from the operation (USDC for settle, CORE for CORE buy, official quote then token for Top-10)
 - Recipient is the vault (then burn, for buybacks)
 - Adapter must be approved
-- Balance deltas checked
+- **Real balance deltas** per hop; next hop uses actual out (lying adapters fail)
+- v4 hops: hookless, official REACTOR hook, or Guardian-approved hooks only
 - No cross-bucket spend
 - Reentrancy lock
 - ≤ 3 hops, no cycles, no duplicate assets
-- Cooldown / per-op chunk / no replay of the same Top-10 slot
+- Cooldown / 20% chunk (`MAX_CHUNK_BPS`) / no replay of the same Top-10 slot
+- Keeper supplies `minTargetOut` / per-hop `minOut` — **never** hardcoded 1 or 0 on maintenance buys
+
+Daemon: `apps/indexer/src/keeper.ts` polls `/api/reactor/top10` (on-chain discovery, not env JSON) and writes a heartbeat. It does **not** broadcast in this repo. `apps/indexer/src/watchdog.ts` is an independent fail-closed process on a separate heartbeat file.
 
 Fee exemption is only via the sealed executor contracts (SelfBurn, Flywheel, Buyback) calling `protocolSwap` / `buyExempt`. The Keeper EOA is never allowlisted.
 

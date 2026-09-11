@@ -22,6 +22,8 @@ $20 holders (quote) · $10 flywheel · $5 CORE. Not an LP fee.
 
 O(1) magnified dividend-per-share + per-account corrections. Leftover magnified remainder carries forward and is never allocated twice. No `outstanding <= backing + 1` slack. Claims indefinite. FairClaimVault owns auction inventory.
 
+If `eligibleRewardSupply()==0` (including the first curve buy, before tokens are delivered), the 2% goes to **SelfBurn** — not a rebate to the first holder. Any later Rewards fee event with zero eligible supply uses the same rule.
+
 ## Flywheel / CORE
 
 - CORE is never Top-10 eligible (contract-level).
@@ -44,7 +46,7 @@ Instant is **bonding curve → v4 graduation**, not single-sided permanent v4 fr
 | Curve inventory | 79.31% |
 | v4 reserve | 20.69% locked forever at graduation |
 | Start FDV (USDC) | ~$5,000 (`CURVE_DESIGN.md`) |
-| Graduation | Permissionless when economic quote hits the target. Protocol fee quote is **not** LP. |
+| Graduation | Terminal buy → `ready` → **frozen** (no buy/sell) → permissionless `graduate` (revalidates reserves). Protocol fee quote is **not** LP. Fees on a terminal/partial fill apply only to **executed gross**; unexecuted + unearned fee is refunded. |
 | Modes (3.5% both) | **Rewards**: 2% holders. **Standard**: 2% SelfBurn (later market-buy + burn). Both: 1% Top-10 + 0.5% CORE. |
 | Dev buy | Optional, atomic `launchAndBuy`, full 3.5%, max 5% supply by token out. Reverts if over. No free allocation. |
 | Maintenance | Self-burn / Top-10 / CORE buys are fee-exempt only via authenticated vault executors (`protocolSwap` / `buyExempt`). |

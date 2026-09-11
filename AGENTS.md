@@ -4,7 +4,10 @@ Instructions for humans and coding agents working in this repo.
 
 ## Product invariants (do not “simplify away”)
 
-- Instant Launch is **bonding curve → locked v4 graduation**, not single-sided v4 from trade #1. Creators have no supply/FDV/fee knobs.
+- Instant Launch is **bonding curve → ready → frozen → graduate → locked v4**, not single-sided v4 from trade #1. Creators have no supply/FDV/fee knobs.
+- When `ready`, no buys or sells until `graduate`. Terminal fees apply only to executed gross quote.
+- Non-$1 quotes need a short-lived signed `LaunchPricingAuthorization`. No onchain ZEC/USD oracle.
+- If Rewards `eligibleSupply==0`, 2% goes to SelfBurn, not the first holder.
 - Official REACTOR Pool LP fee is **0%**. The 3.5% is hook custom accounting in **quote**.
 - Split is **2% holders / 1% flywheel / 0.5% CORE**. Different split = V2 deploy.
 - No creator fee, platform cash fee, creation fee, transfer tax, or token-level sell tax.

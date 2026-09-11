@@ -23,9 +23,9 @@
         "internalType": "address"
       },
       {
-        "name": "owner_",
+        "name": "auth_",
         "type": "address",
-        "internalType": "address"
+        "internalType": "contract ReactorGuardian"
       }
     ],
     "stateMutability": "nonpayable"
@@ -443,6 +443,19 @@
   },
   {
     "type": "function",
+    "name": "auth",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ReactorGuardian"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "beforeAddLiquidity",
     "inputs": [
       {
@@ -832,10 +845,49 @@
   },
   {
     "type": "function",
+    "name": "bindCurve",
+    "inputs": [
+      {
+        "name": "curve_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "bindFactory",
     "inputs": [
       {
         "name": "factory_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "bindFlywheel",
+    "inputs": [
+      {
+        "name": "vault_",
+        "type": "address",
+        "internalType": "contract IFeeSink"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "bindSelfBurn",
+    "inputs": [
+      {
+        "name": "vault_",
         "type": "address",
         "internalType": "address"
       }
@@ -859,6 +911,19 @@
   {
     "type": "function",
     "name": "core",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "curve",
     "inputs": [],
     "outputs": [
       {
@@ -912,6 +977,19 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "flywheelVault",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IFeeSink"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -999,20 +1077,64 @@
   },
   {
     "type": "function",
-    "name": "owner",
-    "inputs": [],
-    "outputs": [
+    "name": "pendingBuyback",
+    "inputs": [
       {
         "name": "",
         "type": "address",
         "internalType": "address"
       }
     ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "pendingBuyback",
+    "name": "pendingCore",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pendingFlywheel",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pendingSelfBurn",
     "inputs": [
       {
         "name": "",
@@ -1070,6 +1192,19 @@
         "name": "",
         "type": "address",
         "internalType": "contract QuoteAssetRegistry"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "selfBurn",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ISelfBurnSink"
       }
     ],
     "stateMutability": "view"
@@ -1188,7 +1323,7 @@
   },
   {
     "type": "error",
-    "name": "NotOwner",
+    "name": "NotGuardian",
     "inputs": []
   },
   {

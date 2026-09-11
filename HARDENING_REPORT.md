@@ -13,7 +13,7 @@ UI and docs center **CHOOSE WHAT YOUR TOKEN EARNS** / **WHAT SHOULD YOUR TOKEN E
 | Item | Status | Proof |
 | --- | --- | --- |
 | Cross-pool flush | **FIXED** | `flush(token)` + gated two-arg; `marketOfToken` from `afterInitialize`; router flushes launch token only. `test_exploit_flushUsdcIntoZcat_mustRevert`, `test_canonicalFlushPaysOnlyMatchingQuote`, `FlushFuzz.t.sol` |
-| First-caller-wins bind | **FIXED** | Hook/vault binds are `owner`-gated and once-only. `test_initFrontrun_maliciousBinderFails` |
+| First-caller-wins bind | **FIXED** | Guardian-only, once. No Ownable/bootstrap. `FrontrunBind.t.sol` |
 | Buyback minOut=0 / caller size | **FIXED** | `execute(quote)` only. Protocol minOut, chunk, reserve, cooldown, reference deviation. UI has no minCoreOut field. `test_minOutZeroReverts` (router), `test_manipulatedCoreSpotDoesNotDrain`, `test_staleRefAndCooldown` |
 | Multi-quote CORE routing | **FIXED** | USDC direct; ZEC/BTC hop via USDC. Factory `canLaunch` requires buyback route. `test_decimals618AndMultiMarketBurn` |
 | Real slippage | **FIXED** | Router `minOut==0` reverts. UI simulates then applies slippage. `test_slippageRevertAfterPriceMove` |
@@ -110,7 +110,7 @@ export PATH="$PATH:$HOME/.local/bin:$HOME/.foundry/bin"
 slither src --exclude-dependencies --filter-paths lib
 ```
 
-**Re-ran 2026-09-11 on HEAD after Top-10 / 3.5% work.** `slither 0.11.6`. Exit 255 (findings present). `src` analyzed, 50 contracts, 102 detectors, **142 results** (up from 87 — new `FlywheelVault`, `MarketOracle`, `KeeperReserve`, `RoutingRegistry` plus prior surfaces).
+**Last slither note (stale count).** Re-run after this amendment. `MarketOracle` and `KeeperReserve` were **deleted** from `/src`. Do not quote the 142-result row as current.
 
 | Impact | Count | Detectors (top) |
 | --- | --- | --- |
@@ -123,7 +123,24 @@ No fabricated “clean” report. High/medium are mostly style (ignored ERC-20 b
 
 Frontend: `pnpm exec tsc --noEmit` (target ES2020) and `pnpm lint` passed on `apps/web`. Dev server `http://127.0.0.1:43147` returned HTTP 200 after ABI restore.
 
-Visual review (1440×900 and 390×844) is in `review/`. Home is a **table**, token detail is trading-first (not a homepage reuse), `/reactor` is THE REACTOR, `/trade` is a ticket board, Instant confirm defaults FDV **25000**. Mobile nav hides Trade/Rewards; wordmark text hides on xs.
+Visual review (1440×900 and 390×844) is in `review/`. Instant is a **single compact form** — no creator FDV slider, no multi-step wizard. Token page shows bonding % vs Official v4. `/reactor` is THE REACTOR (on-chain discovery API). Quote ecosystem pages at `/quote/{symbol}`.
+
+## Audit amendment (this pass)
+
+| Item | Status | Proof |
+| --- | --- | --- |
+| Ready-curve freeze | **FIXED** | `ReadyLocked` on buy/sell; graduate revalidates. `CurveFreeze.t.sol` |
+| Keeper minOut 1/0 | **FIXED** | `minTargetOut` required. `KeeperMinOut.t.sol` |
+| First-caller binds | **FIXED** | Guardian-only. `FrontrunBind.t.sol`, `PRIVILEGE_MAP.md` |
+| Signed launch pricing | **SHIPPED** | `LaunchPricing.t.sol` |
+| Terminal fees on executed gross | **SHIPPED** | InstantCurve refund path |
+| Rewards genesis → SelfBurn | **SHIPPED** | `eligible==0` |
+| Hop deltas + hook allowlist | **SHIPPED** | `RoutingDeltas.t.sol` |
+| Blast radius 20% + cooldown | **SHIPPED** | `BlastRadius.t.sol` |
+| Top-10 discovery API | **SHIPPED** | `marketdata.ts` — not env JSON |
+| UserRouteExecutor | **SHIPPED** | `UserRoute.t.sol` |
+| CORE `burn()` only | **SHIPPED** | dead-address fallback removed |
+| Dead V1 oracle/reserve | **DELETED** | git history only |
 
 Local Anvil redeploy (hardening bytecode; **not** Arc Testnet):
 

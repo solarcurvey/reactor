@@ -30,6 +30,42 @@ export default function LaunchPage() {
 
   const selected = quotes?.find((q) => q.token.toLowerCase() === quote.toLowerCase());
 
+  async function maybePricing(quoteAddr: `0x${string}`, category: number, symbol: string) {
+    if (symbol === "USDC" || category === 4) return null;
+    const res = await fetch("/api/launch-pricing", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ quote: quoteAddr }),
+    });
+    const body = (await res.json()) as {
+      needsAuth?: boolean;
+      auth?: {
+        factory: `0x${string}`;
+        quote: `0x${string}`;
+        quoteDecimals: number;
+        virtualQuote0: string;
+        nonce: string;
+        deadline: string;
+      };
+      signature?: `0x${string}`;
+      error?: string;
+    };
+    if (!res.ok || !body.needsAuth || !body.auth || !body.signature) {
+      throw new Error(body.error ?? "Launch pricing authorization unavailable");
+    }
+    return {
+      auth: {
+        factory: body.auth.factory,
+        quote: body.auth.quote,
+        quoteDecimals: body.auth.quoteDecimals,
+        virtualQuote0: BigInt(body.auth.virtualQuote0),
+        nonce: BigInt(body.auth.nonce),
+        deadline: BigInt(body.auth.deadline),
+      },
+      signature: body.signature,
+    };
+  }
+
   async function submit() {
     setError(null);
     if (!isConnected || !client || !selected || !address) {
@@ -52,6 +88,7 @@ export default function LaunchPage() {
         telegram: "",
       };
       if (path === "instant") {
+        const priced = await maybePricing(selected.token, selected.category, selected.symbol);
         if (params.devBuyQuote > 0n) {
           const allowance = (await client.readContract({
             address: selected.token,
@@ -68,25 +105,43 @@ export default function LaunchPage() {
             });
             await waitForTransactionReceipt(client, { hash: ah });
           }
-          const hash = await writeContractAsync({
-            ...factory,
-            functionName: "launchAndBuy",
-            args: [params, rewards, 1n],
-          });
+          const hash = priced
+            ? await writeContractAsync({
+                ...factory,
+                functionName: "launchAndBuyPriced",
+                args: [params, rewards, 1n, priced.auth, priced.signature],
+              })
+            : await writeContractAsync({
+                ...factory,
+                functionName: "launchAndBuy",
+                args: [params, rewards, 1n],
+              });
           await waitForTransactionReceipt(client, { hash });
         } else if (rewards) {
-          const hash = await writeContractAsync({
-            ...factory,
-            functionName: "instantLaunch",
-            args: [params],
-          });
+          const hash = priced
+            ? await writeContractAsync({
+                ...factory,
+                functionName: "instantLaunchPriced",
+                args: [params, priced.auth, priced.signature],
+              })
+            : await writeContractAsync({
+                ...factory,
+                functionName: "instantLaunch",
+                args: [params],
+              });
           await waitForTransactionReceipt(client, { hash });
         } else {
-          const hash = await writeContractAsync({
-            ...factory,
-            functionName: "launchStandard",
-            args: [params],
-          });
+          const hash = priced
+            ? await writeContractAsync({
+                ...factory,
+                functionName: "launchStandardPriced",
+                args: [params, priced.auth, priced.signature],
+              })
+            : await writeContractAsync({
+                ...factory,
+                functionName: "launchStandard",
+                args: [params],
+              });
           await waitForTransactionReceipt(client, { hash });
         }
         router.push("/");

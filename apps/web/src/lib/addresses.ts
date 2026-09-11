@@ -21,6 +21,12 @@ export type Deployment = {
     FlywheelVault?: `0x${string}`;
     ReactorFactory: `0x${string}`;
     FairClaimVault?: `0x${string}`;
+    InstantCurve?: `0x${string}`;
+    SelfBurnVault?: `0x${string}`;
+    Guardian?: `0x${string}`;
+    UserRouteExecutor?: `0x${string}`;
+    V4Adapter?: `0x${string}`;
+    RoutingRegistry?: `0x${string}`;
   };
   hookFlags: string;
   v4Core: string;
@@ -36,4 +42,5 @@ export const CATEGORY_LABELS = [
   "FX",
   "Stablecoins",
   "Arc ecosystem",
+  "REACTOR native",
 ] as const;

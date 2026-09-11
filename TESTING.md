@@ -14,53 +14,118 @@ forge test --match-path test/attack/* -vv
 forge test --match-path test/integration/* -vv
 ```
 
+Web ranker / market-data (no RPC):
+
+```bash
+npx --yes tsx apps/web/src/lib/top10.test.ts
+npx --yes tsx apps/web/src/lib/marketdata.test.ts
+```
+
 Static analysis (optional, when slither is installed):
 
 ```bash
 slither contracts/src --exclude-dependencies || true
 ```
 
-## Required suites
+## §39 Regression list
 
-| Area | File | Asserts |
+Every row is implemented in-repo. Re-run the matching file after any curve / fee / vault / routing change.
+
+| # | Requirement | File / test |
 | --- | --- | --- |
-| Guardian / Keeper / routing P0 §42 | `test/unit/GuardianP0.t.sol` | 40 routing/vault/Keeper/Guardian cases + privileged surface |
-| Top-10 API §43 | `test/unit/Top10Api.t.sol` | skip ungraduated/CORE/unreliable; weights 100%; onchain structural reject |
-| Top-10 / Keeper security | `test/attack/Top10Security.t.sol` | structural submit, CORE skip, double submit/exec, #11 reject, <10 split, buckets |
-| Top-10 + CORE E2E burns | `test/integration/Top10E2E.t.sol` | `totalSupply` decreases after Keeper Top-10 / CORE buy+burn |
-| Fee 3.5% → 2/1/0.5 | `test/unit/FeeInvariant.t.sol` | holders+flywheel+core = 3.5% floor split |
-| Reward solvency | `test/invariant/RewardSolvency.t.sol` | legacy over-assigns; magnified DPS never does |
-| No transfer tax | `test/unit/Token.t.sol` | send X, receive X |
-| Reward solvency | invariant + unit | token quote + hook pending ≥ outstanding (acc-snapshot debt; 1-raw campaign slack) |
-| Reward persistence | unit | accrue, transfer to 0, still claimable |
-| No future-reward theft | unit | recipient debt = current acc |
-| Pool exclusion | unit | PM balance not eligible |
-| Liquidity lock | unit | remove reverts; creator cannot reclaim |
-| Fixed supply | unit | mint after construct reverts (no function) |
-| Fair 0% during CCA | integration | vault/token quote unchanged by bids |
-| Migration once | integration | second finalize reverts |
-| Hook-only economics | integration | hookless swap accrues 0 |
-| Buyback no redirect | unit | CORE target immutable |
-| Reentrancy | attack | claim/buyback/finalize |
-| Exact-in/out edges | unit hook | four quadrants × two sort orders |
-| Rounding / dust | fuzz | fee 0 on dust; no overflow |
-| Double claim | unit | second claim = 0 |
-| Balance hopping | unit | transfer mid-acc |
-| Flash / sandwich | attack | documented, no insolvency |
-| FoT quote | attack | shortfall reverts |
-| USDC 6 vs 18 | unit | raw-unit math |
-| CREATE2 hook bits | unit | mined address matches flags |
-| Unauthorized notify | unit | only hook credits |
-| Stuck funds / DoS | attack | leftover rewards when eligible=0 |
+| 39.01 | Ready freeze: buy after ready reverts | `test/attack/CurveFreeze.t.sol` |
+| 39.02 | Ready freeze: sell after ready reverts | same |
+| 39.03 | Terminal buy → exact ready → graduate | same |
+| 39.04 | One-before-terminal then fill | same |
+| 39.05 | Exact terminal | same |
+| 39.06 | Oversized terminal: clip + refund unexecuted + unearned fee | same + `Curve.t.sol` |
+| 39.07 | Repeat graduate reverts | `CurveFreeze.t.sol` |
+| 39.08 | Sell before ready succeeds; after ready reverts | same |
+| 39.09 | Graduate revalidates reserves; no stranded inventory | same |
+| 39.10 | SelfBurn `minTargetOut==0` reverts | `KeeperMinOut.t.sol` |
+| 39.11 | Top-10 final `minTargetOut==0` reverts | same |
+| 39.12 | CORE `minOut==0` reverts | same |
+| 39.13 | Sandwich quote→exec reverts | same |
+| 39.14 | No hardcoded maintenance `minOut=1` on vault execute | same (Keeper supplies) |
+| 39.15 | `bindFactory` attacker frontrun | `FrontrunBind.t.sol` |
+| 39.16 | Hook / vault / flywheel / registry / router binds | same |
+| 39.17 | No Ownable / bootstrap residue | same |
+| 39.18 | Privileged surface Guardian or Keeper only | `GuardianP0.t.sol`, `PRIVILEGE_MAP.md` |
+| 39.19 | Signed pricing: USDC no sig | `LaunchPricing.t.sol` |
+| 39.20 | Non-$1 without sig reverts | same |
+| 39.21 | Expired / replay / wrong factory / quote / decimals / params | same |
+| 39.22 | Old signer after rotation | same |
+| 39.23 | Nonce / quarantine | same |
+| 39.24 | Rewards genesis `eligible==0` → SelfBurn | `Token.t.sol`, `Curve.t.sol` |
+| 39.25 | Hop real in/out deltas | `RoutingDeltas.t.sol` |
+| 39.26 | Lying adapter fails | same |
+| 39.27 | Arbitrary v4 hook denied | same |
+| 39.28 | Max 3 hops | same |
+| 39.29 | No cycles | same |
+| 39.30 | Flywheel / SelfBurn / CORE chunk + cooldown | `BlastRadius.t.sol`, vaults |
+| 39.31 | CORE `burn()` only (no dead-address) | `BuybackVault._burn`, `Top10E2E.t.sol` |
+| 39.32 | UserRoute `minFinalOut` + deadline; not a vault | `UserRoute.t.sol` |
+| 39.33 | Top-10 structural: no CORE, no dupes, ≤10, weights 100% | `Top10Security.t.sol`, `Top10Api.t.sol` |
+| 39.34 | Fee 3.5% → 2/1/0.5 | `FeeInvariant.t.sol` |
+| 39.35 | No transfer tax | `Token.t.sol` |
+| 39.36 | Reward solvency / leftover | `RewardSolvency.t.sol` |
+| 39.37 | Liquidity lock | `LockAndBuyback.t.sol` |
+| 39.38 | Fair 0% during sale; finalize once | `Launches.t.sol` |
+| 39.39 | Cross-quote flush | `CrossQuoteFlush.t.sol` |
+| 39.40 | CREATE2 hook bits | unit hook |
+| 39.41 | FoT quote / reentrancy / sandwich docs | `Security.t.sol`, `Attacks.t.sol` |
+| 39.42 | Guardian P0 routing/vault/Keeper (40 cases) | `GuardianP0.t.sol` |
+
+## §40 Stateful invariants
+
+| Suite | Command | Bound |
+| --- | --- | --- |
+| Reward campaign (magnified DPS, leftover, debt) | `forge test --match-path test/invariant/RewardCampaign.t.sol` | default 64 runs / 2048 calls; **+1 raw** slack only |
+| Reward solvency (legacy vs magnified) | `test/invariant/RewardSolvency.t.sol` | unit + invariant |
+| Fee fuzz / flush fuzz | `test/fuzz/FeeFuzz.t.sol`, `FlushFuzz.t.sol` | dust / overflow |
+
+**Do not** treat `FeeInvariant.t.sol` or `test/invariant/Rewards.t.sol` as the stateful campaign. Campaign slack is **+1 raw**, not +1000. See `HARDENING_REPORT.md`.
+
+Not claimed as a proof: routing graph, nested USD marks, or Keeper liveness.
+
+## §41 E2E
+
+```bash
+# Local chain must be running + deployed
+pnpm --filter indexer demo   # viem + Anvil; writes deployments/e2e-evidence.json
+```
+
+Optional Foundry sketch: `contracts/script/DemoE2E.s.sol`.
+
+UI capture (after `pnpm --filter web dev`):
+
+```bash
+CAPTURE=1 CAPTURE_URL=http://127.0.0.1:43147 pnpm --filter web test
+```
+
+Writes `review/*-1440.png` and `review/*-390.png` for home, compact Instant, fair, trade, rewards, THE REACTOR, CORE, quote ecosystems, wallet. **No creator FDV slider.**
+
+Keeper / watchdog (do not treat as onchain):
+
+```bash
+pnpm --filter indexer keeper
+pnpm --filter indexer watchdog
+```
+
+## Required suites (legacy map)
+
+| Area | File |
+| --- | --- |
+| Guardian / Keeper / routing P0 §42 | `test/unit/GuardianP0.t.sol` |
+| Top-10 API §43 | `test/unit/Top10Api.t.sol` |
+| Top-10 / Keeper security | `test/attack/Top10Security.t.sol` |
+| Top-10 + CORE E2E burns | `test/integration/Top10E2E.t.sol` |
+| Curve freeze | `test/attack/CurveFreeze.t.sol` |
+| Keeper minOut | `test/attack/KeeperMinOut.t.sol` |
+| Frontrun binds | `test/attack/FrontrunBind.t.sol` |
+| Launch pricing | `test/attack/LaunchPricing.t.sol` |
+| Routing deltas / hooks | `test/attack/RoutingDeltas.t.sol` |
 
 ## Arc smoke
 
 `test/integration/ArcSmoke.t.sol` runs against the local Arc-compatible chain id and 6-decimal quote. A live RPC smoke (`--rpc-url $ARC_TESTNET_RPC`) is opt-in and must not be required for CI.
-
-## E2E demo
-
-```bash
-pnpm --filter indexer demo   # viem + Anvil; writes deployments/e2e-evidence.json
-```
-
-Optional Foundry sketch: `contracts/script/DemoE2E.s.sol`. See `BUILD_REPORT.md`.

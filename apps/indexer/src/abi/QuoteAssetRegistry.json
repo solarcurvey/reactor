@@ -3,25 +3,12 @@
     "type": "constructor",
     "inputs": [
       {
-        "name": "admin_",
+        "name": "auth_",
         "type": "address",
-        "internalType": "address"
+        "internalType": "contract ReactorGuardian"
       }
     ],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "admin",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -93,9 +80,40 @@
         "name": "hopViaUsdc",
         "type": "bool",
         "internalType": "bool"
+      },
+      {
+        "name": "reactorNative",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "auth",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ReactorGuardian"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "bindFactory",
+    "inputs": [
+      {
+        "name": "factory_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -125,6 +143,19 @@
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "factory",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -204,6 +235,11 @@
             "name": "hopViaUsdc",
             "type": "bool",
             "internalType": "bool"
+          },
+          {
+            "name": "reactorNative",
+            "type": "bool",
+            "internalType": "bool"
           }
         ]
       }
@@ -213,6 +249,25 @@
   {
     "type": "function",
     "name": "isEnabled",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isReactorNative",
     "inputs": [
       {
         "name": "token",
@@ -293,6 +348,34 @@
   },
   {
     "type": "function",
+    "name": "registerNative",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "symbol",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "decimals",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "setBuybackRoute",
     "inputs": [
       {
@@ -334,7 +417,7 @@
   },
   {
     "type": "function",
-    "name": "setMeta",
+    "name": "setIcon",
     "inputs": [
       {
         "name": "token",
@@ -345,11 +428,6 @@
         "name": "icon",
         "type": "string",
         "internalType": "string"
-      },
-      {
-        "name": "usdOracle",
-        "type": "address",
-        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -370,19 +448,6 @@
   },
   {
     "type": "function",
-    "name": "transferAdmin",
-    "inputs": [
-      {
-        "name": "next",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "usdc",
     "inputs": [],
     "outputs": [
@@ -393,25 +458,6 @@
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "event",
-    "name": "AdminTransferred",
-    "inputs": [
-      {
-        "name": "previous",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "next",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
   },
   {
     "type": "event",
@@ -440,6 +486,19 @@
   },
   {
     "type": "event",
+    "name": "FactoryBound",
+    "inputs": [
+      {
+        "name": "factory",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "QuoteRegistered",
     "inputs": [
       {
@@ -459,6 +518,12 @@
         "type": "uint8",
         "indexed": false,
         "internalType": "enum QuoteAssetRegistry.Category"
+      },
+      {
+        "name": "reactorNative",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
       }
     ],
     "anonymous": false
@@ -497,6 +562,11 @@
   },
   {
     "type": "error",
+    "name": "AlreadyBound",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "AlreadyRegistered",
     "inputs": []
   },
@@ -507,7 +577,12 @@
   },
   {
     "type": "error",
-    "name": "NotAdmin",
+    "name": "NotFactory",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotGuardian",
     "inputs": []
   },
   {
