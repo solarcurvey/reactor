@@ -44,11 +44,18 @@ export default function TokenPage() {
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-semibold">{t.name}</h1>
           <span className="font-mono text-sm text-zinc-500">${t.symbol}</span>
-          <span className="rounded-full bg-cyan-300/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cyan-100">
-            Earns {t.quoteSymbol}
-          </span>
+          <Link
+            href={`/quote/${t.quoteSymbol ?? "x"}`}
+            className="rounded-full bg-cyan-300/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cyan-100"
+          >
+            {t.rewardsMode === false ? "BUY+BURN" : `EARNS ${t.quoteSymbol}`}
+          </Link>
           {t.marketLive ? (
-            <Badge>Official pool</Badge>
+            <Badge>Official v4</Badge>
+          ) : t.bonding ? (
+            <Badge className="border-cyan-300/30 bg-cyan-300/10 text-cyan-100">
+              {((t.bondingBps ?? 0) / 100).toFixed(1)}% bonded
+            </Badge>
           ) : t.mode === 1 ? (
             <Badge className="border-amber-300/30 bg-amber-300/10 text-amber-100">Batch Fair</Badge>
           ) : null}
@@ -79,6 +86,27 @@ export default function TokenPage() {
           )}
         </Card>
         <div id="trade">
+          {t.bonding && (
+            <Card className="mb-3 p-3 text-[13px] text-zinc-300">
+              <div className="flex justify-between text-[11px] uppercase tracking-wider text-zinc-500">
+                <span>Bonding</span>
+                <span>{((t.bondingBps ?? 0) / 100).toFixed(1)}%</span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                <div className="h-full bg-cyan-300" style={{ width: `${Math.min(100, (t.bondingBps ?? 0) / 100)}%` }} />
+              </div>
+              <p className="mt-2 text-zinc-400">
+                {formatUnitsSafe(t.realQuote ?? 0n, t.quoteDecimals ?? 18, 2)} /{" "}
+                {formatUnitsSafe(t.gradTarget ?? 0n, t.quoteDecimals ?? 18, 2)} {t.quoteSymbol} to graduate · leftover
+                inventory locks on the curve. Chart continues on v4 after graduation.
+              </p>
+              {t.devBought && t.devBought > 0n ? (
+                <p className="mt-1 text-[11px] text-zinc-500">
+                  Creator initial buy: {formatUnitsSafe(t.devBought, t.decimals, 2)} {t.symbol} (disclosed forever)
+                </p>
+              ) : null}
+            </Card>
+          )}
           <TradePanel t={t} />
         </div>
       </div>

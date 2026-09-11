@@ -26,6 +26,7 @@ contract BuybackVault {
     QuoteAssetRegistry public immutable registry;
     uint256 public immutable threshold;
     address public immutable configurator;
+    address public curve;
 
     PoolKey public corePoolKey;
     bool public coreRouteSet;
@@ -130,8 +131,14 @@ contract BuybackVault {
         emit HopRouteConfigured(quote, key.toId());
     }
 
+    function setCurve(address curve_) external {
+        if (msg.sender != configurator) revert BadRoute();
+        if (curve != address(0) || curve_ == address(0)) revert AlreadySet();
+        curve = curve_;
+    }
+
     function accrue(address quote, uint256 amount) external {
-        if (msg.sender != hook) revert NotHook();
+        if (msg.sender != hook && msg.sender != curve) revert NotHook();
         if (amount == 0) return;
         accrued[quote] += amount;
         lifetimeAccrued += amount;

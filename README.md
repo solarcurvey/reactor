@@ -34,7 +34,7 @@ Addresses land in `deployments/local.json` after the demo script.
 
 ## What you can do
 
-1. **Choose a quote** — Instant (market live immediately) or **Batch Fair Launch** (pro-rata timed sale → migrate). Not Uniswap CCA.
+1. **Choose a quote** — Instant is a **bonding curve → locked v4 graduation** (creator picks image/name/ticker/description/quote/Standard vs Rewards/optional Dev Buy only). Or **Batch Fair Launch** (pro-rata timed sale → migrate). Not Uniswap CCA.
 2. Trade **exact-in** on the Official REACTOR Pool. The UI simulates, applies slippage, and submits a **nonzero minOut**. Incomplete fills revert.
 3. Claim holder rewards in the quote asset — no staking.
 4. Permissionless CORE buyback (`execute` / `executeCoreBuyback`). Callers cannot set minOut.
@@ -56,6 +56,7 @@ We **do not claim Arc Testnet success** unless transactions appear on [testnet.a
 
 | File | Contents |
 | --- | --- |
+| `CURVE_DESIGN.md` | Frozen Instant bonding constants and sim |
 | `PROJECT.md` | Product scope |
 | `ARCHITECTURE.md` | Modules and trust boundaries |
 | `ECONOMICS.md` | Immutable 2 / 1 / 0.5 split, flywheel, eligibility |

@@ -36,9 +36,17 @@ library ReactorConstants {
     uint64 internal constant KEEPER_COOLDOWN = 5 minutes;
     uint64 internal constant EPOCH_LENGTH = 5 minutes;
 
+    /// @dev Instant bonding curve (protocol-owned). See CURVE_DESIGN.md.
+    uint16 internal constant CURVE_INVENTORY_BPS = 7_931;
+    uint16 internal constant CURVE_LP_BPS = 2_069;
+    uint256 internal constant INSTANT_START_FDV_USDC = 5_000e6;
+    uint16 internal constant DEV_BUY_MAX_BPS = 500;
+    uint256 internal constant DEV_BUY_MAX_TOKENS = 50_000_000 ether;
+
+    /// @dev Legacy Instant v4 FDV bounds — unused. Instant no longer takes creator FDV.
     uint256 internal constant INSTANT_FDV_USDC_MIN = 10_000e6;
     uint256 internal constant INSTANT_FDV_USDC_MAX = 50_000e6;
-    uint256 internal constant INSTANT_FDV_USDC_DEFAULT = 25_000e6;
+    uint256 internal constant INSTANT_FDV_USDC_DEFAULT = 5_000e6;
     uint256 internal constant TOP10_MCAP_FLOOR_USDC = 250_000e6;
 
     uint256 internal constant KEEPER_BOUNTY_USDC = 1e5; // 0.10 USDC-6

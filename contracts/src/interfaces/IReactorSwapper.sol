@@ -7,4 +7,8 @@ interface IReactorSwapper {
     function swap(PoolKey calldata key, bool zeroForOne, int256 amountSpecified, uint256 minOut, address recipient)
         external
         returns (uint256 amountOut);
+
+    function protocolSwap(PoolKey calldata key, bool zeroForOne, int256 amountSpecified, uint256 minOut, address recipient)
+        external
+        returns (uint256 amountOut);
 }

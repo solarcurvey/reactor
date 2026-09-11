@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { usePublicClient } from "wagmi";
 import { addresses } from "./addresses";
-import { factory, registry, token, erc20, buyback, core } from "./contracts";
+import { factory, registry, token, erc20, buyback, core, curve } from "./contracts";
 import { CATEGORY_LABELS } from "./addresses";
 import { INDEXER_URL } from "./chain";
 import { FIXTURE_TOKENS, REVIEW_FIXTURES } from "./review-fixtures";
@@ -43,6 +43,14 @@ export type LaunchToken = {
   quoteDecimals?: number;
   lifetimeRewards?: bigint;
   pendingRewards?: bigint;
+  rewardsMode?: boolean;
+  bonding?: boolean;
+  bondingBps?: number;
+  realQuote?: bigint;
+  gradTarget?: bigint;
+  devBought?: bigint;
+  ready?: boolean;
+  curve?: `0x${string}`;
 };
 
 async function readQuotes(client: NonNullable<ReturnType<typeof usePublicClient>>): Promise<QuoteAsset[]> {
@@ -133,6 +141,62 @@ async function readTokens(client: NonNullable<ReturnType<typeof usePublicClient>
     } catch {
       /* empty */
     }
+    let rewardsMode = true;
+    let bonding = false;
+    let bondingBps = 0;
+    let realQuote = 0n;
+    let gradTarget = 0n;
+    let devBought = 0n;
+    let ready = false;
+    let curveAddr: `0x${string}` | undefined;
+    try {
+      rewardsMode = (await client.readContract({
+        ...factory,
+        functionName: "isRewards",
+        args: [addr],
+      })) as boolean;
+      curveAddr = (await client.readContract({
+        ...factory,
+        functionName: "curve",
+      })) as `0x${string}`;
+      if (Number(info.mode) === 0 && !info.marketLive && curveAddr && curveAddr !== "0x0000000000000000000000000000000000000000") {
+          bonding = true;
+          bondingBps = Number(
+            (await client.readContract({
+              address: curveAddr,
+              abi: curve.abi,
+              functionName: "bondingPct",
+              args: [addr],
+            })) as bigint,
+          );
+          realQuote = (await client.readContract({
+            address: curveAddr,
+            abi: curve.abi,
+            functionName: "realQuoteOf",
+            args: [addr],
+          })) as bigint;
+          gradTarget = (await client.readContract({
+            address: curveAddr,
+            abi: curve.abi,
+            functionName: "gradTargetOf",
+            args: [addr],
+          })) as bigint;
+          devBought = (await client.readContract({
+            address: curveAddr,
+            abi: curve.abi,
+            functionName: "devBoughtOf",
+            args: [addr],
+          })) as bigint;
+          ready = (await client.readContract({
+            address: curveAddr,
+            abi: curve.abi,
+            functionName: "readyOf",
+            args: [addr],
+          })) as boolean;
+      }
+    } catch {
+      /* curve not bound on older deploys */
+    }
     tokens.push({
       token: addr,
       quote: info.quote,
@@ -153,6 +217,14 @@ async function readTokens(client: NonNullable<ReturnType<typeof usePublicClient>
       quoteSymbol,
       quoteDecimals: Number(quoteDecimals),
       lifetimeRewards,
+      rewardsMode,
+      bonding,
+      bondingBps,
+      realQuote,
+      gradTarget,
+      devBought,
+      ready,
+      curve: curveAddr,
     });
   }
   const out = tokens.reverse();

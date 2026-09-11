@@ -26,7 +26,7 @@ contract TokenTest is Base {
 
     function test_unauthorizedCreditReverts() public {
         address token = _instantZcat(50_000e8);
-        vm.expectRevert(ReactorToken.NotHook.selector);
+        vm.expectRevert(ReactorToken.NotAuth.selector);
         ReactorToken(token).creditRewards(1);
     }
 
@@ -59,7 +59,8 @@ contract TokenTest is Base {
     function test_poolManagerExcluded() public {
         address token = _instantZcat(50_000e8);
         assertTrue(ReactorToken(token).rewardExcluded(address(pm)));
-        assertGt(ReactorToken(token).balanceOf(address(pm)), 0);
+        assertTrue(ReactorToken(token).rewardExcluded(address(curve)));
+        assertGt(ReactorToken(token).balanceOf(address(curve)), 0);
         uint256 eligible = ReactorToken(token).eligibleSupply();
         assertEq(eligible, ReactorToken(token).totalSupply() - ReactorToken(token).excludedBalance());
         assertLt(eligible, ReactorToken(token).totalSupply());
@@ -102,12 +103,12 @@ contract TokenTest is Base {
             _buy(alice, token, address(zec), 8e8 + i * 1e6);
             if (i % 2 == 0) _buy(bob, token, address(zec), 5e8 + i * 1e5);
             if (i % 3 == 0) _buy(carol, token, address(zec), 3e8);
-            hook.flush(token);
+            if (curve.graduatedOf(token)) hook.flush(token);
             if (i % 4 == 0) {
                 uint256 bal = ReactorToken(token).balanceOf(alice);
                 if (bal > 1e16) {
                     _sell(alice, token, address(zec), bal / 5);
-                    hook.flush(token);
+                    if (curve.graduatedOf(token)) hook.flush(token);
                 }
             }
             if (i % 5 == 0) {

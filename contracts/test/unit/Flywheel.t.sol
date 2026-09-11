@@ -29,7 +29,7 @@ contract FlywheelTest is Base {
     function test_keeperReserveCannotPullHolderQuote() public {
         address token = _instantZcat(40_000e8);
         _buy(alice, token, address(zec), 1_000e8);
-        hook.flush(token);
+        if (curve.graduatedOf(token)) hook.flush(token);
         uint256 tokenQuote = zec.balanceOf(token);
         uint256 keeperZec = zec.balanceOf(address(keepers));
         assertEq(keeperZec, 0);

@@ -25,7 +25,7 @@ O(1) magnified dividend-per-share + per-account corrections. Leftover magnified 
 ## Flywheel / CORE
 
 - CORE is never Top-10 eligible (contract-level).
-- Instant starting FDV is not a rank input. Instant USDC FDV $10k–$50k (default $25k).
+- Instant starting FDV is not a rank input. Protocol Instant start is ~$5k USDC FDV on a bonding curve (see `CURVE_DESIGN.md`). Ungraduated Instant tokens are not Top-10 eligible.
 - Top-10: $250k TWAP mcap floor. If no safe quote/USD path, tradable but not ranked.
 - If `<10` eligible, full pot splits among them. If `0`, pot accumulates.
 - Each ranked name is paid `epochPot * weight / weightSum` (pot snapshotted at `finalizeEpoch`). A later exec cannot shrink an earlier share.
@@ -36,4 +36,17 @@ O(1) magnified dividend-per-share + per-account corrections. Leftover magnified 
 
 ## Instant / Fair
 
-Instant: 1B / 18 dec, 100% locked single-sided liquidity, optional paid dev buy. Batch Fair Launch (not CCA) with `auctionBps` locked 5000.
+Instant is **bonding curve → v4 graduation**, not single-sided permanent v4 from trade #1.
+
+| Item | Value |
+| --- | --- |
+| Supply / decimals | Protocol: 1B / 18. Creator cannot set. |
+| Curve inventory | 79.31% |
+| v4 reserve | 20.69% locked forever at graduation |
+| Start FDV (USDC) | ~$5,000 (`CURVE_DESIGN.md`) |
+| Graduation | Permissionless when economic quote hits the target. Protocol fee quote is **not** LP. |
+| Modes (3.5% both) | **Rewards**: 2% holders. **Standard**: 2% SelfBurn (later market-buy + burn). Both: 1% Top-10 + 0.5% CORE. |
+| Dev buy | Optional, atomic `launchAndBuy`, full 3.5%, max 5% supply by token out. Reverts if over. No free allocation. |
+| Maintenance | Self-burn / Top-10 / CORE buys are fee-exempt only via authenticated vault executors (`protocolSwap` / `buyExempt`). |
+
+Batch Fair Launch (not CCA) with `auctionBps` locked 5000.

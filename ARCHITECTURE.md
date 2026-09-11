@@ -12,6 +12,8 @@
 | `ReactorLiquidityVault` | No | Official LP positions | Lock-only v4 positions |
 | `BuybackVault` | No | Accrued quote | Permissionless CORE buy+burn |
 | `ReactorRouter` | No | None | Unlock callback: swap / add liquidity |
+| `InstantCurve` | No | Curve inventory + economic quote | Bonding curve; graduates to locked v4 |
+| `SelfBurnVault` | No | Standard-mode 2% quote | Permissionless market-buy + burn |
 | `ReactorFactory` | No | None during idle | Instant + Batch Fair Launch, metadata, events |
 | `FairClaimVault` | No | Unclaimed auction tokens + their quote slice | O(1) eligible holder for Batch Fair |
 | `PoolManager` | Uniswap | All v4 reserves | Official v4-core (BUSL, non-production) |
@@ -36,18 +38,20 @@ External / hookless pools of the same token are allowed. They do not pay REACTOR
 ```
 User → ReactorRouter.unlock
      → PoolManager.swap (lpFee = 0)
-         → hook.beforeSwap   (quote specified  → take 3%)
+         → hook.beforeSwap   (quote specified  → take 3.5% unless protocolExempt)
          → CL swap
-         → hook.afterSwap    (quote unspecified → take 3%)
-             → split 2/1
-             → token.creditRewards
-             → buyback.accrue
+         → hook.afterSwap    (quote unspecified → take 3.5% unless protocolExempt)
+             → split 2 / 1 / 0.5
+             → Rewards: token.creditRewards · Standard: SelfBurn.accrue
+             → flywheel.accrue + buyback.accrue
      → settle / take
 ```
 
+Pre-graduation Instant trades settle on `InstantCurve` (same 3.5% quote split). After `graduate()`, the official hooked 0% LP pool is the market.
+
 ## Launch paths
 
-**Instant.** Factory deploys `ReactorToken` (supply to vault), initializes official pool at starting FDV, vault mints a single-sided token position, optional paid dev buy via router.
+**Instant.** Factory deploys `ReactorToken` (1B/18 to `InstantCurve`, excluded). Curve opens with protocol virtual reserves. Users buy/sell immediately. Economic quote accumulates; protocol fees do not seed LP. Permissionless `graduate()` locks reserved 20.69% + real curve quote as full-range v4 liquidity forever. Optional atomic `launchAndBuy` (full 3.5%, 5% token-out cap).
 
 **Fair.** Factory deploys token (supply held by factory). Bidders transfer quote in. After `endTime`, `finalize` once: pro-rata claimable tokens; remainder + raised quote locked as two-sided official liquidity; leftover bidder tokens claimable. No 3% during bids.
 

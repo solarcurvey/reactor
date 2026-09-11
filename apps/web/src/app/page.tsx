@@ -7,7 +7,7 @@ import { useLaunchTokens } from "@/lib/hooks";
 import { formatUnitsSafe } from "@/lib/utils";
 import { REVIEW_FIXTURES } from "@/lib/review-fixtures";
 
-const filters = ["Trending", "New", "Batch Fair", "Top Rewards", "USDC-quoted"] as const;
+const filters = ["Trending", "New", "Bonding", "Rewards", "Buy+Burn", "Batch Fair", "USDC-quoted"] as const;
 
 export default function HomePage() {
   const { data, isLoading, isError, error, refetch } = useLaunchTokens();
@@ -16,7 +16,9 @@ export default function HomePage() {
   const list = useMemo(() => {
     const items = [...(data ?? [])];
     if (filter === "Batch Fair") return items.filter((t) => t.mode === 1);
-    if (filter === "Top Rewards") return items.sort((a, b) => Number((b.lifetimeRewards ?? 0n) - (a.lifetimeRewards ?? 0n)));
+    if (filter === "Bonding") return items.filter((t) => t.bonding);
+    if (filter === "Rewards") return items.filter((t) => t.mode === 0 && t.rewardsMode !== false);
+    if (filter === "Buy+Burn") return items.filter((t) => t.mode === 0 && t.rewardsMode === false);
     if (filter === "USDC-quoted") return items.filter((t) => t.quoteSymbol === "USDC");
     if (filter === "Trending") return items.filter((t) => t.marketLive);
     return items;
@@ -113,12 +115,21 @@ export default function HomePage() {
                       </Link>
                     </td>
                     <td className="px-3 py-2">
-                      <span className="rounded-full bg-cyan-300/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cyan-100">
-                        {t.quoteSymbol ?? "—"}
-                      </span>
+                      <Link
+                        href={`/quote/${t.quoteSymbol ?? "x"}`}
+                        className="rounded-full bg-cyan-300/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cyan-100"
+                      >
+                        {t.rewardsMode === false ? "BUY+BURN" : `EARNS ${t.quoteSymbol ?? "X"}`}
+                      </Link>
                     </td>
                     <td className="hidden px-3 py-2 text-zinc-400 sm:table-cell">
-                      {t.mode === 1 ? (t.marketLive ? "Fair · live" : "Fair · auction") : "Instant"}
+                      {t.mode === 1
+                        ? t.marketLive
+                          ? "Fair · live"
+                          : "Fair · auction"
+                        : t.bonding
+                          ? `${((t.bondingBps ?? 0) / 100).toFixed(0)}% bonded`
+                          : "Instant · v4"}
                     </td>
                     <td className="hidden px-3 py-2 font-mono text-[12px] text-zinc-300 md:table-cell">
                       {formatUnitsSafe(t.supply, t.decimals, 0)}

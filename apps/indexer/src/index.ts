@@ -52,11 +52,25 @@ const hook = deployment.addresses.ReactorHook as `0x${string}`;
 const buyback = deployment.addresses.BuybackVault as `0x${string}`;
 const flywheel = (deployment.addresses as { FlywheelVault?: string }).FlywheelVault as `0x${string}` | undefined;
 const poolManager = (deployment.addresses as { PoolManager?: string }).PoolManager as `0x${string}` | undefined;
+const instantCurve = (deployment.addresses as { InstantCurve?: string }).InstantCurve as `0x${string}` | undefined;
+const selfBurn = (deployment.addresses as { SelfBurnVault?: string }).SelfBurnVault as `0x${string}` | undefined;
 
 const events = [
   parseAbiItem("event TokenCreated(address indexed token, address indexed creator, string name, string symbol, uint256 supply)"),
   parseAbiItem("event LaunchCreated(address indexed token, uint8 mode, address indexed quote)"),
   parseAbiItem("event InstantMarketOpened(address indexed token, bytes32 indexed poolId, uint256 fdvQuoteRaw, uint256 devBuy)"),
+  parseAbiItem("event InstantLaunchCreated(address indexed token, address indexed quote, address indexed creator, bool rewardsMode, uint256 gradTarget)"),
+  parseAbiItem("event DevBuyExecuted(address indexed token, address indexed creator, uint256 quoteIn, uint256 tokensOut)"),
+  parseAbiItem("event CurveBuy(address indexed token, address indexed buyer, uint256 quoteIn, uint256 tokensOut, uint256 fee)"),
+  parseAbiItem("event CurveSell(address indexed token, address indexed seller, uint256 tokensIn, uint256 quoteOut, uint256 fee)"),
+  parseAbiItem("event BondingProgress(address indexed token, uint256 realQuote, uint256 gradTarget, uint256 inventory)"),
+  parseAbiItem("event GraduationTriggered(address indexed token, uint256 realQuote)"),
+  parseAbiItem("event GraduationCompleted(address indexed token, bytes32 indexed poolId, uint256 quoteLp, uint256 tokenLp)"),
+  parseAbiItem("event SelfBurnAccrued(address indexed token, address indexed quote, uint256 amount)"),
+  parseAbiItem("event SelfBurnExecuted(address indexed token, uint256 quoteIn, uint256 burned)"),
+  parseAbiItem("event QuoteRouted(address indexed token, address indexed user, address tokenIn, address tokenOut, uint256 amountIn)"),
+  parseAbiItem("event RewardsCredited(uint256 amount, uint256 magnifiedDividendPerShare)"),
+  parseAbiItem("event RewardClaimed(address indexed account, address indexed to, uint256 amount)"),
   parseAbiItem("event BatchFairLaunchCreated(uint256 indexed fairId, address indexed token, uint64 startTime, uint64 endTime)"),
   parseAbiItem("event BatchFairLaunchFinalized(uint256 indexed fairId, uint256 totalBids, uint256 auctionTokens)"),
   parseAbiItem("event Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint24 fee)"),
@@ -94,6 +108,8 @@ async function tick() {
   const watch = [factory, hook, buyback];
   if (flywheel) watch.push(flywheel);
   if (poolManager) watch.push(poolManager);
+  if (instantCurve) watch.push(instantCurve);
+  if (selfBurn) watch.push(selfBurn);
 
   const logs = await client.getLogs({
     address: watch,

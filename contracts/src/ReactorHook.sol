@@ -18,6 +18,16 @@ import {IReactorToken} from "./interfaces/IReactorToken.sol";
 import {IERC20MinimalExt} from "./interfaces/IERC20MinimalExt.sol";
 import {BuybackVault} from "./BuybackVault.sol";
 import {IFeeSink} from "./interfaces/IFeeSink.sol";
+import {ReactorRouter} from "./ReactorRouter.sol";
+
+interface IFactoryView {
+    function router() external view returns (ReactorRouter);
+    function isRewards(address token) external view returns (bool);
+}
+
+interface ISelfBurnSink {
+    function accrue(address token, address quote, uint256 amount) external;
+}
 
 /// @notice Official REACTOR hook. 0% LP fee pool; 3.5% quote-side custom accounting.
 contract ReactorHook is IHooks, IUnlockCallback {
@@ -29,7 +39,9 @@ contract ReactorHook is IHooks, IUnlockCallback {
     address public immutable liquidityVault;
     BuybackVault public buybackVault;
     IFeeSink public flywheelVault;
+    ISelfBurnSink public selfBurn;
     address public factory;
+    address public curve;
     address public immutable owner;
 
     struct OfficialMarket {
@@ -41,6 +53,7 @@ contract ReactorHook is IHooks, IUnlockCallback {
     mapping(PoolId => OfficialMarket) public official;
     mapping(address => OfficialMarket) public marketOfToken;
     mapping(address => uint256) public pendingTokenRewards;
+    mapping(address => uint256) public pendingSelfBurn;
     mapping(address => uint256) public pendingBuyback;
     mapping(address => uint256) public pendingFlywheel;
     mapping(address => uint256) public pendingCore;
@@ -124,6 +137,20 @@ contract ReactorHook is IHooks, IUnlockCallback {
         flywheelVault = vault_;
     }
 
+    function bindCurve(address curve_) external {
+        if (msg.sender != owner) revert NotOwner();
+        if (curve != address(0)) revert AlreadyBound();
+        if (curve_ == address(0)) revert NotFactory();
+        curve = curve_;
+    }
+
+    function bindSelfBurn(address vault_) external {
+        if (msg.sender != owner) revert NotOwner();
+        if (address(selfBurn) != address(0)) revert AlreadyBound();
+        if (vault_ == address(0)) revert NotFactory();
+        selfBurn = ISelfBurnSink(vault_);
+    }
+
     function hookFlags() public pure returns (uint160) {
         return uint160(
             Hooks.BEFORE_INITIALIZE_FLAG | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG
@@ -138,7 +165,7 @@ contract ReactorHook is IHooks, IUnlockCallback {
         onlyPoolManager
         returns (bytes4)
     {
-        if (sender != factory) revert NotFactory();
+        if (sender != factory && sender != curve) revert NotFactory();
         if (key.fee != ReactorConstants.LP_FEE) revert InvalidPool();
         if (key.tickSpacing != ReactorConstants.TICK_SPACING) revert InvalidPool();
 
@@ -180,6 +207,9 @@ contract ReactorHook is IHooks, IUnlockCallback {
         if (!m.exists) {
             return (IHooks.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
         }
+        if (_protocolExempt()) {
+            return (IHooks.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+        }
 
         bool specifiedIs0 = (params.amountSpecified < 0) == params.zeroForOne;
         address specified = specifiedIs0 ? Currency.unwrap(key.currency0) : Currency.unwrap(key.currency1);
@@ -207,6 +237,7 @@ contract ReactorHook is IHooks, IUnlockCallback {
     ) external override onlyPoolManager returns (bytes4, int128) {
         OfficialMarket memory m = official[key.toId()];
         if (!m.exists) return (IHooks.afterSwap.selector, 0);
+        if (_protocolExempt()) return (IHooks.afterSwap.selector, 0);
 
         bool specifiedIs0 = (params.amountSpecified < 0) == params.zeroForOne;
         address specified = specifiedIs0 ? Currency.unwrap(key.currency0) : Currency.unwrap(key.currency1);
@@ -233,8 +264,15 @@ contract ReactorHook is IHooks, IUnlockCallback {
         uint256 notional
     ) internal {
         if (holders > 0) {
-            pendingTokenRewards[m.token] += holders;
-            IReactorToken(m.token).creditRewards(holders);
+            if (factory != address(0) && IFactoryView(factory).isRewards(m.token)) {
+                pendingTokenRewards[m.token] += holders;
+                IReactorToken(m.token).creditRewards(holders);
+            } else if (address(selfBurn) != address(0)) {
+                pendingSelfBurn[m.token] += holders;
+            } else {
+                pendingTokenRewards[m.token] += holders;
+                IReactorToken(m.token).creditRewards(holders);
+            }
         }
         if (flywheel > 0 && address(flywheelVault) != address(0)) {
             pendingFlywheel[m.quote] += flywheel;
@@ -264,7 +302,8 @@ contract ReactorHook is IHooks, IUnlockCallback {
     }
 
     function _flush(address quote, address token) internal {
-        uint256 need = pendingTokenRewards[token] + pendingFlywheel[quote] + pendingCore[quote];
+        uint256 need =
+            pendingTokenRewards[token] + pendingSelfBurn[token] + pendingFlywheel[quote] + pendingCore[quote];
         uint256 claimAmt = poolManager.balanceOf(address(this), uint256(uint160(quote)));
         if (need > 0 && claimAmt > need) claimAmt = need;
         if (claimAmt > 0) {
@@ -275,6 +314,7 @@ contract ReactorHook is IHooks, IUnlockCallback {
 
     function _payout(address quote, address token) internal {
         uint256 toToken = pendingTokenRewards[token];
+        uint256 toSelf = pendingSelfBurn[token];
         uint256 toFly = pendingFlywheel[quote];
         uint256 toCore = pendingCore[quote];
         uint256 have = IERC20MinimalExt(quote).balanceOf(address(this));
@@ -282,6 +322,13 @@ contract ReactorHook is IHooks, IUnlockCallback {
             uint256 send = toToken < have ? toToken : have;
             pendingTokenRewards[token] = toToken - send;
             IERC20MinimalExt(quote).transfer(token, send);
+            have -= send;
+        }
+        if (toSelf > 0 && have > 0 && address(selfBurn) != address(0)) {
+            uint256 send = toSelf < have ? toSelf : have;
+            pendingSelfBurn[token] = toSelf - send;
+            selfBurn.accrue(token, quote, send);
+            IERC20MinimalExt(quote).transfer(address(selfBurn), send);
             have -= send;
         }
         if (toFly > 0 && have > 0 && address(flywheelVault) != address(0)) {
@@ -305,6 +352,11 @@ contract ReactorHook is IHooks, IUnlockCallback {
         poolManager.burn(address(this), uint256(uint160(quote)), amt);
         poolManager.take(Currency.wrap(quote), address(this), amt);
         return "";
+    }
+
+    function _protocolExempt() internal view returns (bool) {
+        if (factory == address(0)) return false;
+        return IFactoryView(factory).router().protocolExempt() == 1;
     }
 
     function beforeAddLiquidity(address, PoolKey calldata, IPoolManager.ModifyLiquidityParams calldata, bytes calldata)

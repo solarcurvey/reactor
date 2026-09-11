@@ -2,7 +2,7 @@
 
 **This software has not been audited.** Treat every contract as hostile-unreviewed. Do not deploy to Arc Mainnet.
 
-**This pass:** `forge test` **82 passed / 0 failed / 1 skipped**. Slither 0.11.6 on this tree: **142 findings** (16 High / 64 Medium / 54 Low / 8 Info) — see `HARDENING_REPORT.md`. **Arc Public Testnet was not deployed** (no funded deployer key and no faucet in this environment).
+**This pass:** Instant is bonding curve → v4 graduation (not single-sided v4 from t1). `forge test` **102 passed / 0 failed / 1 skipped** after the curve amendment. **Arc Public Testnet was not deployed.**
 
 ## Overview
 
@@ -13,6 +13,8 @@ REACTOR launches ERC-20s into Official REACTOR Pools: Uniswap v4 pools with `fee
 | Contract | Path | Notes |
 | --- | --- | --- |
 | `ReactorFactory` | `contracts/src/ReactorFactory.sol` | Instant + Batch Fair Launch, metadata |
+| `InstantCurve` | `contracts/src/InstantCurve.sol` | Virtual-reserve bonding; graduate to locked v4 |
+| `SelfBurnVault` | `contracts/src/SelfBurnVault.sol` | Standard-mode 2% buy+burn |
 | `FairClaimVault` | `contracts/src/FairClaimVault.sol` | Eligible holder of unclaimed auction tokens |
 | `ReactorHook` | `contracts/src/ReactorHook.sol` | Official identity + fee |
 | `ReactorToken` | `contracts/src/ReactorToken.sol` | ERC-20 + O(1) rewards |

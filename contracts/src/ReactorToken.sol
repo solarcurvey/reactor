@@ -133,7 +133,8 @@ contract ReactorToken is IReactorToken {
         emit Burned(msg.sender, amount);
     }
 
-    function creditRewards(uint256 amount) external onlyHook {
+    function creditRewards(uint256 amount) external {
+        if (msg.sender != hook && msg.sender != factory) revert NotAuth();
         if (amount == 0) return;
         lifetimeRewards += amount;
         _distributeMagnified(amount * MAG);

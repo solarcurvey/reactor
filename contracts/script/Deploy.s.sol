@@ -24,6 +24,10 @@ import {HookMiner} from "../src/libraries/HookMiner.sol";
 import {LaunchMath} from "../src/libraries/LaunchMath.sol";
 import {LiquidityAmounts} from "../src/libraries/LiquidityAmounts.sol";
 import {IERC20MinimalExt} from "../src/interfaces/IERC20MinimalExt.sol";
+import {InstantCurve, IInstantFactory} from "../src/InstantCurve.sol";
+import {SelfBurnVault} from "../src/SelfBurnVault.sol";
+import {MarketOracle} from "../src/MarketOracle.sol";
+import {KeeperReserve} from "../src/KeeperReserve.sol";
 
 contract Deploy is Script {
     struct Addresses {
@@ -40,6 +44,10 @@ contract Deploy is Script {
         BuybackVault buyback;
         FlywheelVault flywheel;
         ReactorFactory factory;
+        InstantCurve curve;
+        SelfBurnVault selfBurn;
+        MarketOracle oracle;
+        KeeperReserve keepers;
     }
 
     function run() external {
@@ -135,6 +143,21 @@ contract Deploy is Script {
         a.factory = new ReactorFactory(a.pm, a.hook, a.router, a.vault, a.registry, address(a.core));
         a.hook.bindFactory(address(a.factory));
         a.vault.bindFactory(address(a.factory));
+        a.keepers = new KeeperReserve(address(a.usdc), deployer);
+        a.oracle = new MarketOracle(a.pm, a.hook, a.registry, address(a.usdc), address(a.core));
+        a.flywheel.bind(a.factory, a.oracle, a.keepers);
+        a.curve = new InstantCurve(IInstantFactory(address(a.factory)), a.hook, a.router, a.vault, a.registry, a.pm);
+        a.selfBurn = new SelfBurnVault(address(a.factory), address(a.hook), a.curve, a.router);
+        a.factory.bindCurve(a.curve, a.selfBurn, a.keepers);
+        a.hook.bindCurve(address(a.curve));
+        a.hook.bindSelfBurn(address(a.selfBurn));
+        a.buyback.setCurve(address(a.curve));
+        a.router.setProtocolVault(address(a.selfBurn), true);
+        a.router.setProtocolVault(address(a.flywheel), true);
+        a.router.setProtocolVault(address(a.buyback), true);
+        a.keepers.setCaller(address(a.curve), true);
+        a.keepers.setCaller(address(a.flywheel), true);
+        a.keepers.setCaller(address(a.buyback), true);
     }
 
     function _seedRoutes(Addresses memory a) internal {
@@ -192,6 +215,8 @@ contract Deploy is Script {
         console2.log("Hook", address(a.hook));
         console2.log("Buyback", address(a.buyback));
         console2.log("Factory", address(a.factory));
+        console2.log("InstantCurve", address(a.curve));
+        console2.log("SelfBurnVault", address(a.selfBurn));
         console2.log("FairVault", address(a.factory.fairVault()));
     }
 }

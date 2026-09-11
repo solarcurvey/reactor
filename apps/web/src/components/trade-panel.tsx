@@ -6,7 +6,7 @@ import { waitForTransactionReceipt } from "viem/actions";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { erc20, router, token as tokenC } from "@/lib/contracts";
+import { erc20, router, token as tokenC, curve } from "@/lib/contracts";
 import { officialPoolKey, buyZeroForOne } from "@/lib/pool";
 import { feeSplit, formatUnitsSafe, parseUnitsSafe } from "@/lib/utils";
 import type { LaunchToken } from "@/lib/hooks";
@@ -36,15 +36,28 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       setQuotedOut(null);
       return;
     }
-    const key = officialPoolKey(t.token, t.quote);
-    const zfo = side === "buy" ? buyZeroForOne(t.token, t.quote) : !buyZeroForOne(t.token, t.quote);
+    const bonding = Boolean(t.bonding && t.curve && !t.marketLive);
     try {
-      const sim = await client.simulateContract({
-        ...router,
-        functionName: "swap",
-        args: [key, zfo, -parsed, 1n, address],
-        account: address,
-      });
+      const sim = bonding
+        ? await client.simulateContract({
+            address: t.curve!,
+            abi: curve.abi,
+            functionName: side === "buy" ? "buy" : "sell",
+            args: [t.token, parsed, 1n],
+            account: address,
+          })
+        : await client.simulateContract({
+            ...router,
+            functionName: "swap",
+            args: [
+              officialPoolKey(t.token, t.quote),
+              side === "buy" ? buyZeroForOne(t.token, t.quote) : !buyZeroForOne(t.token, t.quote),
+              -parsed,
+              1n,
+              address,
+            ],
+            account: address,
+          });
       setQuotedOut(sim.result as bigint);
       setQuotedAt(Date.now());
     } catch (e) {
@@ -82,7 +95,8 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         setError("minOut is zero after slippage. Increase size or tighten decimals.");
         return;
       }
-      const spender = addresses.ReactorRouter;
+      const bonding = Boolean(t.bonding && t.curve && !t.marketLive);
+      const spender = bonding ? t.curve! : addresses.ReactorRouter;
       const asset = side === "buy" ? t.quote : t.token;
       const allowance = (await client.readContract({
         address: asset,
@@ -99,13 +113,24 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         });
         await waitForTransactionReceipt(client, { hash: approveHash });
       }
-      const key = officialPoolKey(t.token, t.quote);
-      const zfo = side === "buy" ? buyZeroForOne(t.token, t.quote) : !buyZeroForOne(t.token, t.quote);
-      const tx = await writeContractAsync({
-        ...router,
-        functionName: "swap",
-        args: [key, zfo, -parsed, minOut, address],
-      });
+      const tx = bonding
+        ? await writeContractAsync({
+            address: t.curve!,
+            abi: curve.abi,
+            functionName: side === "buy" ? "buy" : "sell",
+            args: [t.token, parsed, minOut],
+          })
+        : await writeContractAsync({
+            ...router,
+            functionName: "swap",
+            args: [
+              officialPoolKey(t.token, t.quote),
+              side === "buy" ? buyZeroForOne(t.token, t.quote) : !buyZeroForOne(t.token, t.quote),
+              -parsed,
+              minOut,
+              address,
+            ],
+          });
       await waitForTransactionReceipt(client, { hash: tx });
       setHash(tx);
     } catch (e) {
@@ -170,11 +195,38 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         <Button variant="outline" className="flex-1" onClick={refreshQuote} disabled={!isConnected || parsed === 0n}>
           Quote
         </Button>
-        <Button className="flex-1" onClick={submit} disabled={!isConnected || isPending || !t.marketLive}>
-          {!t.marketLive ? "Market not live" : isPending ? "Pending…" : `Confirm ${side}`}
+        <Button
+          className="flex-1"
+          onClick={submit}
+          disabled={!isConnected || isPending || (!t.marketLive && !t.bonding)}
+        >
+          {!t.marketLive && !t.bonding ? "Market not live" : isPending ? "Pending…" : `Confirm ${side}`}
         </Button>
       </div>
       {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
+      {t.ready && t.curve && !t.marketLive && (
+        <Button
+          className="mt-3 w-full"
+          variant="outline"
+          onClick={async () => {
+            if (!client) return;
+            try {
+              const tx = await writeContractAsync({
+                address: t.curve!,
+                abi: curve.abi,
+                functionName: "graduate",
+                args: [t.token],
+              });
+              await waitForTransactionReceipt(client, { hash: tx });
+              setHash(tx);
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "Graduation failed");
+            }
+          }}
+        >
+          Graduate to locked v4
+        </Button>
+      )}
       {hash && <p className="mt-3 break-all font-mono text-[11px] text-cyan-200">tx {hash}</p>}
     </Card>
   );
