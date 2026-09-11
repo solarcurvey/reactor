@@ -208,15 +208,11 @@ contract ReactorHook is IHooks, IUnlockCallback {
         emit SwapFeeAccrued(id, m.quote, holders, buyback, notional);
     }
 
-    /// @notice Convert ERC-6909 fee claims to ERC-20. Call after the swapper settled (same unlock or later).
+    /// @notice Convert ERC-6909 fee claims to ERC-20. Must run after the swap unlock completes.
     function flush(address quote, address token) external {
         uint256 claimAmt = poolManager.balanceOf(address(this), uint256(uint160(quote)));
         if (claimAmt > 0) {
-            try poolManager.take(Currency.wrap(quote), address(this), claimAmt) {
-                poolManager.burn(address(this), uint256(uint160(quote)), claimAmt);
-            } catch {
-                poolManager.unlock(abi.encode(quote, claimAmt));
-            }
+            poolManager.unlock(abi.encode(quote, claimAmt));
         }
         _payout(quote, token);
     }
@@ -241,8 +237,9 @@ contract ReactorHook is IHooks, IUnlockCallback {
     function unlockCallback(bytes calldata data) external returns (bytes memory) {
         if (msg.sender != address(poolManager)) revert NotPoolManager();
         (address quote, uint256 amt) = abi.decode(data, (address, uint256));
-        poolManager.take(Currency.wrap(quote), address(this), amt);
+        // Burn 6909 first to credit the locker, then take ERC-20.
         poolManager.burn(address(this), uint256(uint160(quote)), amt);
+        poolManager.take(Currency.wrap(quote), address(this), amt);
         return "";
     }
 

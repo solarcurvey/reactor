@@ -33,7 +33,7 @@ const ANVIL = [
   "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
   "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
   "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a",
-  "0x7c852118294e51e653017a7a8a1635475980ef0e65347a9ce92cee19c3596a7",
+  "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6",
 ] as Hex[];
 
 const publicClient = createPublicClient({ chain, transport: http(RPC) });
@@ -53,7 +53,7 @@ function poolKey(token: Address, quote: Address) {
     currency1,
     fee: 0,
     tickSpacing: 60,
-    hooks: A.ReactorHook as Address,
+    hooks: A.ReactorHook as Address, // must match factory.hook() — CREATE2 changes if hook bytecode changes
   };
 }
 
@@ -340,6 +340,25 @@ async function main() {
   });
   if (carolAfter <= carolBefore) throw new Error("Carol should accrue after receiving tokens");
 
+  await send(alice, {
+    address: A.ReactorHook as Address,
+    abi: hookAbi,
+    functionName: "flush",
+    args: [A.ZEC, zcatToken],
+  });
+  const tokenZec = (await publicClient.readContract({
+    address: A.ZEC as Address,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: [zcatToken],
+  })) as bigint;
+  const pendingNow = (await publicClient.readContract({
+    address: zcatToken,
+    abi: tokenAbi,
+    functionName: "pendingRewards",
+    args: [alice.account.address],
+  })) as bigint;
+  if (tokenZec < pendingNow) throw new Error(`insolvent token ZEC ${tokenZec} < ${pendingNow}`);
   const claim = await send(alice, {
     address: zcatToken,
     abi: tokenAbi,
@@ -380,18 +399,32 @@ async function main() {
   const ucatToken = ucatEv[0]!.args.token as Address;
   const usdcBuy = 10_000n * 10n ** 6n;
   await buy(alice, ucatToken, A.USDC as Address, usdcBuy);
+  await send(alice, {
+    address: A.ReactorHook as Address,
+    abi: hookAbi,
+    functionName: "flush",
+    args: [A.USDC, ucatToken],
+  });
   const usdcReserve = (await publicClient.readContract({
     address: A.BuybackVault as Address,
     abi: buybackAbi,
     functionName: "accrued",
     args: [A.USDC],
   })) as bigint;
+  const vaultUsdc = (await publicClient.readContract({
+    address: A.USDC as Address,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: [A.BuybackVault],
+  })) as bigint;
   const expectedUsdcBuyback = feeSplit(usdcBuy).buyback;
   log("15_usdc_reserve_for_buyback", {
     ucat: ucatToken,
     usdcReserve: usdcReserve.toString(),
+    vaultUsdc: vaultUsdc.toString(),
     expected: expectedUsdcBuyback.toString(),
   });
+  if (vaultUsdc < usdcReserve) throw new Error("buyback vault missing USDC after flush");
 
   const burnedBefore = (await publicClient.readContract({
     address: A.BuybackVault as Address,

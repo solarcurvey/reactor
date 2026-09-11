@@ -53,4 +53,8 @@ slither contracts/src --exclude-dependencies || true
 
 ## E2E demo
 
-`contracts/script/DemoE2E.s.sol` plus `apps/indexer` + web. Evidence is written to `deployments/e2e-evidence.json`. See `BUILD_REPORT.md`.
+```bash
+pnpm --filter indexer demo   # viem + Anvil; writes deployments/e2e-evidence.json
+```
+
+Optional Foundry sketch: `contracts/script/DemoE2E.s.sol`. See `BUILD_REPORT.md`.

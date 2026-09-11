@@ -17,6 +17,8 @@ contract LaunchesTest is Base {
         assertGt(ReactorToken(token).balanceOf(alice), 0);
         assertGt(ReactorToken(token).pendingRewards(alice), 0);
         assertGt(buyback.accrued(address(zec)), 0);
+        assertGe(IERC20Like(address(zec)).balanceOf(token), ReactorToken(token).lifetimeRewards());
+        assertGe(IERC20Like(address(zec)).balanceOf(address(buyback)), buyback.accrued(address(zec)));
 
         uint256 aliceTok = ReactorToken(token).balanceOf(alice);
         _sell(alice, token, address(zec), aliceTok / 4);

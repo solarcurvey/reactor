@@ -171,6 +171,17 @@
   },
   {
     "type": "error",
+    "name": "FlushFailed",
+    "inputs": [
+      {
+        "name": "data",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "NotManager",
     "inputs": []
   },

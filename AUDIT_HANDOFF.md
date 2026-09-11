@@ -21,7 +21,7 @@ REACTOR launches fixed-supply ERC-20s into Official REACTOR Pools: Uniswap v4 po
 | `MockERC20` | `contracts/src/MockERC20.sol` | Test quotes (open mint) |
 | `PoolManager` | Uniswap v4-core | BUSL-1.1, non-production |
 
-Addresses: `deployments/<network>.json` after deploy.
+Addresses: `deployments/local.json` (local demo). Hook CREATE2 **moves when hook bytecode changes** — read `factory.hook()`. Current local hook `0x27Cf52D1606345AaE2837c4a667fD57C68B9B0cc` (flags `0x30CC`).
 
 ## Dependency commits
 
@@ -50,7 +50,7 @@ BEFORE_INITIALIZE | AFTER_INITIALIZE | BEFORE_SWAP | AFTER_SWAP
 
 See `ECONOMICS.md` and `FeeMath.split`. Quote notional is the specified amount when quote is specified, else `abs(CL quote delta)`.
 
-Fee claims are minted as ERC-6909 on the hook during the swap (PM may not yet hold the quote ERC-20). `ReactorRouter` calls `hook.flush` after the swapper settles so ERC-20 reaches the token and buyback vault.
+Fee claims are minted as ERC-6909 on the hook during the swap (PM may not yet hold the quote ERC-20). `ReactorRouter` calls `hook.flush` **after** the swap unlock returns. Flush opens a new unlock, **burns 6909 then takes ERC-20**, and pays the token (2%) plus `BuybackVault` (1%). Calling flush inside the swap unlock fails (hook is not the locker).
 
 Rewards: `accRewardPerShare` with `PRECISION = 1e27`. Leftover dust when `eligibleSupply == 0` flushes on the next eligible transfer.
 
