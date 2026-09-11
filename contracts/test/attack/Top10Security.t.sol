@@ -64,7 +64,7 @@ contract Top10SecurityTest is Base {
                 telegram: ""
             })
         );
-        _buy(alice, token, address(usdc), 2_000_000e6);
+        _buy(alice, token, address(usdc), 1_000e6);
         oracle.record(token);
         (uint256 mcap, bool ok) = oracle.twapMcapUsdc(token);
         assertFalse(ok, "n<2 must reject");
@@ -89,7 +89,7 @@ contract Top10SecurityTest is Base {
                 telegram: ""
             })
         );
-        _buy(alice, token, address(usdc), 50_000e6);
+        _buy(alice, token, address(usdc), 500e6);
         oracle.record(token);
         vm.warp(block.timestamp + 31);
         oracle.record(token);

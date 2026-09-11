@@ -31,6 +31,7 @@ contract FlywheelVault {
 
     mapping(address => uint256) public quoteAccrued;
     uint256 public usdcPot;
+    uint256 public epochPot;
     uint256 public lifetimeAccrued;
     uint256 public epoch;
     uint64 public epochStart;
@@ -152,6 +153,7 @@ contract FlywheelVault {
             weights[i] = caps[i];
             weightSum += caps[i];
         }
+        epochPot = usdcPot;
         epochFinalized = true;
         emit EpochFinalized(epoch, filled, usdcPot);
         _bounty(keccak256(abi.encode("finalize", epoch)));
@@ -183,7 +185,8 @@ contract FlywheelVault {
             emit Skipped(token, "rank");
             return;
         }
-        uint256 share = (usdcPot * w) / weightSum;
+        uint256 share = (epochPot * w) / weightSum;
+        if (share > usdcPot) share = usdcPot;
         if (share < ReactorConstants.DEFAULT_SETTLE_THRESHOLD) {
             emit Skipped(token, "dust");
             return;
@@ -201,6 +204,7 @@ contract FlywheelVault {
         epoch += 1;
         epochStart = uint64(block.timestamp);
         epochFinalized = false;
+        epochPot = 0;
     }
 
     function _buyAndBurn(address token, uint256 usdcIn) internal returns (uint256 burned) {

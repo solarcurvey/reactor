@@ -5,6 +5,7 @@ import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {Currency} from "v4-core/types/Currency.sol";
 import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
+import {FullMath} from "v4-core/libraries/FullMath.sol";
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
 import {ReactorHook} from "./ReactorHook.sol";
 import {ReactorToken} from "./ReactorToken.sol";
@@ -67,7 +68,9 @@ contract MarketOracle {
         }
         uint256 sum;
         uint256 n;
-        uint64 cutoff = uint64(block.timestamp) - uint64(ReactorConstants.EPOCH_LENGTH);
+        uint64 cutoff = block.timestamp <= ReactorConstants.EPOCH_LENGTH
+            ? 0
+            : uint64(block.timestamp - ReactorConstants.EPOCH_LENGTH);
         for (uint256 i; i < 8; i++) {
             Sample memory s = ring[token][i];
             if (s.ts >= cutoff && s.priceUsdc1e6 > 0) {
@@ -79,7 +82,9 @@ contract MarketOracle {
         uint256 px = sum / n;
         uint256 supply = ReactorToken(token).totalSupply();
         uint8 dec = ReactorToken(token).decimals();
-        mcapUsdc6 = (px * supply) / (10 ** dec);
+        uint256 den = 10 ** dec;
+        if (px == 0 || den == 0) return (0, false);
+        mcapUsdc6 = FullMath.mulDiv(px, supply, den);
         ok = true;
     }
 
