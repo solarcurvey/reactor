@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Base} from "../Base.sol";
+import {Base, IERC20Like} from "../Base.sol";
 import {ReactorToken} from "../../src/ReactorToken.sol";
 import {ReactorFactory} from "../../src/ReactorFactory.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
@@ -88,5 +88,41 @@ contract TokenTest is Base {
         uint256 leftover = ReactorToken(token).leftoverRewards();
         assertEq(pending + leftover, 20e6);
         assertEq(buyback.accrued(address(usdc)), 10e6);
+    }
+
+    /// @notice Swap-path check that outstanding−backing stays in the few-raw range
+    /// that justified tightening campaign slack from 1000 → 32.
+    function test_swapPathRewardSlackIsFewRawUnits() public {
+        address token = _instantZcat(50_000e8);
+        address fair = address(factory.fairVault());
+        uint256 maxOverBacking;
+        for (uint256 i = 0; i < 36; i++) {
+            _buy(alice, token, address(zec), 8e8 + i * 1e6);
+            if (i % 2 == 0) _buy(bob, token, address(zec), 5e8 + i * 1e5);
+            if (i % 3 == 0) _buy(carol, token, address(zec), 3e8);
+            hook.flush(token);
+            if (i % 4 == 0) {
+                uint256 bal = ReactorToken(token).balanceOf(alice);
+                if (bal > 1e16) {
+                    _sell(alice, token, address(zec), bal / 5);
+                    hook.flush(token);
+                }
+            }
+            if (i % 5 == 0) {
+                vm.prank(bob);
+                try ReactorToken(token).claimRewards(bob) {} catch {}
+            }
+            uint256 outstanding = ReactorToken(token).pendingRewards(alice) + ReactorToken(token).pendingRewards(bob)
+                + ReactorToken(token).pendingRewards(carol) + ReactorToken(token).pendingRewards(fair)
+                + ReactorToken(token).leftoverRewards();
+            uint256 backing = IERC20Like(address(zec)).balanceOf(token) + hook.pendingTokenRewards(token);
+            if (outstanding > backing) {
+                uint256 gap = outstanding - backing;
+                if (gap > maxOverBacking) maxOverBacking = gap;
+            }
+            assertLe(outstanding, backing + 32);
+            assertLe(outstanding, ReactorToken(token).lifetimeRewards() + 32);
+        }
+        assertLe(maxOverBacking, 32);
     }
 }

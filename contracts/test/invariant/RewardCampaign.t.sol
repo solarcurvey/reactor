@@ -136,6 +136,11 @@ contract RewardHandler {
 }
 
 contract RewardCampaignTest is Base {
+    /// @dev Per-holder `floor((bal*(acc+inc))/P) - floor((bal*acc)/P)` can exceed
+    /// `inc*bal/P` by 1 raw each credit. Observed campaign gaps were 2 and 9 raw
+    /// (not ~1000). 32 covers that plus several extra credits. Not a proof.
+    uint256 internal constant SOLVENCY_SLACK_RAW = 32;
+
     RewardHandler internal handler;
 
     function setUp() public override {
@@ -163,10 +168,10 @@ contract RewardCampaignTest is Base {
                 + ReactorToken(token).pendingRewards(address(factory.fairVault()))
                 + ReactorToken(token).leftoverRewards();
             uint256 backing = IERC20Like(quote).balanceOf(token) + hook.pendingTokenRewards(token);
-            // Credit is booked in the hook before ERC-20 lands; floor math plus
-            // shared-quote flush ordering can leave a few raw units of slack.
-            assertLe(outstanding, backing + 1_000);
-            assertLe(outstanding, ReactorToken(token).lifetimeRewards() + 1_000);
+            // +32 is a measured floor-math ceiling, not a 1000-unit hole.
+            // See HARDENING_REPORT "Reward solvency slack" and test_floorMathSlackIsFewRawUnits.
+            assertLe(outstanding, backing + SOLVENCY_SLACK_RAW);
+            assertLe(outstanding, ReactorToken(token).lifetimeRewards() + SOLVENCY_SLACK_RAW);
         }
     }
 }

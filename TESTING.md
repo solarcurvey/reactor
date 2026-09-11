@@ -26,7 +26,7 @@ slither contracts/src --exclude-dependencies || true
 | --- | --- | --- |
 | Fee 3% → 2/1 | `test/unit/FeeInvariant.t.sol` | holders+buyback = 3% floor split |
 | No transfer tax | `test/unit/Token.t.sol` | send X, receive X |
-| Reward solvency | invariant + unit | token quote ≥ outstanding rewards |
+| Reward solvency | invariant + unit | token quote + hook pending ≥ outstanding (32-raw floor slack; see HARDENING_REPORT) |
 | Reward persistence | unit | accrue, transfer to 0, still claimable |
 | No future-reward theft | unit | recipient debt = current acc |
 | Pool exclusion | unit | PM balance not eligible |
