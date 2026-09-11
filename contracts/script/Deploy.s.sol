@@ -291,13 +291,12 @@ contract Deploy is Script {
             _kv("CoreVesting", address(a.vesting)),
             _kv("CoreLiquidityVault", address(a.coreLp)),
             _kv("CoreBuybackExecutor", address(a.coreBuyback)),
-            _kvLast("FairClaimVault", a.factory.fairVault()),
+            _kvLast("FairClaimVault", address(a.factory.fairVault())),
             "  },\n",
             '  "hookFlags": "0x30CC",\n',
             '  "v4Core": "e50237c43811bd9b526eff40f26772152a42daba"\n',
             "}\n"
         );
-        vm.writeFile("deployments/local.json", json);
         vm.writeFile("../deployments/local.json", json);
         vm.writeFile("../apps/web/src/lib/deployment.json", json);
         vm.writeFile("../apps/indexer/src/deployment.json", json);
