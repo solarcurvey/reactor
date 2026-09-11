@@ -8,6 +8,7 @@
 | Item | Value |
 | --- | --- |
 | Branch | `cursor/final-grok-completion-5e6c` |
+| HEAD | `9a364a4af7ff130f77f85e93173ff4b6bade0694` |
 | Parent | `1a3b3b6` |
 | Forge | **282 passed**, 0 failed, 1 skipped (`forge test --offline`, Foundry 1.8.1, via_ir) |
 | Invariants | Reward campaign + CORE + fee split still the bound |
