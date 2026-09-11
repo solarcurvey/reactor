@@ -1,63 +1,593 @@
-
-╭-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------╮
-| Type        | Signature                                                                                                                           | Selector                                                           |
-+========================================================================================================================================================================================================================+
-| event       | BuybackRouteSet(address,bool,bool)                                                                                                  | 0x2a3619b6c39a2a400266f2750da75bfb72cfd0a4e344a37b77ea95f72e87138e |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| event       | FactoryBound(address)                                                                                                               | 0x223ed41fd6ed03a561a021bd1e19f3bd6bab57e440422809cf7c117ab75ee274 |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| event       | QuoteRegistered(address,string,QuoteAssetRegistry.Category,bool)                                                                    | 0xd63b317ed215876cc14badb3628e285d3ca9060d3dee51320514a8d30b101c7a |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| event       | QuoteUpdated(address,bool)                                                                                                          | 0x9772f4936d726dc6de1c07763489d176e8caa6ac71f75c5d71efce3e297f30be |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| event       | UsdcSet(address)                                                                                                                    | 0xa86377f6e4b5bf9c06229d957a487a88f365f5188d4594ba2e322e093dc4ee76 |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| error       | AlreadyBound()                                                                                                                      | 0x682a9065                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| error       | AlreadyRegistered()                                                                                                                 | 0x3a81d6fc                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| error       | BadUsdc()                                                                                                                           | 0x3f3b15a0                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| error       | NotFactory()                                                                                                                        | 0x32cc7236                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| error       | NotGuardian()                                                                                                                       | 0xef6d0f02                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| error       | UnknownQuote()                                                                                                                      | 0xd91cd260                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | assets(address) view returns (address,string,string,uint8,string,QuoteAssetRegistry.Category,address,bool,bool,bool,bool,bool,bool) | 0xf11b8188                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | auth() view returns (ReactorGuardian)                                                                                               | 0xde9375f2                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | bindFactory(address) nonpayable                                                                                                     | 0xcaa109be                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | canLaunch(address) view returns (bool)                                                                                              | 0x58373f04                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | count() view returns (uint256)                                                                                                      | 0x06661abd                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | factory() view returns (address)                                                                                                    | 0xc45a0155                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | get(address) view returns (QuoteAssetRegistry.QuoteAsset)                                                                           | 0xc2bc2efc                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | isEnabled(address) view returns (bool)                                                                                              | 0x9015d371                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | isReactorNative(address) view returns (bool)                                                                                        | 0x7b6c4449                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | list(uint256) view returns (address)                                                                                                | 0x80c9419e                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | register(address,string,string,uint8,string,QuoteAssetRegistry.Category,address) nonpayable                                         | 0x3f10fe29                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | registerNative(address,string,string,uint8) nonpayable                                                                              | 0xfb933d53                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | setBuybackRoute(address,bool,bool) nonpayable                                                                                       | 0x668ad871                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | setEnabled(address,bool) nonpayable                                                                                                 | 0x17fe72bb                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | setIcon(address,string) nonpayable                                                                                                  | 0xe428a68f                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | setUsdc(address) nonpayable                                                                                                         | 0xcb146879                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| function    | usdc() view returns (address)                                                                                                       | 0x3e413bee                                                         |
-|-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| constructor | constructor(ReactorGuardian) nonpayable                                                                                             |                                                                    |
-╰-------------+-------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------╯
-
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "auth_",
+        "type": "address",
+        "internalType": "contract ReactorGuardian"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "assets",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "symbol",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "decimals",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "icon",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "category",
+        "type": "uint8",
+        "internalType": "enum QuoteAssetRegistry.Category"
+      },
+      {
+        "name": "usdOracle",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "enabled",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "exists",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "rewardsEnabled",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "buybackRouteEnabled",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "hopViaUsdc",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "reactorNative",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "auth",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ReactorGuardian"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "bindFactory",
+    "inputs": [
+      {
+        "name": "factory_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "canLaunch",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "count",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "factory",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "get",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct QuoteAssetRegistry.QuoteAsset",
+        "components": [
+          {
+            "name": "token",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "symbol",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "decimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "icon",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "category",
+            "type": "uint8",
+            "internalType": "enum QuoteAssetRegistry.Category"
+          },
+          {
+            "name": "usdOracle",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "enabled",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "exists",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "rewardsEnabled",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "buybackRouteEnabled",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "hopViaUsdc",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "reactorNative",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isEnabled",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isReactorNative",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "list",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "register",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "symbol",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "decimals",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "icon",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "category",
+        "type": "uint8",
+        "internalType": "enum QuoteAssetRegistry.Category"
+      },
+      {
+        "name": "usdOracle",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "registerNative",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "symbol",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "decimals",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setBuybackRoute",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "enabled",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "hopViaUsdc_",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setEnabled",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "enabled",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setIcon",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "icon",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setUsdc",
+    "inputs": [
+      {
+        "name": "usdc_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "usdc",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "BuybackRouteSet",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "enabled",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "hopViaUsdc",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FactoryBound",
+    "inputs": [
+      {
+        "name": "factory",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "QuoteRegistered",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "symbol",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "category",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum QuoteAssetRegistry.Category"
+      },
+      {
+        "name": "reactorNative",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "QuoteUpdated",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "enabled",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UsdcSet",
+    "inputs": [
+      {
+        "name": "usdc",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AlreadyBound",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AlreadyRegistered",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadUsdc",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotFactory",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotGuardian",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnknownQuote",
+    "inputs": []
+  }
+]
