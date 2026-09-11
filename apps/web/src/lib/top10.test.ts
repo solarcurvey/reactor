@@ -54,6 +54,16 @@ const cases: Array<[string, () => void]> = [
       if (rows.length !== 1 || rows[0]!.weightBps !== 10_000) throw new Error("floor");
     },
   ],
+  [
+    "material unvalued pauses even if others qualify",
+    () => {
+      const { rows, pauseEpoch } = rankTop10([
+        c({ token: "0xa", markUsdc: 400_000n * 1_000_000n }),
+        c({ token: "0xb", markOk: false, markUsdc: 0n }),
+      ]);
+      if (rows.length !== 0 || !pauseEpoch) throw new Error("must fail closed on unvalued graduate");
+    },
+  ],
 ];
 
 let failed = 0;

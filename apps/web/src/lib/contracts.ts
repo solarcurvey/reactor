@@ -9,6 +9,7 @@ import erc20Abi from "./abi/MockERC20.json";
 import coreAbi from "./abi/TestCORE.json";
 import curveAbi from "./abi/InstantCurve.json";
 import selfBurnAbi from "./abi/SelfBurnVault.json";
+import { parseAbi } from "viem";
 
 export const factory = {
   address: addresses.ReactorFactory,
@@ -44,5 +45,15 @@ export const erc20 = { abi: erc20Abi } as const;
 export const token = { abi: tokenAbi } as const;
 export const curve = { abi: curveAbi } as const;
 export const selfBurn = { abi: selfBurnAbi } as const;
+
+export const userRouteAbi = parseAbi([
+  "function buy(address token, uint256 usdcIn, (address adapter, address tokenIn, address tokenOut, uint256 minOut, bytes data)[] hops, uint256 minFinalOut, uint256 deadline) returns (uint256)",
+  "function sell(address token, uint256 tokenIn, (address adapter, address tokenIn, address tokenOut, uint256 minOut, bytes data)[] hops, uint256 minQuoteOut, uint256 minFinalOut, uint256 deadline) returns (uint256)",
+]);
+
+export const userRoute = {
+  address: addresses.UserRouteExecutor as `0x${string}` | undefined,
+  abi: userRouteAbi,
+} as const;
 
 export { factoryAbi, routerAbi, tokenAbi, registryAbi, buybackAbi, hookAbi, erc20Abi, coreAbi, curveAbi, selfBurnAbi };

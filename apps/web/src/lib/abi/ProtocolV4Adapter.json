@@ -115,6 +115,11 @@
   },
   {
     "type": "error",
+    "name": "NotExecutor",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotPositive",
     "inputs": []
   }

@@ -52,11 +52,6 @@
         "internalType": "enum QuoteAssetRegistry.Category"
       },
       {
-        "name": "usdOracle",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
         "name": "enabled",
         "type": "bool",
         "internalType": "bool"
@@ -207,11 +202,6 @@
             "internalType": "enum QuoteAssetRegistry.Category"
           },
           {
-            "name": "usdOracle",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
             "name": "enabled",
             "type": "bool",
             "internalType": "bool"
@@ -336,11 +326,6 @@
         "name": "category",
         "type": "uint8",
         "internalType": "enum QuoteAssetRegistry.Category"
-      },
-      {
-        "name": "usdOracle",
-        "type": "address",
-        "internalType": "address"
       }
     ],
     "outputs": [],

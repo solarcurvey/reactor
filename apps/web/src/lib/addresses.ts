@@ -27,6 +27,7 @@ export type Deployment = {
     Guardian?: `0x${string}`;
     UserRouteExecutor?: `0x${string}`;
     V4Adapter?: `0x${string}`;
+    ProtocolV4Adapter?: `0x${string}`;
     RoutingRegistry?: `0x${string}`;
     CoreVesting?: `0x${string}`;
     CoreLiquidityVault?: `0x${string}`;

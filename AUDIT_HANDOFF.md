@@ -11,7 +11,7 @@
 | Routing | `RouteGuard`, `RouteExec`, `UniswapV4Adapter` | `test/attack/RoutingDeltas.t.sol`, `KeeperMinOut.t.sol` |
 | Vaults | `FlywheelVault`, `BuybackVault`, `SelfBurnVault` — isolated pots, chunk/cooldown, `minOut` | `BlastRadius.t.sol`, `Top10Security.t.sol` |
 | Keeper | Designated only; `KEEPER_MODEL.md`; daemon does **not** broadcast | `GuardianP0.t.sol` |
-| Guardian | Immutable; `setKeeper` / `setPricingSigner` / `setHook` / pauses / adapters | `FrontrunBind.t.sol`, `PRIVILEGE_MAP.md` |
+| Guardian | Immutable; `setKeeper` / `setPricingSigner` / pauses / adapters. No `setHook`. | `FrontrunBind.t.sol`, `PRIVILEGE_MAP.md` |
 | Rewards | Magnified DPS; genesis `eligible==0` → 2% SelfBurn (not first-holder rebate) | `RewardCampaign.t.sol`, `Token.t.sol` |
 | Curve / ready | `_buy`/`_sell` revert `ReadyLocked`; `graduate` requires `ready` + revalidate | `CurveFreeze.t.sol` |
 | Fees | Terminal / partial: fee on **executed gross** only; refund unexecuted + unearned fee | `CurveFreeze.t.sol`, `Curve.t.sol` |
@@ -29,7 +29,7 @@ REACTOR launches ERC-20s into Official REACTOR Pools: Uniswap v4 pools with `fee
 
 | Contract | Path | Notes |
 | --- | --- | --- |
-| `ReactorGuardian` | `contracts/src/ReactorGuardian.sol` | Immutable Guardian; replaceable Keeper; `pricingSigner`; pauses; adapters; approved hooks |
+| `ReactorGuardian` | `contracts/src/ReactorGuardian.sol` | Immutable Guardian; replaceable Keeper; `pricingSigner`; pauses; adapters. No `setHook`. |
 | `ReactorFactory` | `contracts/src/ReactorFactory.sol` | Instant + Batch Fair; priced launches for non-$1 quotes |
 | `InstantCurve` | `contracts/src/InstantCurve.sol` | Virtual-reserve bonding; ready-lock; graduate revalidate |
 | `LaunchPricing` | `contracts/src/libraries/LaunchPricing.sol` | Short-lived EIP-712 auth |
@@ -41,7 +41,8 @@ REACTOR launches ERC-20s into Official REACTOR Pools: Uniswap v4 pools with `fee
 | `ReactorLiquidityVault` | `contracts/src/ReactorLiquidityVault.sol` | Lock-only LP owner |
 | `BuybackVault` | `contracts/src/BuybackVault.sol` | Isolated 0.5% CORE pot; `burn()` only — no dead-address fallback |
 | `FlywheelVault` | `contracts/src/FlywheelVault.sol` | Isolated 1% Top-10 pot |
-| `UniswapV4Adapter` | `contracts/src/adapters/UniswapV4Adapter.sol` | Hookless / official REACTOR hook / Guardian-approved hooks |
+| `UniswapV4Adapter` | `contracts/src/adapters/UniswapV4Adapter.sol` | User hops; fees apply; hookless / official REACTOR only |
+| `ProtocolV4Adapter` | `contracts/src/adapters/ProtocolV4Adapter.sol` | Protocol vaults only; `protocolSwap`; not Keeper EOA / UserRoute |
 | `RoutingRegistry` | `contracts/src/RoutingRegistry.sol` | View over Guardian-approved adapters |
 | `QuoteAssetRegistry` | `contracts/src/QuoteAssetRegistry.sol` | External quotes Guardian-curated; native from graduation |
 | `UserRouteExecutor` | `contracts/src/UserRouteExecutor.sol` | User USDC routing; **not** a protocol vault |
@@ -116,7 +117,7 @@ Every hop: real balance deltas in and out; next hop uses **actual** out, not ada
 
 - ≤ 3 hops, no cycles, no duplicate assets
 - Adapter must be Guardian-approved
-- v4 hooks: `address(0)` (hookless), official REACTOR hook, or `auth.hookApproved` — no arbitrary hooks
+- v4 hooks: `address(0)` (hookless) or official REACTOR hook — no `setHook`, no arbitrary hooks
 - Intermediate `hop.minOut == 0` reverts
 - Keeper jobs require `minTargetOut` / `minOut` > 0 (SelfBurn, Top-10 final, CORE final). Sandwich between quote and exec → revert
 
@@ -211,5 +212,23 @@ forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0.1:8545 --broadc
 3. CREATE2 hook bits
 4. Keeper sandwich despite `minTargetOut` (operational key + quote-to-exec latency)
 5. Registry listing a hostile quote
-6. Pricing-signer compromise authorizing a non-$1 curve with wrong constants (decimals-scaled, still protocol formula)
-7. Offchain Top-10 / nested quote graph bugs (fail-closed is the mitigation)
+6. Pricing-signer compromise authorizing a non-$1 curve with a wrong `virtualQuote0` (operational; no onchain USD oracle)
+7. Offchain Top-10 / 10–15m VWAP window bugs (fail-closed if a graduated candidate is unvalued)
+
+## §43 Self-audit (this pass)
+
+| Check | Result |
+| --- | --- |
+| Signed `virtualQuote0` initializes InstantCurve | Yes — Factory passes verified auth; stables unsigned USDC-6 geometry |
+| USD-equivalent geometry USDC/ZEC/WBTC/native | `LaunchPricing.t.sol` |
+| Protocol nested settle fee-exempt | `ProtocolV4Adapter` + `ProtocolSettlement.t.sol` |
+| User hops still pay 3.5% | same |
+| UserRoute bonding + graduated USDC | `UserRoute.t.sol` |
+| No `Guardian.setHook` | Removed; adapters hookless + official only |
+| Top-10 10–15m VWAP, fail-closed unvalued | `marketdata.ts` / `top10.ts` |
+| Keeper simulate→minOut→receipt, modes, no mainnet | `apps/indexer/src/keeper.ts` |
+| Independent watchdog | `watchdog.ts` |
+| CORE ticks / vest / burn / never Top-10 | `CoreLiquiditySim.t.sol` |
+| QuoteAssetRegistry: no usdOracle / bounty fields | Cleaned |
+| MarketOracle / KeeperReserve | Still deleted |
+| No public mainnet | Chain 5042 hard-disabled |

@@ -1,6 +1,6 @@
 # BUILD REPORT — REACTOR local Arc-compatible MVP
 
-**Status:** Audit-amendment pass on the existing repo. Local Anvil 5042002 only. Hook bytecode changes — **re-read `factory.hook()` after redeploy**.  
+**Status:** Frozen-arch completion pass on `main`. Signed pricing drives the curve; ProtocolV4Adapter; UserRoute bonding; keeper daemon finished. Local Anvil 5042002 only. Hook bytecode changes — **re-read `factory.hook()` after redeploy**.  
 **Not audited. Not mainnet. Arc Public Testnet not claimed.** See `HARDENING_REPORT.md` and `AUDIT_HANDOFF.md`.
 
 Evidence file: `deployments/e2e-evidence.json` (regenerate with `pnpm --filter indexer demo` after a fresh deploy).
@@ -15,7 +15,8 @@ Evidence file: `deployments/e2e-evidence.json` (regenerate with `pnpm --filter i
 | CORE genesis 100M vest + 900M locked official CORE/USDC | `CoreVesting` + `CoreLiquidityVault` |
 | CORE buy+burn via `burn()` only; official book 2.5/1.0 | `BuybackVault` + `CoreBuybackExecutor` |
 | Top-10 flywheel (1%; offchain discovery, structural onchain) | `FlywheelVault` + `apps/web` marketdata API |
-| User USDC router (not a vault) | `UserRouteExecutor` |
+| User USDC router (bonding + graduated; not a vault) | `UserRouteExecutor` |
+| Protocol fee-exempt hops | `ProtocolV4Adapter` |
 | Designated Keeper + immutable Guardian | `ReactorGuardian` |
 | Consumer UI (compact Instant, no FDV slider) | `apps/web` @ `http://127.0.0.1:43147` |
 | Indexer + keeper daemon + watchdog | `apps/indexer` |
@@ -81,7 +82,7 @@ Split: `holders = n * 200 / 10000`, `flywheel = n * 100 / 10000`, `core = n * 50
 ## Tests
 
 ```
-forge test   # 82 passed, 0 failed, 1 skipped (cross-quote historical reproduce)
+forge test   # 260 passed, 0 failed, 1 skipped (cross-quote historical reproduce)
 ```
 
 Solvency after flush: token quote balance ≥ outstanding holder rewards (no +1 slack). Flywheel and CORE pots are isolated. Top-10 E2E asserts `token.totalSupply()` and `core.totalSupply()` decrease after execute.

@@ -11,8 +11,7 @@ Guardian is immutable. Keeper is replaceable by Guardian.
 | `ReactorGuardian` | `setKeeper` | Replace designated Keeper |
 | `ReactorGuardian` | `setPricingSigner` | Launch-pricing EIP-712 signer (starts as Keeper) |
 | `ReactorGuardian` | `pauseLaunches` / `pauseKeeper` / `pauseTrading` | Brake pedal |
-| `ReactorGuardian` | `setAdapter` | Reviewed routing adapters |
-| `ReactorGuardian` | `setHook` | Extra v4 hooks allowed on the adapter (official + hookless always ok) |
+| `ReactorGuardian` | `setAdapter` | Reviewed routing adapters. V1 has no `setHook`. |
 | `QuoteAssetRegistry` | `bindFactory` | One-time |
 | `QuoteAssetRegistry` | `setUsdc` | One-time (same address may be re-set) |
 | `QuoteAssetRegistry` | `register` / `setEnabled` / `setIcon` / `setBuybackRoute` | External quotes |

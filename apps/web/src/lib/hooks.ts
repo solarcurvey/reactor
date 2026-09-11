@@ -17,7 +17,6 @@ export type QuoteAsset = {
   icon: string;
   category: number;
   categoryLabel: string;
-  usdOracle: `0x${string}`;
   enabled: boolean;
   exists: boolean;
 };
@@ -77,7 +76,6 @@ async function readQuotes(client: NonNullable<ReturnType<typeof usePublicClient>
       decimals: number;
       icon: string;
       category: number;
-      usdOracle: `0x${string}`;
       enabled: boolean;
       exists: boolean;
       buybackRouteEnabled?: boolean;
@@ -295,9 +293,9 @@ export function useQuotes() {
       } catch (e) {
         if (REVIEW_FIXTURES) {
           return [
-            { token: "0x4826533B4897376654Bb4d4AD88B7faFD0C98528" as `0x${string}`, symbol: "USDC", name: "USD Coin", decimals: 6, icon: "", category: 4, categoryLabel: "Stablecoins", usdOracle: "0x0000000000000000000000000000000000000000" as `0x${string}`, enabled: true, exists: true },
-            { token: "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf" as `0x${string}`, symbol: "ZEC", name: "Mock ZEC", decimals: 8, icon: "", category: 0, categoryLabel: "Crypto", usdOracle: "0x0000000000000000000000000000000000000000" as `0x${string}`, enabled: true, exists: true },
-            { token: "0x0E801D84Fa97b50751Dbf25036d067dCf18858bF" as `0x${string}`, symbol: "BTC", name: "Mock BTC", decimals: 8, icon: "", category: 0, categoryLabel: "Crypto", usdOracle: "0x0000000000000000000000000000000000000000" as `0x${string}`, enabled: true, exists: true },
+            { token: "0x4826533B4897376654Bb4d4AD88B7faFD0C98528" as `0x${string}`, symbol: "USDC", name: "USD Coin", decimals: 6, icon: "", category: 4, categoryLabel: "Stablecoins", enabled: true, exists: true },
+            { token: "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf" as `0x${string}`, symbol: "ZEC", name: "Mock ZEC", decimals: 8, icon: "", category: 0, categoryLabel: "Crypto", enabled: true, exists: true },
+            { token: "0x0E801D84Fa97b50751Dbf25036d067dCf18858bF" as `0x${string}`, symbol: "BTC", name: "Mock BTC", decimals: 8, icon: "", category: 0, categoryLabel: "Crypto", enabled: true, exists: true },
           ];
         }
         throw e;

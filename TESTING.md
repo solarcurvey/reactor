@@ -53,9 +53,14 @@ Every row is implemented in-repo. Re-run the matching file after any curve / fee
 | 39.18 | Privileged surface Guardian or Keeper only | `GuardianP0.t.sol`, `PRIVILEGE_MAP.md` |
 | 39.19 | Signed pricing: USDC no sig | `LaunchPricing.t.sol` |
 | 39.20 | Non-$1 without sig reverts | same |
-| 39.21 | Expired / replay / wrong factory / quote / decimals / params | same |
-| 39.22 | Old signer after rotation | same |
+| 39.21 | Expired / replay / wrong factory / quote / decimals / tampered / zero / chain | same |
+| 39.22 | Old signer after rotation; Keeper rotate ≠ signer rotate | same |
 | 39.23 | Nonce / quarantine | same |
+| 39.43 | Signed `virtualQuote0` initializes the curve; USDC/ZEC/WBTC/native same USD geometry | `LaunchPricing.t.sol` |
+| 39.44 | ProtocolV4Adapter nested settle creates zero new 2/1/0.5; user trade pays 3.5% | `ProtocolSettlement.t.sol` |
+| 39.45 | UserRoute USDC path while bonding | `UserRoute.t.sol` |
+| 39.46 | No `setHook`; hookless + official only | `GuardianP0.t.sol`, `RoutingDeltas.t.sol` |
+| 39.47 | CORE ticks + vest + burn + Top-10 exclude | `CoreLiquiditySim.t.sol` |
 | 39.24 | Rewards genesis `eligible==0` → SelfBurn | `Token.t.sol`, `Curve.t.sol` |
 | 39.25 | Hop real in/out deltas | `RoutingDeltas.t.sol` |
 | 39.26 | Lying adapter fails | same |

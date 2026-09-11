@@ -1,7 +1,7 @@
 import { createPublicClient, http, parseAbiItem } from "viem";
 import { DatabaseSync } from "node:sqlite";
 import { createServer } from "node:http";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, existsSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import deployment from "./deployment.json" with { type: "json" };
 
@@ -32,7 +32,8 @@ db.exec(`
     flywheel TEXT,
     coreAmt TEXT,
     notional TEXT,
-    sqrtPrice TEXT
+    sqrtPrice TEXT,
+    ts INTEGER
   );
 `);
 for (const col of ["sqrtPrice", "flywheel", "coreAmt"]) {
@@ -41,6 +42,11 @@ for (const col of ["sqrtPrice", "flywheel", "coreAmt"]) {
   } catch {
     /* already present */
   }
+}
+try {
+  db.exec(`ALTER TABLE swaps ADD COLUMN ts INTEGER`);
+} catch {
+  /* already present */
 }
 
 const client = createPublicClient({
@@ -121,7 +127,7 @@ async function tick() {
 
   const insertEv = db.prepare("INSERT INTO events(block,tx,name,token,payload) VALUES(?,?,?,?,?)");
   const insertSw = db.prepare(
-    "INSERT INTO swaps(block,tx,token,quote,holders,buyback,flywheel,coreAmt,notional,sqrtPrice) VALUES(?,?,?,?,?,?,?,?,?,?)",
+    "INSERT INTO swaps(block,tx,token,quote,holders,buyback,flywheel,coreAmt,notional,sqrtPrice,ts) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
   );
   const lastSqrt = new Map<string, string>();
 
@@ -157,6 +163,7 @@ async function tick() {
         coreAmt,
         String(args.notional ?? "0"),
         lastSqrt.get(poolId) ?? "",
+        Math.floor(Date.now() / 1000),
       );
     }
   }
@@ -175,6 +182,15 @@ async function loop() {
 const server = createServer((req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   const url = new URL(req.url ?? "/", `http://127.0.0.1:${PORT}`);
+  if (url.pathname === "/keeper") {
+    const beatPath = process.env.KEEPER_HEARTBEAT ?? new URL("../data/keeper-heartbeat.json", import.meta.url).pathname;
+    if (!existsSync(beatPath)) {
+      res.end(JSON.stringify({ ok: false, reason: "no heartbeat" }));
+      return;
+    }
+    res.end(readFileSync(beatPath, "utf8"));
+    return;
+  }
   if (url.pathname === "/health") {
     const row = db.prepare("SELECT v FROM meta WHERE k='block'").get() as { v: string } | undefined;
     res.end(JSON.stringify({ ok: true, block: Number(row?.v ?? 0), network: deployment.network }));
@@ -196,10 +212,22 @@ const server = createServer((req, res) => {
   if (swapMatch) {
     const rows = db
       .prepare(
-        "SELECT block as t, notional, holders, buyback, flywheel, coreAmt, tx, sqrtPrice FROM swaps WHERE lower(token)=lower(?) ORDER BY id ASC",
+        "SELECT block as t, ts, notional, holders, buyback, flywheel, coreAmt, tx, sqrtPrice FROM swaps WHERE lower(token)=lower(?) ORDER BY id ASC",
       )
       .all(swapMatch[1]);
     res.end(JSON.stringify(rows));
+    return;
+  }
+  const vwapMatch = url.pathname.match(/^\/vwap\/(0x[a-fA-F0-9]{40})$/);
+  if (vwapMatch) {
+    const windowSec = Number(url.searchParams.get("window") ?? 720);
+    const since = Math.floor(Date.now() / 1000) - windowSec;
+    const rows = db
+      .prepare(
+        "SELECT ts, notional, sqrtPrice FROM swaps WHERE lower(token)=lower(?) AND COALESCE(ts,0) >= ? ORDER BY id ASC",
+      )
+      .all(vwapMatch[1], since);
+    res.end(JSON.stringify({ windowSec, samples: rows.length, rows }));
     return;
   }
   res.statusCode = 404;

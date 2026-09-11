@@ -6,8 +6,8 @@ import { waitForTransactionReceipt } from "viem/actions";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { erc20, router, token as tokenC, curve } from "@/lib/contracts";
-import { officialPoolKey, buyZeroForOne } from "@/lib/pool";
+import { erc20, router, token as tokenC, curve, userRoute } from "@/lib/contracts";
+import { officialPoolKey, buyZeroForOne, hooklessHopKey, encodePoolKey } from "@/lib/pool";
 import { feeSplit, formatUnitsSafe, parseUnitsSafe } from "@/lib/utils";
 import type { LaunchToken } from "@/lib/hooks";
 import { addresses } from "@/lib/addresses";
@@ -19,6 +19,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   const client = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
   const [side, setSide] = useState<"buy" | "sell">("buy");
+  const [payUsdc, setPayUsdc] = useState(false);
   const [amount, setAmount] = useState("");
   const [slippage, setSlippage] = useState("1");
   const [quotedOut, setQuotedOut] = useState<bigint | null>(null);
@@ -27,7 +28,24 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   const [hash, setHash] = useState<string | null>(null);
 
   const quoteDec = t.quoteDecimals ?? 18;
-  const parsed = parseUnitsSafe(amount, side === "buy" ? quoteDec : t.decimals);
+  const usdcRoute = Boolean(payUsdc && t.quote.toLowerCase() !== addresses.USDC.toLowerCase() && userRoute.address);
+  const inDec = side === "buy" ? (usdcRoute ? 6 : quoteDec) : t.decimals;
+  const parsed = parseUnitsSafe(amount, inDec);
+
+  function usdcHops() {
+    const adapter = addresses.V4Adapter;
+    if (!adapter) return [];
+    const key = hooklessHopKey(addresses.USDC, t.quote);
+    return [
+      {
+        adapter,
+        tokenIn: side === "buy" ? addresses.USDC : t.quote,
+        tokenOut: side === "buy" ? t.quote : addresses.USDC,
+        minOut: 1n,
+        data: encodePoolKey(key),
+      },
+    ];
+  }
   const split = feeSplit(parsed);
 
   async function refreshQuote() {
@@ -38,7 +56,18 @@ export function TradePanel({ t }: { t: LaunchToken }) {
     }
     const bonding = Boolean(t.bonding && t.curve && !t.marketLive);
     try {
-      const sim = bonding
+      const sim = usdcRoute && userRoute.address
+        ? await client.simulateContract({
+            address: userRoute.address,
+            abi: userRoute.abi,
+            functionName: side === "buy" ? "buy" : "sell",
+            args:
+              side === "buy"
+                ? [t.token, parsed, usdcHops(), 1n, BigInt(Math.floor(Date.now() / 1000) + 300)]
+                : [t.token, parsed, usdcHops(), 1n, 1n, BigInt(Math.floor(Date.now() / 1000) + 300)],
+            account: address,
+          })
+        : bonding
         ? await client.simulateContract({
             address: t.curve!,
             abi: curve.abi,
@@ -96,8 +125,8 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         return;
       }
       const bonding = Boolean(t.bonding && t.curve && !t.marketLive);
-      const spender = bonding ? t.curve! : addresses.ReactorRouter;
-      const asset = side === "buy" ? t.quote : t.token;
+      const spender = usdcRoute && userRoute.address ? userRoute.address : bonding ? t.curve! : addresses.ReactorRouter;
+      const asset = side === "buy" ? (usdcRoute ? addresses.USDC : t.quote) : t.token;
       const allowance = (await client.readContract({
         address: asset,
         abi: erc20.abi,
@@ -113,24 +142,36 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         });
         await waitForTransactionReceipt(client, { hash: approveHash });
       }
-      const tx = bonding
-        ? await writeContractAsync({
-            address: t.curve!,
-            abi: curve.abi,
-            functionName: side === "buy" ? "buy" : "sell",
-            args: [t.token, parsed, minOut],
-          })
-        : await writeContractAsync({
-            ...router,
-            functionName: "swap",
-            args: [
-              officialPoolKey(t.token, t.quote),
-              side === "buy" ? buyZeroForOne(t.token, t.quote) : !buyZeroForOne(t.token, t.quote),
-              -parsed,
-              minOut,
-              address,
-            ],
-          });
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 300);
+      const tx =
+        usdcRoute && userRoute.address
+          ? await writeContractAsync({
+              address: userRoute.address,
+              abi: userRoute.abi,
+              functionName: side === "buy" ? "buy" : "sell",
+              args:
+                side === "buy"
+                  ? [t.token, parsed, usdcHops(), minOut, deadline]
+                  : [t.token, parsed, usdcHops(), 1n, minOut, deadline],
+            })
+          : bonding
+            ? await writeContractAsync({
+                address: t.curve!,
+                abi: curve.abi,
+                functionName: side === "buy" ? "buy" : "sell",
+                args: [t.token, parsed, minOut],
+              })
+            : await writeContractAsync({
+                ...router,
+                functionName: "swap",
+                args: [
+                  officialPoolKey(t.token, t.quote),
+                  side === "buy" ? buyZeroForOne(t.token, t.quote) : !buyZeroForOne(t.token, t.quote),
+                  -parsed,
+                  minOut,
+                  address,
+                ],
+              });
       await waitForTransactionReceipt(client, { hash: tx });
       setHash(tx);
     } catch (e) {
@@ -159,8 +200,23 @@ export function TradePanel({ t }: { t: LaunchToken }) {
           </button>
         ))}
       </div>
+      {t.quote.toLowerCase() !== addresses.USDC.toLowerCase() && userRoute.address && (
+        <label className="mb-3 flex items-center gap-2 text-[12px] text-zinc-400">
+          <input
+            type="checkbox"
+            checked={payUsdc}
+            onChange={(e) => {
+              setPayUsdc(e.target.checked);
+              setQuotedOut(null);
+            }}
+          />
+          {side === "buy" ? "Pay USDC (nested route → quote → market)" : "Receive USDC (market → quote → USDC)"}
+        </label>
+      )}
       <label className="mb-1 block text-xs uppercase tracking-wider text-zinc-500">
-        {side === "buy" ? `Pay ${t.quoteSymbol} (exact in)` : `Sell ${t.symbol} (exact in)`}
+        {side === "buy"
+          ? `Pay ${usdcRoute ? "USDC" : t.quoteSymbol} (exact in)`
+          : `Sell ${t.symbol} (exact in)`}
       </label>
       <Input
         value={amount}

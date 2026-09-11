@@ -24,21 +24,18 @@ export type RankRow = {
 export function rankTop10(cands: RankCandidate[], floorUsdc: bigint = TOP10_FLOOR_USDC): {
   rows: RankRow[];
   pauseEpoch: boolean;
+  pauseReason?: string;
 } {
   type Qual = RankCandidate & { mark: bigint };
   const qual: Qual[] = [];
-  let sawUnreliable = false;
   for (const c of cands) {
     if (c.isCore || !c.graduated) continue;
+    // Material graduated candidate without a defensible mark → fail closed. Never guess.
     if (!c.markOk) {
-      sawUnreliable = true;
-      continue;
+      return { rows: [], pauseEpoch: true, pauseReason: "material candidate unvalued — pause epoch, never guess" };
     }
     if (c.markUsdc < floorUsdc) continue;
     qual.push({ ...c, mark: c.markUsdc });
-  }
-  if (sawUnreliable && qual.length === 0) {
-    return { rows: [], pauseEpoch: true };
   }
   qual.sort((a, b) => (a.mark === b.mark ? 0 : a.mark > b.mark ? -1 : 1));
   const filled = qual.slice(0, 10);
