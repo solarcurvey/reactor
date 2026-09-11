@@ -81,7 +81,7 @@ contract AttacksTest is Base {
     }
 
     function test_dustFeeZero() public pure {
-        (,, uint256 f) = FeeMath.split(2);
+        (,,, uint256 f) = FeeMath.split(2);
         assertEq(f, 0);
     }
 }

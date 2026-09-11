@@ -76,6 +76,7 @@ contract ReactorFactory {
     mapping(uint256 => mapping(address => uint256)) public bids;
     mapping(uint256 => mapping(address => bool)) public claimed;
     mapping(address => TokenMeta) public metadata;
+    mapping(address => bool) public metaFrozen;
     address[] public allTokens;
 
     event TokenCreated(address indexed token, address indexed creator, string name, string symbol, uint256 supply);
@@ -98,6 +99,8 @@ contract ReactorFactory {
     error CoreForbidden();
     error AuctionBpsLocked();
     error BuybackRouteRequired();
+    error InstantFdvRange();
+    error MetaFrozen();
 
     constructor(
         IPoolManager manager_,
@@ -135,6 +138,8 @@ contract ReactorFactory {
         _validateLaunch(p.quote, p.supply, p.decimals, p.fdvQuoteRaw);
         uint256 supply = p.supply == 0 ? ReactorConstants.DEFAULT_SUPPLY : p.supply;
         uint8 dec = p.decimals == 0 ? ReactorConstants.DEFAULT_DECIMALS : p.decimals;
+        uint256 fdv = p.fdvQuoteRaw;
+        if (fdv == 0 && p.quote == registry.usdc()) fdv = ReactorConstants.INSTANT_FDV_USDC_DEFAULT;
 
         token = address(
             new ReactorToken(
@@ -152,10 +157,11 @@ contract ReactorFactory {
             )
         );
         _setMeta(token, p.image, p.description, p.website, p.twitter, p.telegram);
+        _excludeSinks(token);
         emit TokenCreated(token, msg.sender, p.name, p.symbol, supply);
 
         PoolKey memory key = _poolKey(token, p.quote);
-        uint160 sqrtP = LaunchMath.sqrtPriceFromFdv(token, p.quote, supply, p.fdvQuoteRaw);
+        uint160 sqrtP = LaunchMath.sqrtPriceFromFdv(token, p.quote, supply, fdv);
         poolManager.initialize(key, sqrtP);
         poolId = key.toId();
 
@@ -175,7 +181,7 @@ contract ReactorFactory {
         });
         allTokens.push(token);
         emit LaunchCreated(token, LaunchMode.Instant, p.quote);
-        emit InstantMarketOpened(token, poolId, p.fdvQuoteRaw, p.devBuyQuote);
+        emit InstantMarketOpened(token, poolId, fdv, p.devBuyQuote);
         emit OfficialPoolCreated(token, poolId, LaunchMode.Instant);
 
         if (p.devBuyQuote > 0) {
@@ -227,6 +233,7 @@ contract ReactorFactory {
             )
         );
         _setMeta(token, p.image, p.description, p.website, p.twitter, p.telegram);
+        _excludeSinks(token);
         emit TokenCreated(token, msg.sender, p.name, p.symbol, supply);
 
         fairId = ++launchCount;
@@ -348,7 +355,9 @@ contract ReactorFactory {
         string calldata telegram
     ) external {
         if (tokenInfo[token].creator != msg.sender) revert NotCreator();
+        if (metaFrozen[token]) revert MetaFrozen();
         _setMeta(token, image, description, website, twitter, telegram);
+        metaFrozen[token] = true;
     }
 
     function allTokensLength() external view returns (uint256) {
@@ -358,8 +367,16 @@ contract ReactorFactory {
     function _validateLaunch(address quote, uint256 supply, uint8, uint256 fdv) internal view {
         if (!registry.canLaunch(quote)) revert BuybackRouteRequired();
         if (quote == core) revert CoreForbidden();
-        if (fdv == 0) revert BadParams();
         if (supply == 1) revert BadParams();
+        address usdc = registry.usdc();
+        if (quote == usdc) {
+            uint256 use = fdv == 0 ? ReactorConstants.INSTANT_FDV_USDC_DEFAULT : fdv;
+            if (use < ReactorConstants.INSTANT_FDV_USDC_MIN || use > ReactorConstants.INSTANT_FDV_USDC_MAX) {
+                revert InstantFdvRange();
+            }
+        } else if (fdv == 0) {
+            revert BadParams();
+        }
     }
 
     function _poolKey(address token, address quote) internal view returns (PoolKey memory key) {
@@ -373,6 +390,13 @@ contract ReactorFactory {
         });
     }
 
+    function _excludeSinks(address token) internal {
+        address fw = address(hook.flywheelVault());
+        if (fw != address(0)) ReactorToken(token).excludeProtocol(fw);
+        address bb = address(hook.buybackVault());
+        if (bb != address(0)) ReactorToken(token).excludeProtocol(bb);
+    }
+
     function _setMeta(
         address token,
         string memory image,
@@ -382,6 +406,7 @@ contract ReactorFactory {
         string memory telegram
     ) internal {
         metadata[token] = TokenMeta(image, description, website, twitter, telegram);
+        metaFrozen[token] = true;
         emit MetadataSet(token, image, description);
     }
 }

@@ -136,10 +136,6 @@ contract RewardHandler {
 }
 
 contract RewardCampaignTest is Base {
-    /// @dev After acc-snapshot debt, leftover + pending is bounded by lifetime.
-    /// +1 covers credit-before-ERC-20 and a single leftover remainder wei.
-    uint256 internal constant SOLVENCY_SLACK_RAW = 1;
-
     RewardHandler internal handler;
 
     function setUp() public override {
@@ -167,10 +163,9 @@ contract RewardCampaignTest is Base {
                 + ReactorToken(token).pendingRewards(address(factory.fairVault()))
                 + ReactorToken(token).leftoverRewards();
             uint256 backing = IERC20Like(quote).balanceOf(token) + hook.pendingTokenRewards(token);
-            // +32 is a measured floor-math ceiling, not a 1000-unit hole.
-            // See HARDENING_REPORT "Reward solvency slack" and test_floorMathSlackIsFewRawUnits.
-            assertLe(outstanding, backing + SOLVENCY_SLACK_RAW);
-            assertLe(outstanding, ReactorToken(token).lifetimeRewards() + SOLVENCY_SLACK_RAW);
+            // Magnified DPS: leftover is unassigned carry-forward, never allocated twice.
+            assertLe(outstanding, backing);
+            assertLe(outstanding, ReactorToken(token).lifetimeRewards());
         }
     }
 }

@@ -10,14 +10,9 @@ import {IERC20MinimalExt} from "./interfaces/IERC20MinimalExt.sol";
 import {ReactorConstants} from "./ReactorConstants.sol";
 import {QuoteMath} from "./libraries/QuoteMath.sol";
 import {QuoteAssetRegistry} from "./QuoteAssetRegistry.sol";
+import {IReactorSwapper} from "./interfaces/IReactorSwapper.sol";
 
-interface IReactorSwapper {
-    function swap(PoolKey calldata key, bool zeroForOne, int256 amountSpecified, uint256 minOut, address recipient)
-        external
-        returns (uint256 amountOut);
-}
-
-/// @notice Accrues 1% quote; permissionless execute buys CORE and burns it.
+/// @notice Accrues 0.5% CORE pot (isolated from flywheel). Permissionless execute buys CORE and burns it.
 ///         Caller cannot set minOut or size. Protocol enforces price safety.
 ///         Failed executes no-op — they must never revert an upstream user swap.
 contract BuybackVault {
@@ -301,8 +296,11 @@ contract BuybackVault {
 
     function _burn(uint256 amount) internal {
         if (amount == 0) return;
-        bool ok = IERC20MinimalExt(core).transfer(ReactorConstants.DEAD, amount);
-        require(ok, "BURN");
+        (bool ok,) = core.call(abi.encodeWithSignature("burn(uint256)", amount));
+        if (!ok) {
+            ok = IERC20MinimalExt(core).transfer(ReactorConstants.DEAD, amount);
+            require(ok, "BURN");
+        }
         lifetimeBurned += amount;
         emit COREBurned(amount);
     }

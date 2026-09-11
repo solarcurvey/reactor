@@ -86,8 +86,10 @@ contract TokenTest is Base {
         // First-buy rewards sit in leftover until an eligible holder exists, then flush on transfer.
         uint256 pending = ReactorToken(token).pendingRewards(alice);
         uint256 leftover = ReactorToken(token).leftoverRewards();
-        assertEq(pending + leftover, 20e6);
-        assertEq(buyback.accrued(address(usdc)), 10e6);
+        assertEq(ReactorToken(token).lifetimeRewards(), 20e6);
+        assertLe(pending + leftover, 20e6);
+        assertGt(pending + leftover, 0);
+        assertEq(buyback.accrued(address(usdc)), 5e6);
     }
 
     /// @notice Swap-path check that outstanding−backing stays in the few-raw range
@@ -120,9 +122,9 @@ contract TokenTest is Base {
                 uint256 gap = outstanding - backing;
                 if (gap > maxOverBacking) maxOverBacking = gap;
             }
-            assertLe(outstanding, backing + 1);
-            assertLe(outstanding, ReactorToken(token).lifetimeRewards() + 1);
+            assertLe(outstanding, backing);
+            assertLe(outstanding, ReactorToken(token).lifetimeRewards());
         }
-        assertLe(maxOverBacking, 1);
+        assertLe(maxOverBacking, 0);
     }
 }

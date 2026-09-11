@@ -14,6 +14,8 @@ import {ReactorFactory} from "../src/ReactorFactory.sol";
 import {ReactorRouter} from "../src/ReactorRouter.sol";
 import {ReactorLiquidityVault} from "../src/ReactorLiquidityVault.sol";
 import {BuybackVault} from "../src/BuybackVault.sol";
+import {FlywheelVault} from "../src/FlywheelVault.sol";
+import {IFeeSink} from "../src/interfaces/IFeeSink.sol";
 import {QuoteAssetRegistry} from "../src/QuoteAssetRegistry.sol";
 import {TestCORE} from "../src/TestCORE.sol";
 import {MockERC20} from "../src/MockERC20.sol";
@@ -36,6 +38,7 @@ contract Deploy is Script {
         ReactorRouter router;
         ReactorHook hook;
         BuybackVault buyback;
+        FlywheelVault flywheel;
         ReactorFactory factory;
     }
 
@@ -127,6 +130,8 @@ contract Deploy is Script {
             ReactorConstants.DEFAULT_BUYBACK_THRESHOLD
         );
         a.hook.bindBuyback(a.buyback);
+        a.flywheel = new FlywheelVault(address(a.hook), address(a.usdc), address(a.core), a.pm, address(a.router));
+        a.hook.bindFlywheel(IFeeSink(address(a.flywheel)));
         a.factory = new ReactorFactory(a.pm, a.hook, a.router, a.vault, a.registry, address(a.core));
         a.hook.bindFactory(address(a.factory));
         a.vault.bindFactory(address(a.factory));

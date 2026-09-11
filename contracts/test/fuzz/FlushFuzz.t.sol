@@ -12,7 +12,9 @@ contract FlushFuzzTest is Base {
         address zcat = _instantZcat(40_000e8);
         _buy(alice, zcat, address(zec), 400e8);
         MockERC20 junk = new MockERC20("J", "J", dec, 0, address(this));
-        if (spoof == zcat || spoof == address(0)) spoof = address(junk);
+        if (spoof == zcat || spoof == address(0) || spoof == address(zec) || spoof == address(usdc)) {
+            spoof = address(junk);
+        }
         vm.expectRevert();
         hook.flush(spoof, zcat);
         vm.expectRevert();

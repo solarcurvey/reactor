@@ -203,7 +203,7 @@ export default function LaunchPage() {
           <Row k="Quote" v={selected ? `${selected.symbol} · ${selected.categoryLabel}` : "—"} />
           <Row k="Mode" v={mode === "instant" ? "Instant launch" : "Batch Fair Launch"} />
           <Row k="Supply" v="1,000,000,000 · 18 decimals · mint once" />
-          <Row k="Official pool" v="0% LP fee · 3% quote charge (2% holders / 1% CORE)" />
+          <Row k="Official pool" v="0% LP fee · 3.5% quote charge (2% holders / 1% flywheel / 0.5% CORE)" />
           <Row k="Liquidity" v="Locked in ReactorLiquidityVault — no withdraw" />
           {mode === "instant" && (
             <>

@@ -154,7 +154,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
             fuel
           </p>
         ) : (
-          <p>You receive quote after the 3% charge on quote notional. No token transfer tax.</p>
+          <p>You receive quote after the 3.5% charge on quote notional. No token transfer tax.</p>
         )}
         <p>
           Quoted out:{" "}

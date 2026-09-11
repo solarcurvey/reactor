@@ -112,11 +112,12 @@ contract RewardsInvariantTest is Test {
             }
         }
 
-        // Acc-snapshot debt: sum(pending)+leftover ≤ quote balance / lifetime.
         assertEq(maxOverBacking, 0);
         assertEq(maxOverLifetime, 0);
         assertGt(token.lifetimeRewards(), 0);
-        uint256 assigned = (token.eligibleSupply() * token.accRewardPerShare()) / 1e27;
-        assertLe(assigned + token.leftoverRewards(), token.lifetimeRewards());
+        assertLe(
+            token.pendingRewards(a) + token.pendingRewards(b) + token.pendingRewards(c) + token.leftoverRewards(),
+            token.lifetimeRewards()
+        );
     }
 }

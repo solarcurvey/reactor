@@ -35,8 +35,8 @@ export default function HomePage() {
         </h1>
         <p className="mt-4 max-w-xl text-sm leading-6 text-zinc-400">
           Official REACTOR pools are Uniswap v4 markets with a <strong className="text-zinc-200">0% LP fee</strong> and a{" "}
-          <strong className="text-zinc-200">3% quote-side protocol charge</strong> — 2% to holders in the quote you pick,
-          1% to TestCORE buyback-and-burn. No creator cut. No platform cash tax. No transfer tax.
+          <strong className="text-zinc-200">3.5% quote-side protocol charge</strong> — 2% to holders in the quote you pick,
+          1% to the Top-10 flywheel, 0.5% to TestCORE buy+burn. No creator cut. No platform cash tax. No transfer tax.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Button asChild size="lg">
@@ -49,9 +49,29 @@ export default function HomePage() {
       </section>
 
       <section className="mt-6 grid gap-3 sm:grid-cols-3">
-        <EconCard title="$1,000 official trade" body="$20 to holders in the quote · $10 to CORE fuel. The 3% is REACTOR, not an LP fee." />
-        <EconCard title="2% holders / 1% CORE / 0% LP" body="Holders are paid the quote asset. CORE is burned on a safety-gated route. LP fee stays 0%." />
+        <EconCard title="$1,000 official trade" body="$20 to holders in the quote · $10 Top-10 flywheel · $5 CORE burn. The 3.5% is REACTOR, not an LP fee." />
+        <EconCard title="2% / 1% / 0.5% / 0% LP" body="Holders stay in the original quote. Flywheel is async Top-10. CORE is a separate 0.5% pot. LP fee stays 0%." />
         <EconCard title="Local / testnet only" body="Numbers come from chain. This UI does not claim Arc Public Testnet or mainnet." />
+      </section>
+
+      <section className="mt-8 rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.04] p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-cyan-200/80">THE REACTOR</p>
+            <h2 className="mt-1 text-xl font-semibold text-white">Top-10 flywheel</h2>
+            <p className="mt-1 max-w-xl text-sm text-zinc-400">
+              1% of official quote volume. Ranked by qualifying TWAP mcap ($250k floor). Instant starting FDV is not a
+              rank. CORE is never eligible. If fewer than ten qualify, they split the full pot.
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/core">CORE + keepers</Link>
+          </Button>
+        </div>
+        <p className="mt-4 text-sm text-zinc-500">
+          No ranked names yet — need sampled TWAP and a USDC-safe path. Distance to #11 appears here once an eleventh
+          qualifier exists.
+        </p>
       </section>
 
       <div className="mt-8 flex flex-wrap gap-2">

@@ -4,7 +4,7 @@
 
 ## Overview
 
-REACTOR launches fixed-supply ERC-20s into Official REACTOR Pools: Uniswap v4 pools with `fee = 0`, `tickSpacing = 60`, and `ReactorHook`. The hook charges **3% of quote notional** via custom accounting (not an LP fee): 2% holder rewards, 1% CORE buyback vault.
+REACTOR launches ERC-20s into Official REACTOR Pools: Uniswap v4 pools with `fee = 0`, `tickSpacing = 60`, and `ReactorHook`. The hook charges **3.5% of quote notional** via custom accounting (not an LP fee): 2% holders, 1% Top-10 flywheel, 0.5% CORE buy+burn.
 
 ## Contract map
 
@@ -90,7 +90,7 @@ Rewards: `accRewardPerShare` with `PRECISION = 1e27`. Leftover dust when `eligib
 
 ## Invariants (test-backed)
 
-1. `holders + buyback == floor-split 3%`
+1. `holders + flywheel + core == floor-split 3.5%`
 2. Transfer amount in == amount out
 3. Token quote balance ≥ outstanding rewards (after flush)
 4. Past rewards persist at zero balance

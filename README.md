@@ -3,7 +3,7 @@
 **Launch. Reflect. Burn.**  
 **Choose what your token earns.** Launch markets that pay holders in the quote you pick.
 
-Permissionless token launchpad for **Arc**. Official REACTOR pools are Uniswap v4 markets with a **0% LP fee** and a **3% quote-side protocol charge** (2% holders / 1% CORE buyback-and-burn). Built on Arc.
+Permissionless token launchpad for **Arc**. Official REACTOR pools are Uniswap v4 markets with a **0% LP fee** and a **3.5% quote-side protocol charge** (2% holders / 1% Top-10 flywheel / 0.5% CORE buy+burn). Built on Arc.
 
 > This repository is **not audited**. Do not deploy to Arc Mainnet (chain 5042).
 

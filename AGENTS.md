@@ -4,12 +4,12 @@ Instructions for humans and coding agents working in this repo.
 
 ## Product invariants (do not “simplify away”)
 
-- Official REACTOR Pool LP fee is **0%**. The 3% is hook custom accounting in **quote**.
-- Split is **2% holders / 1% CORE buyback**. Different split = V2 deploy.
+- Official REACTOR Pool LP fee is **0%**. The 3.5% is hook custom accounting in **quote**.
+- Split is **2% holders / 1% flywheel / 0.5% CORE**. Different split = V2 deploy.
 - No creator fee, platform cash fee, creation fee, transfer tax, or token-level sell tax.
 - Tokens are normal ERC-20: mint once, no owner mint, no blacklist, no pause.
 - Rewards are O(1), no staking, persist across transfers.
-- Fair auction has **0%** REACTOR charge; 3% starts after one migration.
+- Fair auction has **0%** REACTOR charge; 3.5% starts after one migration.
 - Liquidity vault cannot withdraw. No upgrade backdoor.
 - Do not deploy to Arc Mainnet (5042).
 - Do not claim the product is audited.
