@@ -18,9 +18,9 @@ forge test
 
 # Chain + protocol
 cd ..
-anvil --chain-id 5042002 --port 8545
-# new terminal
-cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0.1:8545 --broadcast
+anvil --chain-id 5042002 --port 8545 --disable-code-size-limit --gas-limit 100000000
+# new terminal — Factory bytecode is >24kb; both flags are required locally
+cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0.1:8545 --broadcast --disable-code-size-limit
 
 # Apps
 pnpm install

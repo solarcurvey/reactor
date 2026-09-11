@@ -1,3 +1,4 @@
+import { getAddress } from "viem";
 import local from "./deployment.json";
 
 export type Deployment = {
@@ -36,7 +37,19 @@ export type Deployment = {
 };
 
 export const deployment = local as Deployment;
-export const addresses = deployment.addresses;
+
+function checksumAddresses<T extends Record<string, string | undefined>>(raw: T): T {
+  const out = { ...raw };
+  for (const key of Object.keys(out) as (keyof T)[]) {
+    const value = out[key];
+    if (typeof value === "string" && value.startsWith("0x") && value.length === 42) {
+      out[key] = getAddress(value) as T[keyof T];
+    }
+  }
+  return out;
+}
+
+export const addresses = checksumAddresses(deployment.addresses);
 
 export const CATEGORY_LABELS = [
   "Crypto",
