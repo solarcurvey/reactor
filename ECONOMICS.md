@@ -28,7 +28,7 @@ If `eligibleRewardSupply()==0` (including the first curve buy, before tokens are
 
 - CORE is never Top-10 eligible (contract-level).
 - Instant starting FDV is not a rank input. Protocol Instant start is ~$5k USDC FDV on a bonding curve (see `CURVE_DESIGN.md`). Ungraduated Instant tokens are not Top-10 eligible.
-- Top-10 ranks and weights are computed **offchain** by the REACTOR API (~5 min). Operational floor ~$250k on a defensible mark. Nested quote USD is resolved offchain. If a mark is unreliable the API skips the token or pauses the epoch — it never guesses.
+- Top-10 ranks and weights are computed **offchain** by the REACTOR API (~5 min). Operational floor ~$250k on a defensible mark. Nested quote USD is resolved offchain. If a **material** mark is unreliable the API pauses the epoch — it never guesses. Irrelevant inactivity (dead low-value graduates, &lt;3 trades) is skipped, not a global freeze.
 - The designated Keeper publishes `epochId + targets + weights`. The contract checks structure only (graduated REACTOR tokens, not CORE, no dupes, ≤10, weights sum 100% if ≥1). It does **not** verify market caps.
 - If `<10` eligible, full pot splits among them. If `0`, pot accumulates.
 - Each ranked name is paid `epochPot * weight / weightSum` (pot snapshotted at `submitEpoch`). A later exec cannot shrink an earlier share.

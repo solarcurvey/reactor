@@ -1,4 +1,4 @@
-import { rankTop10 } from "./top10.ts";
+import { rankTop10, materialUncertainty } from "./top10.ts";
 
 function c(partial: Partial<Parameters<typeof rankTop10>[0][number]> & { token: string }) {
   return {
@@ -26,10 +26,29 @@ const cases: Array<[string, () => void]> = [
     },
   ],
   [
-    "unreliable mark pauses when nothing else qualifies",
+    "irrelevant inactivity does not pause",
     () => {
-      const { rows, pauseEpoch } = rankTop10([c({ token: "0x2", markOk: false, markUsdc: 0n })]);
-      if (rows.length !== 0 || !pauseEpoch) throw new Error("should pause, not guess");
+      const { rows, pauseEpoch } = rankTop10([
+        c({ token: "0x2", markOk: false, markUsdc: 0n, tradeCount: 1, lastGoodMarkUsdc: 12_000n * 1_000_000n }),
+      ]);
+      if (rows.length !== 0 || pauseEpoch) throw new Error("dead low-value must not freeze");
+    },
+  ],
+  [
+    "thousands of inactive markets do not freeze",
+    () => {
+      const dead = Array.from({ length: 3000 }, (_, i) =>
+        c({
+          token: `0xdead${i}`,
+          markOk: false,
+          markUsdc: 0n,
+          tradeCount: i % 3,
+          lastGoodMarkUsdc: 1_000n * 1_000_000n,
+          liquidityUsdc: 100n * 1_000_000n,
+        }),
+      );
+      const { rows, pauseEpoch } = rankTop10([c({ token: "0xlive", markUsdc: 400_000n * 1_000_000n }), ...dead]);
+      if (pauseEpoch || rows.length !== 1 || rows[0]!.token !== "0xlive") throw new Error("inactive flood froze epoch");
     },
   ],
   [
@@ -59,9 +78,10 @@ const cases: Array<[string, () => void]> = [
     () => {
       const { rows, pauseEpoch } = rankTop10([
         c({ token: "0xa", markUsdc: 400_000n * 1_000_000n }),
-        c({ token: "0xb", markOk: false, markUsdc: 0n }),
+        c({ token: "0xb", markOk: false, markUsdc: 0n, priorRanked: true, lastGoodMarkUsdc: 500_000n * 1_000_000n }),
       ]);
-      if (rows.length !== 0 || !pauseEpoch) throw new Error("must fail closed on unvalued graduate");
+      if (rows.length !== 0 || !pauseEpoch) throw new Error("must fail closed on material candidate");
+      if (!materialUncertainty(c({ token: "0xb", markOk: false, priorRanked: true }))) throw new Error("material fn");
     },
   ],
 ];

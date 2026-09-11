@@ -87,7 +87,7 @@ export async function discoverTop10(client: PublicClient): Promise<{
   const len = Number((await client.readContract({ ...factory, functionName: "allTokensLength" })) as bigint);
   const quoteUsd = new Map<string, { usd6: bigint; ok: boolean }>();
   quoteUsd.set(usdc, { usd6: 1_000_000n, ok: true });
-  const nowSec = Math.floor(Date.now() / 1000);
+  const nowSec = Number((await client.getBlock({ blockNumber: await client.getBlockNumber() })).timestamp);
 
   const cands: RankCandidate[] = [];
   for (let i = 0; i < len; i++) {
@@ -103,15 +103,19 @@ export async function discoverTop10(client: PublicClient): Promise<{
     const isCore = token.toLowerCase() === core;
     let markUsdc = 0n;
     let markOk = false;
+    let lastGoodMarkUsdc = 0n;
+    let tradeCount = 0;
     if (live && !isCore) {
       const resolved = await resolveMarkUsdc(client, token, quote, quoteUsd, 0, new Set(), nowSec);
       markUsdc = resolved.markUsdc;
       markOk = resolved.ok;
+      lastGoodMarkUsdc = resolved.lastGoodMarkUsdc ?? 0n;
+      tradeCount = resolved.tradeCount ?? 0;
     }
     const symbol = live
       ? ((await client.readContract({ address: token, abi: tokenC.abi, functionName: "symbol" }).catch(() => token.slice(0, 6))) as string)
       : token.slice(0, 6);
-    cands.push({ token, symbol, quote, graduated: live, isCore, markUsdc, markOk });
+    cands.push({ token, symbol, quote, graduated: live, isCore, markUsdc, markOk, lastGoodMarkUsdc, tradeCount });
   }
 
   const ranked = rankTop10(cands, TOP10_FLOOR_USDC);
@@ -127,6 +131,15 @@ export async function discoverTop10(client: PublicClient): Promise<{
   };
 }
 
+function lastGoodFdvQuote(samples: TradeSample[], supply: bigint, tokenIs0: boolean, nowSec: number): bigint {
+  const older = samples.filter((s) => s.ts < nowSec - MARK_WINDOW_SEC && s.sqrtPrice > 0n && s.notional > 0n);
+  if (older.length < MIN_VWAP_SAMPLES) return 0n;
+  const window = older.slice(-Math.max(MIN_VWAP_SAMPLES, older.length));
+  const end = window[window.length - 1]!.ts;
+  const v = vwapFdvQuoteRaw(window, supply, tokenIs0, end + MARK_WINDOW_SEC);
+  return v.ok ? v.fdv : 0n;
+}
+
 async function resolveMarkUsdc(
   client: PublicClient,
   token: `0x${string}`,
@@ -135,7 +148,7 @@ async function resolveMarkUsdc(
   depth: number,
   stack: Set<string>,
   nowSec: number,
-): Promise<{ markUsdc: bigint; ok: boolean }> {
+): Promise<{ markUsdc: bigint; ok: boolean; lastGoodMarkUsdc?: bigint; tradeCount?: number }> {
   if (depth > MAX_QUOTE_DEPTH) return { markUsdc: 0n, ok: false };
   const tKey = token.toLowerCase();
   if (stack.has(tKey)) return { markUsdc: 0n, ok: false };
@@ -146,18 +159,22 @@ async function resolveMarkUsdc(
   const tokenIs0 = token.toLowerCase() < quote.toLowerCase();
   const trades = await fetchIndexedTrades(token);
   const vwap = vwapFdvQuoteRaw(trades, supply, tokenIs0, nowSec);
-  // No single-block sqrtPrice fallback — fail closed if the 10–15m window is thin.
+  const qUsd = await quoteToUsd6(client, quote, cache, depth, stack, nowSec);
+  const toUsdc = (fdvQuote: bigint) =>
+    qUsd.ok ? (fdvQuote * qUsd.usd6) / 10n ** BigInt(quoteDec) : quote.toLowerCase() === addresses.USDC.toLowerCase() ? fdvQuote : 0n;
+
   if (!vwap.ok) {
     stack.delete(tKey);
-    return { markUsdc: 0n, ok: false };
+    return {
+      markUsdc: 0n,
+      ok: false,
+      lastGoodMarkUsdc: toUsdc(lastGoodFdvQuote(trades, supply, tokenIs0, nowSec)),
+      tradeCount: trades.length,
+    };
   }
-  const fdvQuote = vwap.fdv;
-
-  const qUsd = await quoteToUsd6(client, quote, cache, depth, stack, nowSec);
   stack.delete(tKey);
-  if (!qUsd.ok) return { markUsdc: 0n, ok: false };
-  const markUsdc = (fdvQuote * qUsd.usd6) / 10n ** BigInt(quoteDec);
-  return { markUsdc, ok: true };
+  if (!qUsd.ok) return { markUsdc: 0n, ok: false, tradeCount: trades.length };
+  return { markUsdc: toUsdc(vwap.fdv), ok: true, tradeCount: trades.length };
 }
 
 async function quoteToUsd6(

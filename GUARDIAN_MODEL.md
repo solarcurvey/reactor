@@ -19,7 +19,7 @@ There is no owner, admin, proxy admin, upgrader, governor, or treasury owner.
 | Replace Keeper | `setKeeper` |
 | Replace launch-pricing signer | `setPricingSigner` |
 | Emergency trading / safe-mode pause | `pauseTrading` (curve + official v4 swaps) |
-| Add / quarantine **external** quotes | `QuoteAssetRegistry.register`, `setEnabled`, `setBuybackRoute` |
+| Add / quarantine **external** quotes | `QuoteAssetRegistry.register`, `setEnabled`, `setBuybackRoute`, **`setUsdPegOne` (explicit; Stablecoins ≠ $1)** |
 | Add / disable reviewed routing adapters | `setAdapter` |
 | Approve extra v4 hooks | **Removed in V1.** Adapters accept hookless + official REACTOR hook only. |
 

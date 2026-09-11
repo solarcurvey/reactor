@@ -45,7 +45,7 @@ contract NativeQuoteTest is Base {
             twitter: "",
             telegram: ""
         });
-        (LaunchPricing.Auth memory a, bytes memory sig) = _priceAuth(parent);
+        (LaunchPricing.Auth memory a, bytes memory sig) = _priceAuthFor(alice, parent, factory.expectedVirtualQuote0(parent));
         vm.prank(alice);
         (address child,) = factory.instantLaunchPriced(cp, a, sig);
         assertEq(ReactorToken(child).quoteAsset(), parent);

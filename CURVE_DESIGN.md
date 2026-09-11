@@ -22,7 +22,7 @@ Simulation date: 2026-09-11. Target: **~$5,000 starting FDV** on USDC-6. 3.5% qu
 | Dev buy cap | **5% of supply by token out** = `50_000_000e18` |
 | Fee | 3.5% quote, **not** graduation liquidity |
 
-USDC / listed stables use that USDC-6 `Q₀` unsigned. Non-$1 quotes (ZEC / WBTC / native 18) take Factory-verified signed `LaunchPricingAuthorization.virtualQuote0` as the curve’s `virtualQuote`. The pricing signer computes `virtualQuote0ForUsd(supply, qdec, quoteUsd6)` so start FDV is **~$5k USD-equivalent**. Same USD buy size → same token-out geometry. Not an onchain ZEC/USD oracle.
+Only **usdPegOne** assets (Guardian flag; initially canonical USDC) use that USDC-6 `Q₀` unsigned. Category.Stablecoins is **not** $1 — EURC must be signed. Non-peg quotes (ZEC / WBTC / EURC / native 18) take Factory-verified signed `LaunchPricingAuthorization.virtualQuote0` as the curve’s `virtualQuote`. Digest is unique per creator/quote/virtualQuote0/curveConfig/salt/deadline/chain — no serial nonce. The pricing signer computes `virtualQuote0ForUsd(supply, qdec, quoteUsd6)` via ValuationEngine so start FDV is **~$5k USD-equivalent**. If valuation is unavailable that quote launch is disabled. Same USD buy size → same token-out geometry. Not an onchain ZEC/USD oracle.
 
 ## Prices (USDC)
 

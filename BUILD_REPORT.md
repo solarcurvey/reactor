@@ -1,7 +1,42 @@
 # BUILD REPORT — REACTOR local Arc-compatible MVP
 
-**Status:** Frozen-arch completion pass on `main`. Signed pricing drives the curve; ProtocolV4Adapter; UserRoute bonding; keeper daemon finished. Local Anvil 5042002 only. Hook bytecode changes — **re-read `factory.hook()` after redeploy**.  
-**Not audited. Not mainnet. Arc Public Testnet not claimed.** See `HARDENING_REPORT.md` and `AUDIT_HANDOFF.md`.
+**Status:** Final Grok completion pass on branch `cursor/final-grok-completion-5e6c`. Architecture/tokenomics frozen. Local Anvil 5042002 only. Hook bytecode changes — **re-read `factory.hook()` after redeploy**.  
+**Not audited. Not mainnet. Not production-ready. Arc Public Testnet not claimed.** See `HARDENING_REPORT.md` and `AUDIT_HANDOFF.md`.
+
+## This HEAD (final completion)
+
+| Item | Value |
+| --- | --- |
+| Branch | `cursor/final-grok-completion-5e6c` |
+| Parent | `1a3b3b6` |
+| Forge | re-run this pass (`via_ir`); count in the commit message / below after CI |
+| Invariants | Reward campaign + CORE + fee split still the bound |
+| Frontend | Search + rows, image file upload, RoutePlanner trade preview, PRICE 1m/5m/1h/4h/1d bonding→v4, denser ops |
+| Backend / indexer | `block.timestamp` swaps; durable `pools`; `/candles` `/ops` `/vwap` |
+| Keeper | Vault return values; `conservativeMinOut`; dynamic quotes; RoutePlanner; DRY_RUN/LOCAL/ARC_TESTNET; no 5042 |
+| Watchdog | Independent eval + alerts file; no Guardian keys |
+| E2E | `CurrentArchitecture.t.sol` + `e2e-current-architecture.ts` (old 3% demo retired) |
+| Screenshots | Existing `review/*` from prior regen; recapture after local Anvil if UI changes |
+| Limitations | No live Arc Testnet txs. Intermediate hop floors reuse last-leg minOut (Codex residual). No prod image store. |
+| Arc Testnet | **Not claimed.** Chain id 5042002 locally only. |
+| Mainnet blockers | BUSL v4-core, no PoolManager on 5042, no audit, no native USDC dual-decimal, Instant/CCA not compatible |
+
+### What this pass fixed
+
+1. Maintenance fns return `burnedAmount` / `coreBought` / `targetBought` / `usdcReceived`. Keeper reads `simulateContract().result`. No fake TS returns.
+2. Production minOut never 0/1. Weak sim skips the job.
+3. Canonical RoutePlanner + ValuationEngine (`packages/reactor`).
+4. Dynamic quote discovery (registry + factory), not `[USDC, ZEC]`.
+5. Nested protocol settle / Top-10 fee-exempt; user path still 3.5%.
+6. Router `nonReentrant` + `WalletExemptForbidden` while `protocolExempt`.
+7. Indexer timestamps = chain time; VWAP uses chain head; restart reconstructs `poolId→token`.
+8. Top-10 fail-closed only on **material** uncertainty.
+9. usdPegOne-only $1; unique launch digest; Safe genesis verify script.
+
+Evidence file: `deployments/e2e-evidence.json` (regenerate with `pnpm --filter indexer demo` after a fresh deploy).
+
+# BUILD REPORT — prior local MVP notes
+
 
 Evidence file: `deployments/e2e-evidence.json` (regenerate with `pnpm --filter indexer demo` after a fresh deploy).
 

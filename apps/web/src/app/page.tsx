@@ -12,17 +12,26 @@ const filters = ["Trending", "New", "Bonding", "Rewards", "Buy+Burn", "Batch Fai
 export default function HomePage() {
   const { data, isLoading, isError, error, refetch } = useLaunchTokens();
   const [filter, setFilter] = useState<(typeof filters)[number]>("New");
+  const [q, setQ] = useState("");
 
   const list = useMemo(() => {
-    const items = [...(data ?? [])];
-    if (filter === "Batch Fair") return items.filter((t) => t.mode === 1);
-    if (filter === "Bonding") return items.filter((t) => t.bonding);
-    if (filter === "Rewards") return items.filter((t) => t.mode === 0 && t.rewardsMode !== false);
-    if (filter === "Buy+Burn") return items.filter((t) => t.mode === 0 && t.rewardsMode === false);
-    if (filter === "USDC-quoted") return items.filter((t) => t.quoteSymbol === "USDC");
-    if (filter === "Trending") return items.filter((t) => t.marketLive);
-    return items;
-  }, [data, filter]);
+    let items = [...(data ?? [])];
+    if (filter === "Batch Fair") items = items.filter((t) => t.mode === 1);
+    else if (filter === "Bonding") items = items.filter((t) => t.bonding);
+    else if (filter === "Rewards") items = items.filter((t) => t.mode === 0 && t.rewardsMode !== false);
+    else if (filter === "Buy+Burn") items = items.filter((t) => t.mode === 0 && t.rewardsMode === false);
+    else if (filter === "USDC-quoted") items = items.filter((t) => t.quoteSymbol === "USDC");
+    else if (filter === "Trending") items = items.filter((t) => t.marketLive);
+    const needle = q.trim().toLowerCase();
+    if (!needle) return items;
+    return items.filter(
+      (t) =>
+        t.name.toLowerCase().includes(needle) ||
+        t.symbol.toLowerCase().includes(needle) ||
+        t.token.toLowerCase().includes(needle) ||
+        (t.quoteSymbol ?? "").toLowerCase().includes(needle),
+    );
+  }, [data, filter, q]);
 
   return (
     <div>
@@ -66,7 +75,15 @@ export default function HomePage() {
             </button>
           ))}
         </div>
-        <span className="text-[11px] tabular-nums text-zinc-500">{list.length} markets</span>
+        <div className="flex items-center gap-2">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search name / ticker / quote"
+            className="h-8 w-44 rounded-full border border-white/10 bg-black/30 px-3 text-[12px] text-zinc-200 outline-none placeholder:text-zinc-600"
+          />
+          <span className="text-[11px] tabular-nums text-zinc-500">{list.length} markets</span>
+        </div>
       </div>
 
       {isLoading && <p className="mt-8 text-sm text-zinc-500">Reading launches from chain…</p>}

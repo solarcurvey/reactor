@@ -60,7 +60,7 @@ contract SelfBurnVault {
         emit SelfBurnAccrued(token, quote, amount);
     }
 
-    function execute(address token, uint256 minTargetOut) external nonReentrant {
+    function execute(address token, uint256 minTargetOut) external nonReentrant returns (uint256 burnedAmount) {
         auth.requireKeeper(msg.sender);
         if (minTargetOut == 0) revert MinOutRequired();
         if (lastExecuteAt[token] != 0 && block.timestamp < uint256(lastExecuteAt[token]) + ReactorConstants.KEEPER_COOLDOWN) {
@@ -107,6 +107,7 @@ contract SelfBurnVault {
         if (burned < minTargetOut) revert MinOutRequired();
         ReactorToken(token).burn(burned);
         lifetimeBurned += burned;
+        burnedAmount = burned;
         emit SelfBurnExecuted(token, amt, burned);
     }
 }

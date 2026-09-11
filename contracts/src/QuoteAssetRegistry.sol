@@ -29,6 +29,8 @@ contract QuoteAssetRegistry {
         bool buybackRouteEnabled;
         bool hopViaUsdc;
         bool reactorNative;
+        /// @notice Only canonical $1 USD assets. EURC / other Stablecoins stay false.
+        bool usdPegOne;
     }
 
     ReactorGuardian public immutable auth;
@@ -39,6 +41,7 @@ contract QuoteAssetRegistry {
 
     event QuoteRegistered(address indexed token, string symbol, Category category, bool reactorNative);
     event QuoteUpdated(address indexed token, bool enabled);
+    event UsdPegOneSet(address indexed token, bool usdPegOne);
     event BuybackRouteSet(address indexed token, bool enabled, bool hopViaUsdc);
     event UsdcSet(address indexed usdc);
     event FactoryBound(address factory);
@@ -70,6 +73,10 @@ contract QuoteAssetRegistry {
         if (usdc_ == address(0)) revert BadUsdc();
         if (usdc != address(0) && usdc != usdc_) revert BadUsdc();
         usdc = usdc_;
+        if (assets[usdc_].exists) {
+            assets[usdc_].usdPegOne = true;
+            emit UsdPegOneSet(usdc_, true);
+        }
         emit UsdcSet(usdc_);
     }
 
@@ -96,9 +103,11 @@ contract QuoteAssetRegistry {
             rewardsEnabled: true,
             buybackRouteEnabled: false,
             hopViaUsdc: false,
-            reactorNative: false
+            reactorNative: false,
+            usdPegOne: token == usdc && usdc != address(0)
         });
         list.push(token);
+        if (assets[token].usdPegOne) emit UsdPegOneSet(token, true);
         emit QuoteRegistered(token, symbol, category, false);
     }
 
@@ -118,7 +127,8 @@ contract QuoteAssetRegistry {
             rewardsEnabled: true,
             buybackRouteEnabled: true,
             hopViaUsdc: true,
-            reactorNative: true
+            reactorNative: true,
+            usdPegOne: false
         });
         list.push(token);
         emit QuoteRegistered(token, symbol, Category.ReactorNative, true);
@@ -134,6 +144,17 @@ contract QuoteAssetRegistry {
         if (!assets[token].exists) revert UnknownQuote();
         assets[token].icon = icon;
         emit QuoteUpdated(token, assets[token].enabled);
+    }
+
+    /// @notice Guardian must set this explicitly. Category.Stablecoins is NOT $1.
+    function setUsdPegOne(address token, bool peg) external onlyGuardian {
+        if (!assets[token].exists) revert UnknownQuote();
+        assets[token].usdPegOne = peg;
+        emit UsdPegOneSet(token, peg);
+    }
+
+    function isUsdPegOne(address token) public view returns (bool) {
+        return assets[token].exists && assets[token].enabled && assets[token].usdPegOne;
     }
 
     function setBuybackRoute(address token, bool enabled, bool hopViaUsdc_) external onlyGuardian {

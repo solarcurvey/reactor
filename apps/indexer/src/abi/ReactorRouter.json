@@ -391,6 +391,11 @@
   },
   {
     "type": "error",
+    "name": "Reentrant",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "Sealed",
     "inputs": []
   },

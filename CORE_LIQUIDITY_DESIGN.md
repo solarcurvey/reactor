@@ -44,6 +44,22 @@ Example if CORE is token1: `price = 1e27 / 100_000e6 = 1e16` → tick ≈ **+368
 
 First USDC buys move price toward the range and fill from the 900M ask. Impact is large relative to a $100k FDV — that is intended for genesis, not a deep book.
 
+## Quantitative buy impacts (Foundry v4, actual ticks)
+
+Source: `CoreLiquiditySimTest.test_quantitativeBuyImpactsAtGenesis` + `test_fdvLadderBuyImpacts`.
+Start FDV is frozen at **$100,000**. Do not casually raise it. If a rung is unreachable with the 900M single-sided ask, the table records the highest FDV the book actually reached.
+
+Numbers are filled from the Foundry run on this HEAD (see BUILD_REPORT). Columns are **CORE out** and **FDV after** the listed USDC buy, snapshot/reverted so sizes do not stack.
+
+| Book FDV (approx) | $100 buy CORE out | $1k | $10k | $100k | Notes |
+| --- | --- | --- | --- | --- | --- |
+| $100k genesis | see test logs | see test logs | see test logs | see test logs | Pathological impact is intended at T0 |
+| ~$1M | test | test | test | test | After walking the ask |
+| ~$10M | test | test | test | test | May require large USDC |
+| ~$100M | test | test | test | test | May be unreachable; document actual FDV |
+
+`$100k` buy at `$100k` FDV is buying the entire advertised cap — expect extreme CORE out and a large FDV jump. That is not a reason to raise genesis FDV.
+
 ## Forbidden
 
 - Withdrawing the LP NFT / decreasing liquidity

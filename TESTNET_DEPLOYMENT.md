@@ -13,7 +13,7 @@ Source: [docs.arc.io/arc/references/rpc-endpoints](https://docs.arc.io/arc/refer
 | Faucet | `https://faucet.circle.com` |
 | Native gas | USDC, **18** decimals internally |
 | USDC ERC-20 | `0x3600000000000000000000000000000000000000`, **6** decimals |
-| EURC | `0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a` |
+| EURC | `0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a` — **not usdPegOne**; do not treat as $1 |
 | Permit2 | `0x000000000022D473030F116dDEE9F6B43aC78BA3` |
 | CREATE2 (Arachnid) | `0x4e59b44847b379578588920cA78FbF26c0B4956C` |
 | CCA factory v2.1.0 | `0x000000001F26a0044BaA66024e7b6599c61963F8` (code **present**) |
@@ -54,18 +54,25 @@ forge script script/Deploy.s.sol:Deploy \
 
 Use at least 20 gwei. Never commit the key. `.env.example` lists variables.
 
+Production-shaped local/testnet: set `GUARDIAN` to the **final Safe**, `KEEPER` to the designated Keeper, `SAFE_GENESIS=true` (launches stay paused). Then:
+
+```bash
+forge script script/VerifyGenesis.s.sol:VerifyGenesis --rpc-url $RPC
+```
+
+Never deploy with a temporary EOA Guardian and transfer later.
+
 ## What gets deployed
 
 1. `PoolManager` (official v4-core, BUSL non-production)
-2. `QuoteAssetRegistry` (admin = deployer)
-3. Mock USDC (local only) or register canonical USDC (testnet)
-4. Mock ZEC / BTC / NVDA (labeled)
-5. `TestCORE`
-6. `ReactorLiquidityVault`, `BuybackVault`, `ReactorRouter`
-7. `ReactorHook` via CREATE2 with mined permission bits
-8. `ReactorFactory`
-9. Hookless CORE/USDC pool + seed liquidity
-10. Register quotes
+2. `ReactorGuardian` (immutable Guardian + Keeper)
+3. `QuoteAssetRegistry` (Guardian-curated; usdPegOne on canonical USDC only)
+4. Mock USDC (local only) or register canonical USDC (testnet)
+5. Mock ZEC / BTC / NVDA (labeled)
+6. `TestCORE` genesis 100M vest + 900M LP
+7. Official hooked CORE/USDC lock (`CoreLiquidityVault`) — not hookless
+8. Vaults, router, hook CREATE2, factory, InstantCurve, UserRoute, adapters
+9. `SAFE_GENESIS=true` keeps launches paused until Safe enables
 
 Addresses are appended to `deployments/<network>.json`.
 

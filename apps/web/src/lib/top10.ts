@@ -1,6 +1,6 @@
 /** Offchain Top-10 ranker. Mirrors contracts/src/libraries/Top10Ranker.sol. Never guesses a mark. */
 
-export const TOP10_FLOOR_USDC = 250_000n * 1_000_000n; // $250k in USDC-6
+export const TOP10_FLOOR_USDC = 250_000n * 1_000_000n;
 
 export type RankCandidate = {
   token: string;
@@ -10,6 +10,11 @@ export type RankCandidate = {
   isCore: boolean;
   markUsdc: bigint;
   markOk: boolean;
+  lastGoodMarkUsdc?: bigint;
+  liquidityUsdc?: bigint;
+  windowVolumeUsdc?: bigint;
+  tradeCount?: number;
+  priorRanked?: boolean;
 };
 
 export type RankRow = {
@@ -21,6 +26,14 @@ export type RankRow = {
   weightBps: number;
 };
 
+export function materialUncertainty(c: RankCandidate, floorUsdc: bigint = TOP10_FLOOR_USDC): boolean {
+  if (c.priorRanked) return true;
+  if ((c.lastGoodMarkUsdc ?? 0n) >= floorUsdc) return true;
+  if ((c.liquidityUsdc ?? 0n) >= floorUsdc / 5n) return true;
+  if ((c.windowVolumeUsdc ?? 0n) >= floorUsdc / 10n && (c.lastGoodMarkUsdc ?? 0n) >= floorUsdc / 2n) return true;
+  return false;
+}
+
 export function rankTop10(cands: RankCandidate[], floorUsdc: bigint = TOP10_FLOOR_USDC): {
   rows: RankRow[];
   pauseEpoch: boolean;
@@ -30,9 +43,15 @@ export function rankTop10(cands: RankCandidate[], floorUsdc: bigint = TOP10_FLOO
   const qual: Qual[] = [];
   for (const c of cands) {
     if (c.isCore || !c.graduated) continue;
-    // Material graduated candidate without a defensible mark → fail closed. Never guess.
     if (!c.markOk) {
-      return { rows: [], pauseEpoch: true, pauseReason: "material candidate unvalued — pause epoch, never guess" };
+      if (materialUncertainty(c, floorUsdc)) {
+        return {
+          rows: [],
+          pauseEpoch: true,
+          pauseReason: "material candidate unvalued — pause epoch, never guess",
+        };
+      }
+      continue;
     }
     if (c.markUsdc < floorUsdc) continue;
     qual.push({ ...c, mark: c.markUsdc });

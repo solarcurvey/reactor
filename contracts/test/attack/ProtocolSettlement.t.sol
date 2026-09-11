@@ -92,6 +92,37 @@ contract ProtocolSettlementTest is Base {
         protocolAdapter.swapExactIn(address(usdc), address(zec), 1e6, 1, keeper, abi.encode(zecUsdcKey));
     }
 
+    function test_nestedTop10BuyZcatIsFeeExempt() public {
+        address zcat = _instantZcat(1);
+        _fillAndGraduate(alice, zcat);
+        assertTrue(curve.graduatedOf(zcat));
+
+        usdc.mint(address(flywheel), 8_000e6);
+        vm.prank(address(hook));
+        flywheel.accrue(address(usdc), 8_000e6);
+        _keeperSettle(address(usdc));
+        _submitTop10(zcat);
+
+        uint256 fly0 = flywheel.lifetimeAccrued();
+        uint256 bb0 = buyback.lifetimeAccrued();
+        uint256 sb0 = selfBurn.lifetimeAccrued();
+
+        RouteGuard.Hop[] memory hops = new RouteGuard.Hop[](1);
+        hops[0] = RouteGuard.Hop({
+            adapter: address(protocolAdapter),
+            tokenIn: address(usdc),
+            tokenOut: address(zec),
+            minOut: 1,
+            data: abi.encode(zecUsdcKey)
+        });
+        vm.prank(keeper);
+        uint256 burned = flywheel.executeTop10Buyback(zcat, hops, 1);
+        assertGt(burned, 1);
+        assertEq(flywheel.lifetimeAccrued(), fly0, "nested Top-10 must not mint 3.5%");
+        assertEq(buyback.lifetimeAccrued(), bb0);
+        assertEq(selfBurn.lifetimeAccrued(), sb0);
+    }
+
     function test_userAdapterPaysFeesOnOfficialLeg() public {
         address zcat = _instantZcat(1);
         _fillAndGraduate(alice, zcat);

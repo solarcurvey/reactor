@@ -122,11 +122,19 @@ contract LaunchPricingTest is Base {
         auth.setPricingSigner(pricingSigner);
     }
 
-    function test_wrongNonceReverts() public {
+    function test_wrongCreatorReverts() public {
         (LaunchPricing.Auth memory a,) = _priceAuth(address(zec));
-        a.nonce = 9;
+        a.creator = alice;
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, LaunchPricing.digest(factory.pricingDomain(), a));
-        vm.expectRevert(LaunchPricing.Replay.selector);
+        vm.expectRevert(LaunchPricing.WrongCreator.selector);
+        factory.instantLaunchPriced(_p(), a, abi.encodePacked(r, s, v));
+    }
+
+    function test_zeroSaltReverts() public {
+        (LaunchPricing.Auth memory a,) = _priceAuth(address(zec));
+        a.salt = bytes32(0);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, LaunchPricing.digest(factory.pricingDomain(), a));
+        vm.expectRevert(LaunchPricing.WrongParams.selector);
         factory.instantLaunchPriced(_p(), a, abi.encodePacked(r, s, v));
     }
 
@@ -141,7 +149,37 @@ contract LaunchPricingTest is Base {
     function test_validSigLaunches() public {
         address token = _instantZcat(1);
         assertTrue(curve.existsOf(token));
-        assertEq(factory.pricingNonce(address(zec)), 1);
+    }
+
+    function test_concurrentSameQuoteLaunches() public {
+        (LaunchPricing.Auth memory a1, bytes memory s1) = _priceAuthUsd(address(zec), 50e6);
+        (LaunchPricing.Auth memory a2, bytes memory s2) = _priceAuthUsd(address(zec), 50e6);
+        assertTrue(a1.salt != a2.salt);
+        (address t1,) = factory.instantLaunchPriced(_p(), a1, s1);
+        ReactorFactory.InstantParams memory p2 = _p();
+        p2.name = "Z2";
+        p2.symbol = "Z2";
+        (address t2,) = factory.instantLaunchPriced(p2, a2, s2);
+        assertTrue(t1 != t2);
+        assertTrue(curve.existsOf(t1) && curve.existsOf(t2));
+    }
+
+    function test_eurcStablecoinIsNotUsdPegOne() public {
+        MockERC20 eurc = new MockERC20("Euro Coin", "EURC", 6, 0, address(this));
+        eurc.mint(alice, 1_000_000e6);
+        registry.register(address(eurc), "EURC", "Euro Coin", 6, "", QuoteAssetRegistry.Category.Stablecoins);
+        registry.setBuybackRoute(address(eurc), true, true);
+        assertFalse(registry.isUsdPegOne(address(eurc)));
+        assertTrue(registry.isUsdPegOne(address(usdc)));
+        ReactorFactory.InstantParams memory p = _p();
+        p.name = "E";
+        p.symbol = "E";
+        p.quote = address(eurc);
+        vm.expectRevert(ReactorFactory.NeedPricingAuth.selector);
+        factory.instantLaunch(p);
+        (LaunchPricing.Auth memory a, bytes memory sig) = _priceAuthUsd(address(eurc), 1_080_000);
+        (address token,) = factory.instantLaunchPriced(p, a, sig);
+        assertTrue(curve.existsOf(token));
     }
 
     function test_wrongChainReverts() public {

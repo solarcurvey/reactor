@@ -74,6 +74,97 @@ contract CoreLiquiditySimTest is Base {
         assertGt(coreVesting.claimable(), 0);
     }
 
+    function test_quantitativeBuyImpactsAtGenesis() public {
+        uint256[] memory spends = new uint256[](4);
+        spends[0] = 100e6;
+        spends[1] = 1_000e6;
+        spends[2] = 10_000e6;
+        spends[3] = 100_000e6;
+        for (uint256 i; i < spends.length; i++) {
+            uint256 snap = vm.snapshotState();
+            (uint160 sqrt0,,,) = _slot0(coreKey);
+            usdc.mint(alice, spends[i]);
+            uint256 out = _buy(alice, address(core), address(usdc), spends[i]);
+            (uint160 sqrt1,,,) = _slot0(coreKey);
+            emit log_named_uint("spend_usdc6", spends[i]);
+            emit log_named_uint("core_out", out);
+            emit log_named_uint("sqrt0", sqrt0);
+            emit log_named_uint("sqrt1", sqrt1);
+            emit log_named_uint("fdv0_usdc6", _fdvUsdc6(sqrt0));
+            emit log_named_uint("fdv1_usdc6", _fdvUsdc6(sqrt1));
+            assertGt(out, 0);
+            assertTrue(sqrt1 != sqrt0);
+            vm.revertToState(snap);
+        }
+    }
+
+    /// @dev Walks the locked book and records $100/$1k/$10k/$100k impacts at ~$100k / $1M / $10M / $100M FDV.
+    function test_fdvLadderBuyImpacts() public {
+        uint256[4] memory rungs = [uint256(100_000e6), 1_000_000e6, 10_000_000e6, 100_000_000e6];
+        uint256[4] memory spends = [uint256(100e6), 1_000e6, 10_000e6, 100_000e6];
+        for (uint256 r; r < rungs.length; r++) {
+            _walkTowardFdv(rungs[r]);
+            (uint160 sqrtNow,,,) = _slot0(coreKey);
+            uint256 fdvNow = _fdvUsdc6(sqrtNow);
+            emit log_named_uint("rung_target_usdc6", rungs[r]);
+            emit log_named_uint("rung_actual_fdv_usdc6", fdvNow);
+            emit log_named_uint("rung_sqrt", sqrtNow);
+            for (uint256 i; i < spends.length; i++) {
+                uint256 snap = vm.snapshotState();
+                (uint160 sqrt0,,,) = _slot0(coreKey);
+                uint256 fdv0 = _fdvUsdc6(sqrt0);
+                usdc.mint(alice, spends[i]);
+                uint256 out = _buy(alice, address(core), address(usdc), spends[i]);
+                (uint160 sqrt1,,,) = _slot0(coreKey);
+                uint256 fdv1 = _fdvUsdc6(sqrt1);
+                emit log_named_uint("ladder_spend", spends[i]);
+                emit log_named_uint("ladder_core_out", out);
+                emit log_named_uint("ladder_fdv0", fdv0);
+                emit log_named_uint("ladder_fdv1", fdv1);
+                if (out > 0) assertTrue(sqrt1 != sqrt0);
+                vm.revertToState(snap);
+            }
+        }
+    }
+
+    function _fdvUsdc6(uint160 sqrtP) internal view returns (uint256) {
+        uint256 q192 = uint256(1) << 192;
+        uint256 s = uint256(sqrtP);
+        uint256 supply = ReactorConstants.DEFAULT_SUPPLY;
+        if (address(core) < address(usdc)) {
+            return (supply * s * s) / q192;
+        }
+        if (s == 0) return 0;
+        return (supply * q192) / (s * s);
+    }
+
+    function _walkTowardFdv(uint256 target) internal {
+        (uint160 sqrtNow,,,) = _slot0(coreKey);
+        if (_fdvUsdc6(sqrtNow) >= target) return;
+        // Chunked USDC buys. $100M may be unreachable with 900M single-sided ask — then we stop.
+        uint256[] memory chunks = new uint256[](8);
+        chunks[0] = 50_000e6;
+        chunks[1] = 200_000e6;
+        chunks[2] = 1_000_000e6;
+        chunks[3] = 5_000_000e6;
+        chunks[4] = 20_000_000e6;
+        chunks[5] = 50_000_000e6;
+        chunks[6] = 100_000_000e6;
+        chunks[7] = 400_000_000e6;
+        for (uint256 i; i < chunks.length; i++) {
+            (sqrtNow,,,) = _slot0(coreKey);
+            if (_fdvUsdc6(sqrtNow) >= target) return;
+            usdc.mint(alice, chunks[i]);
+            try this.buyAsAlice(chunks[i]) {} catch {
+                return;
+            }
+        }
+    }
+
+    function buyAsAlice(uint256 amt) external {
+        _buy(alice, address(core), address(usdc), amt);
+    }
+
     function test_burnReducesSupply_top10ExcludesCore() public {
         uint256 s0 = core.totalSupply();
         usdc.mint(address(buyback), 20_000e6);

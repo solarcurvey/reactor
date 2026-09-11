@@ -42,7 +42,7 @@ Addresses land in `deployments/local.json` after the demo script.
 3. Claim holder rewards in the quote asset — no staking.
 4. Designated Keeper settles flywheel quote→USDC, submits Top-10 epochs, and runs CORE / SelfBurn buy+burn through approved adapters. Each job takes a **chunk** (20%) + cooldown and a Keeper-supplied `minOut` — not the whole pot, not `minOut=1`.
 5. THE REACTOR (`/reactor`) — 1% Top-10. API **discovers** graduated markets on-chain (official prices, nested quote/USD, $250k floor, fail closed). Contracts check structure only. CORE never ranks. Not a trustless oracle.
-6. Non-USDC Instant launches need a short-lived **signed** `LaunchPricingAuthorization`. The signed `virtualQuote0` is what opens the curve (~$5k USD-equivalent). No onchain ZEC/USD oracle. USDC / listed stables stay unsigned.
+6. Only **usdPegOne** quotes (initially canonical USDC) skip signed pricing. EURC and the Stablecoins category are **not** $1. Everyone else needs a unique short-lived `LaunchPricingAuthorization` digest (creator + quote + virtualQuote0 + curve + salt + expiry + chain). Concurrent same-quote launches are allowed. No serial nonce. No onchain ZEC/USD oracle.
 7. Transfer launch tokens with **zero tax**; rewards persist. When Rewards `eligibleSupply==0`, the 2% goes to SelfBurn (not the first holder).
 
 ## Network

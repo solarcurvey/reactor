@@ -101,12 +101,20 @@ contract BuybackVault {
         emit BuybackAccrued(quote, amount);
     }
 
-    function executeCoreBuyback(address quote, RouteGuard.Hop[] calldata hops, uint256 minOut) external {
-        execute(quote, hops, minOut);
+    function executeCoreBuyback(address quote, RouteGuard.Hop[] calldata hops, uint256 minOut)
+        external
+        returns (uint256 coreBought)
+    {
+        return execute(quote, hops, minOut);
     }
 
     /// @notice Keeper-only. tokenIn from this bucket; tokenOut must be CORE; then burn.
-    function execute(address quote, RouteGuard.Hop[] calldata hops, uint256 minOut) public onlyKeeper nonReentrant {
+    function execute(address quote, RouteGuard.Hop[] calldata hops, uint256 minOut)
+        public
+        onlyKeeper
+        nonReentrant
+        returns (uint256 coreBought)
+    {
         if (minOut == 0) revert MinOutRequired();
         if (quote == core) revert Bad();
         if (lastExecuteAt[quote] != 0 && block.timestamp < uint256(lastExecuteAt[quote]) + ReactorConstants.BUYBACK_COOLDOWN) {
@@ -136,6 +144,7 @@ contract BuybackVault {
         lastExecuteAt[quote] = uint64(block.timestamp);
         lifetimePurchased += coreOut;
         _burn(coreOut);
+        coreBought = coreOut;
         emit BuybackExecuted(quote, amount, coreOut, msg.sender);
     }
 

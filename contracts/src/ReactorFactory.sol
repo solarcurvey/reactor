@@ -42,7 +42,6 @@ contract ReactorFactory {
     SelfBurnVault public selfBurn;
     mapping(address => bool) public standardMode;
     mapping(bytes32 => bool) public usedPricing;
-    mapping(address => uint256) public pricingNonce;
     bytes32 public immutable pricingDomain;
 
     uint256 public launchCount;
@@ -254,10 +253,12 @@ contract ReactorFactory {
 
     function _emptyAuth() internal pure returns (LaunchPricing.Auth memory a) {}
 
-    function _dollarStable(address quote) internal view returns (bool) {
-        if (quote == registry.usdc()) return true;
-        QuoteAssetRegistry.QuoteAsset memory q = registry.get(quote);
-        return q.exists && q.category == QuoteAssetRegistry.Category.Stablecoins;
+    function _usdPegOne(address quote) internal view returns (bool) {
+        return registry.isUsdPegOne(quote);
+    }
+
+    function instantCurveConfig() public pure returns (bytes32) {
+        return LaunchPricing.INSTANT_CURVE_V1;
     }
 
     function _instantLaunch(
@@ -495,20 +496,29 @@ contract ReactorFactory {
         return allTokens.length;
     }
 
-    /// @notice Stables use protocol USDC-6 geometry. Non-$1 quotes use the signed `virtualQuote0`.
+    /// @notice usdPegOne assets use protocol USDC-6 geometry. Everyone else needs a unique signed digest.
     function _checkPricing(address quote, LaunchPricing.Auth memory a, bytes memory sig)
         internal
         returns (uint256 virtualQuote0)
     {
         uint8 qdec = IERC20MinimalExt(quote).decimals();
-        if (_dollarStable(quote)) {
+        if (_usdPegOne(quote)) {
             return CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, qdec);
         }
         if (sig.length == 0) revert NeedPricingAuth();
         if (!registry.isEnabled(quote)) revert LaunchPricing.Quarantined();
-        if (a.nonce != pricingNonce[quote]) revert LaunchPricing.Replay();
-        LaunchPricing.verify(auth, pricingDomain, address(this), quote, qdec, a, sig, usedPricing);
-        pricingNonce[quote] += 1;
+        LaunchPricing.verify(
+            auth,
+            pricingDomain,
+            address(this),
+            msg.sender,
+            quote,
+            qdec,
+            LaunchPricing.INSTANT_CURVE_V1,
+            a,
+            sig,
+            usedPricing
+        );
         return a.virtualQuote0;
     }
 

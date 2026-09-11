@@ -12,11 +12,13 @@ import { writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
 import { dirname } from "node:path";
 import { defineChain } from "viem";
 import deployment from "./deployment.json" with { type: "json" };
+import { planRoute, type MarketEdge, type QuoteMeta, type Hop } from "../../../packages/reactor/src/routes.ts";
 
 /**
  * Designated Keeper daemon.
- * Simulate → minOut → submit → receipt → reconcile. Idempotent job IDs.
+ * Simulate with safe params → read returned expected output → conservative minOut → submit → verify.
  * Modes: DRY_RUN | LOCAL | ARC_TESTNET. Chain 5042 (mainnet) is hard-disabled.
+ * Never logs private keys. Never submits minOut 0 or 1.
  */
 
 const RPC = process.env.NEXT_PUBLIC_RPC_URL ?? deployment.rpc;
@@ -40,28 +42,33 @@ function resolveMode(): Mode {
 }
 const MODE = resolveMode();
 
+const hopTuple =
+  "(address adapter, address tokenIn, address tokenOut, uint256 minOut, bytes data)[]";
+
 const flywheelAbi = parseAbi([
   "function epoch() view returns (uint256)",
   "function epochFinalized() view returns (bool)",
   "function usdcPot() view returns (uint256)",
   "function quoteAccrued(address) view returns (uint256)",
-  "function settleQuote(address quote, (address adapter, address tokenIn, address tokenOut, uint256 minOut, bytes data)[] hops, uint256 minOut)",
+  `function settleQuote(address quote, ${hopTuple} hops, uint256 minOut) returns (uint256 usdcReceived)`,
   "function submitEpoch(uint256 epochId, address[] targets, uint256[] weights_)",
-  "function executeTop10Buyback(address token, (address adapter, address tokenIn, address tokenOut, uint256 minOut, bytes data)[] hops, uint256 minTargetOut)",
+  `function executeTop10Buyback(address token, ${hopTuple} hops, uint256 minTargetOut) returns (uint256 targetBought)`,
   "function rollEpoch()",
   "function bought(uint256,address) view returns (bool)",
 ]);
 const selfBurnAbi = parseAbi([
   "function accrued(address) view returns (uint256)",
-  "function execute(address token, uint256 minTargetOut)",
+  "function quoteOf(address) view returns (address)",
+  "function execute(address token, uint256 minTargetOut) returns (uint256 burnedAmount)",
 ]);
 const buybackAbi = parseAbi([
   "function accrued(address) view returns (uint256)",
-  "function execute(address quote, (address adapter, address tokenIn, address tokenOut, uint256 minOut, bytes data)[] hops, uint256 minOut)",
+  `function execute(address quote, ${hopTuple} hops, uint256 minOut) returns (uint256 coreBought)`,
 ]);
 const factoryAbi = parseAbi([
   "function allTokensLength() view returns (uint256)",
   "function allTokens(uint256) view returns (address)",
+  "function tokenInfo(address) view returns (address token, address quote, address creator, uint8 mode, bytes32 poolId, bool marketLive, uint256 fairId)",
 ]);
 const curveAbi = parseAbi([
   "function readyOf(address) view returns (bool)",
@@ -69,9 +76,26 @@ const curveAbi = parseAbi([
   "function existsOf(address) view returns (bool)",
   "function graduate(address token) returns (bytes32)",
 ]);
+const registryAbi = parseAbi([
+  "function count() view returns (uint256)",
+  "function list(uint256) view returns (address)",
+  "function usdc() view returns (address)",
+  "function get(address) view returns (address token, string symbol, string name, uint8 decimals, string icon, uint8 category, bool enabled, bool exists, bool rewardsEnabled, bool buybackRouteEnabled, bool hopViaUsdc, bool reactorNative, bool usdPegOne)",
+]);
+const hookAbi = parseAbi([
+  "function marketOfToken(address) view returns (address token, address quote, bool exists)",
+]);
+const erc20Abi = parseAbi(["function balanceOf(address) view returns (uint256)"]);
 
-type Top10 = { pauseEpoch: boolean; reason: string; rows: Array<{ token: string; weightBps: number; symbol: string }> };
-type JobState = { status: "done" | "pending" | "failed" | "ambiguous"; hash?: string; ts: number; note?: string };
+type Top10 = { pauseEpoch: boolean; reason: string; rows: Array<{ token: string; weightBps: number; symbol: string; quote?: string }> };
+type JobState = {
+  status: "done" | "pending" | "failed" | "ambiguous";
+  hash?: string;
+  nonce?: string;
+  receipt?: string;
+  ts: number;
+  note?: string;
+};
 type KeeperState = { jobs: Record<string, JobState> };
 
 const addrs = deployment.addresses as Record<string, string>;
@@ -85,8 +109,12 @@ const client = createPublicClient({ chain, transport: http(RPC) });
 
 function keeperKey(chainId: number): `0x${string}` | null {
   const env = process.env.KEEPER_PRIVATE_KEY;
-  if (env) return env as `0x${string}`;
+  if (env) {
+    if (env.length < 10) throw new Error("KEEPER_PRIVATE_KEY malformed");
+    return env as `0x${string}`;
+  }
   if (chainId === LOCAL_CHAIN && MODE === "LOCAL") return ANVIL0;
+  if (chainId === LOCAL_CHAIN && MODE === "ARC_TESTNET") return null;
   return null;
 }
 
@@ -109,12 +137,14 @@ function writeBeat(beat: Record<string, unknown>) {
   writeFileSync(HEARTBEAT, JSON.stringify({ ...beat, mode: MODE, ts: Date.now() }, null, 2));
 }
 
-function floorMin(out: bigint): bigint {
-  const v = (out * (10_000n - SLIP_BPS)) / 10_000n;
-  return v === 0n ? 1n : v;
+export function conservativeMinOut(simOut: bigint, slipBps = SLIP_BPS): bigint {
+  if (simOut === undefined || simOut === null) throw new Error("void sim result");
+  const v = (simOut * (10_000n - slipBps)) / 10_000n;
+  if (v <= 1n) throw new Error(`weak minOut from sim ${simOut}`);
+  return v;
 }
 
-function poolKeyBytes(a: `0x${string}`, b: `0x${string}`): Hex {
+function poolKeyBytes(a: `0x${string}`, b: `0x${string}`, fee: number, hooks: `0x${string}`): Hex {
   const [c0, c1] = a.toLowerCase() < b.toLowerCase() ? [a, b] : [b, a];
   return encodeAbiParameters(
     [
@@ -129,29 +159,16 @@ function poolKeyBytes(a: `0x${string}`, b: `0x${string}`): Hex {
         ],
       },
     ],
-    [
-      {
-        currency0: c0,
-        currency1: c1,
-        fee: 3000,
-        tickSpacing: 60,
-        hooks: "0x0000000000000000000000000000000000000000",
-      },
-    ],
+    [{ currency0: c0, currency1: c1, fee, tickSpacing: 60, hooks }],
   );
-}
-
-function quoteToUsdcHops(quote: `0x${string}`, usdc: `0x${string}`, minOut: bigint) {
-  if (quote.toLowerCase() === usdc.toLowerCase()) return [];
-  const adapter = (addrs.ProtocolV4Adapter ?? addrs.V4Adapter) as `0x${string}`;
-  return [{ adapter, tokenIn: quote, tokenOut: usdc, minOut, data: poolKeyBytes(quote, usdc) }];
 }
 
 function canBroadcast(chainId: number): { ok: boolean; reason?: string } {
   if (chainId === MAINNET_CHAIN) return { ok: false, reason: "mainnet disabled" };
   if (MODE === "DRY_RUN") return { ok: false, reason: "DRY_RUN" };
   if (chainId !== LOCAL_CHAIN) return { ok: false, reason: `refuse chain ${chainId}` };
-  return { ok: true };
+  if (MODE === "ARC_TESTNET" || MODE === "LOCAL") return { ok: true };
+  return { ok: false, reason: "mode" };
 }
 
 async function submitOnce(state: KeeperState, id: string, send: () => Promise<Hex>): Promise<JobState> {
@@ -163,8 +180,8 @@ async function submitOnce(state: KeeperState, id: string, send: () => Promise<He
       const receipt = await client.getTransactionReceipt({ hash: prev.hash as Hex });
       const next: JobState =
         receipt.status === "success"
-          ? { status: "done", hash: prev.hash, ts: Date.now() }
-          : { status: "failed", hash: prev.hash, ts: Date.now(), note: "receipt reverted" };
+          ? { status: "done", hash: prev.hash, nonce: prev.nonce, receipt: receipt.status, ts: Date.now() }
+          : { status: "failed", hash: prev.hash, nonce: prev.nonce, receipt: receipt.status, ts: Date.now(), note: "receipt reverted" };
       state.jobs[id] = next;
       saveState(state);
       return next;
@@ -172,6 +189,7 @@ async function submitOnce(state: KeeperState, id: string, send: () => Promise<He
       state.jobs[id] = {
         status: "ambiguous",
         hash: prev.hash,
+        nonce: prev.nonce,
         ts: Date.now(),
         note: "rpc ambiguous — will not double-exec",
       };
@@ -200,8 +218,8 @@ async function submitOnce(state: KeeperState, id: string, send: () => Promise<He
     const receipt = await client.waitForTransactionReceipt({ hash, timeout: 60_000 });
     const next: JobState =
       receipt.status === "success"
-        ? { status: "done", hash, ts: Date.now() }
-        : { status: "failed", hash, ts: Date.now(), note: "receipt reverted" };
+        ? { status: "done", hash, receipt: receipt.status, ts: Date.now() }
+        : { status: "failed", hash, receipt: receipt.status, ts: Date.now(), note: "receipt reverted" };
     state.jobs[id] = next;
     saveState(state);
     return next;
@@ -210,6 +228,173 @@ async function submitOnce(state: KeeperState, id: string, send: () => Promise<He
     saveState(state);
     return state.jobs[id]!;
   }
+}
+
+async function discoverQuotes(): Promise<{
+  quotes: `0x${string}`[];
+  metas: Map<string, QuoteMeta>;
+  usdc: `0x${string}`;
+}> {
+  const registry = addrs.QuoteAssetRegistry as `0x${string}` | undefined;
+  const usdc = (addrs.USDC as `0x${string}`) ?? "0x0000000000000000000000000000000000000000";
+  const metas = new Map<string, QuoteMeta>();
+  const quotes: `0x${string}`[] = [];
+  if (registry) {
+    const n = Number(await client.readContract({ address: registry, abi: registryAbi, functionName: "count" }));
+    for (let i = 0; i < n; i++) {
+      const token = (await client.readContract({
+        address: registry,
+        abi: registryAbi,
+        functionName: "list",
+        args: [BigInt(i)],
+      })) as `0x${string}`;
+      const g = (await client.readContract({
+        address: registry,
+        abi: registryAbi,
+        functionName: "get",
+        args: [token],
+      })) as readonly unknown[];
+      const enabled = Boolean(g[6]);
+      const exists = Boolean(g[7]);
+      metas.set(token.toLowerCase(), {
+        token,
+        symbol: String(g[1]),
+        enabled,
+        quarantined: exists && !enabled,
+        usdPegOne: Boolean(g[12]),
+        reactorNative: Boolean(g[11]),
+      });
+      if (exists) quotes.push(token);
+    }
+  }
+  if (!quotes.some((q) => q.toLowerCase() === usdc.toLowerCase())) quotes.push(usdc);
+  const factory = addrs.ReactorFactory as `0x${string}` | undefined;
+  if (factory) {
+    const len = Number(await client.readContract({ address: factory, abi: factoryAbi, functionName: "allTokensLength" }));
+    for (let i = 0; i < len; i++) {
+      const token = (await client.readContract({
+        address: factory,
+        abi: factoryAbi,
+        functionName: "allTokens",
+        args: [BigInt(i)],
+      })) as `0x${string}`;
+      const info = (await client.readContract({
+        address: factory,
+        abi: factoryAbi,
+        functionName: "tokenInfo",
+        args: [token],
+      })) as readonly unknown[];
+      const quote = String(info[1]) as `0x${string}`;
+      if (quote && !quotes.some((q) => q.toLowerCase() === quote.toLowerCase())) quotes.push(quote);
+    }
+  }
+  return { quotes, metas, usdc };
+}
+
+async function discoverEdges(metas: Map<string, QuoteMeta>, usdc: `0x${string}`): Promise<MarketEdge[]> {
+  const edges: MarketEdge[] = [];
+  const protocol = (addrs.ProtocolV4Adapter ?? addrs.V4Adapter) as `0x${string}` | undefined;
+  const user = (addrs.V4Adapter ?? addrs.UniswapV4Adapter) as `0x${string}` | undefined;
+  const hook = (addrs.ReactorHook ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
+  const factory = addrs.ReactorFactory as `0x${string}` | undefined;
+  if (!protocol) return edges;
+
+  for (const [k, m] of metas) {
+    if (k === usdc.toLowerCase()) continue;
+    if (m.quarantined) continue;
+    const token = m.token as `0x${string}`;
+    if (m.reactorNative) continue;
+    edges.push({
+      from: token,
+      to: usdc,
+      adapter: protocol,
+      kind: "protocol",
+      data: poolKeyBytes(token, usdc, 3000, "0x0000000000000000000000000000000000000000"),
+      usable: true,
+    });
+    edges.push({
+      from: usdc,
+      to: token,
+      adapter: protocol,
+      kind: "protocol",
+      data: poolKeyBytes(token, usdc, 3000, "0x0000000000000000000000000000000000000000"),
+      usable: true,
+    });
+    if (user) {
+      edges.push({
+        from: token,
+        to: usdc,
+        adapter: user,
+        kind: "user",
+        data: poolKeyBytes(token, usdc, 3000, "0x0000000000000000000000000000000000000000"),
+        usable: true,
+      });
+      edges.push({
+        from: usdc,
+        to: token,
+        adapter: user,
+        kind: "user",
+        data: poolKeyBytes(token, usdc, 3000, "0x0000000000000000000000000000000000000000"),
+        usable: true,
+      });
+    }
+  }
+
+  if (factory) {
+    const len = Number(await client.readContract({ address: factory, abi: factoryAbi, functionName: "allTokensLength" }));
+    for (let i = 0; i < len; i++) {
+      const token = (await client.readContract({
+        address: factory,
+        abi: factoryAbi,
+        functionName: "allTokens",
+        args: [BigInt(i)],
+      })) as `0x${string}`;
+      const info = (await client.readContract({
+        address: factory,
+        abi: factoryAbi,
+        functionName: "tokenInfo",
+        args: [token],
+      })) as readonly unknown[];
+      const quote = String(info[1]) as `0x${string}`;
+      const live = Boolean(info[5]);
+      if (!live) continue;
+      edges.push({
+        from: quote,
+        to: token,
+        adapter: protocol,
+        kind: "protocol",
+        data: poolKeyBytes(token, quote, 0, hook),
+        usable: true,
+      });
+      edges.push({
+        from: token,
+        to: quote,
+        adapter: protocol,
+        kind: "protocol",
+        data: poolKeyBytes(token, quote, 0, hook),
+        usable: true,
+      });
+    }
+  }
+  return edges;
+}
+
+function hopsOrEmpty(tokenIn: `0x${string}`, tokenOut: `0x${string}`, edges: MarketEdge[], metas: Map<string, QuoteMeta>, adapters: Set<string>): Hop[] {
+  if (tokenIn.toLowerCase() === tokenOut.toLowerCase()) return [];
+  const planned = planRoute(tokenIn, tokenOut, edges, metas, { protocol: true, adapters });
+  // Probe hops use minOut=1 only inside simulateContract. Production hops are stamped after sim.
+  return planned.hops.map((h) => ({ ...h, minOut: 1n }));
+}
+
+/** Last hop gets sim-derived minOut. Intermediate hops never ship 0/1. */
+export function stampProductionHops(hops: Hop[], finalMinOut: bigint): Hop[] {
+  if (finalMinOut <= 1n) throw new Error("production minOut must exceed dust");
+  return hops.map((h, i) => {
+    if (i === hops.length - 1) return { ...h, minOut: finalMinOut };
+    // Intermediate tokens differ in decimals — fail closed unless a floor above dust is set.
+    if (h.minOut <= 1n) return { ...h, minOut: finalMinOut };
+    return h;
+  });
 }
 
 async function tick() {
@@ -224,8 +409,6 @@ async function tick() {
   const buyback = addrs.BuybackVault as `0x${string}` | undefined;
   const factory = addrs.ReactorFactory as `0x${string}` | undefined;
   const curve = addrs.InstantCurve as `0x${string}` | undefined;
-  const usdc = addrs.USDC as `0x${string}`;
-  const zec = addrs.ZEC as `0x${string}` | undefined;
   const jobs: string[] = [];
   const block = await client.getBlockNumber();
 
@@ -272,6 +455,13 @@ async function tick() {
     }
   };
 
+  const { quotes, metas, usdc } = await discoverQuotes();
+  const edges = await discoverEdges(metas, usdc);
+  const protocol = (addrs.ProtocolV4Adapter ?? addrs.V4Adapter) as `0x${string}` | undefined;
+  const adapters = new Set<string>();
+  if (protocol) adapters.add(protocol.toLowerCase());
+  if (addrs.V4Adapter) adapters.add(addrs.V4Adapter.toLowerCase());
+
   if (factory && curve && process.env.KEEPER_GRADUATE !== "0") {
     const len = Number(await client.readContract({ address: factory, abi: factoryAbi, functionName: "allTokensLength" }));
     for (let i = 0; i < len && ran < MAX_JOBS_PER_TICK; i++) {
@@ -311,20 +501,24 @@ async function tick() {
               account: account.address,
             })
             .catch(() => null);
-          if (sim) {
-            const minOut = floorMin(sim.result as bigint);
-            await run(
-              `selfburn:${token.toLowerCase()}:${acc.toString()}`,
-              selfBurn,
-              encodeFunctionData({ abi: selfBurnAbi, functionName: "execute", args: [token, minOut] }),
-            );
+          if (!sim || sim.result === undefined) continue;
+          let minOut: bigint;
+          try {
+            minOut = conservativeMinOut(sim.result as bigint);
+          } catch {
+            writeBeat({ ok: false, reason: `weak selfburn minOut ${token}`, jobs });
+            continue;
           }
+          await run(
+            `selfburn:${token.toLowerCase()}:${acc.toString()}`,
+            selfBurn,
+            encodeFunctionData({ abi: selfBurnAbi, functionName: "execute", args: [token, minOut] }),
+          );
         }
       }
     }
   }
 
-  const quotes = [usdc, zec].filter(Boolean) as `0x${string}`[];
   if (flywheel) {
     for (const q of quotes) {
       const acc = (await client.readContract({
@@ -333,25 +527,43 @@ async function tick() {
         functionName: "quoteAccrued",
         args: [q],
       })) as bigint;
-      if (acc < THRESHOLD) continue;
-      const hops = quoteToUsdcHops(q, usdc, 1n);
-      const minOut = q.toLowerCase() === usdc.toLowerCase() ? 0n : 1n;
+      let bal = 0n;
+      try {
+        bal = (await client.readContract({ address: q, abi: erc20Abi, functionName: "balanceOf", args: [flywheel] })) as bigint;
+      } catch {
+        bal = 0n;
+      }
+      if (acc < THRESHOLD && bal < THRESHOLD) continue;
+      let hops: Hop[] = [];
+      try {
+        hops = hopsOrEmpty(q, usdc, edges, metas, adapters);
+      } catch (e) {
+        writeBeat({ ok: false, reason: `no settle route ${q}: ${e}`, jobs });
+        continue;
+      }
+      const probeMin = q.toLowerCase() === usdc.toLowerCase() ? acc : 1n;
       const sim = await client
         .simulateContract({
           address: flywheel,
           abi: flywheelAbi,
           functionName: "settleQuote",
-          args: [q, hops, minOut],
+          args: [q, hops, probeMin],
           account: account.address,
         })
         .catch(() => null);
-      if (!sim) continue;
-      const hopMin = hops.length ? floorMin(1n) : minOut;
-      const hops2 = hops.length ? quoteToUsdcHops(q, usdc, hopMin) : hops;
+      if (!sim || sim.result === undefined) continue;
+      let minOut: bigint;
+      try {
+        minOut = q.toLowerCase() === usdc.toLowerCase() ? (sim.result as bigint) : conservativeMinOut(sim.result as bigint);
+      } catch {
+        continue;
+      }
+      if (minOut <= 1n && q.toLowerCase() !== usdc.toLowerCase()) continue;
+      const hops2 = stampProductionHops(hops, minOut);
       await run(
         `settle:${q.toLowerCase()}:${acc.toString()}`,
         flywheel,
-        encodeFunctionData({ abi: flywheelAbi, functionName: "settleQuote", args: [q, hops2, hops2.length ? hopMin : minOut] }),
+        encodeFunctionData({ abi: flywheelAbi, functionName: "settleQuote", args: [q, hops2, minOut] }),
       );
     }
   }
@@ -365,7 +577,12 @@ async function tick() {
         args: [q],
       })) as bigint;
       if (acc < THRESHOLD) continue;
-      const hops = quoteToUsdcHops(q, usdc, 1n);
+      let hops: Hop[] = [];
+      try {
+        hops = hopsOrEmpty(q, usdc, edges, metas, adapters);
+      } catch {
+        continue;
+      }
       const sim = await client
         .simulateContract({
           address: buyback,
@@ -375,9 +592,14 @@ async function tick() {
           account: account.address,
         })
         .catch(() => null);
-      if (!sim) continue;
-      const minOut = floorMin(sim.result as bigint);
-      const hops2 = hops.length ? quoteToUsdcHops(q, usdc, minOut) : hops;
+      if (!sim || sim.result === undefined) continue;
+      let minOut: bigint;
+      try {
+        minOut = conservativeMinOut(sim.result as bigint);
+      } catch {
+        continue;
+      }
+      const hops2 = stampProductionHops(hops, minOut);
       await run(
         `core:${q.toLowerCase()}:${acc.toString()}`,
         buyback,
@@ -415,6 +637,7 @@ async function tick() {
         return;
       }
     } else {
+      const hook = addrs.ReactorHook as `0x${string}` | undefined;
       for (const row of body.rows) {
         const bought = await client.readContract({
           address: flywheel,
@@ -423,7 +646,23 @@ async function tick() {
           args: [epoch, row.token as `0x${string}`],
         });
         if (bought) continue;
-        const hops: never[] = [];
+        let hops: Hop[] = [];
+        if (hook) {
+          const mkt = (await client.readContract({
+            address: hook,
+            abi: hookAbi,
+            functionName: "marketOfToken",
+            args: [row.token as `0x${string}`],
+          })) as readonly [string, string, boolean];
+          const quote = mkt[1] as `0x${string}`;
+          if (quote && quote.toLowerCase() !== usdc.toLowerCase()) {
+            try {
+              hops = hopsOrEmpty(usdc, quote, edges, metas, adapters);
+            } catch {
+              continue;
+            }
+          }
+        }
         const sim = await client
           .simulateContract({
             address: flywheel,
@@ -433,15 +672,21 @@ async function tick() {
             account: account.address,
           })
           .catch(() => null);
-        if (!sim) continue;
-        const minOut = floorMin(sim.result as bigint);
+        if (!sim || sim.result === undefined) continue;
+        let minOut: bigint;
+        try {
+          minOut = conservativeMinOut(sim.result as bigint);
+        } catch {
+          continue;
+        }
+        const hops2 = stampProductionHops(hops, minOut);
         await run(
           `top10:${epoch.toString()}:${row.token.toLowerCase()}`,
           flywheel,
           encodeFunctionData({
             abi: flywheelAbi,
             functionName: "executeTop10Buyback",
-            args: [row.token as `0x${string}`, hops, minOut],
+            args: [row.token as `0x${string}`, hops2, minOut],
           }),
         );
       }
@@ -469,6 +714,7 @@ async function tick() {
     n: body.rows.length,
     tokens: body.rows.map((r) => r.token),
     weights: body.rows.map((r) => r.weightBps),
+    quotes: quotes.length,
     block: block.toString(),
     chainId,
     submitted,
@@ -487,5 +733,7 @@ async function loop() {
   setTimeout(loop, INTERVAL);
 }
 
-console.log(`keeper daemon mode=${MODE} → ${API} heartbeat ${HEARTBEAT}`);
-loop();
+if (process.env.KEEPER_TEST !== "1") {
+  console.log(`keeper daemon mode=${MODE} → ${API} heartbeat ${HEARTBEAT}`);
+  loop();
+}

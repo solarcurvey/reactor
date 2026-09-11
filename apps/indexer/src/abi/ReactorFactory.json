@@ -473,6 +473,19 @@
   },
   {
     "type": "function",
+    "name": "instantCurveConfig",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
     "name": "instantLaunch",
     "inputs": [
       {
@@ -639,6 +652,11 @@
             "internalType": "address"
           },
           {
+            "name": "creator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
             "name": "quote",
             "type": "address",
             "internalType": "address"
@@ -654,9 +672,14 @@
             "internalType": "uint256"
           },
           {
-            "name": "nonce",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "curveConfig",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "salt",
+            "type": "bytes32",
+            "internalType": "bytes32"
           },
           {
             "name": "deadline",
@@ -916,6 +939,11 @@
             "internalType": "address"
           },
           {
+            "name": "creator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
             "name": "quote",
             "type": "address",
             "internalType": "address"
@@ -931,9 +959,14 @@
             "internalType": "uint256"
           },
           {
-            "name": "nonce",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "curveConfig",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "salt",
+            "type": "bytes32",
+            "internalType": "bytes32"
           },
           {
             "name": "deadline",
@@ -1148,6 +1181,11 @@
             "internalType": "address"
           },
           {
+            "name": "creator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
             "name": "quote",
             "type": "address",
             "internalType": "address"
@@ -1163,9 +1201,14 @@
             "internalType": "uint256"
           },
           {
-            "name": "nonce",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "curveConfig",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "salt",
+            "type": "bytes32",
+            "internalType": "bytes32"
           },
           {
             "name": "deadline",
@@ -1292,25 +1335,6 @@
         "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "pricingNonce",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -1920,6 +1944,11 @@
   {
     "type": "error",
     "name": "Replay",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WrongCreator",
     "inputs": []
   },
   {
