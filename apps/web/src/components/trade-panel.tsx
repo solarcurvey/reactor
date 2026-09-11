@@ -12,6 +12,8 @@ import { feeSplit, formatUnitsSafe, parseUnitsSafe } from "@/lib/utils";
 import type { LaunchToken } from "@/lib/hooks";
 import { addresses } from "@/lib/addresses";
 
+const QUOTE_TTL_MS = 30_000;
+
 export function TradePanel({ t }: { t: LaunchToken }) {
   const { address, isConnected } = useAccount();
   const client = usePublicClient();
@@ -19,6 +21,8 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("");
   const [slippage, setSlippage] = useState("1");
+  const [quotedOut, setQuotedOut] = useState<bigint | null>(null);
+  const [quotedAt, setQuotedAt] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState<string | null>(null);
 
@@ -26,11 +30,34 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   const parsed = parseUnitsSafe(amount, side === "buy" ? quoteDec : t.decimals);
   const split = feeSplit(parsed);
 
+  async function refreshQuote() {
+    setError(null);
+    if (!address || !client || parsed === 0n) {
+      setQuotedOut(null);
+      return;
+    }
+    const key = officialPoolKey(t.token, t.quote);
+    const zfo = side === "buy" ? buyZeroForOne(t.token, t.quote) : !buyZeroForOne(t.token, t.quote);
+    try {
+      const sim = await client.simulateContract({
+        ...router,
+        functionName: "swap",
+        args: [key, zfo, -parsed, 1n, address],
+        account: address,
+      });
+      setQuotedOut(sim.result as bigint);
+      setQuotedAt(Date.now());
+    } catch (e) {
+      setQuotedOut(null);
+      setError(e instanceof Error ? e.message : "Quote failed. Size may be larger than remaining depth.");
+    }
+  }
+
   async function submit() {
     setError(null);
     setHash(null);
     if (!address || !client) {
-      setError("Connect a wallet on chain 5042002.");
+      setError("Connect a wallet on the local Arc-compatible chain.");
       return;
     }
     if (parsed === 0n) {
@@ -38,6 +65,23 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       return;
     }
     try {
+      if (!quotedOut || Date.now() - quotedAt > QUOTE_TTL_MS) {
+        await refreshQuote();
+      }
+      if (!quotedOut) {
+        setError("Need a live quote before sending. Try a smaller exact-in size.");
+        return;
+      }
+      if (Date.now() - quotedAt > QUOTE_TTL_MS) {
+        setError("Quote went stale. Re-quoted — confirm again.");
+        return;
+      }
+      const slipBps = BigInt(Math.max(1, Math.floor(Number(slippage || "1") * 100)));
+      const minOut = (quotedOut * (10_000n - slipBps)) / 10_000n;
+      if (minOut === 0n) {
+        setError("minOut is zero after slippage. Increase size or tighten decimals.");
+        return;
+      }
       const spender = addresses.ReactorRouter;
       const asset = side === "buy" ? t.quote : t.token;
       const allowance = (await client.readContract({
@@ -57,9 +101,6 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       }
       const key = officialPoolKey(t.token, t.quote);
       const zfo = side === "buy" ? buyZeroForOne(t.token, t.quote) : !buyZeroForOne(t.token, t.quote);
-      const slipBps = BigInt(Math.floor(Number(slippage || "1") * 100));
-      const minOut = 0n;
-      void slipBps;
       const tx = await writeContractAsync({
         ...router,
         functionName: "swap",
@@ -72,13 +113,19 @@ export function TradePanel({ t }: { t: LaunchToken }) {
     }
   }
 
+  const outDec = side === "buy" ? t.decimals : quoteDec;
+  const outSym = side === "buy" ? t.symbol : t.quoteSymbol;
+
   return (
     <Card className="p-5">
       <div className="mb-4 flex rounded-full bg-black/30 p-1">
         {(["buy", "sell"] as const).map((s) => (
           <button
             key={s}
-            onClick={() => setSide(s)}
+            onClick={() => {
+              setSide(s);
+              setQuotedOut(null);
+            }}
             className={`flex-1 rounded-full py-2 text-sm capitalize ${
               side === s ? "bg-cyan-300 text-zinc-950" : "text-zinc-400"
             }`}
@@ -88,30 +135,45 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         ))}
       </div>
       <label className="mb-1 block text-xs uppercase tracking-wider text-zinc-500">
-        {side === "buy" ? `Pay ${t.quoteSymbol} (all-in)` : `Sell ${t.symbol}`}
+        {side === "buy" ? `Pay ${t.quoteSymbol} (exact in)` : `Sell ${t.symbol} (exact in)`}
       </label>
-      <Input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0.0" />
+      <Input
+        value={amount}
+        onChange={(e) => {
+          setAmount(e.target.value);
+          setQuotedOut(null);
+        }}
+        inputMode="decimal"
+        placeholder="0.0"
+      />
       <div className="mt-3 space-y-1 text-xs text-zinc-400">
         {side === "buy" ? (
-          <>
-            <p>Protocol charge 3% of quote notional — included in the amount you pay.</p>
-            <p>
-              Est. fee {formatUnitsSafe(split.fee, quoteDec, 6)} {t.quoteSymbol} →{" "}
-              {formatUnitsSafe(split.holders, quoteDec, 6)} holders / {formatUnitsSafe(split.buyback, quoteDec, 6)}{" "}
-              buyback
-            </p>
-          </>
+          <p>
+            Est. fee {formatUnitsSafe(split.fee, quoteDec, 6)} {t.quoteSymbol} →{" "}
+            {formatUnitsSafe(split.holders, quoteDec, 6)} holders / {formatUnitsSafe(split.buyback, quoteDec, 6)} CORE
+            fuel
+          </p>
         ) : (
           <p>You receive quote after the 3% charge on quote notional. No token transfer tax.</p>
         )}
+        <p>
+          Quoted out:{" "}
+          {quotedOut === null ? "—" : `${formatUnitsSafe(quotedOut, outDec, 6)} ${outSym}`}
+          {quotedOut !== null && Date.now() - quotedAt > QUOTE_TTL_MS ? " (stale)" : ""}
+        </p>
       </div>
       <div className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
         Slippage
         <Input className="h-8 w-16" value={slippage} onChange={(e) => setSlippage(e.target.value)} /> %
       </div>
-      <Button className="mt-4 w-full" onClick={submit} disabled={!isConnected || isPending || !t.marketLive}>
-        {!t.marketLive ? "Market not live" : !isConnected ? "Connect to trade" : isPending ? "Pending…" : `Confirm ${side}`}
-      </Button>
+      <div className="mt-4 flex gap-2">
+        <Button variant="outline" className="flex-1" onClick={refreshQuote} disabled={!isConnected || parsed === 0n}>
+          Quote
+        </Button>
+        <Button className="flex-1" onClick={submit} disabled={!isConnected || isPending || !t.marketLive}>
+          {!t.marketLive ? "Market not live" : isPending ? "Pending…" : `Confirm ${side}`}
+        </Button>
+      </div>
       {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
       {hash && <p className="mt-3 break-all font-mono text-[11px] text-cyan-200">tx {hash}</p>}
     </Card>

@@ -89,24 +89,4 @@ contract TokenTest is Base {
         assertEq(pending + leftover, 20e6);
         assertEq(buyback.accrued(address(usdc)), 10e6);
     }
-
-    function _buy(address who, address token, address quote, uint256 amountIn) internal {
-        address c0 = token < quote ? token : quote;
-        bool zfo = quote == c0;
-        _approveRouter(who, quote, amountIn);
-        vm.prank(who);
-        router.swap(
-            PoolKey({
-                currency0: Currency.wrap(c0),
-                currency1: Currency.wrap(token < quote ? quote : token),
-                fee: 0,
-                tickSpacing: 60,
-                hooks: IHooks(address(hook))
-            }),
-            zfo,
-            -int256(amountIn),
-            0,
-            who
-        );
-    }
 }

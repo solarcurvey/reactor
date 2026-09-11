@@ -30,14 +30,17 @@ Hostile-reader notes for Codex / external review. **Not an audit.**
 3. **Hook only charges `officialPool`.** Initialize gated to factory + 0% fee + registered quote.
 4. **Fee always quote** via specified/unspecified split (ADR-006).
 5. **Rewards O(1)**; debt synced on every transfer; excluded set immutable.
-6. **Buyback CORE target immutable**; single registered hookless route; reentrancy guard; `minCoreOut`.
-7. **Fair finalize once**; auction has no hook.
+6. **Buyback CORE target immutable**; USDC→CORE plus quote→USDC hops; caller cannot set minOut; reference deviation / cooldown / chunk / reserve; reentrancy guard; execute no-ops on failure.
+7. **Batch Fair finalize once**; `FairClaimVault` eligible; auction has no hook.
+10. **Canonical flush** — quote derived from `marketOfToken`; two-arg flush reverts on mismatch.
+11. **Exact-in + nonzero minOut + incomplete-fill revert** on the router.
+12. **Binds are owner + freeze**, not first-caller-wins.
 8. **Registry admin cannot** withdraw, mint, or change fee BPS.
 9. **FoT / rebase quotes:** `creditRewards` / vault `accrue` measure actual received; shortfall reverts. Rebasing quotes are unsupported (document + do not register).
 
 ## Residual risks (highest first)
 
-1. **Hook custom accounting** — wrong sign on `BeforeSwapDelta` / afterSwap unspecified delta can steal from swappers or insolvent the hook. Tests cover exact-in/out × buy/sell × token0/token1.
+1. **Hook custom accounting** — wrong sign on `BeforeSwapDelta` / afterSwap unspecified delta can steal from swappers or insolvent the hook. V1 tests cover exact-in buy/sell × token0/token1 (exact-out disabled).
 2. **Reward solvency** — rounding, leftover, excluded-supply = 0, notify during swap. Invariant: token quote balance ≥ sum(stored + pending eligible).
 3. **CREATE2 hook bits** — a mis-mined address silently skips callbacks (0% charged) or enables extra callbacks.
 4. **Single-sided launch price** — extreme FDV vs 1e9 supply can clamp to TickMath edges and look “wrong” versus the UI valuation.

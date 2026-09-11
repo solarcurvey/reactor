@@ -20,11 +20,12 @@ Fee currency is **always the quote asset**, buy or sell.
 
 ## Quote notional
 
+V1 router is **exact-in only** (`amountSpecified < 0`, `minOut > 0`). Incomplete fills revert.
+
 Quote notional is the absolute quote-side amount of the concentrated-liquidity swap **before** the hook fee.
 
 - Exact-in buy of the launch token: notional = specified quote in.
-- Exact-out sell for quote: notional = specified quote out.
-- Exact-in sell / exact-out buy: notional = absolute quote delta returned by the CL swap.
+- Exact-in sell of the launch token: notional = absolute quote delta from the CL swap.
 
 Split (floor, raw token units):
 
@@ -66,13 +67,24 @@ A balance is **eligible** unless the holder is one of:
 
 Eligible supply is `totalSupply - excludedBalance`, maintained on transfer. There is no admin function to exclude an arbitrary wallet (that would be honeypot-adjacent).
 
-## Fair launch
+## Batch Fair Launch
 
-CCA-inspired auction: **0% REACTOR charge**. 3% starts after a single migration to the official hooked pool.
+Pro-rata timed sale — **not Uniswap CCA**. `auctionBps` is locked at 5000. **0% REACTOR charge** during the sale. Official pool opens at `sqrtPriceFromFdv(lpTokens, totalBids)` so the auction clearing price is the initial official price (TickMath rounding). Unclaimed auction tokens live in `FairClaimVault` and remain eligible; `settleClaim` is O(1).
 
-## Buyback
+## Buyback (testnet params)
 
-1% accrues in `BuybackVault`. Not marketed inside the swap. Permissionless `execute` burns CORE bought from the immutable hookless CORE/quote pool. Failed or unsafe routes leave balances pending.
+1% accrues in `BuybackVault`. Permissionless `execute(quote)` — **caller cannot set minOut or size**.
+
+| Param | Value |
+| --- | --- |
+| Max impact vs spot | 300 bps |
+| Max chunk of accrued | 2000 bps |
+| Min reserve of accrued | 1000 bps |
+| Max spot vs reference | 1500 bps |
+| Cooldown per quote | 5 minutes |
+| Preferred route | quote → USDC → CORE unless quote is USDC |
+
+V1 launches only against quotes with an approved buyback route. Failed or unsafe executes **no-op** and must never revert a user swap.
 
 ## Liquidity lock
 

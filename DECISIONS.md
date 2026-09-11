@@ -35,17 +35,18 @@ REACTOR requires: arbitrary curated ERC-20 quote, REACTOR hook from trade #1, **
 
 ---
 
-## ADR-002 — Fair Launch is a CCA-inspired adapter, not a drop-in CCA → LBP migrate
+## ADR-002 — Batch Fair Launch (not CCA)
 
-**Status:** Accepted
+**Status:** Accepted (renamed 2026-09-11)
 
 **Context.** CCA factory v2.1.0 **does** have bytecode on Arc Testnet. Official CCA + LiquidityLauncher migrate into hookless (or LBP-hook) pools with launcher-specific fee controllers. That path cannot produce an Official REACTOR Pool (hook + 0% LP fee + arbitrary quote + 3% quote-side accounting).
 
-**Decision.** Implement `FairLaunch` inside `ReactorFactory`:
+**Decision.** Ship **Batch Fair Launch** inside `ReactorFactory` — a pro-rata timed sale, **not** Uniswap CCA:
 
-- Create token + time-boxed bid window (default 45 minutes on testnet).
-- Bids in the selected quote asset. **0% REACTOR charge during the auction.**
-- Finalize once: pro-rata token claims for bidders; remaining tokens + raised quote migrate **once** into the official hooked v4 pool; LP locked in `ReactorLiquidityVault`.
+- `auctionBps` is hard-locked to **5000** (50% bidders / 50% official LP).
+- Bids in the selected quote. **0% REACTOR charge during the sale.**
+- Finalize once: official pool sqrtPrice is `LaunchMath.sqrtPriceFromFdv(token, quote, lpTokens, totalBids)` so the auction clearing price **is** the initial official price (tick rounding as in `TickMath`).
+- Unclaimed auction tokens sit in `FairClaimVault` as an **eligible** holder (O(1) `settleClaim`). Early claimers do not steal later winners’ share.
 - 3% economics begin only after `OfficialPoolCreated`.
 
 **Consequences.** Auction UX matches the product (create → bid → finalize → MARKET LIVE). We do not pretend CCA factory output is a REACTOR official market. Revisit if Uniswap ships a hooked + ERC-20-quote Instant/CCA strategy on Arc.

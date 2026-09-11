@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { RewardsModule, TradePanel } from "@/components/trade-panel";
 import { useCoreStats, useSwapSeries, useTokenByAddress } from "@/lib/hooks";
-import { explorerAddress, formatUnitsSafe, shortAddress } from "@/lib/utils";
+import { explorerAddress, formatUnitsSafe, priceFromSqrtX96, shortAddress } from "@/lib/utils";
 import { addresses } from "@/lib/addresses";
 
 export default function TokenPage() {
@@ -18,10 +18,14 @@ export default function TokenPage() {
   if (isLoading) return <p className="text-sm text-zinc-500">Loading token…</p>;
   if (!t) return <p className="text-sm text-zinc-500">Token not found on this factory.</p>;
 
-  const chart = (series ?? []).map((s, i) => ({
-    i,
-    notional: Number(s.notional) / 10 ** (t.quoteDecimals ?? 18),
-  }));
+  const tokenIs0 = t.token.toLowerCase() < t.quote.toLowerCase();
+  const chart = (series ?? []).map((s, i) => {
+    const sqrt = s.sqrtPrice ? BigInt(s.sqrtPrice) : 0n;
+    return {
+      i,
+      price: priceFromSqrtX96(sqrt, tokenIs0, t.decimals, t.quoteDecimals ?? 18),
+    };
+  });
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
@@ -31,13 +35,16 @@ export default function TokenPage() {
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-semibold">{t.name}</h1>
               <span className="font-mono text-zinc-500">${t.symbol}</span>
+              <span className="rounded-full bg-cyan-300/10 px-2 py-0.5 text-[11px] uppercase tracking-wider text-cyan-100">
+                Earns {t.quoteSymbol}
+              </span>
             </div>
             <p className="mt-2 max-w-xl text-sm text-zinc-400">{t.description || "No description."}</p>
           </div>
           {t.marketLive ? (
             <Badge>Official REACTOR Pool</Badge>
           ) : t.mode === 1 ? (
-            <Badge className="border-amber-300/30 bg-amber-300/10 text-amber-100">Fair auction</Badge>
+            <Badge className="border-amber-300/30 bg-amber-300/10 text-amber-100">Batch Fair</Badge>
           ) : (
             <Badge>Official REACTOR Pool</Badge>
           )}
@@ -54,9 +61,9 @@ export default function TokenPage() {
                 <YAxis hide />
                 <Tooltip
                   contentStyle={{ background: "#121418", border: "1px solid #222" }}
-                  labelFormatter={() => "Quote notional"}
+                  labelFormatter={() => `Price (${t.quoteSymbol} per ${t.symbol})`}
                 />
-                <Area dataKey="notional" stroke="#7ee8ff" fill="rgba(126,232,255,0.15)" />
+                <Area dataKey="price" stroke="#7ee8ff" fill="rgba(126,232,255,0.15)" />
               </AreaChart>
             </ResponsiveContainer>
           )}

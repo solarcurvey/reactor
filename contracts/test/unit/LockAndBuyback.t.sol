@@ -22,7 +22,7 @@ contract LockAndBuybackTest is Base {
 
     function test_buybackCannotRedirect() public {
         vm.expectRevert();
-        buyback.configureRoute(coreKey);
+        buyback.configureCoreRoute(coreKey);
         assertEq(buyback.core(), address(core));
     }
 
@@ -50,9 +50,9 @@ contract LockAndBuybackTest is Base {
         _buy(alice, ucat, address(usdc), 50_000e6);
         uint256 acc = buyback.accrued(address(usdc));
         uint256 deadBefore = IERC20Like(address(core)).balanceOf(ReactorConstants.DEAD);
-        buyback.execute(address(usdc), acc, 1, block.timestamp + 60);
+        buyback.execute(address(usdc));
         assertGt(IERC20Like(address(core)).balanceOf(ReactorConstants.DEAD), deadBefore);
-        assertEq(buyback.accrued(address(usdc)), 0);
+        assertLt(buyback.accrued(address(usdc)), acc);
     }
 
     function test_pendingZecRoute() public {
@@ -60,24 +60,9 @@ contract LockAndBuybackTest is Base {
         _buy(alice, token, address(zec), 10_000e8);
         uint256 before = buyback.accrued(address(zec));
         assertGt(before, 0);
-        buyback.execute(address(zec), before, 0, block.timestamp + 60);
-        assertEq(buyback.accrued(address(zec)), before);
-    }
-
-    function _buy(address who, address token, address quote, uint256 amountIn) internal {
-        address c0 = token < quote ? token : quote;
-        _approveRouter(who, quote, amountIn);
-        vm.prank(who);
-        router.swap(_key(token, quote), quote == c0, -int256(amountIn), 0, who);
-    }
-
-    function _key(address token, address quote) internal view returns (PoolKey memory key) {
-        key = PoolKey({
-            currency0: Currency.wrap(token < quote ? token : quote),
-            currency1: Currency.wrap(token < quote ? quote : token),
-            fee: 0,
-            tickSpacing: 60,
-            hooks: IHooks(address(hook))
-        });
+        uint256 deadBefore = IERC20Like(address(core)).balanceOf(ReactorConstants.DEAD);
+        buyback.execute(address(zec));
+        assertGt(IERC20Like(address(core)).balanceOf(ReactorConstants.DEAD), deadBefore);
+        assertLt(buyback.accrued(address(zec)), before);
     }
 }

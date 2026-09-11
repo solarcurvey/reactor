@@ -30,7 +30,7 @@ export default function FairPage() {
   });
 
   const launch = tokens?.find((t) => t.fairId === fairId);
-  if (!fl) return <p className="text-sm text-zinc-500">Loading auction…</p>;
+  if (!fl) return <p className="text-sm text-zinc-500">Loading Batch Fair Launch…</p>;
   const row = unwrapFair(fl);
   const { token, quote, startTime: start, endTime: end, minRaise, totalBids, finalized, migrated } = row;
   const qdec = launch?.quoteDecimals ?? 8;
@@ -98,11 +98,12 @@ export default function FairPage() {
   return (
     <div className="mx-auto max-w-xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold">{launch?.name ?? "Fair launch"}</h1>
+        <h1 className="text-3xl font-semibold">{launch?.name ?? "Batch Fair Launch"}</h1>
         {migrated ? <Badge>Market live</Badge> : finalized ? <Badge>Finalized</Badge> : <Badge>Auction open</Badge>}
       </div>
       <p className="mt-2 text-sm text-zinc-400">
-        0% REACTOR charge during the auction. The 3% official-pool economics begin only after a single migration.
+        Batch Fair Launch — a pro-rata timed sale, not Uniswap CCA. 0% REACTOR charge until the official pool
+        opens at the auction clearing price.
       </p>
       <Card className="mt-6 space-y-2 p-5 text-sm">
         <Row k="Token" v={token} />

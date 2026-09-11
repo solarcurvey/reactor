@@ -22,19 +22,26 @@ contract QuoteAssetRegistry {
         address usdOracle;
         bool enabled;
         bool exists;
+        bool rewardsEnabled;
+        bool buybackRouteEnabled;
+        bool hopViaUsdc;
     }
 
     address public admin;
+    address public usdc;
     mapping(address => QuoteAsset) public assets;
     address[] public list;
 
     event AdminTransferred(address indexed previous, address indexed next);
     event QuoteRegistered(address indexed token, string symbol, Category category);
     event QuoteUpdated(address indexed token, bool enabled);
+    event BuybackRouteSet(address indexed token, bool enabled, bool hopViaUsdc);
+    event UsdcSet(address indexed usdc);
 
     error NotAdmin();
     error AlreadyRegistered();
     error UnknownQuote();
+    error BadUsdc();
 
     modifier onlyAdmin() {
         if (msg.sender != admin) revert NotAdmin();
@@ -48,6 +55,13 @@ contract QuoteAssetRegistry {
     function transferAdmin(address next) external onlyAdmin {
         emit AdminTransferred(admin, next);
         admin = next;
+    }
+
+    function setUsdc(address usdc_) external onlyAdmin {
+        if (usdc_ == address(0)) revert BadUsdc();
+        if (usdc != address(0) && usdc != usdc_) revert BadUsdc();
+        usdc = usdc_;
+        emit UsdcSet(usdc_);
     }
 
     function register(
@@ -69,7 +83,10 @@ contract QuoteAssetRegistry {
             category: category,
             usdOracle: usdOracle,
             enabled: true,
-            exists: true
+            exists: true,
+            rewardsEnabled: true,
+            buybackRouteEnabled: false,
+            hopViaUsdc: false
         });
         list.push(token);
         emit QuoteRegistered(token, symbol, category);
@@ -88,8 +105,21 @@ contract QuoteAssetRegistry {
         emit QuoteUpdated(token, assets[token].enabled);
     }
 
+    function setBuybackRoute(address token, bool enabled, bool hopViaUsdc_) external onlyAdmin {
+        if (!assets[token].exists) revert UnknownQuote();
+        assets[token].buybackRouteEnabled = enabled;
+        assets[token].hopViaUsdc = hopViaUsdc_;
+        emit BuybackRouteSet(token, enabled, hopViaUsdc_);
+    }
+
     function isEnabled(address token) public view returns (bool) {
         return assets[token].exists && assets[token].enabled;
+    }
+
+    /// @notice V1 launches only against quotes that already have an approved buyback route.
+    function canLaunch(address token) public view returns (bool) {
+        QuoteAsset storage a = assets[token];
+        return a.exists && a.enabled && a.rewardsEnabled && a.buybackRouteEnabled;
     }
 
     function count() external view returns (uint256) {

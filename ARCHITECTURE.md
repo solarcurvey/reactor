@@ -12,7 +12,8 @@
 | `ReactorLiquidityVault` | No | Official LP positions | Lock-only v4 positions |
 | `BuybackVault` | No | Accrued quote | Permissionless CORE buy+burn |
 | `ReactorRouter` | No | None | Unlock callback: swap / add liquidity |
-| `ReactorFactory` | No | None during idle | Instant + Fair launch, metadata, events |
+| `ReactorFactory` | No | None during idle | Instant + Batch Fair Launch, metadata, events |
+| `FairClaimVault` | No | Unclaimed auction tokens + their quote slice | O(1) eligible holder for Batch Fair |
 | `PoolManager` | Uniswap | All v4 reserves | Official v4-core (BUSL, non-production) |
 
 Fewer moving parts than a full periphery stack: no PositionManager NFT, no Universal Router, no upgrade proxies.
@@ -26,7 +27,7 @@ A pool is official iff it was initialized through `ReactorHook.beforeInitialize`
 - quote in `QuoteAssetRegistry`
 - launch token ≠ CORE, quote ≠ CORE
 
-`afterInitialize` stores `officialPool[poolId] → token`. The hook charges **only** those pool IDs.
+`afterInitialize` stores `official[poolId]` and `marketOfToken[token]`. The hook charges **only** those pool IDs. `flush` derives quote from that record.
 
 External / hookless pools of the same token are allowed. They do not pay REACTOR economics. Economics attach to the official market, not the token.
 

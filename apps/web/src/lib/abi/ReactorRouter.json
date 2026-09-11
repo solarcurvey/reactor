@@ -1,198 +1,29 @@
-[
-  {
-    "type": "constructor",
-    "inputs": [
-      {
-        "name": "manager_",
-        "type": "address",
-        "internalType": "contract IPoolManager"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "addLiquidity",
-    "inputs": [
-      {
-        "name": "key",
-        "type": "tuple",
-        "internalType": "struct PoolKey",
-        "components": [
-          {
-            "name": "currency0",
-            "type": "address",
-            "internalType": "Currency"
-          },
-          {
-            "name": "currency1",
-            "type": "address",
-            "internalType": "Currency"
-          },
-          {
-            "name": "fee",
-            "type": "uint24",
-            "internalType": "uint24"
-          },
-          {
-            "name": "tickSpacing",
-            "type": "int24",
-            "internalType": "int24"
-          },
-          {
-            "name": "hooks",
-            "type": "address",
-            "internalType": "contract IHooks"
-          }
-        ]
-      },
-      {
-        "name": "tickLower",
-        "type": "int24",
-        "internalType": "int24"
-      },
-      {
-        "name": "tickUpper",
-        "type": "int24",
-        "internalType": "int24"
-      },
-      {
-        "name": "liquidityDelta",
-        "type": "int256",
-        "internalType": "int256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "delta",
-        "type": "int256",
-        "internalType": "BalanceDelta"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "poolManager",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IPoolManager"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "swap",
-    "inputs": [
-      {
-        "name": "key",
-        "type": "tuple",
-        "internalType": "struct PoolKey",
-        "components": [
-          {
-            "name": "currency0",
-            "type": "address",
-            "internalType": "Currency"
-          },
-          {
-            "name": "currency1",
-            "type": "address",
-            "internalType": "Currency"
-          },
-          {
-            "name": "fee",
-            "type": "uint24",
-            "internalType": "uint24"
-          },
-          {
-            "name": "tickSpacing",
-            "type": "int24",
-            "internalType": "int24"
-          },
-          {
-            "name": "hooks",
-            "type": "address",
-            "internalType": "contract IHooks"
-          }
-        ]
-      },
-      {
-        "name": "zeroForOne",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "amountSpecified",
-        "type": "int256",
-        "internalType": "int256"
-      },
-      {
-        "name": "minOut",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "recipient",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "amountOut",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "unlockCallback",
-    "inputs": [
-      {
-        "name": "raw",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "error",
-    "name": "FlushFailed",
-    "inputs": [
-      {
-        "name": "data",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "NotManager",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "Slippage",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ZeroAmount",
-    "inputs": []
-  }
-]
+
+╭-------------+----------------------------------------------------------------------------+------------╮
+| Type        | Signature                                                                  | Selector   |
++=======================================================================================================+
+| error       | ExactOutDisabled()                                                         | 0xd11ed7ab |
+|-------------+----------------------------------------------------------------------------+------------|
+| error       | FlushFailed(bytes)                                                         | 0xd86ed2ba |
+|-------------+----------------------------------------------------------------------------+------------|
+| error       | IncompleteFill()                                                           | 0x586d22a4 |
+|-------------+----------------------------------------------------------------------------+------------|
+| error       | MinOutRequired()                                                           | 0xe4b1632c |
+|-------------+----------------------------------------------------------------------------+------------|
+| error       | NotManager()                                                               | 0xc0fc8a8a |
+|-------------+----------------------------------------------------------------------------+------------|
+| error       | Slippage()                                                                 | 0x7dd37f70 |
+|-------------+----------------------------------------------------------------------------+------------|
+| error       | ZeroAmount()                                                               | 0x1f2a2005 |
+|-------------+----------------------------------------------------------------------------+------------|
+| function    | addLiquidity(PoolKey,int24,int24,int256) nonpayable returns (BalanceDelta) | 0xe2e6fcbe |
+|-------------+----------------------------------------------------------------------------+------------|
+| function    | poolManager() view returns (IPoolManager)                                  | 0xdc4c90d3 |
+|-------------+----------------------------------------------------------------------------+------------|
+| function    | swap(PoolKey,bool,int256,uint256,address) nonpayable returns (uint256)     | 0x07e32f8a |
+|-------------+----------------------------------------------------------------------------+------------|
+| function    | unlockCallback(bytes) nonpayable returns (bytes)                           | 0x91dd7346 |
+|-------------+----------------------------------------------------------------------------+------------|
+| constructor | constructor(IPoolManager) nonpayable                                       |            |
+╰-------------+----------------------------------------------------------------------------+------------╯
+

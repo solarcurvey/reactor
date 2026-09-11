@@ -15,6 +15,11 @@ verbosity = 2
 [profile.default.fuzz]
 runs = 256
 
+[profile.default.invariant]
+runs = 64
+depth = 32
+fail_on_revert = false
+
 [profile.ci.fuzz]
 runs = 1024
 
