@@ -1,4 +1,4 @@
-import { planRoute, RouteReject, MAX_LEGS, applyMinOuts, approvedEdges, requireProvenPool } from "./routes.ts";
+import { planRoute, RouteReject, MAX_LEGS, applyMinOuts, approvedEdges, requireProvenPool, scoreRoute, pickBest } from "./routes.ts";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -86,5 +86,11 @@ assert(MAX_LEGS === 3, "max 3");
     threw = e instanceof RouteReject;
   }
   assert(threw, "requireProvenPool rejects missing venues");
+}
+{
+  const r = planRoute(ZCAT, USDC, edges, quotes, { protocol: true, adapters });
+  const a = scoreRoute(r, { amountOut: 100n, impactBps: 10, gasEstimate: 200_000, reliabilityBps: 9_000 });
+  const b = scoreRoute(r, { amountOut: 80n, impactBps: 80, gasEstimate: 400_000, reliabilityBps: 5_000 });
+  assert(pickBest([a, b]).amountOut === 100n, "best out wins");
 }
 console.log("routes tests ok");

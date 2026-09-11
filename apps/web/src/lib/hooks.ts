@@ -51,6 +51,9 @@ export type LaunchToken = {
   devBought?: bigint;
   ready?: boolean;
   curve?: `0x${string}`;
+  priceQuoteX18?: string;
+  fdvUsd6?: string;
+  volume24hUsd6?: string;
 };
 
 async function readQuotes(client: NonNullable<ReturnType<typeof usePublicClient>>): Promise<QuoteAsset[]> {
@@ -308,19 +311,52 @@ export function useQuotes() {
   });
 }
 
+function marketRowToLaunch(m: Record<string, unknown>): LaunchToken {
+  return {
+    token: String(m.token ?? m.address) as `0x${string}`,
+    quote: String(m.quote ?? "0x") as `0x${string}`,
+    creator: String(m.creator ?? "0x") as `0x${string}`,
+    mode: Number(m.mode ?? 0),
+    poolId: String(m.pool_id ?? m.poolId ?? "0x") as `0x${string}`,
+    marketLive: Boolean(m.market_live ?? m.marketLive),
+    fairId: BigInt(String(m.fair_id ?? m.fairId ?? 0)),
+    name: String(m.name ?? "Token"),
+    symbol: String(m.symbol ?? "TKN"),
+    decimals: Number(m.decimals ?? 18),
+    supply: BigInt(String(m.supply || "0")),
+    image: String(m.image ?? ""),
+    description: String(m.description ?? ""),
+    website: "",
+    twitter: "",
+    telegram: "",
+    quoteSymbol: String(m.quote_symbol ?? m.quoteSymbol ?? ""),
+    quoteDecimals: Number(m.quote_decimals ?? m.quoteDecimals ?? 18),
+    lifetimeRewards: BigInt(String(m.lifetime_rewards || "0")),
+    rewardsMode: Number(m.rewards_mode ?? 1) !== 0,
+    bonding: String(m.stage) === "bonding",
+    bondingBps: Number(m.bonding_bps ?? 0),
+    realQuote: BigInt(String(m.real_quote || "0")),
+    gradTarget: BigInt(String(m.grad_target || "0")),
+    ready: String(m.stage) === "ready",
+    curve: undefined,
+    priceQuoteX18: String(m.price_quote_x18 ?? "0"),
+    fdvUsd6: String(m.fdv_usd6 ?? "0"),
+    volume24hUsd6: String(m.volume_24h_usd6 ?? "0"),
+  };
+}
+
 export function useLaunchTokens() {
-  const client = usePublicClient();
   return useQuery({
     queryKey: ["launches"],
-    enabled: !!client || REVIEW_FIXTURES,
     queryFn: async () => {
-      try {
-        if (!client) throw new Error("no client");
-        return await readTokens(client);
-      } catch (e) {
-        if (REVIEW_FIXTURES) return FIXTURE_TOKENS;
-        throw e;
+      const res = await fetch(`${INDEXER_URL}/markets?limit=80`).catch(() => null);
+      if (res?.ok) {
+        const body = (await res.json()) as { items?: Record<string, unknown>[] };
+        const items = (body.items ?? []).map(marketRowToLaunch);
+        if (items.length) return items;
       }
+      if (REVIEW_FIXTURES) return FIXTURE_TOKENS;
+      return [] as LaunchToken[];
     },
     refetchInterval: 8_000,
   });

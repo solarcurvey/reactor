@@ -218,12 +218,22 @@ export default function LaunchPage() {
             type="file"
             accept="image/*"
             className="mb-2 block w-full text-[12px] text-zinc-400"
-            onChange={(e) => {
+            onChange={async (e) => {
               const file = e.target.files?.[0];
               if (!file) return;
-              const reader = new FileReader();
-              reader.onload = () => setImage(String(reader.result ?? ""));
-              reader.readAsDataURL(file);
+              if (file.size > 2_000_000) {
+                setError("Image must be under 2MB");
+                return;
+              }
+              try {
+                const { INDEXER_URL } = await import("@/lib/chain");
+                const res = await fetch(`${INDEXER_URL}/upload`, { method: "POST", body: file });
+                const body = (await res.json()) as { publicUrl?: string; uri?: string; error?: string };
+                if (!res.ok) throw new Error(body.error ?? "upload failed");
+                setImage(body.publicUrl ?? body.uri ?? "");
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "upload failed — no base64 onchain");
+              }
             }}
           />
           <Input id="launch-image" name="image" placeholder="or paste image URL" value={image.startsWith("data:") ? "" : image} onChange={(e) => setImage(e.target.value)} />

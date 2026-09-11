@@ -7,12 +7,11 @@ import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { erc20, router, token as tokenC, curve, userRoute } from "@/lib/contracts";
-import { officialPoolKey, buyZeroForOne, hooklessHopKey } from "@/lib/pool";
-import { applyMinOuts } from "../../../../packages/reactor/src/routes";
-import { planUserHops } from "@/lib/route-graph";
+import { officialPoolKey, buyZeroForOne } from "@/lib/pool";
 import { feeSplit, formatUnitsSafe, parseUnitsSafe } from "@/lib/utils";
 import type { LaunchToken } from "@/lib/hooks";
 import { addresses } from "@/lib/addresses";
+import { INDEXER_URL } from "@/lib/chain";
 
 const QUOTE_TTL_MS = 30_000;
 
@@ -33,6 +32,8 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   const [liveHops, setLiveHops] = useState<
     { adapter: `0x${string}`; tokenIn: `0x${string}`; tokenOut: `0x${string}`; minOut: bigint; data: `0x${string}` }[]
   >([]);
+  const [feeLegs, setFeeLegs] = useState<Array<{ reactorOfficial: boolean; protocolFeeBps: number; venue: string }>>([]);
+  const [, setQuoteTx] = useState<{ to: string; data: `0x${string}`; functionName: string } | null>(null);
 
   const quoteDec = t.quoteDecimals ?? 18;
   const usdcRoute = Boolean(payUsdc && t.quote.toLowerCase() !== addresses.USDC.toLowerCase() && userRoute.address);
@@ -40,55 +41,6 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   const parsed = parseUnitsSafe(amount, inDec);
 
   const split = feeSplit(quoteNotional ?? 0n);
-
-  async function stampUserHops(
-    amountIn: bigint,
-    slipBps: bigint,
-    hops: { adapter: `0x${string}`; tokenIn: `0x${string}`; tokenOut: `0x${string}`; minOut: bigint; data: `0x${string}` }[],
-    bonding: boolean,
-  ) {
-    if (!client || !address) throw new Error("Connect a wallet to quote hops.");
-    let amt = amountIn;
-    if (side === "sell") {
-      const first = bonding
-        ? await client.simulateContract({
-            address: t.curve!,
-            abi: curve.abi,
-            functionName: "sell",
-            args: [t.token, amountIn, 1n],
-            account: address,
-          })
-        : await client.simulateContract({
-            ...router,
-            functionName: "swap",
-            args: [
-              officialPoolKey(t.token, t.quote),
-              !buyZeroForOne(t.token, t.quote),
-              -amountIn,
-              1n,
-              address,
-            ],
-            account: address,
-          });
-      amt = first.result as bigint;
-    }
-    const outs: bigint[] = [];
-    for (const h of hops) {
-      const key = hooklessHopKey(h.tokenIn, h.tokenOut);
-      const zf1 = h.tokenIn.toLowerCase() === key.currency0.toLowerCase();
-      const sim = await client.simulateContract({
-        ...router,
-        functionName: "swap",
-        args: [key, zf1, -amt, 1n, address],
-        account: address,
-      });
-      const out = sim.result as bigint;
-      if (out <= 1n) throw new Error("hop quote is dust");
-      outs.push(out);
-      amt = out;
-    }
-    return applyMinOuts({ hops, path: [], reason: "user" }, outs.map((o) => (o * (10_000n - slipBps)) / 10_000n)).hops;
-  }
 
   async function refreshQuote() {
     setError(null);
@@ -98,79 +50,40 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       setMinQuoteOut(null);
       return;
     }
-    const bonding = Boolean(t.bonding && t.curve && !t.marketLive);
     try {
-      let hops: typeof liveHops = [];
-      if (usdcRoute && userRoute.address) {
-        hops = await planUserHops(
-          client,
-          side === "buy" ? addresses.USDC : t.quote,
-          side === "buy" ? t.quote : addresses.USDC,
-        );
-        if (t.quote.toLowerCase() !== addresses.USDC.toLowerCase() && hops.length === 0) {
-          throw new Error("no approved route for this quote — refusing a fabricated hop");
-        }
+      const res = await fetch(`${INDEXER_URL}/quote`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: side === "buy" ? "BUY" : "SELL",
+          token: t.token,
+          tokenIn: side === "buy" ? (usdcRoute ? addresses.USDC : t.quote) : t.token,
+          tokenOut: side === "buy" ? t.token : usdcRoute ? addresses.USDC : t.quote,
+          amountIn: parsed.toString(),
+          slippageBps: Math.max(1, Math.floor(Number(slippage || "1") * 100)),
+          recipient: address,
+        }),
+      });
+      const q = (await res.json()) as {
+        ok?: boolean;
+        reason?: string;
+        amountOut?: string;
+        minOut?: string;
+        hops?: typeof liveHops;
+        feeLegs?: Array<{ reactorOfficial: boolean; protocolFeeBps: number; venue: string; notionalQuote?: string }>;
+        tx?: { to: string; data: `0x${string}`; functionName: string };
+      };
+      if (!res.ok || !q.ok || !q.amountOut) {
+        throw new Error(q.reason ?? "Quote API unavailable");
       }
-      let firstLegOut: bigint | null = null;
-      if (side === "sell") {
-        const first = bonding
-          ? await client.simulateContract({
-              address: t.curve!,
-              abi: curve.abi,
-              functionName: "sell",
-              args: [t.token, parsed, 1n],
-              account: address,
-            })
-          : await client.simulateContract({
-              ...router,
-              functionName: "swap",
-              args: [officialPoolKey(t.token, t.quote), !buyZeroForOne(t.token, t.quote), -parsed, 1n, address],
-              account: address,
-            });
-        firstLegOut = first.result as bigint;
-        setMinQuoteOut(firstLegOut);
-        setQuoteNotional(firstLegOut);
-      } else if (usdcRoute && hops.length > 0) {
-        const stamped = await stampUserHops(parsed, 1n, hops, bonding);
-        const last = stamped[stamped.length - 1];
-        if (last) setQuoteNotional(last.minOut);
-      } else {
-        setQuoteNotional(parsed);
-      }
-      const sim = usdcRoute && userRoute.address
-        ? await client.simulateContract({
-            address: userRoute.address,
-            abi: userRoute.abi,
-            functionName: side === "buy" ? "buy" : "sell",
-            args:
-              side === "buy"
-                ? [t.token, parsed, hops, 1n, BigInt(Math.floor(Date.now() / 1000) + 300)]
-                : [t.token, parsed, hops, firstLegOut && firstLegOut > 0n ? firstLegOut : 1n, 1n, BigInt(Math.floor(Date.now() / 1000) + 300)],
-            account: address,
-          })
-        : bonding
-        ? await client.simulateContract({
-            address: t.curve!,
-            abi: curve.abi,
-            functionName: side === "buy" ? "buy" : "sell",
-            args: [t.token, parsed, 1n],
-            account: address,
-          })
-        : await client.simulateContract({
-            ...router,
-            functionName: "swap",
-            args: [
-              officialPoolKey(t.token, t.quote),
-              side === "buy" ? buyZeroForOne(t.token, t.quote) : !buyZeroForOne(t.token, t.quote),
-              -parsed,
-              1n,
-              address,
-            ],
-            account: address,
-          });
-      setQuotedOut(sim.result as bigint);
+      setQuotedOut(BigInt(q.amountOut));
       setQuotedAt(Date.now());
-      if (usdcRoute) setLiveHops(hops);
+      setLiveHops(q.hops ?? []);
+      setFeeLegs(q.feeLegs ?? []);
+      setQuoteTx(q.tx ?? null);
+      const notion = q.feeLegs?.find((f) => f.reactorOfficial)?.notionalQuote;
+      setQuoteNotional(notion ? BigInt(notion) : side === "buy" && !usdcRoute ? parsed : null);
+      if (q.minOut) setMinQuoteOut(BigInt(q.minOut));
     } catch (e) {
       setQuotedOut(null);
       setError(e instanceof Error ? e.message : "Quote failed. Size may be larger than remaining depth.");
@@ -207,15 +120,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         return;
       }
       const bonding = Boolean(t.bonding && t.curve && !t.marketLive);
-      let hops = liveHops;
-      if (usdcRoute) {
-        hops = await planUserHops(
-          client,
-          side === "buy" ? addresses.USDC : t.quote,
-          side === "buy" ? t.quote : addresses.USDC,
-        );
-        if (hops.length > 0) hops = await stampUserHops(parsed, slipBps, hops, bonding);
-      }
+      const hops = liveHops;
       const firstMin =
         side === "sell"
           ? ((minQuoteOut ?? 0n) * (10_000n - slipBps)) / 10_000n
@@ -353,7 +258,13 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         </p>
         {usdcRoute && (
           <p className="font-mono text-[11px] text-zinc-500">
-            Route {liveHops.length ? liveHops.map((h) => `${h.tokenIn.slice(0, 6)}→${h.tokenOut.slice(0, 6)}`).join(" · ") : "discovering approved venues…"}
+            Route {liveHops.length ? liveHops.map((h) => `${h.tokenIn.slice(0, 6)}→${h.tokenOut.slice(0, 6)}`).join(" · ") : "quote API — no wallet hop sim"}
+          </p>
+        )}
+        {feeLegs.length > 0 && (
+          <p className="text-[11px] text-amber-100/90">
+            REACTOR fees: {feeLegs.filter((f) => f.reactorOfficial).map((f) => `${f.venue} ${f.protocolFeeBps / 100}%`).join(" + ") || "none"}
+            {feeLegs.filter((f) => f.reactorOfficial).length > 1 ? " — nested official hops each charge 3.5%" : ""}
           </p>
         )}
         {quotedOut !== null && (

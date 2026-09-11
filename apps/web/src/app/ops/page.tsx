@@ -26,11 +26,13 @@ type Ops = {
 };
 
 export default function OpsPage() {
+  const token = typeof window !== "undefined" ? window.sessionStorage.getItem("ops-token") ?? process.env.NEXT_PUBLIC_OPS_TOKEN ?? "" : "";
   const { data, isError, refetch, isLoading } = useQuery({
-    queryKey: ["ops"],
+    queryKey: ["ops", token],
     queryFn: async () => {
+      const headers: HeadersInit = token ? { "x-ops-token": token } : {};
       const [ops, top10, watchdog] = await Promise.all([
-        fetch(`${INDEXER_URL}/ops`).then((r) => r.json()).catch(() => ({})),
+        fetch(`${INDEXER_URL}/ops`, { headers }).then((r) => r.json()).catch(() => ({})),
         fetch("/api/reactor/top10").then((r) => r.json()).catch(() => ({ pauseEpoch: true, rows: [] })),
         fetch(`${INDEXER_URL}/keeper`).then((r) => r.json()).catch(() => null),
       ]);
@@ -56,7 +58,8 @@ export default function OpsPage() {
         <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-200/80">Internal</p>
         <h1 className="mt-1 text-2xl font-semibold text-white">Ops</h1>
         <p className="mt-1 max-w-2xl text-[13px] text-zinc-400">
-          Keeper heartbeat, indexer lag, Top-10 confidence, pricing health. Not a public console. Mainnet disabled.
+          Internal only — not in public nav. Requires OPS_TOKEN. Keeper / Watchdog / Pricing signer keys stay isolated.
+          Mainnet disabled.
         </p>
       </div>
 
