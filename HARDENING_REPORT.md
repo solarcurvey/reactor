@@ -63,6 +63,8 @@ Slither: **not installed** in this environment (`which slither` empty). No fabri
 
 Frontend: `pnpm exec tsc --noEmit` (target ES2020) and `pnpm lint` passed on `apps/web`. Dev server `http://127.0.0.1:43147` returned HTTP 200 after ABI restore.
 
+Visual review (1440×900 and 390×844) is in `review/`. Home hero, Earn step, CORE TESTNET, and no caller minOut were confirmed. `/instant` is not a route — Instant is a step in `/launch`. No layout overflow found.
+
 Local Anvil redeploy (hardening bytecode; **not** Arc Testnet):
 
 | Contract | Address |
