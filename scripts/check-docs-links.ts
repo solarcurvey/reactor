@@ -115,4 +115,4 @@ async function main() {
   console.log(`docs links ok (${externals.size} external, handbook slugs ${handbookHrefs.size})`);
 }
 
-await main();
+void main();
