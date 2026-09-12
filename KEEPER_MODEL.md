@@ -55,6 +55,7 @@ Guardrails:
 - ≤ 3 hops, no cycles, no duplicate assets
 - Cooldown / 20% chunk (`MAX_CHUNK_BPS`) / no replay of the same Top-10 slot
 - Keeper supplies `minTargetOut` / per-hop `minOut` — **never** hardcoded 1 or 0 on maintenance buys
+- User SELL floors (`minQuoteOut` / `minFinalOut`) are **not** Keeper jobs. They come from the selected `PreviewedRoute` (`splitPreviewRoute.terminalOut` + final USDC), never from launch-token `amountIn`.
 
 Daemon: `apps/indexer/src/keeper.ts` — SelfBurn, Flywheel settle, CORE settle, epoch publish, Top-10 exec, CORE burn, optional graduate assist. Simulate → minOut → submit → receipt → reconcile. Idempotent job IDs. Modes `DRY_RUN` / `LOCAL` / `ARC_TESTNET`. Mainnet 5042 disabled. Ambiguous RPC does not double-exec. `apps/indexer/src/watchdog.ts` is an independent fail-closed process.
 

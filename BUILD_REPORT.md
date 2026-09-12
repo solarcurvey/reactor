@@ -1,3 +1,11 @@
+# BUILD REPORT — Issue #4 SELL floors on shared #21 preview
+
+**Status:** Rebased onto main after #21 merge (`53330db`). SELL floors consume the shared selected `PreviewedRoute` / `splitPreviewRoute`. No second candidate/preview implementation.  
+**Not audited. Not mainnet.**  
+**Architecture / economics unchanged.**
+
+Quote API SELL tickets take `minQuoteOut` from `assembleAtomicTicket.terminalMinOut` (first-leg quoteOut) and `minFinalOut` from `minOut` (final USDC). Routed sells without a selected `PreviewedRoute` fail closed. Direct bonding/graduated sells wrap the first-leg quoteOut through the same `splitPreviewRoute`. Evidence: `quote-integrity.test.ts` (#3) + `quote-sell-floors.test.ts` (#4) together. Issue #4 stays open pending re-audit.
+
 # BUILD REPORT — Issue #3 route candidate integrity
 
 **Status:** Indexer quote-ticket atomicity on protocol 0.3.2 (merged onto main @ `b4bf25d` — #27 atomic indexer schema, plus #19 BIGINT, #20 media keys, #26 signer fail-closed).  

@@ -11,6 +11,7 @@ import {
   selectAtomicQuotedRoute,
   type PreviewedRoute,
 } from "./quote-select.ts";
+import { sellFloorsFromDirectQuote, sellFloorsFromSelected, type AssembledSellQuote } from "./sell-floors.ts";
 import {
   applySlippage,
   splitQuoteFee,
@@ -37,7 +38,7 @@ const routerAbi = parseAbi([
 ]);
 const userAbi = parseAbi([
   "function buy(address token, uint256 amountIn, (address adapter,address tokenIn,address tokenOut,uint256 minOut,bytes data)[] hops, uint256 minOut, uint256 deadline) returns (uint256)",
-  "function sell(address token, uint256 amountIn, (address adapter,address tokenIn,address tokenOut,uint256 minOut,bytes data)[] hops, uint256 minQuoteOut, uint256 minOut, uint256 deadline) returns (uint256)",
+  "function sell(address token, uint256 tokenIn, (address adapter,address tokenIn,address tokenOut,uint256 minOut,bytes data)[] hops, uint256 minQuoteOut, uint256 minFinalOut, uint256 deadline) returns (uint256)",
 ]);
 const quoterAbi = parseAbi([
   "error PreviewRoute(uint256 amountOut, uint256[] hopOuts, bytes32[] kinds)",
@@ -212,6 +213,7 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
   let functionName = "swap";
   let to = addrs.ReactorRouter;
   let data = "0x";
+  let sellTicket: AssembledSellQuote | undefined;
 
   try {
     if (req.kind === "BUY" || req.kind === "SELL") {
@@ -249,14 +251,28 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
         const selected = selectAtomicQuotedRoute(scored);
         plannedHops = selected.hops;
         path = selected.path;
-        if (payingUsdc) {
+        if (req.kind === "SELL") {
+          try {
+            sellTicket = sellFloorsFromSelected(selected, amountIn, slip);
+            atomicPreviewed = true;
+            amountOut = sellTicket.amountOut;
+            hops.push(...sellTicket.hops);
+          } catch (e) {
+            return fail(rid, req, e instanceof Error ? e.message : "exact sell preview failed — unavailable");
+          }
+        } else {
           atomicPreviewed = true;
           amountOut = selected.preview.amountOut;
           hops.push(...hopsFromAtomicPreview(selected, amountIn));
         }
       }
 
+      if (req.kind === "SELL" && !atomicPreviewed && plannedHops.length) {
+        return fail(rid, req, "exact sell preview failed — routed sell requires selected PreviewedRoute");
+      }
+
       let cursor = amountIn;
+      let firstLegSimulated = false;
       if (req.kind === "SELL" && !atomicPreviewed) {
         if (bonding && curve && req.token) {
           const sim = await ctx.client.simulateContract({
@@ -267,11 +283,14 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
             account,
           });
           cursor = sim.result as bigint;
+          firstLegSimulated = true;
           feeLegs.push(feeLeg("InstantCurve", req.token, market!.quote, cursor, !feeExempt));
         } else if (req.token && market && hook) {
           cursor = await simSwap(ctx, officialKey(req.token, market.quote, hook), req.token, amountIn, account);
+          firstLegSimulated = true;
           feeLegs.push(feeLeg("official-v4", req.token, market.quote, cursor, !feeExempt));
         }
+        if (!firstLegSimulated) return fail(rid, req, "exact sell preview failed — no first-leg quoteOut");
       }
 
       for (const h of atomicPreviewed ? [] : plannedHops) {
@@ -318,8 +337,19 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
         }
       } else if (req.kind === "SELL" && !atomicPreviewed) {
         amountOut = cursor;
-        functionName = payingUsdc && userRoute ? "sell" : bonding ? "sell" : "swap";
-        to = payingUsdc && userRoute ? userRoute : bonding && curve ? curve : addrs.ReactorRouter;
+        functionName = bonding ? "sell" : "swap";
+        to = bonding && curve ? curve : addrs.ReactorRouter;
+        try {
+          sellTicket = sellFloorsFromDirectQuote({
+            tokenIn: amountIn,
+            quoteOut: amountOut,
+            firstLegKind: bonding ? VENUE.BONDING_CURVE : VENUE.OFFICIAL_REACTOR_V4,
+            slipBps: slip,
+            path,
+          });
+        } catch (e) {
+          return fail(rid, req, e instanceof Error ? e.message : "exact sell preview failed — unavailable");
+        }
       } else if (atomicPreviewed) {
         functionName = req.kind === "BUY" ? "buy" : "sell";
         to = userRoute ?? addrs.ReactorRouter;
@@ -338,17 +368,23 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
       }
 
       const slipBps = BigInt(Math.max(1, slip));
-      const stamped = hops.length
-        ? applyMinOuts(
-            { hops, path, reason: "quote" },
-            hops.map((h) => applySlippage(BigInt(h.amountOut), Number(slipBps))),
-          )
-        : { hops, path, reason: "quote" };
+      const stamped = sellTicket
+        ? { hops: sellTicket.hops, path: sellTicket.path, reason: "quote" }
+        : hops.length
+          ? applyMinOuts(
+              { hops, path, reason: "quote" },
+              hops.map((h) => applySlippage(BigInt(h.amountOut), Number(slipBps))),
+            )
+          : { hops, path, reason: "quote" };
       for (let i = 0; i < hops.length; i++) hops[i] = { ...hops[i]!, minOut: stamped.hops[i]!.minOut };
 
       if (amountOut <= 1n) return fail(rid, req, "quote unavailable — amountOut dust");
-      const minOut = applySlippage(amountOut, slip);
+      const minOut = sellTicket?.minFinalOut ?? applySlippage(amountOut, slip);
       if (minOut <= 1n) return fail(rid, req, "quote unavailable — minOut dust");
+      const minQuoteOut = req.kind === "SELL" ? sellTicket?.minQuoteOut : undefined;
+      if (req.kind === "SELL" && (minQuoteOut === undefined || minQuoteOut <= 1n)) {
+        return fail(rid, req, "exact sell preview failed — minQuoteOut unavailable");
+      }
       const deadline = Math.floor(Date.now() / 1000) + QUOTE_TTL_SEC;
       if (payingUsdc && userRoute) {
         data = encodeFunctionData({
@@ -357,7 +393,7 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
           args:
             req.kind === "BUY"
               ? [req.token as `0x${string}`, amountIn, stamped.hops, minOut, BigInt(deadline)]
-              : [req.token as `0x${string}`, amountIn, stamped.hops, applySlippage(BigInt(hops[0]?.amountIn ?? amountOut), slip), minOut, BigInt(deadline)],
+              : [req.token as `0x${string}`, amountIn, stamped.hops, minQuoteOut!, minOut, BigInt(deadline)],
         });
       } else if (bonding && curve && req.token) {
         data = encodeFunctionData({
@@ -384,6 +420,7 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
         amountIn: amountIn.toString(),
         amountOut: amountOut.toString(),
         minOut: minOut.toString(),
+        ...(minQuoteOut !== undefined ? { minQuoteOut: minQuoteOut.toString() } : {}),
         hops,
         feeLegs,
         reactorFeeCount: feeLegs.filter((f) => f.reactorOfficial).length,
