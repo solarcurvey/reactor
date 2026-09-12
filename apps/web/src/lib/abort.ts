@@ -5,7 +5,7 @@ export function isAbortError(e: unknown): boolean {
   );
 }
 
-export function throwIfAborted(signal?: AbortSignal): void {
+export function throwIfAborted(signal?: AbortSignal | null): void {
   if (!signal?.aborted) return;
   if (typeof DOMException !== "undefined") {
     throw new DOMException("The operation was aborted.", "AbortError");

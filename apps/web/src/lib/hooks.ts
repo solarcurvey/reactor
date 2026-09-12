@@ -248,7 +248,7 @@ export function usePendingRewards(tokens: LaunchToken[] | undefined, account?: s
       const pending = await readPendingRewardsPage(
         client,
         list.map((t) => t.token),
-        account,
+        account as `0x${string}`,
         signal,
       );
       return list.map((t, i) => ({

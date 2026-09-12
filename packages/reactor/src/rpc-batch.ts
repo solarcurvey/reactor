@@ -20,9 +20,11 @@ export type BatchContract = {
 };
 
 export type BatchClient = {
-  getBytecode?: (args: { address: `0x${string}` }) => Promise<`0x${string}` | undefined | null>;
-  multicall?: (args: { contracts: readonly BatchContract[]; allowFailure?: boolean }) => Promise<unknown>;
-  readContract: (args: BatchContract) => Promise<unknown>;
+  // Method syntax stays bivariant so viem PublicClient is assignable
+  // (function properties are contravariant under strictFunctionTypes).
+  getBytecode?(args: { address: `0x${string}` }): Promise<`0x${string}` | undefined | null>;
+  multicall?(args: { contracts: readonly BatchContract[]; allowFailure?: boolean }): Promise<unknown>;
+  readContract(args: BatchContract): Promise<unknown>;
   chain?: { id?: number };
 };
 
