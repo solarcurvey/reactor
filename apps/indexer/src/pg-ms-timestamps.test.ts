@@ -224,6 +224,8 @@ try {
     "SELECT data_type FROM information_schema.columns WHERE table_schema='public' AND table_name='external_price_marks' AND column_name='kind'",
   );
   assert(kindCol.rows[0]?.data_type === "text", "v10 adds external_price_marks.kind");
+  const filledV9 = await admin.query<{ n: string }>("SELECT COUNT(*)::text AS n FROM schema_migrations WHERE id=9");
+  assert(filledV9.rows[0]?.n === "1", "stacked branch fills reserved v9 with current_supply");
   const kinds = await admin.query<{ source: string; kind: string }>(
     "SELECT source, kind FROM external_price_marks ORDER BY source",
   );

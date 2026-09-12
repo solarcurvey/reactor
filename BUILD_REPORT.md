@@ -15,9 +15,9 @@ Rebased onto `main` after #27 merged (`b4bf25d`). `GET /markets` `fdv_usd6` uses
 | --- | --- |
 | Protocol release | **0.3.3** (`docs/version.json`) — #27 journal + #23 `current_supply` + #30 consensus + #10 Top-10 |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
-| Intent | Replace web `discoverTop10` RPC fanout with canonical indexer ValuationService snapshot (issue #10). Rank from persisted `current_supply`. Consume #30 consensus marks. |
+| Intent | Replace web `discoverTop10` RPC fanout with canonical indexer ValuationService snapshot (issue #10). Rank from persisted `current_supply`. Consume #30 consensus marks (`ad5292b`, kind = v10, v9 reserved). |
 | Foundry | Unchanged from 0.3.1 (**326 passed**) — no contract edits |
-| Indexer / lib | `pnpm --filter indexer test` includes `top10-rank.test.ts` + `price-marks.test.ts` + `ingest.valuation.test.ts` + `tick-atomic.test.ts` + `pnpm docs:check` |
+| Indexer / lib | `pnpm --filter indexer test` includes `top10-rank.test.ts` + `price-marks.test.ts` + `pricing.test.ts` + `ingest.valuation.test.ts` + `tick-atomic.test.ts` + `pnpm docs:check` |
 | Mainnet | **Blocked** |
 
 ## Closed this pass (P1 #7, already on parent)
@@ -40,7 +40,8 @@ Honesty: 0.3.0 docs already said “Store work uses real transactions.” That w
 | Keeper vs public page drift | **Yes** | Both read persisted `top10_candidate_epochs` payload |
 | Burn-adjusted supply | **Yes** | persisted `current_supply` (holder `Burned` + `totalSupply()` reconcile). SelfBurn/Top10Buy attribution does not move rank |
 | Nested marks via ValuationService | **Yes** | NESTED/ZCAT/ZEC fixture in `top10-rank.test.ts` |
-| Consensus marks | **Yes** | Consumes #30 `kind=consensus` / `source=fused` rows. Schema **v10** |
+| Consensus marks | **Yes** | Consumes #30 `kind=consensus` / `source=fused` rows. Schema **v10** (v9 reserved for #23) |
+| Hardcoded ZEC/WBTC price-marks branches | **Yes** | `price-registry.ts` + `config/price-providers.json` |
 | Stale external fail-closed | **Yes** | prior-ranked ZEC leaf pauses epoch |
 | CORE excluded data-plane | **Yes** | CORE fixture never in rows |
 | Scale / no O(N) RPC | **Yes** | 8k indexed markets + fetch stub; 0 HTTP/RPC during rank |

@@ -36,7 +36,7 @@ Do not certify. Do not deploy. Do not propose a new curve or fee split.
 | Signed pricing | Unique digest: factory+creator+quote+virtualQuote0+curveConfig+salt+deadline+chain. No `pricingNonce` | `LaunchPricing.t.sol` concurrent + replay |
 | Nested quotes | RoutePlanner max 3; ValuationEngine recursive; cycle reject; only usdPegOne is $1 | `valuation.test.ts`, `NativeQuote.t.sol` |
 | CORE vest / genesis | 1B; 100M vest 30d cliff + 300d linear; 900M locked; never Top-10 | `CoreGenesis.t.sol`, `CoreLiquiditySim.t.sol` |
-| Indexer / Top-10 | Indexed markets + ValuationService snapshot; no per-request Factory RPC. Event journal schema v8. `tokens.current_supply` is schema v9. `external_price_marks.kind` is schema v10. Top-10 candidate tables are schema v11. Offchain ms columns are `BIGINT` (schema v6) | `top10-rank.test.ts`, `ingest.valuation.test.ts`, `price-marks.test.ts`, `tick-atomic.test.ts`, `pg-ms-timestamps.test.ts`, `Top10Api.t.sol` |
+| Indexer / Top-10 | Indexed markets + ValuationService snapshot; no per-request Factory RPC. Event journal schema v8. `tokens.current_supply` is schema v9. `external_price_marks.kind` is schema v10 (#30 reserves v9). Top-10 candidate tables are schema v11. Offchain ms columns are `BIGINT` (schema v6) | `top10-rank.test.ts`, `ingest.valuation.test.ts`, `price-marks.test.ts`, `tick-atomic.test.ts`, `pg-ms-timestamps.test.ts`, `Top10Api.t.sol` |
 | User routes | `UserRouteExecutor` + shared RoutePlanner; bonding nested USDC + graduated v4 | `UserRoute.t.sol` |
 | Routing deltas | `RouteGuard`, `RouteExec`, adapters | `RoutingDeltas.t.sol`, `KeeperMinOut.t.sol` |
 
@@ -155,7 +155,7 @@ Indexer `apps/indexer/src/top10-rank.ts` ranks from **persisted** graduated mark
 - Graduated only; skip CORE (data plane + contracts)
 - Circulating supply is persisted `tokens.current_supply` (schema v9 after main/`#27` v8 journal identity), which tracks `totalSupply()` (token `Burned` / Transfer-to-zero via `(chain_id,tx,log_index,event_kind)` + bounded reconcile, including at head). Not TokenCreated `tokens.supply`, not a protocol-event sum (`SelfBurnExecuted` / `Top10Buy` / `COREBurned` are attribution only), and not claimed ≡ between reconciles
 - Official 10–15m VWAP from indexed official trades (trade `ts` = chain `block.timestamp`, never `Date.now()`)
-- Quote USD via ValuationService ancestry + accepted consensus `external_price_marks` (`kind`, schema v10; #30 reserves v9 for #23 `current_supply`). No assumed 0.30% hookless pool. PROD never uses a static mark.
+- Quote USD via ValuationService ancestry + accepted consensus `external_price_marks` (`kind`, schema v10; #30 reserves v9 for #23 `current_supply`). Configured provider registry + ≥2 independent HTTP sources where available. No assumed 0.30% hookless pool. PROD never uses a static mark.
 - Official snapshot tables are `top10_candidate_epochs` / `top10_candidate_rows` (schema **v11**). `GET /top10` is the payload. Holder `burn()` that writes `current_supply` changes rank/FDV; protocol SelfBurn/Top10Buy rows alone do not.
 - Depth 3, cycle set, **$250k** floor
 - Fail-closed **only** for MATERIAL uncertainty (prior ranked, last-good ≥ floor, liquidity, window volume). Thousands of dead low-value graduates with &lt;3 trades do **not** freeze the epoch
