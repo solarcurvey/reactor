@@ -38,6 +38,7 @@ Do not certify. Do not deploy. Do not propose a new curve or fee split.
 | CORE vest / genesis | 1B; 100M vest 30d cliff + 300d linear; 900M locked; never Top-10 | `CoreGenesis.t.sol`, `CoreLiquiditySim.t.sol` |
 | Indexer / Top-10 | `block.timestamp` only for onchain/windowed marks; durable poolId→token; event writes + cursor one transaction; append-only `(chain_id, tx, log_index, event_kind)` + address (`indexer_event_journal`, schema v8). Offchain ms columns are `BIGINT` (schema v6) — Postgres INTEGER overflows `Date.now()` | `indexer.persist.test.ts`, `tick-atomic.test.ts`, `pg-ms-timestamps.test.ts`, `Top10Api.t.sol` |
 | Indexer markets / candles | Keyset cursor matches `sort`; candle gap-fill ≤ `limit` (max 1000); exclusive `before` | `markets-query.test.ts`, `prices.test.ts` |
+| Public JSON body caps (P1) | Stream 16KiB on `/quote`, `/launch/admit`, `/launch/authorize` (chunked included). Upload remains 2MB. | `read-json-body.test.ts` |
 | User routes | `UserRouteExecutor` + shared RoutePlanner; bonding nested USDC + graduated v4 | `UserRoute.t.sol` |
 | Routing deltas | `RouteGuard`, `RouteExec`, adapters | `RoutingDeltas.t.sol`, `KeeperMinOut.t.sol` |
 
@@ -183,6 +184,7 @@ There is no Ownable, admin, bootstrap, or first-caller-wins `bindFactory`.
 - Guardian does not list fee-on-transfer or rebasing quotes.
 - Frontend / indexer / Top-10 API / pricing signer are **not** trusted for balances or USD.
 - Isolated pricing signer **fail-closes** when Postgres/SQLite cannot be opened. A missing store is `SIGNER_STORE_UNAVAILABLE` (503), not an unsigned-or-unchecked mint. Receipt consume + issuance bucket are mandatory.
+- Public JSON POSTs are stream-capped at 16KiB so the indexer cannot buffer an unbounded body. This is an availability control, not an authenticity control.
 - BUSL allows this PoolManager deploy only as **non-production**.
 - Designated Keeper + pricing signer are operational keys. Compromise wastes a chunked pot or authorizes a non-$1 curve init — it cannot steal LP or rewrite fees.
 

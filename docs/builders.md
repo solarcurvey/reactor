@@ -5,8 +5,8 @@ Integrate as a client, not a fork. Protocol **0.3.2**. Factory **V1**.
 ## Integration order
 
 1. **Discover** — `GET /markets` (keyset + NUMERIC sorts). Pass `next_cursor.cursor_ts` + `cursor_token` with the **same** `sort`; `cursor_ts` is `updated_ts` / `volume_24h_usd6` / `price_usd6`. Keyset is not a frozen snapshot: a row inserted ahead of the cursor is omitted from later pages; already-returned rows are not repeated. Do not scrape factory logs in the UI process.
-2. **Quote** — `POST /quote`. Use the ticket. One `UserRouteQuoter` call per candidate. Do not invent hops. Do not mix another candidate's preview onto the selected path. Do not set `minOut` to 0 or 1. On SELL, submit the ticket’s `minQuoteOut` (first-leg quote units) and `minOut` (final USDC).
-3. **Launch** — `POST /launch/authorize` (admission + ALLOW receipt + isolated sign). `@reactor/sdk` `authorize` does this. Never call the isolated signer from a public host.
+2. **Quote** — `POST /quote`. Use the ticket. One `UserRouteQuoter` call per candidate. Do not invent hops. Do not mix another candidate's preview onto the selected path. Do not set `minOut` to 0 or 1. On SELL, submit the ticket’s `minQuoteOut` (first-leg quote units) and `minOut` (final USDC). JSON body is capped at **16KiB** (413 if over, including chunked).
+3. **Launch** — `POST /launch/authorize` (admission + ALLOW receipt + isolated sign). `@reactor/sdk` `authorize` does this. Never call the isolated signer from a public host. Same **16KiB** JSON cap.
 4. **Media** — `POST /upload` (stream 2MB, sharp, SigV4 remote). Store the returned `publicUrl`. Object key is `m/<id>.webp` (matches `/m/<id>.webp`). No base64 onchain.
 5. **Live** — `GET /stream` SSE for tape / board invalidation.
 

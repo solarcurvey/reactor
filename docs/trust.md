@@ -9,6 +9,7 @@
 7. Funding-cluster is a heuristic (network + optional first funder). Not KYC, not chain analysis.
 8. Arc Testnet PoolManager is not deployed. Local demo uses official v4-core under BUSL (non-production).
 9. R2/S3 and ZEC HTTP are fail-closed in PROD. Missing config disables those paths.
-10. This repo is **not audited**. Do not deploy to Arc Mainnet (5042).
+10. Public JSON POSTs are stream-capped at 16KiB (Content-Length and chunked). Upload is 2MB. Limits stop unbounded buffering; they are not a DoS proof.
+11. This repo is **not audited**. Do not deploy to Arc Mainnet (5042).
 
 See `THREAT_MODEL.md`, `AUDIT_HANDOFF.md`.
