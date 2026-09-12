@@ -1,9 +1,62 @@
-# BUILD REPORT — Eliminate RPC waterfalls (#37)
+# BUILD REPORT — Full GitHub CI extras on the #73 cost-control workflow (issue #17)
 
-**Status:** Addresses issue **#37** on the same PR / branch. Rebased onto `origin/main` `c03c698` (#58 next-build lint after #73 three-tier CI). Issue **#37 stays open** — `Refs #37`, do not auto-close.
+**Date:** 2026-09-12  
+**Issue:** [#17](https://github.com/solarcurvey/reactor/issues/17) (stays open until merge + post-merge verify)  
+**PR:** draft **#42**. Rebased onto `origin/main` **`300b7e5`** (#73 after #77/#76/#74).  
+**Scope:** Keep the #69 / #73 single-workflow three-tier `ci.yml` (PR-only feature branches, concurrency cancel, main SHA isolation, path classifier, #72/#74 `contents: read` + `persist-credentials: false`, no `pull_request_target`). Land leftover #17 gates on that file: `docs:links` + Playwright smoke + interactive. Do not restore `docs-sync.yml` / `keeper-lease-pg.yml` / `live-toasts.yml`. Frozen economics / architecture / Factory V1. Protocol version stays **0.3.3**. Visibility not flipped.  
+**Not audited. Not mainnet.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Rebase #17 onto #73. Attack suite stays `find \| sort` + `forge test <file>` per `test/attack/*.t.sol`. |
+| #73 cost controls kept | Feature-branch `push` omitted. Concurrency per PR; main keyed by SHA and not canceled. Path classifier fail-safe. Least-privilege checkouts. |
+| Fast PR | `pnpm test:lib` now includes `docs:links` + `test:web-unit` (`constants-sync` too). Targeted Foundry when Solidity paths change. |
+| Full / main extras | Full-only jobs `docs-links` (`pnpm docs:links`) and `web` (Playwright smoke + interactive). `ci-ok` requires both (`skipped ≠ pass`). |
+| Already on #73 full gate | Foundry CI fuzz + Attack + CREATE2 + `size:guard`, `web-production-security`, `live-toasts-ui`, `postgres-ms-timestamps`. |
+| Docs | `/docs/ci` updated in place. `TESTING.md`, `CONTRIBUTING.md`, `AUDIT_HANDOFF.md`. |
+| Mainnet | **Blocked** |
+
+## Acceptance (issue #17 stays open)
+
+| AC | Evidence |
+| --- | --- |
+| Solidity in CI | `ci.yml` job `solidity + size-guard` (full / main) |
+| Attack suite | `forge test test/attack/<file>.t.sol` per file (`find \| sort`) |
+| Size guard in CI | `pnpm size:guard` after forge (Factory ≤ 23,552) |
+| Backend in CI | `pnpm --filter indexer test` inside `test:lib` |
+| Web unit + Playwright | Units in `test:lib` / `test:web-unit`. Smoke + interactive = full-only job `web`. |
+| Production web build / typecheck / browser security | `web-production-security` (`pnpm test:web-security`) — not duplicated |
+| Docs in CI | `docs:check` + `docs:links` in `test:lib`; full-only job `docs-links` |
+| Postgres in CI | `postgres-ms-timestamps` (`test:pg` + `test:pg-lease` + `pg-smoke`) |
+| #73 cost controls not weakened | Single workflow. No feature-branch `push`. `scripts/ci-cost.test.ts` still forbids a bare `push:`. |
+| Frozen economics / arch | No contract / tokenomics edits |
+| Docs same run | `docs/ci.md`, `TESTING.md`, `CONTRIBUTING.md`, `AUDIT_HANDOFF.md`, this report |
+
+## Billing vs real CI
+
+Exact-head GitHub Actions may show empty-step FAILURE because of account payments / spending-limit. That is **not** a Solidity / docs / size-guard regression. Do not weaken gates to “fix” it. Local verify: `pnpm docs:check`, `pnpm docs:links`, `scripts/docs-links.test.ts`, `scripts/ci-cost.test.ts`, `scripts/ci-public-harden.test.ts`. After billing is restored, require exact-head `ci-ok`.
+
+## What this is not
+
+- Not a revert of #73 / #69 cost controls or a second `push` + `pull_request` workflow.
+- Not a revert of #74 / #76 / #77 hardenings or history-rewrite notes.
+- Not an economics / Factory / hook / Guardian / Keeper change.
+- Not a visibility flip or another history rewrite.
+- Not a close of #17 from this commit. Close only after merge + post-merge verify on `main`.
+- **#73 / #17:** Fast vs full vs `main` three-tier `ci.yml` + extra full-only `docs-links` / Playwright `web` jobs. Safe-genesis **unit** tests land later on this branch (`safe-genesis-builder.test.ts` in `pnpm test:lib`); do not skip Attack / CREATE2 / `size:guard` when `svm` is missing.
+
+---
+
+# Prior — Eliminate RPC waterfalls + page-budget CI (PR #50 / issue #37)
+
+**Status:** Merged **#50** (`e5fd745`) on `origin/main`. Issue **#37 stays open** — `Refs #37`, do not auto-close.
 **Not audited. Not mainnet.**  
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
-**Do not close #37 from this file.** Issue stays open until merge **and** post-merge verify.
+**Do not close #37 from this file.** Issue stays open until post-merge verify.
 
 | Item | Value |
 | --- | --- |
@@ -15,7 +68,7 @@
 | Review shots | **Not regenerated** (no chrome/tokenomics change) |
 | Mainnet | **Blocked** |
 
-## Closed this run (implementation; issue stays open)
+## Closed that run (implementation; issue stays open)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
@@ -31,32 +84,14 @@
 | SSE no refetch storm | **Yes** | `applyLiveEventToClient` patches only; 50 trades → 0 `invalidateQueries`. |
 | Refetch-on-focus policy | **Yes** | `EXPENSIVE_REFETCH_ON_FOCUS = false`; source-scanned on hooks / CORE / REACTOR. |
 
-## Still blocked (do not fake)
+# Prior — CI cost cut without weakening release gates (Refs #69)
 
-| Blocker | Why |
-| --- | --- |
-| Public mainnet (5042) | Hard blocked. No addresses. |
-| Claim Arc Multicall3 exists | Probe only. Do not hardcode yes. |
-| Close #37 | **Stays open** until merge + post-merge verify. Do not close from BUILD_REPORT. `Refs #37`. |
-| Close #10 | Stays open (merged #53). Do not `Fixes #10`. |
-| Top-10 as onchain oracle | Frozen offchain by design. TTL is offchain policy. |
-
----
-
-# Prior — merged #58 next-build lint / typecheck
-
-**Status:** Merged on `origin/main` `c03c698`. `ohlcv-chart.tsx` lint/typecheck only. Architecture and tokenomics unchanged.
-
----
-
-# Prior — merged #73 CI cost cut without weakening release gates (Refs #69)
-
-**Status:** PR **#73** for issue **#69**, rebased onto `origin/main` `0db39c0` (#77 after #76/#74). Do not auto-close #69. Cost/frequency refactor only. #15 / #17 / #18 production-readiness commands stay reachable.  
+**Status:** Merged **#73** (`300b7e5`) on `origin/main`. Issue **#69 stays open** until post-merge verify. Cost/frequency refactor only. #15 / #17 / #18 production-readiness commands stay reachable.  
 **Not audited. Not mainnet.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Visibility was NOT changed.**
 
-## This HEAD
+## That HEAD
 
 | Item | Value |
 | --- | --- |

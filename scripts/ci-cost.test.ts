@@ -73,13 +73,19 @@ for (const job of [
   "live-toasts-ui",
   "postgres-ms-timestamps",
   "solidity + size-guard",
+  "docs-links",
+  "web",
   "ci-ok",
 ]) {
-  assert.match(ciYml, new RegExp(`name:\\s*${job.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`), `missing job ${job}`);
+  const escaped = job.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  assert.match(ciYml, new RegExp(`name:\\s*${escaped}(?:\\s|$)`, "m"), `missing job ${job}`);
 }
 
 assert.match(ciYml, /pnpm test:lib/);
 assert.match(ciYml, /pnpm test:web-security/);
+assert.match(ciYml, /pnpm docs:links/);
+assert.match(ciYml, /e2e\/smoke\.spec\.ts/);
+assert.match(ciYml, /e2e\/interactive\.spec\.ts/);
 assert.match(ciYml, /pnpm --filter indexer test:pg-lease/);
 assert.match(ciYml, /pnpm --filter indexer test:pg/);
 assert.match(ciYml, /e2e\/live-toasts\.spec\.ts/);
@@ -94,6 +100,8 @@ assert.match(ciYml, /test "\$\{\{ needs\.live-toasts-ui\.result \}\}" = success/
 assert.match(ciYml, /test "\$\{\{ needs\.solidity\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.page-budget\.result \}\}" = success/);
 assert.match(ciYml, /pnpm test:page-budget/);
+assert.match(ciYml, /test "\$\{\{ needs\.docs-links\.result \}\}" = success/);
+assert.match(ciYml, /test "\$\{\{ needs\.web\.result \}\}" = success/);
 
 // page-budget is required and always-on (no full-tier `if:` skip).
 {
@@ -102,6 +110,10 @@ assert.match(ciYml, /pnpm test:page-budget/);
   assert.match(job, /name:\s*page-budget/);
   assert.doesNotMatch(job, /^\s+if:/m, "page-budget must not skip (required on every PR)");
 }
+
+// #17 extras are full-only jobs on this workflow (not a second push+PR file).
+assert.match(ciYml, /name:\s*docs-links[\s\S]*if: needs\.decide\.outputs\.full == 'true'/);
+assert.match(ciYml, /name:\s*web\n    needs: decide\n    if: needs\.decide\.outputs\.full == 'true'/);
 
 // Exact-head checkout
 assert.match(ciYml, /github\.event\.pull_request\.head\.sha \|\| github\.sha/);

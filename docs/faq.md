@@ -32,6 +32,8 @@
 
 **Is this repository public?** Not unless the founder flips visibility. Do not publicize without that instruction. The operator checklist is [Repo publicization](/docs/publicization) (Refs #72). Personal-mailbox trailers were remapped to GitHub noreply on advertised refs; residual GitHub dangling objects are accepted. Agents must not flip visibility.
 
+**What does CI run?** Fast PR: `pnpm test:lib` (indexer + web unit + `docs:check` + `docs:links` + cheap security). Full merge-candidate / main: that plus Foundry (`FOUNDRY_PROFILE=ci`, Attack suite, CREATE2, size guard), production Next security, live-toasts, Postgres, and Playwright smoke + interactive. See [CI and cost](/docs/ci).
+
 **Why didn't the full CI suite run?** Draft feature-branch updates run the fast gate only (`pnpm test:lib`, plus targeted Foundry if Solidity changed). Mark the PR ready for review, add the `ci-full` label, or `workflow_dispatch` tier **full**. See [CI and cost](/docs/ci).
 
 **Why did an old CI run cancel?** A newer force-push on the same PR cancels in-progress jobs. Main post-merge runs are keyed by SHA and are not canceled by unrelated PRs.
