@@ -50,6 +50,11 @@ Postgres millisecond timestamps, media key/URL alignment, and signer fail-closed
 
 Honest leftovers on 0.3.0. Tokenomics **unchanged**. Factory **V1**.
 
+### Fixed
+
+- `GET /markets` keyset (`cursor_ts` + `cursor_token`) uses the same column as `sort`: `new` → `updated_ts`, `vol` → `volume_24h_usd6`, `price` → `price_usd6`. `sort=price` no longer pages on `updated_ts`.
+- `GET /candles/:token` gap-fill materializes at most `limit` buckets (hard cap 1000) in the window ending at `before` or now. A sparse 1m series does not allocate every minute from the first trade to now.
+
 ### Added / Changed
 
 - Safe Transaction Builder JSON is generated from `deployments/local.json` (Batch A while paused → VerifyGenesis → Batch B T0) plus MultiSend packing. Local deployer ≠ Guardian Safe. Not an empty template.

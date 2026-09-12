@@ -87,14 +87,56 @@ export function applyTradeToCandle(prev: Ohlcv | undefined, ts: number, interval
   return next;
 }
 
-/** Fill missing buckets with last close so charts stay continuous across curve→v4. */
-export function fillContinuous(candles: Ohlcv[], intervalSec: number, fromTs: number, toTs: number): Ohlcv[] {
-  if (candles.length === 0) return [];
+/** Hard cap matches `GET /candles` max `limit`. Never materialize a year of 1m buckets. */
+export const MAX_CANDLE_FILL_BUCKETS = 1_000;
+
+/** Last `limit` buckets ending at `before` (exclusive-ish) or `now`. Always ≤ max `limit`. */
+export function boundedCandleWindow(opts: {
+  intervalSec: number;
+  limit: number;
+  nowTs: number;
+  before?: number | null;
+  after?: number | null;
+}): { fromTs: number; toTs: number; maxBuckets: number } {
+  const intervalSec = opts.intervalSec > 0 ? opts.intervalSec : 60;
+  const maxBuckets = Math.min(MAX_CANDLE_FILL_BUCKETS, Math.max(1, Math.floor(Number(opts.limit) || 1)));
+  const rawEnd = opts.before != null && Number.isFinite(Number(opts.before)) ? Number(opts.before) : opts.nowTs;
+  const toTs = bucketTs(rawEnd, intervalSec);
+  let fromTs = toTs - (maxBuckets - 1) * intervalSec;
+  if (opts.after != null && Number.isFinite(Number(opts.after))) {
+    fromTs = Math.max(fromTs, bucketTs(Number(opts.after), intervalSec) + intervalSec);
+  }
+  return { fromTs, toTs, maxBuckets };
+}
+
+/**
+ * Fill missing buckets with last close so charts stay continuous across curve→v4.
+ * If `[fromTs, toTs]` would exceed `maxBuckets`, keep the **most recent** window (DoS bound).
+ */
+export function fillContinuous(
+  candles: Ohlcv[],
+  intervalSec: number,
+  fromTs: number,
+  toTs: number,
+  maxBuckets: number = MAX_CANDLE_FILL_BUCKETS,
+): Ohlcv[] {
+  if (candles.length === 0 || intervalSec <= 0) return [];
+  const cap = Math.min(MAX_CANDLE_FILL_BUCKETS, Math.max(1, Math.floor(maxBuckets)));
   const byT = new Map(candles.map((c) => [c.t, c]));
-  const start = bucketTs(fromTs, intervalSec);
+  let start = bucketTs(fromTs, intervalSec);
   const end = bucketTs(toTs, intervalSec);
+  if (end < start) return [];
+  const span = Math.floor((end - start) / intervalSec) + 1;
+  if (span > cap) {
+    start = end - (cap - 1) * intervalSec;
+  }
+  const sorted = [...candles].sort((a, b) => a.t - b.t);
+  let last = sorted[0]!;
+  for (const c of sorted) {
+    if (c.t <= start) last = c;
+    else break;
+  }
   const out: Ohlcv[] = [];
-  let last = candles[0]!;
   for (let t = start; t <= end; t += intervalSec) {
     const hit = byT.get(t);
     if (hit) {
@@ -105,4 +147,18 @@ export function fillContinuous(candles: Ohlcv[], intervalSec: number, fromTs: nu
     }
   }
   return out;
+}
+
+/** Compose the request window + bounded fill. Empty store → empty series (no synthetic history). */
+export function fillCandlesForRequest(
+  rows: Ohlcv[],
+  intervalSec: number,
+  limit: number,
+  nowTs: number,
+  before?: number | null,
+  after?: number | null,
+): Ohlcv[] {
+  if (rows.length === 0) return [];
+  const { fromTs, toTs, maxBuckets } = boundedCandleWindow({ intervalSec, limit, nowTs, before, after });
+  return fillContinuous(rows, intervalSec, fromTs, toTs, maxBuckets);
 }

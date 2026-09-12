@@ -28,7 +28,7 @@ curl -s http://127.0.0.1:43148/launch/authorize -H 'content-type: application/js
 curl -s 'http://127.0.0.1:43148/markets?sort=vol&limit=20&cursor_ts=0&cursor_token=0x…'
 ```
 
-`sort=vol` / `sort=price` are NUMERIC casts. Next page uses `next_cursor.ts` + `next_cursor.token`.
+`sort=vol` / `sort=price` are NUMERIC casts. Next page uses `next_cursor.cursor_ts` + `next_cursor.cursor_token` — and `cursor_ts` is that sort’s key (`volume_24h_usd6` / `price_usd6` / `updated_ts`), not a mismatched timestamp.
 
 ## Candles and tape
 
@@ -37,7 +37,7 @@ curl -s 'http://127.0.0.1:43148/candles/0x…?interval=5m&limit=300&before=17100
 curl -s 'http://127.0.0.1:43148/swaps/0x…?limit=200&before_id=0'
 ```
 
-Bounded. `before` / `after` on candles; `before_id` on swaps.
+Gap-fill is bounded to `limit` (max 1000) buckets ending at `before` or now. `before` / `after` on candles; `before_id` on swaps.
 
 ## Valuation
 
