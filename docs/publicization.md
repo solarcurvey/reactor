@@ -162,15 +162,15 @@ Full-history / all-ref scan on **2026-09-12 after the rewrite + prune** (187 com
 
 ## Actions hardening
 
-On rewritten `main` (via merged #74):
+On rewritten `main` (via merged #74; single `.github/workflows/ci.yml` after the #69 fold):
 
-- Workflow-level **and** job-level `permissions: { contents: read }` unless a future job proves it needs more (it does not today).
-- Every `actions/checkout` sets `persist-credentials: false` (test-only workflows never push).
+- Workflow-level `permissions: { contents: read }` unless a future job proves it needs more (it does not today).
+- Every `actions/checkout` sets `persist-credentials: false` (test-only workflow never pushes).
 - No `pull_request_target`. Checkout uses the default `pull_request` / `push` SHA (or #69’s `pull_request.head.sha`).
 - No `${{ secrets.* }}` and no `secrets: inherit` in workflow YAML — fork PR code cannot see repository secrets.
 - `scripts/ci-public-harden.test.ts` (`pnpm test:lib`) fails if any of the above regresses.
 
-#69 (open PR #73) already has workflow-level `permissions: contents: read` and omits `pull_request_target`. When that PR folds the three current workflow files into `.github/workflows/ci.yml`, **keep** `contents: read` and **add** `persist-credentials: false` on every checkout (including `decide-tier`). Do not re-introduce feature-branch `push` + `pull_request` pairs. Concurrency cancel on PRs / SHA-keyed main must stay.
+#69 (open PR #73) folded `docs-sync.yml` / `live-toasts.yml` / `keeper-lease-pg.yml` into `.github/workflows/ci.yml` and **kept** `contents: read` plus `persist-credentials: false` on every checkout (including `decide-tier`). Do not re-introduce feature-branch `push` + `pull_request` pairs. Concurrency cancel on PRs / SHA-keyed main must stay.
 
 GitHub Settings (operator, not this PR): before publicizing, set “Approval for running workflows from outside collaborators” to require approval for first-time / all outside forks. Do not enable “Send write tokens to workflows from pull requests.”
 

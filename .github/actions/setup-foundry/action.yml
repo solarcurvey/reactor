@@ -1,0 +1,27 @@
+name: Setup Foundry
+description: Foundry 1.8+ toolchain, cache, and pinned Solidity libs from foundry.lock
+runs:
+  using: composite
+  steps:
+    - uses: foundry-rs/foundry-toolchain@v1
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ~/.svm
+          contracts/cache
+          contracts/out
+        key: ${{ runner.os }}-foundry-${{ hashFiles('contracts/foundry.lock', 'contracts/foundry.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-foundry-
+    - name: Install pinned Solidity libs
+      shell: bash
+      working-directory: contracts
+      run: |
+        set -euo pipefail
+        forge --version
+        forge install foundry-rs/forge-std@v1.16.2 --no-commit
+        forge install Uniswap/v4-core@v4.0.0 --no-commit
+        forge install Uniswap/v4-periphery@dce236d4e2057422d0791d9a973a58765eb46f65 --no-commit
+        if [ ! -d lib/v4-core/lib/solmate ]; then
+          git -C lib/v4-core submodule update --init --recursive
+        fi

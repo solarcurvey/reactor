@@ -47,7 +47,7 @@ The web app shows **bottom-right** toasts only for:
 
 No toast for pending wallet txs, `SelfBurnAccrued` / `SelfBurnExecuted`, holder `Burned`, or `EpochSubmitted`. Hover/focus pauses auto-dismiss. The stack uses `safe-area-inset-*`. `prefers-reduced-motion: reduce` disables the enter animation. Amounts on those SSE rows are attribution (`quoteIn` / `coreOut` / `usdcIn` / `burned`), not a second supply subtract.
 
-Issue **#38 stays open** until merge and post-merge verify. The visible CI/release gate is `.github/workflows/live-toasts.yml` job **`live-toasts-ui`**: identity unit tests plus Playwright regressions for duplicate-after-dismiss, same-tx multi-log, disconnect/reconnect, safe-area, and reduced-motion (`pnpm test:live-toasts`).
+Issue **#38 stays open** until merge and post-merge verify. The visible CI/release gate is `.github/workflows/ci.yml` job **`live-toasts-ui`** (full merge-candidate + main): identity unit tests plus Playwright regressions for duplicate-after-dismiss, same-tx multi-log, disconnect/reconnect, safe-area, and reduced-motion (`pnpm test:live-toasts`). Fast PR updates still run the identity unit via `pnpm test:lib`. See [CI and cost](/docs/ci).
 
 See [Traders](/docs/traders), [CORE](/docs/core), [Top-10](/docs/top-10).
 

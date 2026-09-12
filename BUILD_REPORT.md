@@ -1,11 +1,9 @@
-# BUILD REPORT — Founder residual decision for #72 (advertised-ref AC1)
+# BUILD REPORT — CI cost cut without weakening release gates (Refs #69)
 
-**Status:** Docs follow-up on `origin/main` `0bd9b82` (#76). Issue **#72 stays open**. Do not `Fixes #72`.  
+**Status:** PR **#73** for issue **#69**, rebased onto `origin/main` `0db39c0` (#77 after #76/#74). Do not auto-close #69. Cost/frequency refactor only. #15 / #17 / #18 production-readiness commands stay reachable.  
 **Not audited. Not mainnet.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Visibility was NOT changed.**
-
-Founder (Davis): Support purge/GC of pre-rewrite dangling SHAs is **not required**. Residual old-SHA exposure is accepted.
 
 ## This HEAD
 
@@ -13,24 +11,49 @@ Founder (Davis): Support purge/GC of pre-rewrite dangling SHAs is **not required
 | --- | --- |
 | Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
-| Intent | Move Support purge/GC under accepted residuals / non-blocking. AC1 is email scrubbed from **advertised** refs only. |
-| Advertised-ref check | `main` `0bd9b82`, tag `v0.3.1`, 17 open PR tips (incl. this branch): no personal gmail/hotmail/icloud in tip author/committer/message or advertised history |
-| Secret scan | Last post-rewrite gitleaks/trufflehog: **0 live credentials**. Not re-run this pass (tools absent). GitHub secret-scanning API 403. |
-| Workflows | Unchanged vs #74: `contents: read` + `persist-credentials: false`. No `pull_request_target`. |
-| Docs | `/docs/publicization`, `AUDIT_HANDOFF.md`, `THREAT_MODEL.md`, changelog |
+| Intent | Eliminate duplicate feature-branch `push` + `pull_request` heavy jobs; concurrency cancel; three-tier fast / full / main; path-aware fail-safe; fewer VMs; exact-head auditability. |
+| Workflows | Single `.github/workflows/ci.yml`. Removed `docs-sync.yml` / `live-toasts.yml` / `keeper-lease-pg.yml` (jobs folded, commands kept). |
+| #74 / #76 / #77 harden kept | Workflow `permissions: contents: read`; every `actions/checkout` has `persist-credentials: false`; no `pull_request_target`. `scripts/ci-public-harden.test.ts` still in `test:lib`. |
+| Fast PR | `constants-version-deployments` = `pnpm test:lib` (units + cheap security + `docs:check` + `test:ci-cost` + `ci-public-harden`). Targeted Foundry when Solidity paths change. |
+| Full / main | Production Next + XSS (`web-production-security`), `live-toasts-ui`, full Foundry + Attack + CREATE2 + `size:guard`, Postgres `test:pg` + `test:pg-lease` + `pg-smoke`, `ci-ok` (skipped ≠ pass). |
+| Docs | `/docs/ci` before/after inventory. `TESTING.md`, `CONTRIBUTING.md`, `AUDIT_HANDOFF.md`. |
 | Mainnet | **Blocked** |
-| Close #72 | **No** |
+
+## Closed this run (#69 ACs — issue stays open)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| No duplicate heavy push+PR for the same feature-branch SHA | **Yes** | Feature-branch `push` omitted. `scripts/ci-cost.test.ts` forbids a bare `push:`. |
+| Superseded PR runs cancel | **Yes** | `concurrency` group per PR; `cancel-in-progress` true except `refs/heads/main`. |
+| Cheap PR gate still catches compile/unit/docs/security | **Yes** | `pnpm test:lib` on every PR update. |
+| Full suite on exact merge-candidate SHA | **Yes** | Non-draft / `ci-full` / `workflow_dispatch`. Checkout `head.sha`. |
+| One main post-merge path | **Yes** | `push: branches: [main]`, concurrency keyed by SHA. |
+| Docs-only does not launch heavy matrices | **Yes** | `scripts/ci-paths.sh`; full tier ignores filters. |
+| Required jobs cannot succeed without commands | **Yes** | No `continue-on-error`. `ci-ok` requires `success`, not `skipped`. |
+| #35–#41 / #51 / #60 tests unchanged in substance | **Yes** | Same pnpm/forge commands. Slots documented for sibling PRs. |
+| Before/after inventory | **Yes** | `/docs/ci` — typical agent rebase 10 jobs → 1–2 jobs. |
+| #74 / #77 public-fork harden survives the fold | **Yes** | `persist-credentials: false` on every checkout; `ci-public-harden.test.ts` green. |
 
 ---
 
-# Prior — History rewrite to noreply + prune (Refs #72)
+# Prior — Founder residual decision for #72 (advertised-ref AC1)
 
-**Status:** Follow-up to merged **#74**. Issue **#72 stays open** until founder AC verify (visibility flip is still a founder gate). Do not `Fixes #72`.  
+**Status:** Merged **#77** (`0db39c0`) on `origin/main`. Issue **#72 stays open**. Do not `Fixes #72`.  
+**Not audited. Not mainnet.**  
+**Visibility was NOT changed.**
+
+Founder (Davis): Support purge/GC of pre-rewrite dangling SHAs is **not required**. Residual old-SHA exposure is accepted. AC1 is email scrubbed from **advertised** refs only.
+
+---
+
+# Prior — History rewrite to noreply + prune (Refs #72 / #76)
+
+**Status:** Merged **#76** (`0bd9b82`) after **#74**. Issue **#72 stays open** until founder AC verify (visibility flip is still a founder gate). Do not `Fixes #72`.  
 **Not audited. Not mainnet.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Visibility was NOT changed. History WAS rewritten (founder-authorized).**
 
-## This HEAD
+## That HEAD
 
 | Item | Value |
 | --- | --- |
@@ -81,7 +104,7 @@ Founder (Davis): Support purge/GC of pre-rewrite dangling SHAs is **not required
 | Invariant test | `scripts/ci-public-harden.test.ts` inside `pnpm test:lib` |
 | Docs | `/docs/publicization` + nav, policy, trust, FAQ, glossary, CONTRIBUTING, TESTING, THREAT_MODEL, AUDIT_HANDOFF |
 | Mainnet | **Blocked** |
-| #69 | Open PR #73. Hardening is additive and must survive the `ci.yml` fold. |
+| #69 | This PR (#73) now folds those files into `ci.yml` and keeps the harden. |
 
 ---
 
@@ -148,7 +171,7 @@ Founder (Davis): Support purge/GC of pre-rewrite dangling SHAs is **not required
 | Reconnect without loss/dup/history storm | **Yes** | Cutoff never raised. `?after=` / `Last-Event-ID`. `live-toasts.test.ts` + Playwright |
 | Hover/focus pause + safe-area + reduced-motion | **Yes** | Clock helpers + `e2e/live-toasts.spec.ts` |
 | CORE / Top-10 only | **Yes** | Not SelfBurn, not epoch, not holder burn, not mempool |
-| Visible CI/release gate | **Yes** | `.github/workflows/live-toasts.yml` job `live-toasts-ui` |
+| Visible CI/release gate | **Yes** | `.github/workflows/ci.yml` job `live-toasts-ui` (full/main) |
 | Docs | **Yes** | `/docs/events`, `/docs/traders`, `/docs/core`, `/docs/top-10`, `/docs/api`, `UX_REFERENCE.md` |
 | Tokenomics / Factory | **Unchanged** | No contract edits |
 | Close #38 | **No** | Stays open until `live-toasts-ui` is green on main and post-merge verify. Do not `Fixes #38`. |

@@ -1,11 +1,11 @@
 /**
  * SQLite single-Store unit tests (fast, no Postgres).
  * Production two-worker / failover proof is `keeper.lease.pg.test.ts`
- * (`pnpm --filter indexer test:pg-lease`, CI `postgres-ms-timestamps` + `keeper-lease-pg`).
+ * (`pnpm --filter indexer test:pg-lease`, CI `postgres-ms-timestamps` on full/main).
  *
  * TTL / renew / steal cases use an injected lease clock (`lease-clock.fake.ts`) so
  * CI load cannot miss a `setInterval` renew and fail
- * "renewed leader still holds after work > TTL" (docs-sync after #47).
+ * "renewed leader still holds after work > TTL" (CI after #47).
  */
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
