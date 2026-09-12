@@ -10,7 +10,7 @@ Indexer watches Factory, InstantLaunchModule, hook, curve, vaults, PoolManager, 
 | `OfficialPoolCreated` / `GraduationCompleted` | Official pool UPSERT + `OFFICIAL_REACTOR_V4` venue |
 | `CurveBuy` / `CurveSell` / `SwapFeeAccrued` / `Swap` | Trades + candles + 24h incremental roll |
 | `RewardClaimed` / `SelfBurn*` / `Top10Buy` / `Flywheel*` / `BuybackExecuted` / `COREBurned` | Attribution side tables. They do **not** subtract supply a second time |
-| `Burned` / `Transfer` to zero | Public `burn()`. Fetched **after** `TokenCreated` upserts. Canonical `(chain_id, tx, log_index, event_kind)` — Transfer and Burned are two logs |
+| `Burned` / `Transfer` to zero | Public `burn()`. RPC fetch uses already-indexed tokens plus `TokenCreated` addresses from this window (same-window `burn()` is not missed). Writes share the `persistTickBatch` transaction with the cursor. Canonical `(chain_id, tx, log_index, event_kind)` — Transfer and Burned are two logs |
 | Tick `totalSupply()` | Bounded reconcile even when at head (CORE + recently burned + newly created + rotating page). Corrects missed / same-tx burns. `current_supply` tracks this; not a live ≡ |
 
 ## Idempotence
@@ -28,7 +28,7 @@ Any other error **aborts the tick**. The indexer does not swallow “looks like 
 
 ## Atomic persist
 
-`tick()` fetches logs, block timestamps, and the head hash **first** (RPC). Then **one** Store transaction writes every log-derived row in that range **and** advances `indexer_state` (`block` + `block_hash`). Mid-tick crash or a later write failure rolls **both** back. Reorg rewind of `block` + `block_hash` is the same (`rewindIndexerCursor`).
+`tick()` fetches protocol logs **and** token `Burned` / `Transfer` to zero, block timestamps, and the head hash **first** (RPC). Then **one** Store transaction writes every log-derived row in that range — including burn journal / `current_supply` writes — **and** advances `indexer_state` (`block` + `block_hash`). There is no second transaction after the cursor. Mid-tick crash or a later write failure rolls **both** back. Restart from `cursor + 1` cannot skip those burn rows. Reorg rewind of `block` + `block_hash` is the same (`rewindIndexerCursor`).
 
 Postgres statement failures inside that transaction use a `SAVEPOINT`; on failure the savepoint is `ROLLBACK TO` **and** `RELEASE` so caught `23505` does not accumulate nested savepoint state. Prefer `ON CONFLICT DO NOTHING` on the log identity. SQLite uses `BEGIN IMMEDIATE`. SSE publishes **after** commit. Full-market 24h roll and `populateExternalPriceMarks` run **after** commit (incremental rolls stay inside). Proof: `tick-atomic.test.ts` (SQLite + Postgres) and `pg-smoke.ts`.
 

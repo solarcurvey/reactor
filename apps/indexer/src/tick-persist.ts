@@ -1,9 +1,10 @@
 /**
- * Atomic indexer persist: every log-derived write in a tick shares one
- * transaction with cursor advancement (`indexer_state.block` + `block_hash`).
+ * Atomic indexer persist: every log-derived write in a tick — protocol events
+ * **and** token `Burned` / `Transfer` to zero — shares one transaction with
+ * cursor advancement (`indexer_state.block` + `block_hash`).
  *
  * RPC (getLogs, timestamps, head hash) stays outside. SSE publishes after commit.
- * Full-market roll + external marks run after commit; incremental 24h rolls stay inside.
+ * Full-market roll and external marks run after commit; incremental 24h rolls stay inside.
  */
 import type { Store } from "./db.ts";
 import {
@@ -43,6 +44,8 @@ export type TickSseEvent = { type: string; data: unknown };
 
 export type TickPersistInput = {
   logs: TickLog[];
+  /** Token-level `Burned` / `Transfer` to zero. Same transaction as `logs` + cursor. */
+  burnLogs?: TickLog[];
   timestamps: Map<number, number>;
   cursorBlock: string;
   cursorHash: string;
@@ -71,6 +74,12 @@ export async function persistTickBatch(store: Store, input: TickPersistInput): P
     for (const log of input.logs) {
       await persistOneLog(tx, log, input.timestamps, { ...input.ctx, tokenByPool }, lastSqrt, sse);
     }
+    // TokenCreated upserts land first so a same-window public burn() can write.
+    await writeTokenBurnLogs(
+      tx,
+      { logs: input.burnLogs ?? [], timestamps: input.timestamps, chainId: input.ctx.chainId },
+      sse,
+    );
     await setState(tx, "block", input.cursorBlock);
     await setState(tx, "block_hash", input.cursorHash);
   });
@@ -388,39 +397,49 @@ async function persistOneLog(
 
 const ZERO = "0x0000000000000000000000000000000000000000";
 
-/** Token-level `Burned` / `Transfer` to zero after TokenCreated upserts. Canonical identity. */
+async function writeTokenBurnLogs(
+  store: Store,
+  input: { logs: TickLog[]; timestamps: Map<number, number>; chainId: number },
+  sse: SsePublisher,
+): Promise<string[]> {
+  const burned = new Set<string>();
+  for (const log of input.logs) {
+    const name = log.eventName ?? "";
+    const args = (log.args ?? {}) as Record<string, unknown>;
+    const tokenAddr = normalizeEventAddress(log.address);
+    const to = String(args.to ?? "").toLowerCase();
+    const isBurn = name === "Burned" || (name === "Transfer" && to === ZERO);
+    if (!isBurn || !tokenAddr) continue;
+    const block = Number(log.blockNumber);
+    const ts = input.timestamps.get(block) ?? 0;
+    const applied = await applyTokenLevelBurn(store, {
+      token: tokenAddr,
+      burned: String(args.amount ?? "0"),
+      account: String(args.account ?? args.from ?? ""),
+      block,
+      tx: log.transactionHash,
+      ts,
+      chainId: input.chainId,
+      logIndex: Number(log.logIndex ?? 0),
+      eventKind: name,
+    });
+    if (applied) {
+      burned.add(tokenAddr);
+      sse.publish({ type: "burn", data: { token: tokenAddr, name, tx: log.transactionHash } });
+    }
+  }
+  return [...burned];
+}
+
+/**
+ * Standalone burn persist (tests / replay). Tick ingest must pass `burnLogs`
+ * into `persistTickBatch` so journal rows and the cursor share one transaction.
+ */
 export async function persistTokenBurnLogs(
   store: Store,
   input: { logs: TickLog[]; timestamps: Map<number, number>; chainId: number },
 ): Promise<{ events: TickSseEvent[]; burned: string[] }> {
   const sse = new CollectingSse();
-  const burned = new Set<string>();
-  await store.transaction(async (tx) => {
-    for (const log of input.logs) {
-      const name = log.eventName ?? "";
-      const args = (log.args ?? {}) as Record<string, unknown>;
-      const tokenAddr = normalizeEventAddress(log.address);
-      const to = String(args.to ?? "").toLowerCase();
-      const isBurn = name === "Burned" || (name === "Transfer" && to === ZERO);
-      if (!isBurn || !tokenAddr) continue;
-      const block = Number(log.blockNumber);
-      const ts = input.timestamps.get(block) ?? 0;
-      const applied = await applyTokenLevelBurn(tx, {
-        token: tokenAddr,
-        burned: String(args.amount ?? "0"),
-        account: String(args.account ?? args.from ?? ""),
-        block,
-        tx: log.transactionHash,
-        ts,
-        chainId: input.chainId,
-        logIndex: Number(log.logIndex ?? 0),
-        eventKind: name,
-      });
-      if (applied) {
-        burned.add(tokenAddr);
-        sse.publish({ type: "burn", data: { token: tokenAddr, name, tx: log.transactionHash } });
-      }
-    }
-  });
-  return { events: sse.events, burned: [...burned] };
+  const burned = await store.transaction(async (tx) => writeTokenBurnLogs(tx, input, sse));
+  return { events: sse.events, burned };
 }

@@ -17,7 +17,7 @@ import { listMarkets } from "./markets-query.ts";
 import { raiseAlert, recentAlerts } from "./alerts.ts";
 import type { ValuationService } from "../../../packages/reactor/src/valuation.ts";
 import { consensusUsd6, StaticProvider } from "../../../packages/reactor/src/pricing.ts";
-import { persistTickBatch, persistTokenBurnLogs, rewindIndexerCursor } from "./tick-persist.ts";
+import { persistTickBatch, rewindIndexerCursor } from "./tick-persist.ts";
 import { admit, tryNormalizeTicker } from "./admission.ts";
 import { authorizeLaunch } from "./authorize.ts";
 import { isReservedTicker, RESERVED_TICKERS } from "../../../packages/reactor/src/ticker.ts";
@@ -157,10 +157,29 @@ async function tick(store: Store) {
     const timestamps = new Map<number, number>();
     const needed = new Set<number>([Number(to)]);
     for (const log of logs) needed.add(Number(log.blockNumber));
+    // Watch already-indexed tokens plus TokenCreated in this window so a
+    // same-window public burn() is fetched. RPC stays outside persistTickBatch;
+    // journal/supply writes share that transaction with the cursor.
+    const knownTokens = await store.all<{ address: string }>("SELECT address FROM tokens");
+    const burnWatch = [
+      ...new Set([...knownTokens.map((r) => r.address.toLowerCase()), ...createdThisTick, coreAddr].filter(Boolean)),
+    ] as `0x${string}`[];
+    const tokenBurnLogs = burnWatch.length
+      ? await client.getLogs({ address: burnWatch, events: TOKEN_BURN_EVENTS, fromBlock: from, toBlock: to })
+      : [];
+    for (const log of tokenBurnLogs) needed.add(Number(log.blockNumber));
     for (const n of needed) timestamps.set(n, await chainTs(BigInt(n)));
     const headBlk = await client.getBlock({ blockNumber: to });
     const published = await persistTickBatch(store, {
       logs: logs.map((log) => ({
+        eventName: log.eventName,
+        args: (log.args ?? {}) as Record<string, unknown>,
+        address: log.address,
+        blockNumber: log.blockNumber,
+        transactionHash: log.transactionHash,
+        logIndex: log.logIndex,
+      })),
+      burnLogs: tokenBurnLogs.map((log) => ({
         eventName: log.eventName,
         args: (log.args ?? {}) as Record<string, unknown>,
         address: log.address,
@@ -181,31 +200,13 @@ async function tick(store: Store) {
         quoteDec,
       },
     });
-    for (const ev of published) sse.publish(ev);
-    // After TokenCreated upserts so a same-window public burn() is not missed.
-    const knownTokens = await store.all<{ address: string }>("SELECT address FROM tokens");
-    const burnWatch = [...new Set([...knownTokens.map((r) => r.address.toLowerCase()), coreAddr].filter(Boolean))] as `0x${string}`[];
-    const tokenBurnLogs = burnWatch.length
-      ? await client.getLogs({ address: burnWatch, events: TOKEN_BURN_EVENTS, fromBlock: from, toBlock: to })
-      : [];
-    for (const log of tokenBurnLogs) needed.add(Number(log.blockNumber));
-    for (const n of needed) {
-      if (!timestamps.has(n)) timestamps.set(n, await chainTs(BigInt(n)));
+    for (const ev of published) {
+      sse.publish(ev);
+      if (ev.type === "burn") {
+        const token = String((ev.data as { token?: string } | undefined)?.token ?? "").toLowerCase();
+        if (token) burnedThisTick.add(token);
+      }
     }
-    const burns = await persistTokenBurnLogs(store, {
-      logs: tokenBurnLogs.map((log) => ({
-        eventName: log.eventName,
-        args: (log.args ?? {}) as Record<string, unknown>,
-        address: log.address,
-        blockNumber: log.blockNumber,
-        transactionHash: log.transactionHash,
-        logIndex: log.logIndex,
-      })),
-      timestamps,
-      chainId: deployment.chainId,
-    });
-    for (const ev of burns.events) sse.publish(ev);
-    for (const addr of burns.burned) burnedThisTick.add(addr);
     await populateExternalPriceMarks(store).catch(() => undefined);
   }
   const cursor = (await getState(store, "supply_reconcile_cursor")) ?? "";
