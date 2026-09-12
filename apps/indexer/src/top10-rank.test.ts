@@ -6,12 +6,18 @@ import { applyOnchainTotalSupply, applyTokenLevelBurn, upsertMarket, upsertToken
 import {
   computeTop10Epoch,
   persistTop10Epoch,
+  persistPausedTop10,
   readTop10Epoch,
   refreshTop10Epoch,
+  resolveTop10Serve,
   failClosedTop10,
   TOP10_SOURCE,
 } from "./top10-rank.ts";
-import { MARK_WINDOW_SEC, TOP10_FLOOR_USDC } from "../../../packages/reactor/src/top10.ts";
+import {
+  TOP10_FLOOR_USDC,
+  TOP10_SNAPSHOT_TTL_SEC,
+  acceptTop10Snapshot,
+} from "../../../packages/reactor/src/top10.ts";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -26,6 +32,9 @@ const ZCAT = "0x0000000000000000000000000000000000000c01";
 const STALE = "0x0000000000000000000000000000000000000b03";
 const BOND = "0x0000000000000000000000000000000000000b04";
 const RIVAL = "0x0000000000000000000000000000000000000b05";
+const LIQ = "0x0000000000000000000000000000000000000b06";
+const DUST = "0x0000000000000000000000000000000000000b07";
+const NOSUP = "0x0000000000000000000000000000000000000b08";
 
 const SUPPLY = 1_000_000_000n * 10n ** 18n;
 /** $0.0004 / token → $400k FDV on 1B. */
@@ -123,6 +132,38 @@ await persistTop10Epoch(store, first);
 const readBack = await readTop10Epoch(store);
 assert(readBack?.rows.length === first.rows.length, "persisted snapshot matches compute");
 assert(JSON.stringify(readBack?.rows) === JSON.stringify(first.rows), "canonical payload identical");
+assert(first.computedTs === now, "computedTs is the ranking clock, not a second wall clock");
+
+{
+  const servedFresh = await resolveTop10Serve({
+    persisted: first,
+    nowSec: now + 30,
+    refresh: async () => {
+      throw new Error("fresh snapshot must not refresh");
+    },
+  });
+  assert(!servedFresh.pauseEpoch && servedFresh.rows.length === first.rows.length, "fresh snapshot served as-is");
+  assert(acceptTop10Snapshot(servedFresh, now + 30).ok, "Keeper accepts a fresh healthy snapshot");
+
+  const aged = now + TOP10_SNAPSHOT_TTL_SEC + 1;
+  const servedStale = await resolveTop10Serve({
+    persisted: first,
+    nowSec: aged,
+    refresh: async () => {
+      throw new Error("ranker stalled");
+    },
+  });
+  assert(servedStale.pauseEpoch && servedStale.rows.length === 0, "stale snapshot + failed refresh pauses API");
+  assert(servedStale.reason.includes("TTL"), `TTL pause reason: ${servedStale.reason}`);
+  assert(!acceptTop10Snapshot(servedStale, aged).ok, "Keeper refuses the paused serve");
+  assert(!acceptTop10Snapshot(first, aged).ok, "Keeper refuses the raw stale healthy payload");
+  assert(acceptTop10Snapshot(first, now).ok, "same payload is acceptable while inside TTL");
+
+  await persistPausedTop10(store, "ranker stalled", aged);
+  const afterFail = await readTop10Epoch(store);
+  assert(afterFail?.pauseEpoch && afterFail.rows.length === 0, "tick persist-on-fail replaces the healthy snapshot");
+  await persistTop10Epoch(store, first);
+}
 
 await seedMarket(store, RIVAL, "RIVAL", USDC, true);
 await seedWindowTrades(store, RIVAL, USDC, PX_350K);
@@ -219,6 +260,68 @@ assert(paused.rows.length === 0, "pause returns no guessed ranks");
 const closed = failClosedTop10("indexer down");
 assert(closed.pauseEpoch && closed.rows.length === 0, "fail-closed payload");
 
+{
+  const liqDir = mkdtempSync(join(tmpdir(), "reactor-top10-liq-"));
+  const liqStore = await openStore({ sqlitePath: join(liqDir, "l.sqlite") });
+  await seedQuote(liqStore, USDC, "USDC", 6, true);
+  await seedMarket(liqStore, BIG, "BIG", USDC, true);
+  await seedWindowTrades(liqStore, BIG, USDC, PX_400K);
+  await seedMarket(liqStore, LIQ, "LIQ", USDC, true);
+  await liqStore.run(
+    "INSERT INTO graduations(token,pool_id,quote_lp,token_lp,block,tx,ts) VALUES(?,?,?,?,?,?,?)",
+    LIQ.toLowerCase(),
+    "0xliq",
+    (60_000n * 1_000_000n).toString(),
+    "0",
+    1,
+    "0xgradliq",
+    now,
+  );
+  const liqPaused = await computeTop10Epoch(liqStore, { coreAddresses: [CORE], nowSec: now });
+  assert(liqPaused.pauseEpoch, `unvalued + indexed quote_lp ≥ floor/5 must pause: ${liqPaused.reason}`);
+  assert(liqPaused.rows.length === 0, "liquidity-arm pause returns no guessed ranks");
+
+  await liqStore.run("DELETE FROM graduations WHERE token=?", LIQ.toLowerCase());
+  await seedMarket(liqStore, DUST, "DUST", USDC, true);
+  await liqStore.run(
+    "INSERT INTO graduations(token,pool_id,quote_lp,token_lp,block,tx,ts) VALUES(?,?,?,?,?,?,?)",
+    DUST.toLowerCase(),
+    "0xdust",
+    (1_000n * 1_000_000n).toString(),
+    "0",
+    2,
+    "0xgraddust",
+    now,
+  );
+  const dustOk = await computeTop10Epoch(liqStore, { coreAddresses: [CORE], nowSec: now });
+  assert(!dustOk.pauseEpoch, `immaterial indexed liquidity must not freeze: ${dustOk.reason}`);
+  assert(dustOk.rows.some((r) => r.token === BIG.toLowerCase()), "valued graduate still ranks");
+  await liqStore.close();
+  rmSync(liqDir, { recursive: true, force: true });
+}
+
+{
+  const supDir = mkdtempSync(join(tmpdir(), "reactor-top10-sup-"));
+  const supStore = await openStore({ sqlitePath: join(supDir, "s.sqlite") });
+  await seedQuote(supStore, USDC, "USDC", 6, true);
+  await seedMarket(supStore, BIG, "BIG", USDC, true);
+  await seedWindowTrades(supStore, BIG, USDC, PX_400K);
+  await seedMarket(supStore, NOSUP, "NOSUP", USDC, true);
+  await seedWindowTrades(supStore, NOSUP, USDC, PX_400K);
+  await supStore.run("UPDATE tokens SET current_supply='' WHERE address=?", NOSUP.toLowerCase());
+  const minted = await supStore.get<{ supply: string; current_supply: string }>(
+    "SELECT supply, current_supply FROM tokens WHERE address=?",
+    NOSUP.toLowerCase(),
+  );
+  assert(minted?.supply === SUPPLY.toString() && (minted.current_supply === "" || minted.current_supply == null), "mint remains, current_supply cleared");
+  const noSup = await computeTop10Epoch(supStore, { coreAddresses: [CORE], nowSec: now });
+  assert(noSup.pauseEpoch, `missing current_supply must fail closed, not mint fallback: ${noSup.reason}`);
+  assert(noSup.reason.includes("current_supply"), `reason names current_supply: ${noSup.reason}`);
+  assert(noSup.rows.length === 0, "no mint-supply ranks");
+  await supStore.close();
+  rmSync(supDir, { recursive: true, force: true });
+}
+
 const scaleDir = mkdtempSync(join(tmpdir(), "reactor-top10-scale-"));
 const scale = await openStore({ sqlitePath: join(scaleDir, "s.sqlite") });
 await seedQuote(scale, USDC, "USDC", 6, true);
@@ -266,8 +369,19 @@ assert(!marketdataSrc.includes("allTokensLength"), "web marketdata no longer enu
 
 const rankSrc = readFileSync(new URL("./top10-rank.ts", import.meta.url), "utf8");
 assert(rankSrc.includes("current_supply"), "ranker reads persisted current_supply");
+assert(!rankSrc.includes("NULLIF(t.current_supply,''), t.supply"), "no mint-supply fallback after schema v9");
+assert(!rankSrc.includes("lastGoodMarkUsdc / 5"), "no synthetic lastGood/5 liquidity");
+assert(rankSrc.includes("quote_lp"), "liquidity comes from indexed graduation quote_lp");
+assert(rankSrc.includes("resolveTop10Serve"), "API serve path is the shared TTL helper");
 assert(!rankSrc.includes("kind IN ('SelfBurnExecuted'"), "ranker must not sum protocol SelfBurn/Top10Buy");
 assert(!rankSrc.includes("loadBurnedByToken"), "ranker must not load protocol-burn sums");
+
+const indexSrc = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
+assert(indexSrc.includes("resolveTop10Serve"), "GET /top10 uses snapshot TTL");
+assert(indexSrc.includes("persistPausedTop10"), "tick persist-on-fail replaces stale healthy");
+
+const keeperSrc = readFileSync(new URL("./keeper.ts", import.meta.url), "utf8");
+assert(keeperSrc.includes("acceptTop10Snapshot"), "Keeper shares snapshot TTL with API");
 
 await store.close();
 await scale.close();

@@ -42,7 +42,7 @@ The 3.5% split, Standard vs Rewards, curve constants, Dev Buy cap (5%), 1B suppl
 
 ## Top-10 TRUST ASSUMPTION
 
-**#1 — Top-10 membership is an offchain API.** Indexer `GET /top10` ranks from ValuationService + persisted `current_supply`. Contracts check structure (length, weights, CORE exclusion) only. They do not compute ranks. A compromised indexer or Keeper can submit a legal-looking epoch that is economically wrong. Treat ranks as **trusted computation**, not an oracle.
+**#1 — Top-10 membership is an offchain API.** Indexer `GET /top10` ranks from ValuationService + persisted `current_supply`. Snapshots older than 15 minutes are not served or submitted. Contracts check structure (length, weights, CORE exclusion) only. They do not compute ranks. A compromised indexer or Keeper can submit a legal-looking epoch that is economically wrong. Treat ranks as **trusted computation**, not an oracle.
 
 See [Trust](/docs/trust) for the rest of the top 10.
 

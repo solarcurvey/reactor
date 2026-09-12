@@ -7,9 +7,14 @@
 import {
   MARK_WINDOW_SEC,
   TOP10_FLOOR_USDC,
+  TOP10_SNAPSHOT_TTL_SEC,
+  acceptTop10Snapshot,
   isCoreToken,
+  isSnapshotFresh,
   lastGoodPriceQuoteX18,
   rankTop10,
+  snapshotAgeSec,
+  staleSnapshotReason,
   vwapPriceQuoteX18,
   type PriceSample,
   type RankCandidate,
@@ -44,6 +49,8 @@ export type Top10RankOpts = {
   floorUsdc?: bigint;
 };
 
+export { TOP10_SNAPSHOT_TTL_SEC, acceptTop10Snapshot, isSnapshotFresh, staleSnapshotReason };
+
 function asBigInt(v: unknown): bigint {
   try {
     const s = String(v ?? "0").split(".")[0] ?? "0";
@@ -77,10 +84,12 @@ export async function loadGraduatedMarkets(store: Store): Promise<
     symbol: string;
     ticker: string;
     circulating: bigint;
+    supplyKnown: boolean;
     decimals: number;
     quoteDecimals: number;
     priceQuoteX18: bigint;
     fdvUsd6: bigint;
+    liquidityQuote: bigint;
   }>
 > {
   const rows = await store.all<{
@@ -88,35 +97,44 @@ export async function loadGraduatedMarkets(store: Store): Promise<
     quote: string;
     symbol: string;
     ticker: string;
-    circulating: string;
+    circulating: string | null;
     decimals: number;
     quote_decimals: number;
     price_quote_x18: string;
     fdv_usd6: string;
+    liquidity_quote: string;
   }>(
     `SELECT m.token, m.quote, m.price_quote_x18, m.fdv_usd6,
             COALESCE(t.symbol,'') as symbol, COALESCE(t.ticker,'') as ticker,
-            COALESCE(NULLIF(t.current_supply,''), t.supply, '0') as circulating,
+            t.current_supply as circulating,
             COALESCE(t.decimals,18) as decimals,
-            COALESCE(q.decimals,6) as quote_decimals
+            COALESCE(q.decimals,6) as quote_decimals,
+            COALESCE(NULLIF(g.quote_lp,''), NULLIF(m.real_quote,''), '0') as liquidity_quote
      FROM markets m
      LEFT JOIN tokens t ON t.address = m.token
      LEFT JOIN quote_assets q ON q.token = m.quote
+     LEFT JOIN graduations g ON g.token = m.token
      WHERE m.market_live = 1
         OR m.stage = 'v4'
-        OR EXISTS (SELECT 1 FROM graduations g WHERE g.token = m.token)`,
+        OR EXISTS (SELECT 1 FROM graduations g2 WHERE g2.token = m.token)`,
   );
-  return rows.map((r) => ({
-    token: r.token.toLowerCase(),
-    quote: (r.quote ?? "").toLowerCase(),
-    symbol: r.symbol || r.token.slice(0, 6),
-    ticker: (r.ticker ?? "").toUpperCase(),
-    circulating: asBigInt(r.circulating),
-    decimals: Number(r.decimals ?? 18),
-    quoteDecimals: Number(r.quote_decimals ?? 6),
-    priceQuoteX18: asBigInt(r.price_quote_x18),
-    fdvUsd6: asBigInt(r.fdv_usd6),
-  }));
+  return rows.map((r) => {
+    const raw = r.circulating;
+    const supplyKnown = raw != null && String(raw).trim() !== "";
+    return {
+      token: r.token.toLowerCase(),
+      quote: (r.quote ?? "").toLowerCase(),
+      symbol: r.symbol || r.token.slice(0, 6),
+      ticker: (r.ticker ?? "").toUpperCase(),
+      circulating: supplyKnown ? asBigInt(raw) : 0n,
+      supplyKnown,
+      decimals: Number(r.decimals ?? 18),
+      quoteDecimals: Number(r.quote_decimals ?? 6),
+      priceQuoteX18: asBigInt(r.price_quote_x18),
+      fdvUsd6: asBigInt(r.fdv_usd6),
+      liquidityQuote: asBigInt(r.liquidity_quote),
+    };
+  });
 }
 
 export async function loadPriorRanked(store: Store): Promise<Set<string>> {
@@ -132,7 +150,7 @@ export async function loadPriorRanked(store: Store): Promise<Set<string>> {
 export async function computeTop10Epoch(store: Store, opts: Top10RankOpts): Promise<Top10EpochPayload> {
   const nowSec = opts.nowSec ?? Math.floor(Date.now() / 1000);
   const floorUsdc = opts.floorUsdc ?? TOP10_FLOOR_USDC;
-  const computedTs = Math.floor(Date.now() / 1000);
+  const computedTs = nowSec;
   const markets = await loadGraduatedMarkets(store);
   const prior = await loadPriorRanked(store);
   const windowFrom = nowSec - MARK_WINDOW_SEC;
@@ -157,6 +175,17 @@ export async function computeTop10Epoch(store: Store, opts: Top10RankOpts): Prom
   const histByToken = groupSamples(histRows);
   const svc = await loadValuationService(store);
 
+  const missingSupply = markets.some((m) => {
+    const core = isCoreToken(m.token, opts.coreAddresses) || m.ticker === "CORE" || m.symbol.toUpperCase() === "CORE";
+    return !core && !m.supplyKnown;
+  });
+  if (missingSupply) {
+    return failClosedTop10(
+      "current_supply missing after schema v9 — pause epoch, never mint-supply fallback",
+      nowSec,
+    );
+  }
+
   const cands: RankCandidate[] = [];
   for (const m of markets) {
     const core = isCoreToken(m.token, opts.coreAddresses) || m.ticker === "CORE" || m.symbol.toUpperCase() === "CORE";
@@ -172,6 +201,10 @@ export async function computeTop10Epoch(store: Store, opts: Top10RankOpts): Prom
       : 0n;
     const lastGoodPx = lastGoodPriceQuoteX18(hist, nowSec);
     const lastGoodMarkUsdc = toUsdc(lastGoodPx) || (quoteVal.ok ? m.fdvUsd6 : 0n);
+    const liquidityUsdc =
+      quoteVal.ok && m.liquidityQuote > 0n
+        ? (m.liquidityQuote * quoteVal.usd6) / 10n ** BigInt(m.quoteDecimals)
+        : 0n;
     let markUsdc = 0n;
     let markOk = false;
     if (!core && quoteVal.ok && vwap.ok) {
@@ -188,7 +221,7 @@ export async function computeTop10Epoch(store: Store, opts: Top10RankOpts): Prom
       markOk,
       lastGoodMarkUsdc,
       tradeCount: window.length + hist.length,
-      liquidityUsdc: lastGoodMarkUsdc > 0n ? lastGoodMarkUsdc / 5n : 0n,
+      liquidityUsdc,
       windowVolumeUsdc,
       priorRanked: prior.has(m.token),
     });
@@ -269,11 +302,43 @@ export async function refreshTop10Epoch(store: Store, opts: Top10RankOpts): Prom
   return payload;
 }
 
+/** Persist a paused snapshot when refresh throws so GET /top10 cannot keep serving the last healthy payload. */
+export async function persistPausedTop10(store: Store, reason: string, nowSec?: number): Promise<Top10EpochPayload> {
+  const payload = failClosedTop10(reason, nowSec);
+  await persistTop10Epoch(store, payload);
+  return payload;
+}
+
+/**
+ * GET /top10 serve path. Fresh persisted snapshots are returned as-is.
+ * Stale or missing snapshots refresh; a failed refresh pauses (never the old healthy payload).
+ */
+export async function resolveTop10Serve(args: {
+  persisted: Top10EpochPayload | undefined;
+  nowSec: number;
+  refresh: () => Promise<Top10EpochPayload>;
+}): Promise<Top10EpochPayload> {
+  if (args.persisted && isSnapshotFresh(args.persisted.computedTs, args.nowSec)) {
+    return args.persisted;
+  }
+  try {
+    return await args.refresh();
+  } catch (e) {
+    const age = args.persisted ? snapshotAgeSec(args.persisted.computedTs, args.nowSec) : Number.POSITIVE_INFINITY;
+    const reason = args.persisted
+      ? staleSnapshotReason(age)
+      : e instanceof Error
+        ? e.message
+        : "top10 refresh failed — epoch paused";
+    return failClosedTop10(reason, args.nowSec);
+  }
+}
+
 export function coreAddressesFromDeployment(addrs: Record<string, string | undefined>): string[] {
   return [addrs.CoreToken, addrs.TestCORE].filter((a): a is string => Boolean(a));
 }
 
-export function failClosedTop10(reason: string): Top10EpochPayload {
+export function failClosedTop10(reason: string, nowSec = Math.floor(Date.now() / 1000)): Top10EpochPayload {
   return {
     source: TOP10_SOURCE,
     pauseEpoch: true,
@@ -281,8 +346,8 @@ export function failClosedTop10(reason: string): Top10EpochPayload {
     rows: [],
     candidates: 0,
     floorUsdc: TOP10_FLOOR_USDC.toString(),
-    computedTs: Math.floor(Date.now() / 1000),
-    nowSec: Math.floor(Date.now() / 1000),
+    computedTs: nowSec,
+    nowSec,
     epochId: CURRENT_EPOCH_ID,
     trust: "Fail closed. Keeper must skip this epoch.",
   };

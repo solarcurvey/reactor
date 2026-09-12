@@ -39,6 +39,8 @@ Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33)
 
 - Schema **v11** persists official Top-10 candidates (`top10_candidate_epochs` / `top10_candidate_rows`) after merged #23 **v9** `tokens.current_supply` and #30 **v10** `external_price_marks.kind`. Ranking reads persisted `current_supply` (not minted − SelfBurn/Top10Buy), 12m VWAP, and ValuationService consensus ancestry.
 - Indexer `GET /top10` is the official snapshot. Web `/api/reactor/top10`, Keeper, and watchdog consume that path. `discoverTop10` Factory RPC walk and the assumed hookless 0.30% quote/USDC fallback are removed.
+- Snapshot TTL 15 minutes (`TOP10_SNAPSHOT_TTL_SEC`) is shared by API serve and Keeper. Age past TTL + failed refresh pauses; ingest tick persist-on-fail replaces the last healthy row. Refs #10.
+- Indexed liquidity is `graduations.quote_lp` / `markets.real_quote` (never `lastGoodMark / 5`). Unvalued + materially liquid pauses. Empty `current_supply` after schema v9 pauses — no mint-supply fallback. Refs #10.
 - Material stale or degraded quote USD pauses the epoch. Never guess a mark. CORE stays excluded. Contracts still check structure only.
 - Public JSON POSTs (`/quote`, `/launch/admit`, `/launch/authorize`) stream-cap request bodies at **16KiB** default / **64KiB** hard max (`JSON_BODY_LIMIT_BYTES`). Env cannot raise the cap past 64KiB. The cap applies to `Content-Length` and to chunked `Transfer-Encoding`. Oversize is **413**; the socket is destroyed so the process never buffers an unbounded JSON body.
 - The public Next BFF `POST /api/launch-pricing` applies the same cap before proxying. The isolated signer uses the same reader as defense in depth.

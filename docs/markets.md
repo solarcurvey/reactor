@@ -33,7 +33,9 @@ Bounded `limit` (default 200, max 500), `before_id` keyset.
 
 ## `GET /top10`
 
-Canonical Top-10 epoch candidates. Ranked from graduated markets, persisted `current_supply`, 12m VWAP, and ValuationService ancestry. Not a Factory RPC. Web `/api/reactor/top10` proxies this payload.
+Canonical Top-10 epoch candidates. Ranked from graduated markets, persisted `current_supply` (no mint-supply fallback after schema v9), 12m VWAP, indexed `quote_lp` / `real_quote` liquidity, and ValuationService ancestry. Not a Factory RPC.
+
+A persisted `current` snapshot is served only while `now − computedTs ≤ TOP10_SNAPSHOT_TTL_SEC` (15 minutes). Past that TTL the handler refreshes; a failed refresh returns `pauseEpoch` and empty rows — never the last healthy payload. Web `/api/reactor/top10` proxies this payload. Keeper uses the same TTL.
 
 ## Events
 

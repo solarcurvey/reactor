@@ -225,6 +225,7 @@ pnpm --filter indexer watchdog
 | 47 | Trade ticket does not sum nested fee amounts across quote tokens/decimals (ZEC-8 vs ZCAT-18) | `apps/web/src/lib/fee-legs.test.ts` |
 | 48 | `external_price_marks.kind` is schema v10 after #23 v9 `current_supply`; real v8→v10 and v9→v10 upgrades | `schema.test.ts`, `pg-ms-timestamps.test.ts` |
 | 49 | Top-10 ranks from indexer ValuationService snapshot (schema v11); no `discoverTop10` Factory RPC | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts`, `apps/web/src/lib/marketdata.test.ts` |
+| 50 | Top-10 snapshot TTL: healthy → age past 15m → refresh fails → API pauses and Keeper refuses; indexed `quote_lp` liquidity arm; no mint-supply fallback after v9 | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts` |
 
 ## Arc smoke
 

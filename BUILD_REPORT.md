@@ -1,3 +1,42 @@
+# BUILD REPORT — Top-10 fail-closed gaps after #33 (Refs #10)
+
+**Status:** Fresh branch off latest `origin/main` `0c30029` (PR **#33** merged). Issue **#10 stays open** — use `Refs #10`, do not auto-close.  
+**Not audited. Not mainnet.**  
+**Economics / 3.5% / curve / Keeper routing / Factory V1 constants: unchanged.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — Unreleased notes only |
+| Factory | **V1** — unchanged |
+| Intent | Close three post-#33 fail-closed gaps: snapshot TTL, indexed liquidity, no mint-supply fallback. |
+| Foundry | Unchanged this pass (offchain ranking / API / Keeper only). |
+| Indexer / lib | `top10-rank.test.ts` + `packages/reactor/src/top10.test.ts` cover TTL serve + Keeper refuse, `quote_lp` liquidity arm, empty `current_supply` pause. |
+| Review shots | **Not regenerated** (no UI chrome change) |
+| Mainnet | **Blocked** |
+
+## Closed this run (AUDIT BLOCKED on #10)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Stale snapshot serve | **Yes** | `resolveTop10Serve` + `TOP10_SNAPSHOT_TTL_SEC`. Fresh healthy → age past TTL → refresh throws → paused empty rows. Keeper `acceptTop10Snapshot` refuses the same payload. Tick `persistPausedTop10` replaces the last healthy row. |
+| Real liquidity materiality | **Yes** | `liquidityUsdc` from `graduations.quote_lp` / `markets.real_quote`. Source assert forbids `lastGoodMarkUsdc / 5`. Unvalued + ≥ floor/5 indexed LP pauses; dust LP does not. |
+| `current_supply` fail-closed | **Yes** | Ranker reads `t.current_supply` only. Empty after v9 pauses; mint `tokens.supply` is not a fallback. |
+| Docs | **Yes** | `docs/top-10.md`, `docs/markets.md`, `docs/api.md`, `docs/keeper.md`, `KEEPER_MODEL.md`, `AUDIT_HANDOFF.md`, `CHANGELOG.md` Unreleased. |
+
+## Still blocked (do not fake)
+
+| Blocker | Why |
+| --- | --- |
+| Public mainnet (5042) | Hard blocked. No addresses. |
+| Close #10 | Stays open until post-merge verify. Do not `Fixes #10`. |
+| Top-10 as onchain oracle | Frozen offchain by design. TTL is offchain policy. |
+
+---
+
+# Prior — merged #33 Top-10 ValuationService
+
 # BUILD REPORT — Top-10 ValuationService rebase onto post-#30 main
 
 **Status:** Same PR **#33** / same branch `cursor/top10-valuation-service-5a26`, rebased onto latest `origin/main` `80c3c20` (#30 consensus **v10** after #23 `current_supply` **v9**). Issue **#10 stays open** until merge + post-merge verify.  
