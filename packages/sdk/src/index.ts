@@ -22,6 +22,20 @@ export type ReactorClientOpts = {
 export class ReactorClient {
   constructor(private opts: ReactorClientOpts) {}
 
+  async operatorPolicyChallenge() {
+    const r = await fetch(`${this.opts.baseUrl}/operator-policy/challenge`);
+    return r.json();
+  }
+
+  async operatorPolicyStatus(proof?: { token: string; signature: string }) {
+    const headers: Record<string, string> = {};
+    if (proof?.token && proof?.signature) {
+      headers["x-reactor-wallet-proof"] = JSON.stringify({ token: proof.token, signature: proof.signature });
+    }
+    const r = await fetch(`${this.opts.baseUrl}/operator-policy/status`, { headers });
+    return r.json();
+  }
+
   async ticker(raw: string) {
     const r = await fetch(`${this.opts.baseUrl}/ticker/${encodeURIComponent(raw)}`);
     return r.json();

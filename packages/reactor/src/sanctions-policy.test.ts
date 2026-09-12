@@ -1,6 +1,8 @@
 import {
   evaluateOperatorPolicy,
   publicPolicyBody,
+  publicStatusView,
+  uxKindForReason,
   normalizeEvmAddress,
   USER_POLICY_MESSAGES,
   OPERATOR_POLICY_ID,
@@ -99,6 +101,19 @@ const unknownGeo: GeoPolicyResult = { decision: "UNKNOWN", reason: "UNKNOWN_MISS
   assert(body.disclaimer === OPERATOR_POLICY_DISCLAIMER, "disclaimer");
   assert(!JSON.stringify(body).includes("sdn"), "no SDN leak");
   assert(!JSON.stringify(body).includes("datasetVersion"), "no dataset internals");
+}
+
+{
+  const d = evaluateOperatorPolicy({ addressScreen: blocked, geo: allowGeo });
+  const status = publicStatusView(d);
+  assert(status.ok === false && status.writesAllowed === false, "status deny flags");
+  assert(status.kind === "wallet" && status.reason === "DENY_ADDRESS_BLOCKED", "status kind wallet");
+  assert(status.source === "indexer" && status.policy === OPERATOR_POLICY_ID, "status source");
+  assert(uxKindForReason("DENY_GEO_BLOCKED") === "geo", "geo kind");
+  assert(uxKindForReason("UNAVAILABLE_WALLET_MISSING") === "unavailable", "missing proof is unavailable kind");
+  assert(uxKindForReason("ALLOW") === "allow", "allow kind");
+  const leaked = JSON.stringify(status);
+  assert(!leaked.includes("addressScreen") && !leaked.includes("sdn"), "status has no internals");
 }
 
 {

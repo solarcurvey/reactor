@@ -21,6 +21,7 @@ import {
   evaluateOperatorPolicy,
   normalizeEvmAddress,
   publicPolicyBody,
+  publicStatusView,
   type AddressScreenResult,
   type GeoPolicyResult,
   type OperatorPolicyDecision,
@@ -35,6 +36,8 @@ import {
 export {
   evaluateOperatorPolicy,
   publicPolicyBody,
+  publicStatusView,
+  uxKindForReason,
   normalizeEvmAddress,
   OPERATOR_POLICY_ID,
   OPERATOR_POLICY_DISCLAIMER,
@@ -280,7 +283,7 @@ export function isPublicReadPath(method: string, pathname: string): boolean {
   if (m !== "GET" && m !== "HEAD") return false;
   const p = pathname.replace(/\/+$/, "") || "/";
   if (p === "/health" || p === "/markets" || p === "/quote-assets" || p === "/valuation" || p === "/top10") return true;
-  if (p === "/operator-policy/challenge") return true;
+  if (p === "/operator-policy/challenge" || p === "/operator-policy/status") return true;
   if (p === "/pricing/health" || p === "/stream" || p === "/events" || p === "/reactor" || p === "/keeper") return true;
   if (p.startsWith("/ticker/") || p.startsWith("/candles/") || p.startsWith("/swaps/") || p.startsWith("/m/")) return true;
   return false;
@@ -414,6 +417,23 @@ export async function gateProtectedWrite(input: {
     decision,
     ranDownstream: false,
   };
+}
+
+/**
+ * Public decision read for #65 / PR #75. Same `evaluateOperatorPolicy` as writes.
+ * Optional `x-reactor-wallet-proof` screens the recovered signer. Claimed wallet
+ * strings are ignored. Response is the minimized `publicStatusView` only.
+ */
+export async function readOperatorPolicyStatus(input: {
+  headers: HeaderMap;
+  env?: NodeJS.ProcessEnv;
+}): Promise<{ status: 200 | 403 | 503; body: Record<string, unknown> }> {
+  const gate = await gateProtectedWrite({
+    headers: input.headers,
+    env: input.env,
+    surface: "operator-policy.status",
+  });
+  return { status: gate.decision.httpStatus, body: publicStatusView(gate.decision) };
 }
 
 /**

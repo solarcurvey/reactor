@@ -1,6 +1,6 @@
 # BUILD REPORT — Operator policy gate (Refs #62)
 
-**Status:** Draft PR for independent re-audit. Issue **#62 stays open** until post-merge verify. Do not claim closed. Child of RELEASE GATE **#60**. Rebased onto combined `origin/main` `e712617` after squash-merged **#66** + **#67**. Address screen binds `#61` `indexerSanctionsStore().screen`. Trusted geo binds `#63` `evaluateRequestGeo`.
+**Status:** Draft PR for independent re-audit. Issue **#62 stays open** until post-merge verify. Do not claim closed. Child of RELEASE GATE **#60**. Rebased onto combined `origin/main` `e712617` after squash-merged **#66** + **#67**. Address screen binds `#66` `indexerSanctionsStore().screen`. Trusted geo binds `#67` `evaluateRequestGeo`.
 **Not audited. Not mainnet.**
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.** No new Guardian power.
 
@@ -14,9 +14,11 @@
 | Decision module | `packages/reactor/src/sanctions-policy.ts` — `allow` / `deny` / `unavailable` + machine reason codes |
 | Wallet subject | EIP-191 recover of server challenge (`wallet-proof.ts`). Claimed wallet headers/JSON are not authority. |
 | Enforcement | `apps/indexer/src/operator-policy.ts` `gateProtectedWrite` on admit / authorize / quote / upload / isolated signer; Next BFF forwards proof only |
-| Address screen | Merged `#61` `indexerSanctionsStore().screen` / `GET /sanctions/screen` (lookup API stays ungated) |
-| Tests | Unit matrix + production-shaped indexer HTTP + Next `/api/launch-pricing` BFF. Denial before signer/upload/tx canary payloads. |
-| Docs | `/docs/operator-policy`, trust, API, admission, FAQ, builders, SDK, TESTING row 59 |
+| Address screen | Merged `#66` `indexerSanctionsStore().screen` / `GET /sanctions/screen` (lookup API stays ungated) |
+| Trusted geo | Merged `#67` `evaluateRequestGeo` / `geo-policy-resolve.ts` |
+| Status API (#65) | `GET /operator-policy/status` — minimized public decision (`publicStatusView`). Same gate. Official contract for PR #75. |
+| Tests | Unit matrix + production-shaped indexer HTTP + Next `/api/launch-pricing` BFF. Denial before signer/upload/tx canary payloads. Status GET matrix. |
+| Docs | `/docs/operator-policy`, trust, API, admission, FAQ, builders, SDK, TESTING row 60, `/docs/ci` |
 
 ## Closed this run (#62 ACs — issue stays open)
 
@@ -29,7 +31,8 @@
 | Screen recovered signer, not claimed wallet | **Yes** | Sign-as-BLOCKED + `x-reactor-wallet`/`body.wallet=CLEAR` denies on admit/authorize/quote/upload/signer/BFF. `extractSubjectWallet` returns undefined. CORS does not permit `x-reactor-wallet`. |
 | Real Next/indexer routes | **Yes** | `operator-policy.test.ts`, `operator-policy-bff.test.ts` |
 | Denial before payload | **Yes** | Canary signature/tx/upload absent; downstream counter |
-| Public GET reads documented + unblocked | **Yes** | `/markets` `/health` `/ticker` `/sanctions/screen` |
+| Public GET reads documented + unblocked | **Yes** | `/markets` `/health` `/ticker` `/operator-policy/challenge` `/operator-policy/status` `/sanctions/screen` |
+| #65 status contract | **Yes** | `GET /operator-policy/status` + `publicStatusView` (no wallet/IP/SDN). PR #75 rebases onto this path. |
 | Docs list exact surfaces | **Yes** | `/docs/operator-policy` |
 | No economics redesign / no onchain-block claim | **Yes** | Disclaimer on every denial |
 | Preserve #66 screening APIs | **Yes** | `GET /sanctions/screen`, `GET /sanctions/dataset`, `indexerSanctionsStore().screen` |

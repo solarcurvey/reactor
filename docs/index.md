@@ -57,6 +57,6 @@ See [Trust](/docs/trust) for the rest of the top 10.
 - Token names / tickers / descriptions / URLs / images are **untrusted** in the public UI. No raw HTML. [Browser security](/docs/web-security).
 - Exact official-list address screening (`GET /sanctions/screen`) is **not** legal/OFAC compliance. It is the `#61` lookup used by the operator-policy gate. [Address screening](/docs/sanctions).
 - Geo jurisdiction checks are a **server** ALLOW / DENY / UNKNOWN policy over trusted edge metadata. The UI does not ship a country deny list. Not a legal opinion. HTTP enforcement is [Operator policy](/docs/operator-policy). [Geo policy](/docs/geo-policy).
-- Operator policy (wallet screen + trusted geo) is enforced on REACTOR-operated write/authorization APIs only. Public reads and onchain contracts are not this gate. [Operator policy](/docs/operator-policy).
+- Operator policy (recovered wallet proof + trusted geo) is enforced on REACTOR-operated write/authorization APIs only. `GET /operator-policy/status` is the public decision read for hosted UX. Public market/docs reads and onchain contracts are not this gate. [Operator policy](/docs/operator-policy).
 
 Continue: [curve math](/docs/curve) · [nested fees](/docs/fees) · [Guardian](/docs/guardian) · [Keeper](/docs/keeper) · [tickers](/docs/tickers) · [admission](/docs/admission) · [operator policy](/docs/operator-policy) · [browser security](/docs/web-security) · [address screening](/docs/sanctions) · [geo policy](/docs/geo-policy) · [repo publicization](/docs/publicization)

@@ -15,6 +15,7 @@ import {
   issueOperatorWalletChallenge,
   isProtectedWritePath,
   isPublicReadPath,
+  readOperatorPolicyStatus,
   resetOperatorPolicyState,
   setFixtureBlockedWallets,
   setFixtureDatasetFreshness,
@@ -144,6 +145,12 @@ function createProductionShapedHandler(downstream: { ran: number; lastWallet?: s
         res.end(JSON.stringify(issued));
         return;
       }
+      if (pathname === "/operator-policy/status") {
+        const out = await readOperatorPolicyStatus({ headers: req.headers });
+        res.statusCode = out.status;
+        res.end(JSON.stringify({ ...out.body, public: true }));
+        return;
+      }
       res.statusCode = 200;
       res.end(JSON.stringify({ ok: true, path: pathname, items: [], public: true }));
       return;
@@ -224,6 +231,7 @@ resetOperatorPolicyState();
   assert(!isProtectedWritePath("GET", "/markets"), "markets not a write");
   assert(isPublicReadPath("GET", "/markets"), "markets is public read");
   assert(isPublicReadPath("GET", "/operator-policy/challenge"), "challenge is public");
+  assert(isPublicReadPath("GET", "/operator-policy/status"), "status is public");
 }
 
 {
@@ -346,6 +354,40 @@ try {
   }
 
   {
+    const geo = await hit(srv.url, {
+      path: "/operator-policy/status",
+      headers: { "x-reactor-geo-fixture": "FX", "x-reactor-wallet": CLAIMED_CLEAR, "x-sanctions-clear": "1" },
+    });
+    assert(geo.json.reason === "DENY_GEO_BLOCKED", `status geo ${geo.raw}`);
+    assert(geo.json.kind === "geo" && geo.json.writesAllowed === false, "status geo kind");
+    assert(!geo.raw.includes(CLAIMED_CLEAR), "status omits claimed wallet");
+    assert(!geo.raw.includes("addressScreen"), "status omits screen internals");
+
+    const pending = await hit(srv.url, {
+      path: "/operator-policy/status",
+      headers: { "x-reactor-geo-fixture": "US", "x-reactor-wallet": CLAIMED_CLEAR },
+    });
+    assert(pending.json.reason === "UNAVAILABLE_WALLET_MISSING", `status needs proof ${pending.raw}`);
+    assert(pending.json.kind === "unavailable" && pending.json.writesAllowed === false, "missing proof not allow");
+
+    const blockedStatus = await hit(srv.url, {
+      path: "/operator-policy/status",
+      headers: await spoofHeaders(blockedAcct),
+    });
+    assert(blockedStatus.json.reason === "DENY_ADDRESS_BLOCKED", `status blocked ${blockedStatus.raw}`);
+    assert(blockedStatus.json.kind === "wallet", "status wallet kind");
+    assert(!blockedStatus.raw.includes(BLOCKED) && !blockedStatus.raw.includes(CLAIMED_CLEAR), "status omits addresses");
+
+    const allowStatus = await hit(srv.url, {
+      path: "/operator-policy/status",
+      headers: await spoofHeaders(clearAcct),
+    });
+    assert(allowStatus.status === 200 && allowStatus.json.reason === "ALLOW", `status allow ${allowStatus.raw}`);
+    assert(allowStatus.json.ok === true && allowStatus.json.writesAllowed === true, "status allow flags");
+    assert(allowStatus.json.kind === "allow" && allowStatus.json.source === "indexer", "status allow kind");
+  }
+
+  {
     resetOperatorPolicyState();
     process.env.OPERATOR_POLICY_PLUGIN_BLOCKED = BLOCKED;
     const bound = await tryBindOfficialPolicyPlugins(process.env, join(dirname(fileURLToPath(import.meta.url)), "operator-policy-plugin-fixtures"));
@@ -409,6 +451,8 @@ try {
     }
   }
   assert(indexSrc.includes("/operator-policy/challenge"), "challenge route mounted");
+  assert(indexSrc.includes("/operator-policy/status"), "status route mounted");
+  assert(indexSrc.includes("readOperatorPolicyStatus"), "status uses shared reader");
   assert(signerSrc.includes("gateProtectedWrite"), "isolated signer gated");
   assert(signerSrc.includes("bindRecoveredIdentity"), "signer binds recovered creator");
 }

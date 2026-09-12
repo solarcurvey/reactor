@@ -157,6 +157,34 @@ export function publicPolicyBody(decision: OperatorPolicyDecision, extra?: Recor
   };
 }
 
+/** Coarse UX kind for #65. Distinguishes wallet / geo / temporary without leaking internals. */
+export type OperatorPolicyUxKind = "allow" | "wallet" | "geo" | "unavailable";
+
+export function uxKindForReason(reason: OperatorPolicyReason): OperatorPolicyUxKind {
+  if (reason === "ALLOW") return "allow";
+  if (reason === "DENY_ADDRESS_BLOCKED") return "wallet";
+  if (reason === "DENY_GEO_BLOCKED") return "geo";
+  return "unavailable";
+}
+
+/**
+ * Minimized public decision for `GET /operator-policy/status` (#65 / PR #75).
+ * Same machine `reason` as write-path denials. No wallet, IP, country, SDN, or dataset fields.
+ */
+export function publicStatusView(decision: OperatorPolicyDecision): Record<string, unknown> {
+  return {
+    ok: decision.reason === "ALLOW",
+    decision: decision.decision,
+    reason: decision.reason,
+    kind: uxKindForReason(decision.reason),
+    error: decision.userMessage,
+    disclaimer: decision.disclaimer,
+    policy: decision.policyId,
+    writesAllowed: decision.reason === "ALLOW",
+    source: "indexer",
+  };
+}
+
 /** EVM 20-byte identity. Checksum casing does not matter. */
 export function normalizeEvmAddress(raw: string | undefined | null): string | undefined {
   if (!raw) return undefined;

@@ -21,6 +21,7 @@ Base URL: indexer (local `http://127.0.0.1:43148`).
 | GET | `/pricing/health` | Per-asset consensus, accepted/rejected observations, Arc sanity from the verified `route_venues` executable mark (not a synthetic `markets` row). 503 in PROD when an important mark fails. |
 | GET | `/stream` | SSE named events after persist commit. Clients patch cached board / token-page rows — do not refetch `/markets` on every print. `hello` includes `head` (hub id at attach) and `last` (resume cursor from `?after=` / `Last-Event-ID`). First-session toasts use `id > head`; reconnect must not raise that cutoff. `core` / `Top10Buy` rows carry `(chainId, tx, logIndex, eventKind)`. Accruals and `EpochSubmitted` (`top10`) are not buy+burn confirms. |
 | GET | `/operator-policy/challenge` | Short-lived EIP-191 message + HMAC token for write-path wallet binding. Public. |
+| GET | `/operator-policy/status` | **Official #65 decision read.** Same gate as writes. Optional `x-reactor-wallet-proof`. Minimized body: `ok`, `decision`, `reason`, `kind`, `error`, `disclaimer`, `policy`, `writesAllowed`, `source`. No wallet/IP/country/SDN. Public. |
 | GET | `/health` | Liveness |
 | GET | `/sanctions/screen` | Exact official-list address lookup. `decision` is `blocked` / `clear` / `unavailable` plus `datasetVersion` / `freshness`. Not legal/OFAC compliance. Lookup only — write/authorization gating is [operator policy](/docs/operator-policy) (#62). |
 | GET | `/sanctions/dataset` | Active dataset version, source coverage, and freshness. |

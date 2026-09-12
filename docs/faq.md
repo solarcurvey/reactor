@@ -24,7 +24,7 @@
 
 **Why is Confirm / Launch disabled on the wrong chain?** The launchpad hard-blocks wallet writes when `wallet.chainId` is not the official deployment. The red banner is not the only control.
 
-**Why did launch / quote / upload return 403 or 503 with `DENY_*` / `UNAVAILABLE_*`?** REACTOR-operated write and authorization paths enforce a server-side sanctions/geo policy (recovered wallet proof + trusted geo). Client “clear” flags and claimed `wallet` / `x-reactor-wallet` values do not override it. Public `GET /markets` and docs stay readable. Onchain contracts are not paused. See [Operator policy](/docs/operator-policy).
+**Why did launch / quote / upload return 403 or 503 with `DENY_*` / `UNAVAILABLE_*`?** REACTOR-operated write and authorization paths enforce a server-side sanctions/geo policy (recovered wallet proof + trusted geo). Client “clear” flags and claimed `wallet` / `x-reactor-wallet` values do not override it. `GET /operator-policy/status` returns the same minimized decision for the launchpad UX. Public `GET /markets` and docs stay readable. Onchain contracts are not paused. See [Operator policy](/docs/operator-policy).
 
 **Why is script-src nonce'd?** Production CSP does not allow `'unsafe-inline'` scripts. A leftover `'unsafe-inline'` remains on `style-src` only (React / fonts / Tailwind). See [Browser security](/docs/web-security).
 

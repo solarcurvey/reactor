@@ -43,6 +43,23 @@ Ignored (never override): `sanctionsClear`, `ofacClear`, `country`, `CF-IPCountr
 
 Proof: client `personal_sign`s the challenge message and sends `x-reactor-wallet-proof` (`{token,signature}`). After allow, quote `recipient` and launch `creator` are overwritten to the recovered signer so a different `msg.sender` cannot consume the artifact.
 
+## Public status read (#65 / PR #75)
+
+`GET /operator-policy/status` is the official minimized decision read. Same `evaluateOperatorPolicy` as writes. Optional `x-reactor-wallet-proof` screens the recovered signer. Claimed wallet / country / “clear” flags are ignored.
+
+| Field | Notes |
+| --- | --- |
+| `ok` / `writesAllowed` | `true` only on `ALLOW` |
+| `decision` | `allow` / `deny` / `unavailable` |
+| `reason` | Same machine codes as write denials |
+| `kind` | `allow` / `wallet` / `geo` / `unavailable` — coarse UX only |
+| `error` | Short user sentence |
+| `policy` / `disclaimer` / `source` | `reactor-operator-policy-v1` / hosted-service disclaimer / `"indexer"` |
+
+HTTP follows the decision (`200` / `403` / `503`). Body never includes wallet, IP, country ISO, SDN names, dataset hashes, or HMAC material.
+
+Without a proof: geo `DENY` still returns `DENY_GEO_BLOCKED`; otherwise `UNAVAILABLE_WALLET_MISSING` (not `ALLOW`). Next `GET /api/operator-policy` (#75) should call this path — not invent a second decision module. Write gates remain authoritative.
+
 ## Surfaces that enforce
 
 | Surface | Gate runs before |
@@ -62,6 +79,7 @@ Cosmetic denial of public market/docs reads is out of scope.
 | Surface | Notes |
 | --- | --- |
 | `GET /operator-policy/challenge` | Issues a short-lived HMAC challenge (not a write) |
+| `GET /operator-policy/status` | Minimized public decision for #65 UX. Not a write. |
 | `GET /health` | Liveness |
 | `GET /markets` | Discovery board |
 | `GET /ticker/:ticker` | Ticker status |

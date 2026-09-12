@@ -39,6 +39,7 @@ import {
   bindRecoveredIdentity,
   gateProtectedWrite,
   issueOperatorWalletChallenge,
+  readOperatorPolicyStatus,
   tryBindOfficialPolicyPlugins,
 } from "./operator-policy.ts";
 
@@ -364,6 +365,11 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       return;
     }
     json(res, 200, { ...issued, request_id: rid }, rid);
+    return;
+  }
+  if (url.pathname === "/operator-policy/status") {
+    const out = await readOperatorPolicyStatus({ headers: req.headers });
+    json(res, out.status, { ...out.body, request_id: rid }, rid);
     return;
   }
   if (url.pathname === "/health") {
