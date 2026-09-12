@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { IChartApi, UTCTimestamp } from "lightweight-charts";
 
 type Candle = { t: number; o: string; h: string; l: string; c: string; n: number };
 
@@ -10,7 +11,7 @@ export function OhlcvChart({ candles }: { candles: Candle[] }) {
     const el = ref.current;
     if (!el) return;
     let disposed = false;
-    let chart: { remove: () => void } | undefined;
+    let chart: IChartApi | undefined;
     (async () => {
       const lc = await import("lightweight-charts");
       if (disposed || !ref.current) return;
@@ -33,7 +34,7 @@ export function OhlcvChart({ candles }: { candles: Candle[] }) {
       series.setData(
         candles
           .map((c) => ({
-            time: c.t as import("lightweight-charts").UTCTimestamp,
+            time: c.t as UTCTimestamp,
             open: Number(c.o) / 1e18,
             high: Number(c.h) / 1e18,
             low: Number(c.l) / 1e18,
