@@ -1,4 +1,4 @@
-# Trade on REACTOR
+# For traders
 
 > Exact-in. Nonzero `minOut`. Incomplete fills revert. Not audited. Chain **5042002**.
 
