@@ -75,7 +75,7 @@ Pre-graduation Instant trades settle on `InstantCurve` (same 3.5% quote split). 
 - **ValuationService:** one recursive CAT→ZCAT→ZEC→USD path with ancestry. Parent-only USD is rejected.
 - **Quote API:** `POST /quote` plans proven venues only (≤3 hops). One `UserRouteQuoter` `eth_call` with ERC-20 state overrides (no intermediate wallet balances). Discloses each official 3.5% leg.
 - **Web:** homepage is `GET /markets` (zero per-token RPC). Trades use the quote API — no wallet hop sim for missing intermediate assets.
-- **Pricing signer:** isolated process. Next never holds the key. Fail closed if down. No Anvil / inline fallback outside `REACTOR_ENV=LOCAL` (production hard gates).
+- **Pricing signer:** isolated process. Next never holds the key. Fail closed if down **or if the durable store cannot be opened** (`SIGNER_STORE_UNAVAILABLE` / 503). Receipt consume + signed-auth bucket always run. No Anvil / inline fallback outside `REACTOR_ENV=LOCAL` (production hard gates).
 - **Media:** validate + resize/WebP → object store; short URI onchain. No base64 metadata.
 - **SSE:** `/stream` for launches/trades/bonding/grad/rewards/burns/Top-10/CORE with reconnect/fallback.
 

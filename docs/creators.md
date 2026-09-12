@@ -24,7 +24,7 @@ Every launch, including USDC, goes through `POST /launch/authorize`:
 2. Admission returns **ALLOW**, **CHALLENGE**, or **DENY**. CHALLENGE is **not** a signature.
 3. On CHALLENGE, solve the widget and retry. ELEVATED / ATTACK still **ALLOW** after a real token if you are under rate + issuance limits. They do not loop forever.
 4. ALLOW carries `launchConfigHash` (creator, ticker, name, metadata, quote, mode, factory, Factory V1, curve/config).
-5. The isolated signer consumes the receipt **once** and checks the hash. Then EIP-712.
+5. The isolated signer consumes the receipt **once** (durable store required — a down database is 503, not a signature) and checks the hash. Then EIP-712.
 
 Turnstile `siteverify` runs when `TURNSTILE_SECRET` is set. LOCAL bypass only if the secret is unset and `TURNSTILE_REQUIRED !== 1`.
 

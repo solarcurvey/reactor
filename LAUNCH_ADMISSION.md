@@ -10,6 +10,8 @@ Offchain `LaunchAdmissionService` (indexer) plus onchain `LaunchAuthorization`.
 
 The isolated signer binds `127.0.0.1`. Direct public calls without a receipt fail. Signer requires receipt `launchConfigHash` to match creator, ticker, name, metadata, quote, mode, factory, Factory version, curve/config.
 
+**Fail closed on store.** The isolated signer will not mint a `LaunchAuthorization` if Postgres/SQLite cannot be opened. `openStore` failure is `SIGNER_STORE_UNAVAILABLE` (HTTP 503), never coerced to `undefined`. Receipt consume and the signed-auth issuance bucket always run against durable state. A down store is an outage, not a bypass.
+
 ## Onchain (every launch, including USDC)
 
 EIP-712 signed by the isolated **Launch Signer** (≠ Keeper ≠ Guardian Safe). Guardian rotates the signer.
@@ -28,11 +30,11 @@ Ticker, quote, factory, metadata, wallet, session, IP, ASN, client, Cloudflare T
 
 **Production hard gates:** outside `REACTOR_ENV=LOCAL`, missing Turnstile secret/site key, `SIGNER_INLINE`, or an Anvil `#0` signer key refuses start and launch.
 
-Durable state in Postgres/SQLite: `admission_hits`, challenges, image hashes, `issuance_bucket`, receipts. Optional Redis. Not process-local Maps.
+Durable state in Postgres/SQLite: `admission_hits`, challenges, image hashes, `issuance_bucket`, receipts. Optional Redis. Not process-local Maps. The signer treats store unavailability as deny, not as “no durable checks.”
 
 **Time units:** `admission_hits.ts` and `issuance_bucket.updated_ms` are wall-clock **milliseconds** (`Date.now()`). Challenge `created_ts` / `solved_ts`, image-hash `first_seen`, receipt `expires`/`ts`, and `launch_auths.ts` are **unix seconds**. Millisecond columns are `BIGINT` (schema v6) because Postgres `INTEGER` is 32-bit and cannot store ~1.8e12. See `ARCHITECTURE.md`.
 
-Receipt consume is atomic. Concurrent consume: one winner.
+Receipt consume is atomic. Concurrent consume: one winner. A receipt without a durable `id` cannot skip consume.
 
 `permanentlyLockTicker` reverts `TickerUnavailable` if **another** token still holds the active 24h lock.
 

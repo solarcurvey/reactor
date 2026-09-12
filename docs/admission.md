@@ -9,8 +9,9 @@
 1. **Admission** — ticker, reserved list, factory, quote, metadata, **real Cloudflare Turnstile**, wallet/session/IP rates, image-hash, funding-cluster, global issuance.
 2. **CHALLENGE** returns 403, no receipt. The launch page renders the Turnstile widget, collects a real token, and re-admits. ELEVATED/ATTACK require Turnstile; they do **not** loop CHALLENGE after a valid token if the request is under rate + bucket limits.
 3. **ALLOW** issues a short-lived HMAC receipt that includes `launchConfigHash` (creator, ticker, name, metadata, quote, mode, factory, Factory version, curve/config).
-4. Isolated signer consumes the receipt **atomically** (`UPDATE … RETURNING` / SQLite `BEGIN IMMEDIATE`) and consumes one **signed-auth** token from the global bucket.
-5. Signer recomputes `launchConfigHash` and refuses a mismatch. Then EIP-712.
+4. Isolated signer requires a durable store. If Postgres/SQLite cannot be opened, signing returns **503** (`SIGNER_STORE_UNAVAILABLE`) and does **not** mint. There is no in-memory fallback that skips consume.
+5. Isolated signer consumes the receipt **atomically** (`UPDATE … RETURNING` / SQLite `BEGIN IMMEDIATE`) and consumes one **signed-auth** token from the global bucket. Both steps always run. A receipt without a durable `id` is refused.
+6. Signer recomputes `launchConfigHash` and refuses a mismatch. Then EIP-712.
 
 ## Issuance throttle
 
