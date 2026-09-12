@@ -79,7 +79,7 @@ REACTOR_ENV=PROD pnpm --filter web build && pnpm --filter web start
 
 PROD refuses missing Turnstile, `SIGNER_INLINE`, or Anvil `#0` signer.
 
-Feasible #16 rehearsal without Turnstile / isolated signer: `REACTOR_ENV=LOCAL`, `PRICING_SIGNER_PK` = on-chain LaunchSigner (the disposable deployer), copy `deployments/arc-testnet.json` over `apps/indexer/src/deployment.json` **only in the VM** (restore before `pnpm docs:check` / commit), `RPC_URL=https://rpc.testnet.arc.network`, `INDEXER_START_BLOCK` near head, `INDEXER_DB` in `/tmp`. Label that run **LOCAL authorize**, not full PROD.
+Feasible #16 rehearsal without Turnstile / isolated signer: `REACTOR_ENV=LOCAL`, `PRICING_SIGNER_PK` = on-chain LaunchSigner (the disposable deployer), copy `deployments/arc-testnet.json` over `apps/indexer/src/deployment.json` **only in the VM** (restore before `pnpm docs:check` / commit), `RPC_URL=https://rpc.testnet.arc.network`, `INDEXER_START_BLOCK` near head, `INDEXER_MAX_BLOCK_SPAN=8`, `INDEXER_LEAN_LOGS=1`, `INDEXER_DB` in `/tmp`. Label that run **LOCAL authorize**, not full PROD.
 
 ## 5. Instant + BUY/SELL harness
 

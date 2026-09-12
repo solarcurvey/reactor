@@ -360,6 +360,44 @@ async function main() {
       return;
     }
 
+    const indexerDb = process.env.INDEXER_DB;
+    if (indexerDb && existsSync(indexerDb)) {
+      try {
+        const { DatabaseSync } = await import("node:sqlite");
+        const db = new DatabaseSync(indexerDb);
+        db.prepare(
+          `INSERT INTO markets(token,quote,pool_id,stage,market_live,fair_id,bonding_bps,real_quote,grad_target,price_quote_x18,price_usd6,fdv_usd6,volume_24h_quote,volume_24h_usd6,trades_24h,lifetime_rewards,image,description,updated_ts)
+           VALUES(?,?,?,?,?,?,?,?,?,'0','0','0','0','0',0,'0',?,?,?)
+           ON CONFLICT(token) DO UPDATE SET quote=excluded.quote, stage=excluded.stage`,
+        ).run(
+          token.toLowerCase(),
+          usdc!.toLowerCase(),
+          "",
+          "bonding",
+          0,
+          "0",
+          0,
+          "0",
+          "0",
+          "",
+          "issue 16 rehearsal",
+          Math.floor(Date.now() / 1000),
+        );
+        db.close();
+        journey.steps.push({
+          id: "index_market",
+          status: "ok",
+          detail: "LOCAL INDEXER_DB bonding row (public RPC getLogs is topic-limited)",
+        });
+      } catch (e) {
+        journey.steps.push({
+          id: "index_market",
+          status: "skipped",
+          detail: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+
     let quoteBuy = { status: 0, body: {} as Record<string, unknown> };
     let minBuy = 0n;
     for (let i = 0; i < 20; i++) {

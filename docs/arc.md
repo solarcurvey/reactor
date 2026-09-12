@@ -21,7 +21,7 @@ Arc docs ([deterministic finality](https://docs.arc.io/arc/concepts/deterministi
 
 Indexer default `ARC_FINALITY_CONFIRMATIONS=0`. The Ethereum-style 8-block lag is dropped. Override only if you are not on Arc.
 
-`INDEXER_START_BLOCK` (decimal) is an optional catch-up window used when the sqlite cursor is empty. Public-testnet rehearsal should set it near head so `getLogs` does not scan genesis. It does not change finality.
+`INDEXER_START_BLOCK` (decimal) is an optional catch-up window used when the sqlite cursor is empty. `INDEXER_MAX_BLOCK_SPAN` caps each tick (default 2000). `INDEXER_LEAN_LOGS=1` watches Factory / InstantCurve / TickerRegistry only and splits `eth_getLogs` per address — public Arc RPCs reject the full topic+address OR. None of these change finality.
 
 ## Deploy
 
