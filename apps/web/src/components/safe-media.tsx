@@ -1,4 +1,4 @@
-import { sanitizeMediaUrl } from "../../../packages/reactor/src/untrusted-metadata.ts";
+import { sanitizeMediaUrl } from "@/lib/untrusted-metadata";
 
 export function SafeTokenImage({
   src,

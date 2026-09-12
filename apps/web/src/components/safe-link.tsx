@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { sanitizeDocHref, sanitizeExternalUrl } from "../../../packages/reactor/src/untrusted-metadata.ts";
+import { sanitizeDocHref, sanitizeExternalUrl } from "@/lib/untrusted-metadata";
 
 export function SafeExternalLink({
   href,
