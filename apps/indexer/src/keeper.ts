@@ -23,6 +23,7 @@ import {
   type LeaderLease,
 } from "./keeper-jobs.ts";
 import { planFeeExemptRoute, syncOfficialFactoryVenues } from "./route-graph.ts";
+import { acceptTop10Snapshot } from "../../../packages/reactor/src/top10.ts";
 
 /**
  * Designated Keeper daemon.
@@ -123,7 +124,12 @@ const hookAbi = parseAbi([
 ]);
 const erc20Abi = parseAbi(["function balanceOf(address) view returns (uint256)"]);
 
-type Top10 = { pauseEpoch: boolean; reason: string; rows: Array<{ token: string; weightBps: number; symbol: string; quote?: string }> };
+type Top10 = {
+  pauseEpoch: boolean;
+  reason: string;
+  computedTs?: number;
+  rows: Array<{ token: string; weightBps: number; symbol: string; quote?: string }>;
+};
 type JobState = {
   status: "done" | "pending" | "failed" | "ambiguous";
   hash?: string;
@@ -495,8 +501,9 @@ async function tickBody(chainId: number) {
   const res = await fetch(API);
   if (!res.ok) throw new Error(`top10 http ${res.status}`);
   const body = (await res.json()) as Top10;
-  if (body.pauseEpoch) {
-    writeBeat({ ok: false, pauseEpoch: true, reason: body.reason, block: block.toString(), chainId, jobs });
+  const accept = acceptTop10Snapshot(body, Math.floor(Date.now() / 1000));
+  if (!accept.ok) {
+    writeBeat({ ok: false, pauseEpoch: true, reason: accept.reason, block: block.toString(), chainId, jobs });
     return;
   }
 

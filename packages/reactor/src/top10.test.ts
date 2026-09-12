@@ -7,8 +7,14 @@ import {
   vwapPriceQuoteX18,
   lastGoodPriceQuoteX18,
   isCoreToken,
+  acceptTop10Snapshot,
+  isSnapshotFresh,
+  snapshotAgeSec,
+  staleSnapshotReason,
   MIN_VWAP_SAMPLES,
   MARK_WINDOW_SEC,
+  TOP10_SNAPSHOT_TTL_SEC,
+  TOP10_FLOOR_USDC,
 } from "./top10.ts";
 
 function assert(cond: unknown, msg: string) {
@@ -49,6 +55,40 @@ function c(partial: Partial<Parameters<typeof rankTop10>[0][number]> & { token: 
 }
 {
   assert(materialUncertainty(c({ token: "0x1", lastGoodMarkUsdc: 250_000n * 1_000_000n })), "floor lastGood is material");
+}
+{
+  const floorFifth = TOP10_FLOOR_USDC / 5n;
+  const { rows, pauseEpoch } = rankTop10([
+    c({ token: "0x1", markUsdc: 400_000n * 1_000_000n, markOk: true }),
+    c({ token: "0x2", markUsdc: 0n, markOk: false, lastGoodMarkUsdc: 0n, liquidityUsdc: floorFifth }),
+  ]);
+  assert(rows.length === 0 && pauseEpoch, "indexed liquidity arm pauses independently of lastGood");
+}
+{
+  const { rows, pauseEpoch } = rankTop10([
+    c({ token: "0x1", markUsdc: 400_000n * 1_000_000n, markOk: true }),
+    c({
+      token: "0x2",
+      markUsdc: 0n,
+      markOk: false,
+      lastGoodMarkUsdc: 8_000n * 1_000_000n,
+      liquidityUsdc: TOP10_FLOOR_USDC / 5n - 1n,
+    }),
+  ]);
+  assert(rows.length === 1 && !pauseEpoch, "immaterial liquidity must not freeze");
+}
+{
+  const now = 2_000_000;
+  assert(isSnapshotFresh(now, now + TOP10_SNAPSHOT_TTL_SEC), "TTL inclusive");
+  assert(!isSnapshotFresh(now, now + TOP10_SNAPSHOT_TTL_SEC + 1), "age past TTL is stale");
+  assert(!isSnapshotFresh(undefined, now), "missing computedTs is stale");
+  assert(snapshotAgeSec(0, now) === Number.POSITIVE_INFINITY, "zero computedTs is infinitely old");
+  const fresh = acceptTop10Snapshot({ pauseEpoch: false, computedTs: now }, now + 10);
+  assert(fresh.ok, "fresh healthy snapshot accepted");
+  const paused = acceptTop10Snapshot({ pauseEpoch: true, computedTs: now, reason: "paused" }, now);
+  assert(!paused.ok && paused.reason === "paused", "pauseEpoch refuses even when fresh");
+  const stale = acceptTop10Snapshot({ pauseEpoch: false, computedTs: now }, now + TOP10_SNAPSHOT_TTL_SEC + 1);
+  assert(!stale.ok && stale.reason === staleSnapshotReason(TOP10_SNAPSHOT_TTL_SEC + 1), "Keeper refuses stale healthy");
 }
 {
   const Q96 = 1n << 96n;

@@ -17,7 +17,7 @@ The Keeper is **not** an owner. It cannot configure quotes, adapters, fees, Guar
 
 ## Top-10
 
-Indexer `GET /top10` computes ranks and weights from ValuationService + persisted `current_supply`. Keeper and the public web route consume that snapshot.
+Indexer `GET /top10` computes ranks and weights from ValuationService + persisted `current_supply`. Keeper and the public web route consume that snapshot and share `TOP10_SNAPSHOT_TTL_SEC` (15 minutes). A stale or paused payload is refused — the daemon does not submit the last healthy ranks after the ranker stalls.
 
 Eligibility (API, not the contract):
 

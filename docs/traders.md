@@ -32,7 +32,7 @@ USDC → nested quote → official/bonding goes through `UserRouteExecutor`. Bon
 | Surface | Source |
 | --- | --- |
 | Homepage / search | `GET /markets` — search, NUMERIC sort (`new` / `vol` / `price`), keyset (`cursor_ts` + `cursor_token` on that sort key) |
-| Top-10 | Indexer `GET /top10` (ValuationService snapshot). Not a Factory RPC. |
+| Top-10 | Indexer `GET /top10` (ValuationService snapshot, 15m TTL). Not a Factory RPC. |
 | 24h price | Latest trade **by `ts`**, not `MAX(price)` |
 | 24h USD volume | ValuationService (`volume_24h_usd6`) |
 | FDV / market cap | `fdv_usd6` — mark × `tokens.current_supply`, which tracks remaining onchain `totalSupply()` after `burn()` (not the initial 1B mint, not a live ≡) |

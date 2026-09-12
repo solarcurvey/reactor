@@ -12,7 +12,7 @@
 | Turnstile | Cloudflare widget + `siteverify`. CHALLENGE ≠ ALLOW |
 | Issuance bucket | Durable cap on **signed** LaunchAuthorizations |
 | ValuationService | Single USD engine for signer, Top-10, `/markets` |
-| Top-10 snapshot | Indexer `GET /top10` (schema v11). Not a per-request Factory RPC. |
+| Top-10 snapshot | Indexer `GET /top10` (schema v11). Served only while `computedTs` is within 15 minutes. Not a per-request Factory RPC. |
 | Burn-adjusted supply | Remaining onchain `totalSupply` after any `burn()`. Indexer `current_supply` (schema v9) tracks it via token-level burns (same tick transaction as the cursor) + bounded `totalSupply()` reconcile — not a live ≡ and not a protocol-event sum |
 | `fdv_usd6` | USD-6 market cap / FDV = mark × burn-adjusted remaining supply. Not initial 1B × price |
 | `usdPegOne` | Explicit $1 flag. EURC / “stable” is not $1 |

@@ -6,6 +6,12 @@ export const TOP10_FLOOR_USDC = 250_000n * 1_000_000n;
 /** 12 minutes — middle of the frozen 10–15m VWAP/TWAP window. */
 export const MARK_WINDOW_SEC = 12 * 60;
 export const MIN_VWAP_SAMPLES = 3;
+/**
+ * Bounded age for a persisted GET /top10 snapshot.
+ * Shared by indexer serve and Keeper accept. A stalled ranker must not keep
+ * a healthy payload live after this TTL.
+ */
+export const TOP10_SNAPSHOT_TTL_SEC = 15 * 60;
 
 export type PriceSample = { notional: bigint; priceQuoteX18: bigint; ts: number };
 export type TradeSample = { notional: bigint; sqrtPrice: bigint; ts: number };
@@ -83,6 +89,45 @@ export function lastGoodFdvQuote(samples: TradeSample[], supply: bigint, tokenIs
 export function isCoreToken(token: string, coreAddresses: readonly string[]): boolean {
   const t = token.toLowerCase();
   return coreAddresses.some((a) => a && a.toLowerCase() === t);
+}
+
+export type Top10SnapshotClock = {
+  computedTs?: number | string | null;
+  pauseEpoch?: boolean;
+  reason?: string;
+};
+
+/** Age in seconds. Missing / non-positive computedTs is treated as infinitely old. */
+export function snapshotAgeSec(computedTs: number | string | null | undefined, nowSec: number): number {
+  const ts = Number(computedTs ?? 0);
+  if (!Number.isFinite(ts) || ts <= 0) return Number.POSITIVE_INFINITY;
+  return Math.max(0, nowSec - ts);
+}
+
+export function isSnapshotFresh(
+  computedTs: number | string | null | undefined,
+  nowSec: number,
+  ttlSec = TOP10_SNAPSHOT_TTL_SEC,
+): boolean {
+  return snapshotAgeSec(computedTs, nowSec) <= ttlSec;
+}
+
+export function staleSnapshotReason(ageSec: number, ttlSec = TOP10_SNAPSHOT_TTL_SEC): string {
+  const age = Number.isFinite(ageSec) ? Math.floor(ageSec) : "unknown";
+  return `snapshot age ${age}s exceeds TTL ${ttlSec}s — pause epoch, never serve stale ranks`;
+}
+
+/** Keeper + API share this gate. pauseEpoch or age past TTL refuses submit. */
+export function acceptTop10Snapshot(
+  body: Top10SnapshotClock,
+  nowSec: number,
+  ttlSec = TOP10_SNAPSHOT_TTL_SEC,
+): { ok: boolean; reason: string } {
+  if (body.pauseEpoch) return { ok: false, reason: body.reason ?? "epoch paused" };
+  if (!isSnapshotFresh(body.computedTs, nowSec, ttlSec)) {
+    return { ok: false, reason: staleSnapshotReason(snapshotAgeSec(body.computedTs, nowSec), ttlSec) };
+  }
+  return { ok: true, reason: "" };
 }
 
 export type RankCandidate = {

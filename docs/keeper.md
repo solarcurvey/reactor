@@ -27,7 +27,7 @@ If renew fails (expiry without renewal, or another owner stole after expiry) the
 
 Each job takes a **20% chunk** + cooldown. The Keeper supplies `minOut` from a **whole-route, fee-exempt** preview (`planFeeExemptRoute` + ProtocolV4Adapter). That path never shares `UserRouteQuoter`. Official edges are listed on the ticket as `exemptOfficialLegs[]` (0 user fee). Successful quotes refuse `minOut` 0 or 1.
 
-Top-10 jobs execute the **frozen onchain epoch**, not a later API refresh. The daemon reads the same indexer `GET /top10` snapshot the public route proxies.
+Top-10 jobs execute the **frozen onchain epoch**, not a later API refresh. The daemon reads the same indexer `GET /top10` snapshot the public route proxies. Accept uses `acceptTop10Snapshot`: `pauseEpoch` **or** `computedTs` older than `TOP10_SNAPSHOT_TTL_SEC` (15 minutes) refuses submit. A stalled ranker cannot keep a stale healthy payload live.
 
 `submitOnce` — if the RPC is ambiguous (timeout after broadcast), do not resubmit.
 
