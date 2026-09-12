@@ -65,7 +65,7 @@ Deep `/docs` corpus (Trader / Creator / Builder / Protocol / Reference), How REA
 | `pnpm size:guard` | green (Factory 23280 ≤ 23552) |
 | `pnpm docs:check` | required green this pass |
 | Indexer unit (admission, launch-auth, persist) | required green |
-| Foundry | re-run this pass after module wiring |
+| Foundry | **321 pass** after identity-helper fix (was 318 + 3 WrongName/Mode/Metadata) |
 | Playwright / visual 1440/390 | after preview |
 
 ## Honest gaps
