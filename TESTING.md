@@ -46,7 +46,7 @@ pnpm test:web-security          # production next build/start: live headers, bun
 
 `pnpm docs:check` (and `.github/workflows/docs-sync.yml`) **must fail** when generated constants, `docs/version.json`, Factory labels, or deployment tables have drifted from Solidity/config. Do not edit generated `docs/versioning.md` / `docs/deployments.md` / `docs/changelog.md` by hand — run `pnpm docs:gen`.
 
-Public-fork hardening (Refs #72) is `scripts/ci-public-harden.test.ts` inside `pnpm test:lib`. It does not skip Foundry, `docs:check`, `test:web-security`, or `live-toasts-ui`. Do not publicize without founder instruction — see `/docs/publicization`.
+Public-fork hardening (Refs #72) is `scripts/ci-public-harden.test.ts` inside `pnpm test:lib`. It does not skip Foundry, `docs:check`, `test:web-security`, or `live-toasts-ui`. Personal-mailbox trailers were remapped 2026-09-12. Do not publicize without founder instruction — see `/docs/publicization`.
 
 Authoritative current-architecture walk (Foundry, no live chain):
 
