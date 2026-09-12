@@ -18,6 +18,8 @@ V1 swaps are exact-in. Incomplete fills revert. Fee is always quote-side.
 
 $20 holders (quote) · $10 flywheel · $5 CORE. Not an LP fee.
 
+Nested official hops each take 3.5% of **that hop’s quote notional**. Two sequential 3.5% legs compound to **6.88%** (`1 − 0.965²`) before slippage — listed separately on `POST /quote`. The UI shows each leg in that hop’s quote (ZEC-8 vs ZCAT-18 are not summed). Hookless hops are not a REACTOR charge. Keeper / protocol routes are fee-exempt.
+
 ## Rewards
 
 O(1) magnified dividend-per-share + per-account corrections. Leftover magnified remainder carries forward and is never allocated twice. No `outstanding <= backing + 1` slack. Claims indefinite. FairClaimVault owns auction inventory.

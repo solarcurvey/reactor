@@ -65,7 +65,7 @@ contract UserRouteQuoter {
             (uint256 finalOut, uint256[] memory outs) = RouteExec.runRecorded(auth, live, usdc, quote, usdcIn, 1);
             for (uint256 i; i < outs.length; i++) {
                 hopOuts[i] = outs[i];
-                kinds[i] = KIND_EXTERNAL;
+                kinds[i] = _kindOfHop(hops[i]);
             }
             quoteIn = finalOut;
         } else if (hops.length != 0) {
@@ -128,7 +128,7 @@ contract UserRouteQuoter {
             (uint256 finalOut, uint256[] memory outs) = RouteExec.runRecorded(auth, live, quote, usdc, quoteOut, 1);
             for (uint256 i; i < outs.length; i++) {
                 hopOuts[i + 1] = outs[i];
-                kinds[i + 1] = KIND_EXTERNAL;
+                kinds[i + 1] = _kindOfHop(hops[i]);
             }
             usdcOut = finalOut;
         } else if (hops.length != 0) {
@@ -173,5 +173,13 @@ contract UserRouteQuoter {
             tickSpacing: ReactorConstants.TICK_SPACING,
             hooks: IHooks(address(hook))
         });
+    }
+
+    /// @dev Official REACTOR hops encode the official hook in the pool key. Hookless is address(0).
+    function _kindOfHop(RouteGuard.Hop calldata h) internal view returns (bytes32) {
+        if (h.data.length < 160) return KIND_EXTERNAL;
+        PoolKey memory key = abi.decode(h.data, (PoolKey));
+        if (address(key.hooks) == address(hook) && key.fee == ReactorConstants.LP_FEE) return KIND_OFFICIAL;
+        return KIND_EXTERNAL;
     }
 }

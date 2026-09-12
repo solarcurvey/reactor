@@ -2,28 +2,27 @@ import { encodeFunctionData, parseAbi, type PublicClient } from "viem";
 import type { Store } from "./db.ts";
 import { loadEdges, loadQuoteMetas, planFeeExemptRoute } from "./route-graph.ts";
 import { decodeAbiParameters } from "viem";
-import { planCandidates, applyMinOuts, VENUE, type Hop } from "../../../packages/reactor/src/routes.ts";
+import { planCandidates, applyMinOuts, VENUE, displayVenueKind, isOfficialReactorVenue, type Hop } from "../../../packages/reactor/src/routes.ts";
 import {
   decodePreviewRoute,
+  discloseSelectedRoute,
   hopsFromAtomicPreview,
   previewedRoute,
   quoteScoreOpts,
   selectAtomicQuotedRoute,
+  splitPreviewRoute,
   type PreviewedRoute,
 } from "./quote-select.ts";
 import { sellFloorsFromDirectQuote, sellFloorsFromSelected, type AssembledSellQuote } from "./sell-floors.ts";
 import {
   applySlippage,
-  splitQuoteFee,
   QUOTE_TTL_SEC,
-  REACTOR_FEE_BPS,
-  HOLDER_FEE_BPS,
-  FLYWHEEL_FEE_BPS,
-  CORE_FEE_BPS,
+  buildFeeDisclosure,
+  emptyFeeDisclosure,
   type QuoteKind,
   type QuoteRequest,
   type QuoteResponse,
-  type FeeLeg,
+  type FeeDisclosure,
   type QuoteHop,
 } from "../../../packages/reactor/src/quote.ts";
 import { requestId } from "./obs.ts";
@@ -170,22 +169,41 @@ async function simSwap(
   return sim.result as bigint;
 }
 
-function feeLeg(venue: string, tokenIn: string, tokenOut: string, notional: bigint, official: boolean): FeeLeg {
-  const split = official ? splitQuoteFee(notional) : { holders: 0n, flywheel: 0n, core: 0n, fee: 0n };
-  return {
-    venue,
-    tokenIn,
-    tokenOut,
-    protocolFeeBps: official ? REACTOR_FEE_BPS : 0,
-    holdersBps: official ? HOLDER_FEE_BPS : 0,
-    flywheelBps: official ? FLYWHEEL_FEE_BPS : 0,
-    coreBps: official ? CORE_FEE_BPS : 0,
-    notionalQuote: notional.toString(),
-    holders: split.holders.toString(),
-    flywheel: split.flywheel.toString(),
-    core: split.core.toString(),
-    reactorOfficial: official,
-  };
+const ZERO_HOOKS = "0x0000000000000000000000000000000000000000";
+
+function kindFromHopData(data: `0x${string}` | string, officialHook?: string): string | undefined {
+  if (!data || data === "0x" || data.length < 10) return undefined;
+  try {
+    const key = decodeEdgeKey(data);
+    if (officialHook && key.hooks.toLowerCase() === officialHook.toLowerCase()) return VENUE.OFFICIAL_REACTOR_V4;
+    if (key.hooks.toLowerCase() === ZERO_HOOKS) return VENUE.EXTERNAL_V4_HOOKLESS;
+  } catch {
+    /* hop data is not a pool key */
+  }
+  return undefined;
+}
+
+function resolveHopKind(plannerKind?: string, previewKind?: string, data?: string, officialHook?: string): string {
+  const fromKey = data ? kindFromHopData(data, officialHook) : undefined;
+  if (fromKey) return fromKey;
+  if (isOfficialReactorVenue(plannerKind)) return displayVenueKind(plannerKind);
+  if (previewKind) return displayVenueKind(previewKind);
+  if (plannerKind) return displayVenueKind(plannerKind);
+  return VENUE.EXTERNAL_V4_HOOKLESS;
+}
+
+function stampResolvedKinds(hops: QuoteHop[], planned: Hop[], previewKinds: string[], officialHook?: string): QuoteHop[] {
+  return hops.map((h, i) => ({
+    ...h,
+    kind: resolveHopKind(planned[i]?.kind, previewKinds[i], planned[i]?.data ?? h.data, officialHook),
+  }));
+}
+
+function withDisclosure(
+  base: Omit<QuoteResponse, keyof FeeDisclosure | "minQuoteOut"> & { minQuoteOut?: string },
+  d: FeeDisclosure,
+): QuoteResponse {
+  return { ...base, ...d };
 }
 
 export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = requestId()): Promise<QuoteResponse> {
@@ -207,13 +225,24 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
   const bonding = market?.stage === "bonding" && !!curve;
 
   const hops: QuoteHop[] = [];
-  const feeLegs: FeeLeg[] = [];
+  let disclosure = emptyFeeDisclosure();
   let amountOut = 0n;
   let path: string[] = [req.tokenIn];
   let functionName = "swap";
   let to = addrs.ReactorRouter;
   let data = "0x";
   let sellTicket: AssembledSellQuote | undefined;
+  let selected: PreviewedRoute | undefined;
+  const quoteTokens = new Set<string>([usdc].filter(Boolean));
+  if (market?.quote) quoteTokens.add(market.quote.toLowerCase());
+  try {
+    const metasForQuotes = await loadQuoteMetas(ctx.store);
+    for (const [tok, meta] of metasForQuotes) {
+      if (meta.enabled !== false) quoteTokens.add(tok);
+    }
+  } catch {
+    /* quote_assets optional for fee notional */
+  }
 
   try {
     if (req.kind === "BUY" || req.kind === "SELL") {
@@ -224,7 +253,9 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
       let plannedHops: Hop[] = [];
       let atomicPreviewed = false;
       if (payingUsdc && userRoute) {
-        const edges = await loadEdges(ctx.store, "user");
+        const userEdges = await loadEdges(ctx.store, "user");
+        const anyEdges = await loadEdges(ctx.store, "any");
+        const edges = [...userEdges, ...anyEdges.filter((e) => e.kind === "hookless")];
         const metas = await loadQuoteMetas(ctx.store);
         const adapters = new Set([ (addrs.V4Adapter ?? addrs.UniswapV4Adapter ?? "").toLowerCase() ].filter(Boolean));
         const src = req.kind === "BUY" ? req.tokenIn : market!.quote;
@@ -248,7 +279,7 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
             /* candidate unavailable */
           }
         }
-        const selected = selectAtomicQuotedRoute(scored);
+        selected = selectAtomicQuotedRoute(scored);
         plannedHops = selected.hops;
         path = selected.path;
         if (req.kind === "SELL") {
@@ -256,14 +287,28 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
             sellTicket = sellFloorsFromSelected(selected, amountIn, slip);
             atomicPreviewed = true;
             amountOut = sellTicket.amountOut;
-            hops.push(...sellTicket.hops);
+            hops.push(
+              ...stampResolvedKinds(
+                sellTicket.hops,
+                selected.hops,
+                splitPreviewRoute(selected).routingKinds,
+                hook,
+              ),
+            );
           } catch (e) {
             return fail(rid, req, e instanceof Error ? e.message : "exact sell preview failed — unavailable");
           }
         } else {
           atomicPreviewed = true;
           amountOut = selected.preview.amountOut;
-          hops.push(...hopsFromAtomicPreview(selected, amountIn));
+          hops.push(
+            ...stampResolvedKinds(
+              hopsFromAtomicPreview(selected, amountIn),
+              selected.hops,
+              splitPreviewRoute(selected).routingKinds,
+              hook,
+            ),
+          );
         }
       }
 
@@ -284,11 +329,9 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
           });
           cursor = sim.result as bigint;
           firstLegSimulated = true;
-          feeLegs.push(feeLeg("InstantCurve", req.token, market!.quote, cursor, !feeExempt));
         } else if (req.token && market && hook) {
           cursor = await simSwap(ctx, officialKey(req.token, market.quote, hook), req.token, amountIn, account);
           firstLegSimulated = true;
-          feeLegs.push(feeLeg("official-v4", req.token, market.quote, cursor, !feeExempt));
         }
         if (!firstLegSimulated) return fail(rid, req, "exact sell preview failed — no first-leg quoteOut");
       }
@@ -311,6 +354,7 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
           gasEstimate: 90_000,
           reliabilityBps: 8_500,
           feeExempt: false,
+          kind: resolveHopKind(h.kind, undefined, h.data, hook),
         });
         cursor = out;
       }
@@ -326,12 +370,10 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
             account,
           });
           amountOut = sim.result as bigint;
-          feeLegs.push(feeLeg("InstantCurve", market!.quote, req.token, quoteIn, !feeExempt));
           functionName = "buy";
           to = payingUsdc && userRoute ? userRoute : curve;
         } else if (req.token && market && hook) {
           amountOut = await simSwap(ctx, officialKey(req.token, market.quote, hook), market.quote, quoteIn, account);
-          feeLegs.push(feeLeg("official-v4", market.quote, req.token, quoteIn, !feeExempt));
           to = payingUsdc && userRoute ? userRoute : addrs.ReactorRouter;
           functionName = payingUsdc ? "buy" : "swap";
         }
@@ -353,18 +395,36 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
       } else if (atomicPreviewed) {
         functionName = req.kind === "BUY" ? "buy" : "sell";
         to = userRoute ?? addrs.ReactorRouter;
-        const venue = bonding ? "InstantCurve" : "official-v4";
-        if (req.token && market) {
-          feeLegs.push(
-            feeLeg(
-              venue,
-              req.kind === "BUY" ? market.quote : req.token,
-              req.kind === "BUY" ? req.token : market.quote,
-              amountIn,
-              !feeExempt,
-            ),
-          );
-        }
+      }
+
+      if (selected) {
+        disclosure = discloseSelectedRoute(selected, hops, {
+          feeExempt,
+          quoteTokens,
+          market: req.token && market ? { token: req.token, quote: market.quote } : undefined,
+          amountIn,
+          bonding,
+        });
+      } else if (req.token && market) {
+        const marketKind = bonding ? VENUE.BONDING_CURVE : VENUE.OFFICIAL_REACTOR_V4;
+        const buyIn = hops.length ? hops[hops.length - 1]!.amountOut : amountIn.toString();
+        const sellOut = sellTicket ? sellTicket.firstLegQuoteOut.toString() : hops[0]?.amountIn ?? "0";
+        disclosure = buildFeeDisclosure(hops, {
+          feeExempt,
+          quoteTokens,
+          side: req.kind,
+          finalMarket: {
+            tokenIn: req.kind === "BUY" ? market.quote : req.token,
+            tokenOut: req.kind === "BUY" ? req.token : market.quote,
+            amountIn: req.kind === "BUY" ? buyIn : amountIn.toString(),
+            amountOut: req.kind === "BUY" ? amountOut.toString() : sellOut,
+            kind: marketKind,
+            official: true,
+            venue: bonding ? "InstantCurve" : "official-v4",
+          },
+        });
+      } else {
+        disclosure = buildFeeDisclosure(hops, { feeExempt, quoteTokens, side: req.kind });
       }
 
       const slipBps = BigInt(Math.max(1, slip));
@@ -411,25 +471,25 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
         });
       }
 
-      return {
-        ok: true,
-        requestId: rid,
-        kind: req.kind,
-        tokenIn: req.tokenIn,
-        tokenOut: req.tokenOut,
-        amountIn: amountIn.toString(),
-        amountOut: amountOut.toString(),
-        minOut: minOut.toString(),
-        ...(minQuoteOut !== undefined ? { minQuoteOut: minQuoteOut.toString() } : {}),
-        hops,
-        feeLegs,
-        reactorFeeCount: feeLegs.filter((f) => f.reactorOfficial).length,
-        totalProtocolFeeBps: feeLegs.filter((f) => f.reactorOfficial).reduce((s, f) => s + f.protocolFeeBps, 0),
-        impactBps: hops.reduce((s, h) => s + h.impactBps, 0),
-        expiry: deadline,
-        path: path.length > 1 ? path : [req.tokenIn, req.tokenOut],
-        tx: { to, data, value: "0", functionName },
-      };
+      return withDisclosure(
+        {
+          ok: true,
+          requestId: rid,
+          kind: req.kind,
+          tokenIn: req.tokenIn,
+          tokenOut: req.tokenOut,
+          amountIn: amountIn.toString(),
+          amountOut: amountOut.toString(),
+          minOut: minOut.toString(),
+          ...(minQuoteOut !== undefined ? { minQuoteOut: minQuoteOut.toString() } : {}),
+          hops,
+          impactBps: hops.reduce((s, h) => s + h.impactBps, 0),
+          expiry: deadline,
+          path: path.length > 1 ? path : [req.tokenIn, req.tokenOut],
+          tx: { to, data, value: "0", functionName },
+        },
+        disclosure,
+      );
     }
 
     if (
@@ -517,25 +577,34 @@ async function buildMaintenanceQuote(
         : req.kind === "CORE"
           ? "execute"
           : "execute";
-  return {
-    ok: true,
-    reason: simulated ? planned.reason : `${planned.reason} — simulate before submit`,
-    requestId: rid,
-    kind: req.kind,
-    tokenIn: req.tokenIn,
-    tokenOut: req.tokenOut,
-    amountIn: req.amountIn,
-    amountOut: amountOut.toString(),
-    minOut: minOut.toString(),
-    hops,
-    feeLegs: [],
-    reactorFeeCount: 0,
-    totalProtocolFeeBps: 0,
-    impactBps: 0,
-    expiry: Math.floor(Date.now() / 1000) + QUOTE_TTL_SEC,
-    path: planned.path,
-    tx: { to: vault ?? "", data: "0x", value: "0", functionName },
-  };
+  const quoteTokens = new Set<string>();
+  try {
+    const metas = await loadQuoteMetas(ctx.store);
+    for (const tok of metas.keys()) quoteTokens.add(tok);
+  } catch {
+    /* optional */
+  }
+  if (addrs.USDC) quoteTokens.add(addrs.USDC.toLowerCase());
+  const disclosure = buildFeeDisclosure(hops, { feeExempt: true, quoteTokens });
+  return withDisclosure(
+    {
+      ok: true,
+      reason: simulated ? planned.reason : `${planned.reason} — simulate before submit`,
+      requestId: rid,
+      kind: req.kind,
+      tokenIn: req.tokenIn,
+      tokenOut: req.tokenOut,
+      amountIn: req.amountIn,
+      amountOut: amountOut.toString(),
+      minOut: minOut.toString(),
+      hops,
+      impactBps: 0,
+      expiry: Math.floor(Date.now() / 1000) + QUOTE_TTL_SEC,
+      path: planned.path,
+      tx: { to: vault ?? "", data: "0x", value: "0", functionName },
+    },
+    disclosure,
+  );
 }
 
 function fail(rid: string, req: QuoteRequest, reason: string): QuoteResponse {
@@ -550,9 +619,7 @@ function fail(rid: string, req: QuoteRequest, reason: string): QuoteResponse {
     amountOut: "0",
     minOut: "0",
     hops: [],
-    feeLegs: [],
-    reactorFeeCount: 0,
-    totalProtocolFeeBps: 0,
+    ...emptyFeeDisclosure(),
     impactBps: 0,
     expiry: 0,
     path: [],

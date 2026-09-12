@@ -12,7 +12,13 @@
  */
 import { decodeErrorResult, encodeErrorResult, keccak256, parseAbi, toBytes } from "viem";
 import { applyMinOuts, pickBest, scoreRoute, RouteReject, VENUE, type PlannedRoute, type ScoredRoute } from "../../../packages/reactor/src/routes.ts";
-import { applySlippage, type QuoteHop } from "../../../packages/reactor/src/quote.ts";
+import {
+  applySlippage,
+  buildFeeDisclosure,
+  type FeeDisclosure,
+  type FeeSourceHop,
+  type QuoteHop,
+} from "../../../packages/reactor/src/quote.ts";
 
 export type QuoteSide = "BUY" | "SELL";
 
@@ -168,6 +174,52 @@ export function hopsFromAtomicPreview(winner: PreviewedRoute, amountIn: bigint):
     });
   }
   return hops;
+}
+
+/**
+ * Terminal official/bonding market on the **selected** preview.
+ * BUY: last PreviewRoute slot. SELL: first slot (quoteOut).
+ */
+export function selectedTerminalMarket(
+  winner: PreviewedRoute,
+  market: { token: string; quote: string },
+  amountIn: bigint,
+  bonding: boolean,
+): FeeSourceHop & { official: boolean } {
+  const split = splitPreviewRoute(winner);
+  const hops = hopsFromAtomicPreview(winner, amountIn);
+  const buyIn = hops.length ? hops[hops.length - 1]!.amountOut : amountIn.toString();
+  return {
+    tokenIn: winner.side === "BUY" ? market.quote : market.token,
+    tokenOut: winner.side === "BUY" ? market.token : market.quote,
+    amountIn: winner.side === "BUY" ? buyIn : amountIn.toString(),
+    amountOut: winner.side === "BUY" ? split.amountOut.toString() : split.terminalOut.toString(),
+    kind: split.terminalKind,
+    official: true,
+    venue: bonding ? "InstantCurve" : "official-v4",
+  };
+}
+
+/** `feeLegs[]` from the scored winner's routing hops + that winner's terminal market only. */
+export function discloseSelectedRoute(
+  winner: PreviewedRoute,
+  hops: QuoteHop[],
+  opts: {
+    feeExempt: boolean;
+    quoteTokens: Set<string>;
+    market?: { token: string; quote: string };
+    amountIn: bigint;
+    bonding: boolean;
+  },
+): FeeDisclosure {
+  return buildFeeDisclosure(hops, {
+    feeExempt: opts.feeExempt,
+    quoteTokens: opts.quoteTokens,
+    side: winner.side,
+    finalMarket: opts.market
+      ? selectedTerminalMarket(winner, opts.market, opts.amountIn, opts.bonding)
+      : undefined,
+  });
 }
 
 export function assembleAtomicTicket(

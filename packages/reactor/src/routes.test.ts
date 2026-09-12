@@ -34,6 +34,10 @@ const adapters = new Set([ADAPTER]);
   const userEdges = edges.map((e) => ({ ...e, kind: "user" as const }));
   const r = planRoute(USDC, CAT, userEdges, quotes, { protocol: false, adapters });
   assert(r.path.join("→").includes("0003") && r.hops.length === 3, `user USDC→ZEC→ZCAT→CAT ${r.path}`);
+  assert(
+    r.hops.every((h) => h.kind === "user"),
+    "planner preserves official-user kind on every hop",
+  );
 }
 {
   let threw = false;
@@ -96,6 +100,7 @@ assert(MAX_LEGS === 3, "max 3");
 {
   const c = planCandidates(ZCAT, USDC, edges, quotes, { protocol: true, adapters });
   assert(c.length >= 1 && c.every((r) => r.hops.length <= MAX_LEGS), "candidates ≤3 hops");
+  assert(c.every((r) => r.hops.every((h) => h.kind === "protocol")), "candidates keep protocol kind");
   assert(VENUE.OFFICIAL_REACTOR_V4 === "OFFICIAL_REACTOR_V4", "official venue name");
 }
 console.log("routes tests ok");
