@@ -92,6 +92,7 @@ Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33)
 - The public Next BFF `POST /api/launch-pricing` applies the same cap before proxying. The isolated signer uses the same reader as defense in depth.
 - Regression tests cover Content-Length oversize, chunked oversize, slow chunked writes, and an absurd `JSON_BODY_LIMIT_BYTES` that still clamps to 64KiB.
 - Keeper lease unit / `test:pg-lease` TTL cases inject the lease clock so CI cannot miss a `setInterval` renew (`renewed leader still holds after work > TTL` after #47). Production still uses `Date.now()` + `setInterval`. Tokenomics unchanged.
+- Sanctions ops (#64): 7-day official-list SLA, atomic last-known-good refresh (startup + 6h), health names exact dataset + policy versions, minimized policy-decision audit, `sanctions_*` alerts, operator runbook linked from incident response. Stale/missing data fails protected writes (`UNAVAILABLE_DATASET_STALE`). No automated override on complaint. Refs #64.
 
 ## [0.3.2] - 2026-09-12
 
