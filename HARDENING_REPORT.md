@@ -8,6 +8,10 @@ Repo continued in place (this pass started at `844255e`). Public `InstantCurve.b
 
 UI and docs center **CHOOSE WHAT YOUR TOKEN EARNS** / **WHAT SHOULD YOUR TOKEN EARN?** Official pool: 0% LP / 3% REACTOR (2% holders in quote / 1% CORE). Token cards show **EARNS {QUOTE}** and **2% of official volume → holders**. Economics module: $1000 trade → $20 holders / $10 CORE. Batch Fair Launch is named honestly. TEST ASSET / TESTNET labels. No competitor trash-talk, no false first/only.
 
+## Sanctions ops (#64)
+
+Official-list freshness is fail-closed on REACTOR-operated writes. Last-known-good is retained on a bad refresh. Audit lines hash wallets and drop raw IP / signatures / bodies. No automated override on complaint. Runbook: `docs/sanctions-runbook.md`.
+
 ## P0 status
 
 | Item | Status | Proof |

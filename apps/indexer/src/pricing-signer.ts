@@ -16,12 +16,22 @@ import {
 import type { Store } from "./db.ts";
 import { assertProductionHardGates } from "./prod-gates.ts";
 import { bindRecoveredIdentity, gateProtectedWrite, tryBindOfficialPolicyPlugins } from "./operator-policy.ts";
+import { createSanctionsOps } from "./sanctions-ops.ts";
+import type { SanctionsOps } from "../../../packages/reactor/src/sanctions-ops.ts";
 
 const PORT = Number(process.env.PRICING_SIGNER_PORT ?? 43149);
 const LOCAL = (process.env.REACTOR_ENV ?? "").toUpperCase() === "LOCAL";
 const limit = new RateLimit(60_000, Number(process.env.PRICING_RPM ?? 30));
 
 let storePromise: Promise<Store> | undefined;
+let sanctionsOpsPromise: Promise<SanctionsOps> | undefined;
+
+function sanctionsOps(): Promise<SanctionsOps> {
+  if (!sanctionsOpsPromise) {
+    sanctionsOpsPromise = createSanctionsOps(null);
+  }
+  return sanctionsOpsPromise;
+}
 
 function durableStore(): Promise<Store> {
   if (!storePromise) {
@@ -73,6 +83,17 @@ const server = createServer(async (req, res) => {
       return;
     }
     bindRecoveredIdentity(body as unknown as Record<string, unknown>, gate.wallet);
+    const freshness = (await sanctionsOps()).gateProtectedWrite({
+      action: "launch.sign",
+      wallet: gate.wallet,
+      headers: req.headers,
+      requestId: rid,
+    });
+    if (!freshness.ok) {
+      res.statusCode = freshness.status;
+      res.end(JSON.stringify({ ...freshness.body, request_id: rid }));
+      return;
+    }
     const store = await durableStore();
     const out = await signAuthorized(store, body, {
       receipt: body.receipt ?? String(req.headers["x-admission-receipt"] ?? ""),

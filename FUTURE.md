@@ -36,6 +36,10 @@ CCA factory `0x000000001F26a0044BaA66024e7b6599c61963F8` has been observed with 
 
 Do not treat `GET /sanctions/screen` as a compliance product.
 
+## Sanctions UX copy (#65)
+
+Blocked / unavailable user-facing copy beyond the #62 reason `error` strings. **Not this #64 ops pass.**
+
 ## Arc Public Testnet / mainnet
 
 No dedicated funded test key is assumed in this environment. **Do not claim Arc Testnet or mainnet deployment.** Local Anvil chain 5042002 only unless a later run produces real explorer txs.

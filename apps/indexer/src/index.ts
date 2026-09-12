@@ -33,7 +33,7 @@ import { consensusForAsset } from "../../../packages/reactor/src/pricing.ts";
 import { assetsToPrice, loadPriceRegistry, loadQuoteAssetRows, loadVerifiedVenueUsd6 } from "./price-registry.ts";
 import { assertProductionHardGates } from "./prod-gates.ts";
 import { assertSharpWorks } from "./sharp-check.ts";
-import { indexerSanctionsStore, opsRefreshSanctions, sanctionsLookup } from "./sanctions.ts";
+import { indexerSanctionsStore, sanctionsLookup } from "./sanctions.ts";
 import {
   CORS_POLICY_HEADERS,
   bindRecoveredIdentity,
@@ -42,6 +42,16 @@ import {
   readOperatorPolicyStatus,
   tryBindOfficialPolicyPlugins,
 } from "./operator-policy.ts";
+import {
+  SANCTIONS_REFRESH_INTERVAL_MS,
+  createSanctionsOps,
+  extractWallet,
+  handleSanctionsOpsRequest,
+  isProtectedWritePath,
+  protectedAction,
+  sanctionsHealthBody,
+} from "./sanctions-ops.ts";
+import type { SanctionsOps } from "../../../packages/reactor/src/sanctions-ops.ts";
 
 const PORT = Number(process.env.INDEXER_PORT ?? 43148);
 /** Exact official-list lookup only. Not a #60 policy gate. */
@@ -54,6 +64,7 @@ const media = new ObjectStore(new URL("../data/media", import.meta.url).pathname
 const quoteLimit = new RateLimit(60_000, Number(process.env.QUOTE_RPM ?? 60));
 const uploadLimit = new RateLimit(60_000, Number(process.env.UPLOAD_RPM ?? 20));
 const pricingLimit = new RateLimit(60_000, Number(process.env.PRICING_RPM ?? 30));
+let sanctionsOps: SanctionsOps;
 
 const events = [
   parseAbiItem("event TokenCreated(address indexed token, address indexed creator, string name, string symbol, uint256 supply)"),
@@ -139,6 +150,25 @@ function opsOk(req: IncomingMessage): boolean {
   if (!token) return process.env.REACTOR_ENV === "LOCAL" || process.env.NODE_ENV !== "production";
   const hdr = String(req.headers["x-ops-token"] ?? req.headers.authorization ?? "");
   return hdr === token || hdr === `Bearer ${token}`;
+}
+
+function gateWrite(
+  req: IncomingMessage,
+  body: Record<string, unknown> | undefined,
+  rid: string,
+  pathname: string,
+): { status: 403 | 503; body: Record<string, unknown> } | null {
+  if (!isProtectedWritePath(req.method ?? "", pathname)) return null;
+  const action = protectedAction(pathname);
+  if (!action) return null;
+  const gate = sanctionsOps.gateProtectedWrite({
+    action,
+    wallet: extractWallet({ headers: req.headers, body }),
+    headers: req.headers,
+    requestId: rid,
+  });
+  if (gate.ok) return null;
+  return { status: gate.status, body: { ...gate.body, request_id: rid } };
 }
 
 async function tick(store: Store) {
@@ -349,13 +379,31 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     json(res, out.status, { ...out.body, request_id: rid }, rid);
     return;
   }
-  if (url.pathname === "/ops/sanctions/refresh" && req.method === "POST") {
+  if (url.pathname === "/sanctions/health") {
+    const out = handleSanctionsOpsRequest(sanctionsOps, { method: req.method, pathname: url.pathname });
+    json(res, out?.status ?? 405, { ...(out?.body ?? { error: "method not allowed" }), request_id: rid }, rid);
+    return;
+  }
+  if (url.pathname.startsWith("/ops/sanctions/") && req.method === "POST") {
     if (!opsOk(req)) {
       json(res, 401, { error: "ops auth required", request_id: rid }, rid);
       return;
     }
-    const result = await opsRefreshSanctions(sanctions);
-    json(res, result.ok ? 200 : 422, { ...result, request_id: rid, disclaimer: "Exact official-list refresh only. Not legal/OFAC compliance." }, rid);
+    if (url.pathname === "/ops/sanctions/refresh") {
+      const result = await sanctionsOps.refresh();
+      json(res, result.ok ? 200 : 422, { ...result, health: sanctionsHealthBody(sanctionsOps), request_id: rid }, rid);
+      return;
+    }
+    const body = await readPublicJson(req, res, rid);
+    if (!body) return;
+    const out = handleSanctionsOpsRequest(sanctionsOps, {
+      method: req.method,
+      pathname: url.pathname,
+      headers: req.headers,
+      body,
+      opsAuthorized: true,
+    });
+    json(res, out?.status ?? 404, { ...(out?.body ?? { error: "not found" }), request_id: rid }, rid);
     return;
   }
   if (url.pathname === "/operator-policy/challenge") {
@@ -376,7 +424,7 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     const indexed = Number((await getState(store, "block")) ?? 0);
     const head = await client.getBlockNumber().catch(() => 0n);
     const markets = (await store.get<{ n: number }>("SELECT COUNT(*) as n FROM markets"))?.n ?? 0;
-    json(res, 200, { ok: true, block: indexed, head: Number(head), lag: Number(head) - indexed, markets, dialect: store.dialect, network: deployment.network, request_id: rid }, rid);
+    json(res, 200, { ok: true, block: indexed, head: Number(head), lag: Number(head) - indexed, markets, dialect: store.dialect, network: deployment.network, sanctions: sanctionsHealthBody(sanctionsOps), request_id: rid }, rid);
     return;
   }
   if (url.pathname === "/markets") {
@@ -472,6 +520,11 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       return;
     }
     bindRecoveredIdentity(body, gate.wallet);
+    const freshness = gateWrite(req, body, rid, url.pathname);
+    if (freshness) {
+      json(res, freshness.status, freshness.body, rid);
+      return;
+    }
     const q = await buildQuote(
       {
         store,
@@ -494,6 +547,11 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     const ip = String(req.socket.remoteAddress ?? "x");
     if (!uploadLimit.allow(ip)) {
       json(res, 429, { error: "rate limited", request_id: rid }, rid);
+      return;
+    }
+    const gated = gateWrite(req, undefined, rid, url.pathname);
+    if (gated) {
+      json(res, gated.status, gated.body, rid);
       return;
     }
     try {
@@ -562,6 +620,7 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
         jobs: await store.all("SELECT * FROM keeper_operations ORDER BY ts DESC LIMIT 40"),
         alerts: await recentAlerts(store),
         pricing: { usdPegOneOnly: true, signer: process.env.PRICING_SIGNER_URL ?? "isolated", request_id: rid },
+        sanctions: sanctionsHealthBody(sanctionsOps),
       },
       rid,
     );
@@ -624,6 +683,11 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       return;
     }
     bindRecoveredIdentity(body, gate.wallet);
+    const freshness = gateWrite(req, body, rid, url.pathname);
+    if (freshness) {
+      json(res, freshness.status, freshness.body, rid);
+      return;
+    }
     const out = await admit(store, {
       ...body,
       ip: String(req.socket.remoteAddress ?? ""),
@@ -644,6 +708,11 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       return;
     }
     bindRecoveredIdentity(body, gate.wallet);
+    const freshness = gateWrite(req, body, rid, url.pathname);
+    if (freshness) {
+      json(res, freshness.status, freshness.body, rid);
+      return;
+    }
     try {
       const out = await authorizeLaunch(store, {
         ...body,
@@ -733,6 +802,20 @@ await assertSharpWorks();
 await tryBindOfficialPolicyPlugins();
 
 const store = await openStore();
+sanctionsOps = await createSanctionsOps(store);
+{
+  const start = await sanctionsOps.startup();
+  logLine({
+    msg: "sanctions-ops startup",
+    freshness: start.health.freshness,
+    dataset: start.health.dataset.versionId,
+    degraded: start.health.degraded,
+    refreshOk: start.refresh?.ok ?? null,
+  });
+}
+setInterval(() => {
+  sanctionsOps.refresh().catch((e) => logLine({ err: String(e), path: "sanctions-refresh" }));
+}, Number(process.env.SANCTIONS_REFRESH_INTERVAL_MS ?? SANCTIONS_REFRESH_INTERVAL_MS));
 {
   const now = Math.floor(Date.now() / 1000);
   for (const t of RESERVED_TICKERS) {

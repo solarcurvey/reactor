@@ -14,6 +14,7 @@
 4. Isolated signer requires a durable store. If Postgres/SQLite cannot be opened, signing returns **503** (`SIGNER_STORE_UNAVAILABLE`) and does **not** mint. There is no in-memory fallback that skips consume.
 5. Isolated signer consumes the receipt **atomically** (`UPDATE … RETURNING` / SQLite `BEGIN IMMEDIATE`) and consumes one **signed-auth** token from the global bucket. Both steps always run. A receipt without a durable `id` is refused.
 6. Signer recomputes `launchConfigHash` and refuses a mismatch. Then EIP-712.
+7. **#64 freshness:** admit / authorize / isolated sign fail closed when the official-list snapshot is stale or missing. A failed refresh keeps last-known-good. [Sanctions ops](/docs/sanctions-ops).
 
 ## Issuance throttle
 

@@ -45,3 +45,7 @@
 **Why didn't the full CI suite run?** Draft feature-branch updates run the fast gate only (`pnpm test:lib`, plus targeted Foundry if Solidity changed). Mark the PR ready for review, add the `ci-full` label, or `workflow_dispatch` tier **full**. See [CI and cost](/docs/ci).
 
 **Why did an old CI run cancel?** A newer force-push on the same PR cancels in-progress jobs. Main post-merge runs are keyed by SHA and are not canceled by unrelated PRs.
+
+**Why was my launch or quote refused with a compliance-unavailable error?** REACTOR-operated writes fail closed when the official-list snapshot is missing or older than the 7-day SLA, or when operated write assistance is emergency-disabled. That is not an onchain revert. See [Sanctions ops](/docs/sanctions-ops). A complaint does not auto-clear a deny.
+
+**Where is the sanctions runbook?** [Sanctions runbook](/docs/sanctions-runbook), linked from [Incident response](/docs/incident-response).

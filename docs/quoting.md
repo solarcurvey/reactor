@@ -24,6 +24,8 @@ The ticket is **atomic**: `path`, routing-hop `kind`s, `amountOut`, hop `amountO
 
 Indexer decode is the same `decodePreviewRoute` used by `POST /quote`. Foundry `UserRoute.t.sol` decodes live `previewBuy` / `previewSell` reverts and asserts `hopOuts.length == hops.length + 1`.
 
+`POST /quote` is a REACTOR-operated write: a stale or missing official-list snapshot fails closed (`UNAVAILABLE_DATASET_STALE`). See [Sanctions ops](/docs/sanctions-ops).
+
 If `UserRouteQuoter` is **not deployed**, the indexer falls back to one `UserRouteExecutor` `simulateContract`. That fallback is documented only for an undeployed quoter and **may still need wallet balances**. Deploy the quoter for override-based nested quotes.
 
 ## Protocol / maintenance path (separate)

@@ -30,6 +30,8 @@ if (out.decision === "CHALLENGE") {
 
 On ALLOW the body includes `launchConfigHash`. The signer recomputes it. A mismatch is a hard fail.
 
+`authorize` / `quote` may return `UNAVAILABLE_DATASET_STALE` (or sibling #62 reason codes) when operated policy is stale or missing. That is fail-closed server policy, not a client flag. `@reactor/core` exports `evaluateOperatorPolicy` and the sanctions-ops health/audit helpers.
+
 ## Live stream
 
 `ReactorClient.stream` opens `GET /stream` and listens for **named** events (`trade`, `launch`, `bonding`, `graduation`, `rewards`, `burn`, `top10`, `core`, `hello`). `onmessage` is not enough — the hub sets `event: <type>`. First-session `hello.head` is history. Resume with `?after=` / `Last-Event-ID`. Official buy+burn toasts use live `core` executes and `burn` + `Top10Buy`, keyed by `(chainId, tx, logIndex, eventKind)`.

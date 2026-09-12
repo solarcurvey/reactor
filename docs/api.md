@@ -22,9 +22,10 @@ Base URL: indexer (local `http://127.0.0.1:43148`).
 | GET | `/stream` | SSE named events after persist commit. Clients patch cached board / token-page rows — do not refetch `/markets` on every print. `hello` includes `head` (hub id at attach) and `last` (resume cursor from `?after=` / `Last-Event-ID`). First-session toasts use `id > head`; reconnect must not raise that cutoff. `core` / `Top10Buy` rows carry `(chainId, tx, logIndex, eventKind)`. Accruals and `EpochSubmitted` (`top10`) are not buy+burn confirms. |
 | GET | `/operator-policy/challenge` | Short-lived EIP-191 message + HMAC token for write-path wallet binding. Public. |
 | GET | `/operator-policy/status` | **Official #65 decision read.** Same gate as writes. Optional `x-reactor-wallet-proof`. Minimized body: `ok`, `decision`, `reason`, `kind`, `error`, `disclaimer`, `policy`, `writesAllowed`, `source`. No wallet/IP/country/SDN. Public. |
-| GET | `/health` | Liveness |
+| GET | `/health` | Liveness plus `sanctions` (active dataset version/hash, freshness SLA, refresh failures, operator + geo policy versions). |
 | GET | `/sanctions/screen` | Exact official-list address lookup. `decision` is `blocked` / `clear` / `unavailable` plus `datasetVersion` / `freshness`. Not legal/OFAC compliance. Lookup only — write/authorization gating is [operator policy](/docs/operator-policy) (#62). |
 | GET | `/sanctions/dataset` | Active dataset version, source coverage, and freshness. |
+| GET | `/sanctions/health` | Same sanctions snapshot without chain lag. Stale/missing is never `clear`. |
 | POST | `/upload` | **Operator policy gated** (recovered wallet proof + trusted geo) before the image is stored. Stream 2MB + sharp + SigV4 remote. Returns `uri` `/m/<id>.webp` (R2/S3 key `m/<id>.webp`) and `wallet` (recovered signer). |
 | GET | `/m/:file` | Local WebP by filename (`<id>.webp`). CDN uses the same path as the object key. `nosniff` + `Content-Security-Policy: default-src 'none'; sandbox`. Public read — not policy-gated. |
 | POST | `/launch/admit` | **Operator policy gated**, then ALLOW / CHALLENGE / DENY. Partner header `x-partner-key`. No signature. JSON body **16KiB** default / **64KiB** hard max. |
@@ -36,7 +37,7 @@ Binds `127.0.0.1`. Requires an ALLOW `AdmissionReceipt` (or internal token on lo
 
 ## Ops
 
-`/ops` is not in public nav. Requires the ops token. `POST /ops/sanctions/refresh` pulls official OFAC HTTPS sources and activates only a complete validated replacement (last-known-good is kept on failure).
+`/ops` is not in public nav. Requires the ops token. The payload includes `sanctions` (exact dataset + policy versions). `POST /ops/sanctions/refresh` pulls official OFAC HTTPS sources through the #64 freshness layer (failure keeps last-known-good). `POST /ops/sanctions/writes` emergency-disables operated write assistance. `POST /ops/sanctions/review` queues an explicit operator review — user complaints are `NO_AUTOMATED_OVERRIDE`. See [Sanctions ops](/docs/sanctions-ops) and the [runbook](/docs/sanctions-runbook).
 
 All JSON may include `request_id`. Rate limits apply to quote, upload, and pricing.
 

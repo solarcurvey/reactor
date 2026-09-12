@@ -19,10 +19,28 @@ type Beat = {
   tokens?: string[];
 };
 
+type SanctionsOpsSnapshot = {
+  freshness?: string;
+  degraded?: boolean;
+  dataset?: {
+    versionId?: string | null;
+    contentHash?: string | null;
+    lastSuccessfulRefreshAt?: string | null;
+    addressCount?: number;
+  };
+  policy?: {
+    operatorPolicyVersion?: string;
+    geoPolicyVersion?: string;
+    operatedWritesEnabled?: boolean;
+  };
+  refresh?: { consecutiveFailures?: number; lastError?: string | null };
+};
+
 type Ops = {
   indexer?: { block?: number; head?: number; lag?: number; pools?: number; swaps?: number; chainTs?: number };
   keeper?: Beat | null;
   pricing?: { usdPegOneOnly?: boolean; stablecoinsAreNotDollar?: boolean };
+  sanctions?: SanctionsOpsSnapshot;
 };
 
 export default function OpsPage() {
@@ -110,6 +128,11 @@ export default function OpsPage() {
           value={data?.ops?.pricing?.usdPegOneOnly ? "usdPegOne" : "unknown"}
           sub="EURC / Stablecoins category is not $1"
         />
+        <Stat
+          label="Sanctions"
+          value={data?.ops?.sanctions?.dataset?.versionId ?? "no dataset"}
+          sub={`${data?.ops?.sanctions?.freshness ?? "missing"} · policy ${data?.ops?.sanctions?.policy?.operatorPolicyVersion ?? "—"} · geo ${data?.ops?.sanctions?.policy?.geoPolicyVersion ?? "—"}`}
+        />
       </div>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-3">
@@ -131,6 +154,21 @@ export default function OpsPage() {
           </p>
           <p className="mt-2 font-mono text-[11px] text-zinc-400">
             {beat?.ok === false ? "keeper fail-closed — watchdog should alert" : "await /data/watchdog-alerts.json"}
+          </p>
+        </Card>
+        <Card className="p-4">
+          <div className="text-[11px] uppercase tracking-wider text-zinc-400">Official-list / policy</div>
+          <dl className="mt-2 space-y-1 font-mono text-[12px] text-zinc-300">
+            <Row k="dataset" v={String(data?.ops?.sanctions?.dataset?.versionId ?? "—")} />
+            <Row k="contentHash" v={String(data?.ops?.sanctions?.dataset?.contentHash ?? "—")} />
+            <Row k="operator policy" v={String(data?.ops?.sanctions?.policy?.operatorPolicyVersion ?? "—")} />
+            <Row k="geo policy" v={String(data?.ops?.sanctions?.policy?.geoPolicyVersion ?? "—")} />
+            <Row k="last success" v={String(data?.ops?.sanctions?.dataset?.lastSuccessfulRefreshAt ?? "—")} />
+            <Row k="refresh fails" v={String(data?.ops?.sanctions?.refresh?.consecutiveFailures ?? 0)} />
+          </dl>
+          <p className="mt-2 font-mono text-[11px] text-zinc-400">
+            {data?.ops?.sanctions?.degraded ? "degraded — fail-closed writes" : "SLA current"} · writes{" "}
+            {data?.ops?.sanctions?.policy?.operatedWritesEnabled === false ? "disabled" : "enabled"}
           </p>
         </Card>
         <Card className="p-4">
