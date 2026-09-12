@@ -1,8 +1,10 @@
 # BUILD REPORT — Exact official-list sanctions screening (Refs #61)
 
-**Status:** New branch `cursor/ofac-sanctions-dataset-1a33` off latest `origin/main`. Issue **#61 stays open** for independent audit (parent RELEASE GATE **#60**). Do not auto-close.  
+**Status:** Branch `cursor/ofac-sanctions-dataset-1a33` / draft PR **#66**. Issue **#61 stays open** for independent audit (parent RELEASE GATE **#60**). Do not auto-close.  
 **Not audited. Not mainnet. Not a legal/OFAC compliance claim.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+**Re-audit pass (source integrity):** default refresh is SDN **and** Consolidated (classic + advanced). Completeness floor is **85%** of prior addresses and per-source counts, plus a 50% per-source byte floor. `allowCatastrophicShrink` / `SANCTIONS_ALLOW_SHRINK=1` is the only override.
 
 ## This HEAD
 
@@ -20,7 +22,9 @@
 | Item | Closed? | Evidence |
 | --- | --- | --- |
 | Parser regression (EVM case, duplicates, malformed, non-EVM families) | **Yes** | `packages/sanctions/src/normalize.test.ts`, `parse.test.ts` |
-| Atomic update; last-known-good on bad download/parse | **Yes** | `store.test.ts`, `refresh.test.ts` |
+| Default refresh includes Consolidated; consolidated-only address blocked | **Yes** | `refresh.test.ts` (TRX + XRP after default source set) |
+| Atomic update; last-known-good on bad **or** valid-but-gutted parse | **Yes** | `store.test.ts` 10→1 floor; `refresh.test.ts` `truncated_valid.xml` |
+| Explicit shrink override only | **Yes** | `allowCatastrophicShrink` / `--allow-shrink` / `SANCTIONS_ALLOW_SHRINK=1` |
 | Server-usable lookup + dataset version/freshness | **Yes** | `screen.test.ts`, `http.test.ts`, `apps/indexer/src/sanctions-api.test.ts`, `GET /sanctions/screen` |
 | CI fixtures; network refresh isolated | **Yes** | unit scripts + `pnpm --filter indexer test`; `test:sanctions:network` / `SANCTIONS_NETWORK=1` only |
 | Docs / runbook; no compliance / hop claim | **Yes** | `SANCTIONS.md`, `/docs/sanctions`, trust, API, admission hooks for later #60 children |

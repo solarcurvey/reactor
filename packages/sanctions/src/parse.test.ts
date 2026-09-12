@@ -64,6 +64,13 @@ const sdn = parseOfacXml(readFixture("sdn.xml"), {
   const usdt = cons.addresses.find((a) => a.ofacTickers.includes("USDT"));
   assert(usdt?.family === "evm", "USDT 0x-40hex uses evm 20-byte identity");
   assert(usdt.canonicalKey === normalizeEvm(FIXTURE_ADDRESSES.sanctionedEvm), "USDT hex does not invent a second evm key");
+
+  const consAdv = parseOfacXml(readFixture("cons_advanced.xml"), {
+    sourceId: "ofac-consolidated-advanced-xml",
+    sourceUrl: "https://www.treasury.gov/ofac/downloads/sanctions/1.0/cons_advanced.xml",
+    format: "consolidated_advanced_xml",
+  });
+  assert(consAdv.addresses.some((a) => a.family === "xrp" && a.canonicalKey === `xrp:${FIXTURE_ADDRESSES.sanctionedXrp}`), "consolidated advanced XRP");
 }
 
 {

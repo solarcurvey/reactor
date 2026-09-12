@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Sanctions xmlns="https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/ADVANCED_XML">
+  <DateOfIssue>
+    <Year>2026</Year>
+    <Month>09</Month>
+    <Day>01</Day>
+  </DateOfIssue>
+  <ReferenceValueSets>
+    <FeatureTypeValues>
+      <FeatureType ID="347">
+        <Name>Digital Currency Address - XRP</Name>
+      </FeatureType>
+    </FeatureTypeValues>
+  </ReferenceValueSets>
+  <DistinctParties>
+    <DistinctParty>
+      <Profile ID="800010">
+        <Identity>
+          <Alias>
+            <DocumentedName>
+              <DocumentedNamePart>
+                <NamePartValue>CONSOLIDATED ADVANCED FIXTURE</NamePartValue>
+              </DocumentedNamePart>
+            </DocumentedName>
+          </Alias>
+        </Identity>
+        <Feature>
+          <FeatureTypeID>347</FeatureTypeID>
+          <FeatureVersion>
+            <VersionDetail>rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH</VersionDetail>
+          </FeatureVersion>
+        </Feature>
+      </Profile>
+    </DistinctParty>
+  </DistinctParties>
+</Sanctions>

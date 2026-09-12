@@ -15,6 +15,7 @@ export const FIXTURE_ADDRESSES = {
   sanctionedXmrHex: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   sanctionedTrx: "TN3W4H6rK2ce4vX9YnFQHwKENnHjoxb3m9",
   sanctionedSol: "So11111111111111111111111111111111111111112",
+  sanctionedXrp: "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
   malformedEvm: "0xdead",
   malformedEmpty: "",
 } as const;
@@ -32,5 +33,6 @@ export function pinnedFixtureBodies(): Record<string, string> {
     "ofac-sdn-xml": readFixture("sdn.xml"),
     "ofac-sdn-advanced-xml": readFixture("sdn_advanced.xml"),
     "ofac-consolidated-xml": readFixture("consolidated.xml"),
+    "ofac-consolidated-advanced-xml": readFixture("cons_advanced.xml"),
   };
 }

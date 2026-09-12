@@ -20,7 +20,7 @@ const dataDir = arg("--dir", process.env.SANCTIONS_DATA_DIR ?? new URL("../data"
 if (cmd === "help" || cmd === "-h" || cmd === "--help") {
   console.log(`@reactor/sanctions — exact official-list address screening (not legal/OFAC compliance)
 
-  tsx src/cli.ts refresh [--dir PATH] [--fixtures] [--all-sources]
+  tsx src/cli.ts refresh [--dir PATH] [--fixtures] [--allow-shrink]
   tsx src/cli.ts screen <address> [--dir PATH] [--family evm]
   tsx src/cli.ts version [--dir PATH]
 
@@ -53,14 +53,14 @@ if (cmd === "screen") {
 
 if (cmd === "refresh") {
   mkdirSync(dataDir, { recursive: true });
+  const allowShrink = has("--allow-shrink") || process.env.SANCTIONS_ALLOW_SHRINK === "1";
   const result = has("--fixtures")
     ? await refreshSanctions(store, {
-        sourceIds: ["ofac-sdn-xml", "ofac-sdn-advanced-xml", "ofac-consolidated-xml"],
         bodies: pinnedFixtureBodies(),
-        validation: { minAddresses: 1, rejectIfFewerThanPriorRatio: 0 },
+        validation: allowShrink ? { allowCatastrophicShrink: true } : undefined,
       })
     : await refreshSanctions(store, {
-        sourceIds: has("--all-sources") ? OFFICIAL_SOURCES.map((s) => s.id) : undefined,
+        validation: allowShrink ? { allowCatastrophicShrink: true } : undefined,
       });
   console.log(JSON.stringify(result, null, 2));
   process.exit(result.ok ? 0 : 1);

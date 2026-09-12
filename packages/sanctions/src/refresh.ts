@@ -2,7 +2,7 @@ import { fetchOfficialSource, type FetchOfficialOpts } from "./fetch.ts";
 import { sha256Hex } from "./hash.ts";
 import { extractPublishDate, extractRecordCount, mergeParseResults, parseOfacXml } from "./parse.ts";
 import { DEFAULT_REFRESH_SOURCE_IDS, officialSourceById, type OfficialSource } from "./sources.ts";
-import { type ActivateResult, type ActivateValidation, type SanctionsStore } from "./store.ts";
+import { resolveActivateValidation, type ActivateResult, type ActivateValidation, type SanctionsStore } from "./store.ts";
 import type { DatasetVersion, ParseWarning, SourceFetchMeta } from "./types.ts";
 
 export type RefreshOpts = {
@@ -84,7 +84,7 @@ export async function refreshSanctions(store: SanctionsStore, opts: RefreshOpts 
         warningCount: merged.warnings.length,
         entryCount: merged.addresses.length,
       },
-      opts.validation,
+      resolveActivateValidation(opts.validation),
     );
     return toRefreshResult(activated, merged.warnings);
   } catch (e) {
@@ -116,5 +116,5 @@ export async function loadFixtures(store: SanctionsStore, fixtures: Record<strin
       documentation: "https://ofac.treasury.gov/specially-designated-nationals-list-data-formats-data-schemas",
     });
   }
-  return refreshSanctions(store, { sources, bodies, validation: { minAddresses: 1, rejectIfFewerThanPriorRatio: 0 } });
+  return refreshSanctions(store, { sources, bodies });
 }

@@ -51,11 +51,19 @@ export type SourceFetchMeta = {
   recordCount?: number;
 };
 
+export type SourceCoverage = {
+  sourceId: string;
+  addressCount: number;
+  byteLength: number;
+  recordCount?: number;
+};
+
 export type DatasetVersion = {
   id: string;
   retrievedAt: string;
   activatedAt?: string;
   sources: SourceFetchMeta[];
+  sourceCoverage: SourceCoverage[];
   contentHash: string;
   parserVersion: string;
   addressCount: number;

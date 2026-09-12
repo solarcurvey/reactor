@@ -31,7 +31,9 @@ export function sanctionsLookup(
 }
 
 export async function opsRefreshSanctions(store: SanctionsStore) {
-  return refreshSanctions(store);
+  return refreshSanctions(store, {
+    validation: { allowCatastrophicShrink: process.env.SANCTIONS_ALLOW_SHRINK === "1" },
+  });
 }
 
 export { SCREEN_DISCLAIMER };

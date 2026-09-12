@@ -53,8 +53,16 @@ export const OFFICIAL_SOURCES: readonly OfficialSource[] = [
   },
 ];
 
-/** Primary refresh set: SDN (classic + advanced). Consolidated is extra coverage. */
-export const DEFAULT_REFRESH_SOURCE_IDS = ["ofac-sdn-xml", "ofac-sdn-advanced-xml"] as const;
+/**
+ * Canonical production refresh set: SDN + Consolidated (classic and advanced).
+ * Same canonical key is merged once across files — no double-count identity.
+ */
+export const DEFAULT_REFRESH_SOURCE_IDS = [
+  "ofac-sdn-xml",
+  "ofac-sdn-advanced-xml",
+  "ofac-consolidated-xml",
+  "ofac-consolidated-advanced-xml",
+] as const;
 
 export function officialSourceById(id: string): OfficialSource | undefined {
   return OFFICIAL_SOURCES.find((s) => s.id === id);

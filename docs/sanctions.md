@@ -12,7 +12,7 @@ The indexer can answer “is this exact address string on the last activated off
 | --- | --- |
 | `GET /sanctions/screen?address=` | `decision`: `blocked` / `clear` / `unavailable`. Includes `datasetVersion`, `freshness`, `disclaimer`. Optional `family` (`evm`, `btc`, …). |
 | `GET /sanctions/dataset` | Active version + freshness. `policyGate` is `null` until a later #60 child. |
-| `POST /ops/sanctions/refresh` | Ops token. Atomic official HTTPS refresh. Failure keeps last-known-good. |
+| `POST /ops/sanctions/refresh` | Ops token. Atomic official HTTPS refresh of **SDN + Consolidated** (classic and advanced). Failure or a valid-but-gutted parse keeps last-known-good. `SANCTIONS_ALLOW_SHRINK=1` is the explicit override. |
 
 Decisions are **not** a boolean. A missing or stale dataset that does not already contain the address returns `unavailable`, never `clear`. A listed address still returns `blocked` even if the snapshot is stale.
 
@@ -31,6 +31,6 @@ Decisions are **not** a boolean. A missing or stale dataset that does not alread
 
 ## Freshness
 
-Default max age is **7 days** (`SANCTIONS_MAX_AGE_MS`). Refresh is explicit (CLI or ops). The indexer does not pull OFAC on every process start. CI uses **pinned fixtures** under `packages/sanctions/fixtures/`. Live HTTPS is `SANCTIONS_NETWORK=1 pnpm test:sanctions:network` only.
+Default max age is **7 days** (`SANCTIONS_MAX_AGE_MS`). Refresh is explicit (CLI or ops) and always includes SDN and Consolidated machine-readable files. Completeness: keep ≥85% of last-known-good addresses (and per-source counts); source bodies must not shrink below 50% of prior bytes. A well-formed but catastrophically truncated parse does not activate. The indexer does not pull OFAC on every process start. CI uses **pinned fixtures** under `packages/sanctions/fixtures/`. Live HTTPS is `SANCTIONS_NETWORK=1 pnpm test:sanctions:network` only.
 
 Runbook: `SANCTIONS.md`.

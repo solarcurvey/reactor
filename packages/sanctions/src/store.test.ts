@@ -45,6 +45,7 @@ try {
   assert(first.ok, "first activate ok");
   assert(first.snapshot.version.parserVersion === PARSER_VERSION, "parser version recorded");
   assert(first.snapshot.version.contentHash.length === 64, "content hash");
+  assert(first.snapshot.version.sourceCoverage.some((c) => c.sourceId === "ofac-sdn-xml" && c.addressCount === 1), "sourceCoverage recorded");
   const pointer = JSON.parse(readFileSync(join(dir, "current.json"), "utf8")) as { versionId: string };
   assert(pointer.versionId === first.snapshot.version.id, "current pointer");
 
@@ -60,22 +61,41 @@ try {
   assert(!empty.ok, "empty replacement rejected");
   assert(store.active()?.version.id === first.snapshot.version.id, "last-known-good kept after empty");
 
-  const tiny = store.activate(
+  const many = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) =>
+    addr(`evm:0x${i.toString().padStart(40, "a")}`),
+  );
+  const filled = store.activate({
+    addresses: many,
+    sources: [{ ...first.snapshot.version.sources[0]!, byteLength: 10_000 }],
+    retrievedAt: "2026-09-12T01:00:00.000Z",
+    warningCount: 0,
+  });
+  assert(filled.ok, "grow from 1 to 10 ok");
+
+  const gutted = store.activate({
+    addresses: [addr("evm:0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")],
+    sources: [{ ...first.snapshot.version.sources[0]!, byteLength: 10_000 }],
+    retrievedAt: "2026-09-12T02:00:00.000Z",
+    warningCount: 0,
+  });
+  assert(!gutted.ok, "default 85% floor rejects 10→1 valid shrink");
+  assert(store.active()?.version.addressCount === 10, "pointer unchanged after gutted valid set");
+
+  const override = store.activate(
     {
       addresses: [addr("evm:0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")],
-      sources: first.snapshot.version.sources,
-      retrievedAt: "2026-09-12T01:00:00.000Z",
+      sources: [{ ...first.snapshot.version.sources[0]!, byteLength: 10_000 }],
+      retrievedAt: "2026-09-12T02:00:00.000Z",
       warningCount: 0,
     },
-    { minAddresses: 1, rejectIfFewerThanPriorRatio: 2 },
+    { allowCatastrophicShrink: true },
   );
-  assert(!tiny.ok, "ratio floor rejects shrink");
-  assert(store.active()?.version.id === first.snapshot.version.id, "pointer unchanged after ratio reject");
+  assert(override.ok, "explicit allowCatastrophicShrink overrides the floor");
 
   const disk = new SanctionsStore({ dataDir: dir, now });
   const loaded = disk.loadFromDisk();
-  assert(loaded?.version.id === first.snapshot.version.id, "reload last-known-good");
-  assert(loaded.index.has("evm:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), "index rebuilt");
+  assert(loaded?.version.id === override.snapshot.version.id, "reload last activate");
+  assert(loaded.index.has("evm:0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"), "index rebuilt");
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }

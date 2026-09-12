@@ -22,7 +22,7 @@ Documented by OFAC ([data formats](https://ofac.treasury.gov/specially-designate
 | `ofac-consolidated-xml` | `https://www.treasury.gov/ofac/downloads/consolidated/consolidated.xml` |
 | `ofac-consolidated-advanced-xml` | `https://www.treasury.gov/ofac/downloads/sanctions/1.0/cons_advanced.xml` |
 
-Default refresh fetches SDN classic + SDN advanced. Host allowlist: `www.treasury.gov`, `ofac.treasury.gov`, `sanctionslistservice.ofac.treas.gov`. HTTP and third-party mirrors are rejected.
+Default production refresh fetches **all four**: SDN classic + SDN advanced + Consolidated classic + Consolidated advanced. The same canonical address listed in more than one file is stored once (sources[] merged). Host allowlist: `www.treasury.gov`, `ofac.treasury.gov`, `sanctionslistservice.ofac.treas.gov`. HTTP and third-party mirrors are rejected.
 
 Digital-currency rows are `Digital Currency Address - <TICKER>` (classic `idType` / advanced `FeatureType`). Passport and other IDs are ignored.
 
@@ -36,6 +36,14 @@ Each activated set records:
 - `parserVersion` (`PARSER_VERSION` in `packages/sanctions/src/types.ts`)
 
 `current.json` is replaced with `write + rename`. A partial or broken download does not swing the pointer.
+
+Completeness (default, not optional):
+
+- Keep at least **85%** of last-known-good address count **and** of each prior source’s address contribution.
+- Each prior source body must stay at least **50%** of its prior byte length (truncated-download guard).
+- Omitting a prior source is a failed refresh.
+- A syntactically valid file that drops most coverage does **not** activate.
+- Exceptional real shrink: `--allow-shrink` or `SANCTIONS_ALLOW_SHRINK=1` (`allowCatastrophicShrink`). Not the production default.
 
 ## Screening API
 
@@ -64,9 +72,10 @@ SANCTIONS_NETWORK=1 pnpm test:sanctions:network
 # Activate pinned fixtures into a data dir (local demo)
 pnpm --filter @reactor/sanctions refresh -- --dir ./packages/sanctions/data --fixtures
 
-# Official HTTPS refresh (ops)
+# Official HTTPS refresh (ops) — SDN + Consolidated, 85% completeness floor
 SANCTIONS_DATA_DIR=./apps/indexer/data/sanctions pnpm --filter @reactor/sanctions refresh
 # or POST /ops/sanctions/refresh (ops token)
+# SANCTIONS_ALLOW_SHRINK=1 / --allow-shrink is the explicit override only
 ```
 
 Env: `SANCTIONS_DATA_DIR` (default `apps/indexer/data/sanctions`), `SANCTIONS_MAX_AGE_MS` (default 7 days).
