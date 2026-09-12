@@ -1,3 +1,45 @@
+# BUILD REPORT — Top-10 ValuationService rebase onto post-#30 main
+
+**Status:** Same PR **#33** / same branch `cursor/top10-valuation-service-5a26`, rebased onto latest `origin/main` `80c3c20` (#30 consensus **v10** after #23 `current_supply` **v9**). Issue **#10 stays open** until merge + post-merge verify.  
+**Not audited. Not mainnet.**  
+**Economics / 3.5% / curve / Keeper routing / Factory V1 constants: unchanged.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — notes only |
+| Factory | **V1** — unchanged |
+| Intent | Replace web `discoverTop10` Factory RPC with canonical indexer ValuationService snapshot (issue #10). Schema **v11** is uniquely Top-10 candidate tables. Do not reintroduce or collide with v9/v10. |
+| Foundry | Unchanged this pass (offchain ranking only). |
+| Indexer / lib | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts`, `schema.test.ts` (v8→v11, v9→v11, v10→v11), `marketdata.test.ts`, `pnpm docs:check` |
+| Review shots | **Not regenerated** (no UI chrome change; route now proxies indexer) |
+| Mainnet | **Blocked** |
+
+## Closed this run (AUDIT BLOCKED on #10)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Rank from persisted `current_supply` | **Yes** | `loadGraduatedMarkets` reads `COALESCE(NULLIF(t.current_supply,''), t.supply)`. Writers remain #23. |
+| Top-10 tables uniquely v11 | **Yes** | `SCHEMA_VERSION = 11`. v9 stays `current_supply`, v10 stays `kind`. Venue mark stays column-gated. |
+| Web / Keeper consume one snapshot | **Yes** | `/api/reactor/top10` proxies `GET {indexer}/top10`. Keeper + watchdog read the same payload. |
+| Nested marks via ValuationService | **Yes** | `top10-rank.test.ts` |
+| No `discoverTop10` / 0.30% fallback | **Yes** | Source asserts in `top10-rank.test.ts` |
+| Scale / no O(N) RPC | **Yes** | 8k indexed markets + fetch stub |
+
+## Still blocked (do not fake)
+
+| Blocker | Why |
+| --- | --- |
+| Public mainnet (5042) | Hard blocked. No addresses. |
+| Independent re-audit | Required before merge of #10. |
+| Top-10 as onchain oracle | Frozen offchain by design. |
+| Close #10 | Stays open until merge + post-merge verify. |
+
+---
+
+# Prior — merged #30 external price consensus
+
 # BUILD REPORT — Protocol 0.3.3 external price consensus
 
 **Status:** Continue on existing REACTOR Origin repo. Parent `0b94d67` (#23 `current_supply` **v9** on `26cf6aa` / #32 after #31). Schema **v10** is `external_price_marks.kind`. Same PR #30.  

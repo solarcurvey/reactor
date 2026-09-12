@@ -16,8 +16,9 @@ const ALERTS = process.env.WATCHDOG_ALERTS ?? new URL("../data/watchdog-alerts.j
 const STALE_MS = Number(process.env.WATCHDOG_STALE_MS ?? 5 * 60 * 1000);
 const INTERVAL = Number(process.env.WATCHDOG_INTERVAL_MS ?? 30_000);
 const RPC = process.env.NEXT_PUBLIC_RPC_URL ?? deployment.rpc;
-const API = process.env.REACTOR_TOP10_URL ?? "http://127.0.0.1:43147/api/reactor/top10";
-const INDEXER = process.env.INDEXER_URL ?? "http://127.0.0.1:43148";
+const INDEXER_BASE = (process.env.INDEXER_URL ?? "http://127.0.0.1:43148").replace(/\/$/, "");
+const INDEXER = INDEXER_BASE;
+const API = process.env.REACTOR_TOP10_URL ?? `${INDEXER_BASE}/top10`;
 const MAINNET_CHAIN = 5042;
 
 const flywheelAbi = parseAbi([

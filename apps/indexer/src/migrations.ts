@@ -1,6 +1,6 @@
 import type { Store } from "./db.ts";
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 /**
  * Wall-clock fields written as `Date.now()` milliseconds (≈1.8e12 today).
@@ -162,6 +162,27 @@ CREATE TABLE IF NOT EXISTS core_buybacks (
 CREATE TABLE IF NOT EXISTS top10_epochs (
   epoch_id TEXT PRIMARY KEY, pot TEXT, n INTEGER, finalized INTEGER, paused INTEGER, reason TEXT, ts INTEGER
 );
+CREATE TABLE IF NOT EXISTS top10_candidate_epochs (
+  id TEXT PRIMARY KEY,
+  computed_ts INTEGER NOT NULL,
+  now_sec INTEGER NOT NULL,
+  pause_epoch INTEGER NOT NULL,
+  reason TEXT,
+  candidates INTEGER,
+  source TEXT,
+  payload TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS top10_candidate_rows (
+  epoch_id TEXT NOT NULL,
+  rank INTEGER NOT NULL,
+  token TEXT,
+  symbol TEXT,
+  quote TEXT,
+  mark_usdc TEXT,
+  weight_bps INTEGER,
+  PRIMARY KEY (epoch_id, rank)
+);
+CREATE INDEX IF NOT EXISTS idx_top10_candidate_token ON top10_candidate_rows(token);
 CREATE TABLE IF NOT EXISTS targets (
   epoch_id TEXT, rank INTEGER, token TEXT, weight_bps INTEGER, mark_usdc TEXT, PRIMARY KEY (epoch_id, rank)
 );
@@ -498,8 +519,34 @@ export async function applyMigrations(store: Store): Promise<number> {
     ).catch(() => undefined);
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 10, Math.floor(Date.now() / 1000));
   }
-  // Executable Arc mark lives on the verified venue row. Column-gated so we do not
-  // claim a new v11 that would shove #29 off the train.
+  // v11 = Top-10 candidate snapshot tables (#33 / issue #10). After #23 v9 + #30 v10.
+  if (!(await migrationApplied(store, 11))) {
+    await store.exec(`
+      CREATE TABLE IF NOT EXISTS top10_candidate_epochs (
+        id TEXT PRIMARY KEY,
+        computed_ts INTEGER NOT NULL,
+        now_sec INTEGER NOT NULL,
+        pause_epoch INTEGER NOT NULL,
+        reason TEXT,
+        candidates INTEGER,
+        source TEXT,
+        payload TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS top10_candidate_rows (
+        epoch_id TEXT NOT NULL,
+        rank INTEGER NOT NULL,
+        token TEXT,
+        symbol TEXT,
+        quote TEXT,
+        mark_usdc TEXT,
+        weight_bps INTEGER,
+        PRIMARY KEY (epoch_id, rank)
+      );
+      CREATE INDEX IF NOT EXISTS idx_top10_candidate_token ON top10_candidate_rows(token);
+    `);
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 11, Math.floor(Date.now() / 1000));
+  }
+  // Executable Arc mark lives on the verified venue row — column-gated, not a schema id.
   await ensureRouteVenueMarkColumn(store);
   const latest = await store.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
   return Number(latest?.n ?? 0);

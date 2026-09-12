@@ -17,7 +17,7 @@ The Keeper is **not** an owner. It cannot configure quotes, adapters, fees, Guar
 
 ## Top-10
 
-REACTOR API computes ranks and weights offchain about every five minutes.
+Indexer `GET /top10` computes ranks and weights from ValuationService + persisted `current_supply`. Keeper and the public web route consume that snapshot.
 
 Eligibility (API, not the contract):
 
