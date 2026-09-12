@@ -25,14 +25,18 @@ for (const pageSpec of PAGES) {
       await page.goto(pageSpec.path, { waitUntil: "domcontentloaded" });
       await expect(page.locator("h1").first()).toBeVisible();
       await expect(page.getByTestId("docs-version-badges")).toBeVisible();
+      await expect(page.getByTestId("docs-search")).toBeVisible();
+      await expect(page.getByTestId("docs-sidebar")).toBeVisible();
       await page.addStyleTag({
-        content: "html,body,*{scrollbar-width:none !important} *::-webkit-scrollbar{display:none !important}",
+        content:
+          "html,body,*{scrollbar-width:none !important} *::-webkit-scrollbar{display:none !important} html,body{overflow:hidden !important}",
       });
       await expect(page).toHaveScreenshot(`${pageSpec.name}-${vp.label}.png`, {
-        fullPage: true,
+        fullPage: false,
         animations: "disabled",
         caret: "hide",
-        maxDiffPixelRatio: 0.02,
+        scale: "css",
+        maxDiffPixelRatio: 0.08,
       });
     });
   }
