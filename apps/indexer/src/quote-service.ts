@@ -1,8 +1,16 @@
-import { decodeErrorResult, encodeFunctionData, keccak256, parseAbi, toBytes, type PublicClient } from "viem";
+import { encodeFunctionData, parseAbi, type PublicClient } from "viem";
 import type { Store } from "./db.ts";
 import { loadEdges, loadQuoteMetas, planFeeExemptRoute } from "./route-graph.ts";
 import { decodeAbiParameters } from "viem";
-import { planCandidates, applyMinOuts, pickBest, scoreRoute, VENUE, type Hop } from "../../../packages/reactor/src/routes.ts";
+import { planCandidates, applyMinOuts, VENUE, type Hop } from "../../../packages/reactor/src/routes.ts";
+import {
+  decodePreviewRoute,
+  hopsFromAtomicPreview,
+  previewedRoute,
+  quoteScoreOpts,
+  selectAtomicQuotedRoute,
+  type PreviewedRoute,
+} from "./quote-select.ts";
 import {
   applySlippage,
   splitQuoteFee,
@@ -36,16 +44,6 @@ const quoterAbi = parseAbi([
   "function previewBuy(address token, uint256 usdcIn, (address adapter,address tokenIn,address tokenOut,uint256 minOut,bytes data)[] hops)",
   "function previewSell(address token, uint256 tokenIn, (address adapter,address tokenIn,address tokenOut,uint256 minOut,bytes data)[] hops)",
 ]);
-
-const KIND_NAME: Record<string, string> = {
-  [keccak256(toBytes("OFFICIAL_REACTOR_V4"))]: VENUE.OFFICIAL_REACTOR_V4,
-  [keccak256(toBytes("EXTERNAL_V4_HOOKLESS"))]: VENUE.EXTERNAL_V4_HOOKLESS,
-  [keccak256(toBytes("BONDING_CURVE"))]: VENUE.BONDING_CURVE,
-};
-
-function kindName(k: `0x${string}` | string): string {
-  return KIND_NAME[k.toLowerCase()] ?? KIND_NAME[k] ?? VENUE.EXTERNAL_V4_HOOKLESS;
-}
 
 function extractRevertData(err: unknown): `0x${string}` | undefined {
   const e = err as { data?: { data?: string } | string; cause?: { data?: { data?: string } | string }; raw?: string };
@@ -84,10 +82,7 @@ async function previewWholeRoute(
     } catch (e) {
       const raw = extractRevertData(e);
       if (!raw) throw e;
-      const decoded = decodeErrorResult({ abi: quoterAbi, data: raw });
-      if (decoded.errorName !== "PreviewRoute") throw e;
-      const [amountOut, hopOuts, kinds] = decoded.args as [bigint, bigint[], `0x${string}`[]];
-      return { amountOut, hopOuts, kinds: kinds.map(kindName) };
+      return decodePreviewRoute(raw);
     }
   }
   if (!executor) throw new Error(QUOTER_FALLBACK_NOTE);
@@ -233,8 +228,7 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
         const src = req.kind === "BUY" ? req.tokenIn : market!.quote;
         const dst = req.kind === "BUY" ? market!.quote : req.tokenOut;
         const candidates = planCandidates(src, dst, edges, metas, { protocol: false, adapters, maxCandidates: 8 });
-        const scored = [];
-        let bestPreview: { amountOut: bigint; hopOuts: bigint[]; kinds: string[] } | undefined;
+        const scored: PreviewedRoute[] = [];
         for (const c of candidates) {
           if (c.hops.length > 3) continue;
           try {
@@ -247,39 +241,18 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
               account,
             );
             if (previewed.amountOut <= 1n) continue;
-            scored.push(
-              scoreRoute(c, {
-                amountOut: previewed.amountOut,
-                impactBps: c.hops.length * 10,
-                gasEstimate: c.hops.length * 90_000,
-                reliabilityBps: 9_000 - c.hops.length * 200,
-              }),
-            );
-            if (!bestPreview || previewed.amountOut > bestPreview.amountOut) bestPreview = previewed;
+            scored.push(previewedRoute(c, previewed, quoteScoreOpts(c.hops.length), req.kind === "SELL" ? "SELL" : "BUY"));
           } catch {
             /* candidate unavailable */
           }
         }
-        const planned = pickBest(scored);
-        plannedHops = planned.hops;
-        path = planned.path;
-        if (bestPreview && payingUsdc) {
+        const selected = selectAtomicQuotedRoute(scored);
+        plannedHops = selected.hops;
+        path = selected.path;
+        if (payingUsdc) {
           atomicPreviewed = true;
-          amountOut = bestPreview.amountOut;
-          for (let i = 0; i < plannedHops.length; i++) {
-            const out = bestPreview.hopOuts[i] ?? 0n;
-            hops.push({
-              ...plannedHops[i]!,
-              minOut: 0n,
-              amountIn: i === 0 ? amountIn.toString() : (bestPreview.hopOuts[i - 1] ?? 0n).toString(),
-              amountOut: out.toString(),
-              impactBps: 0,
-              gasEstimate: 90_000,
-              reliabilityBps: 8_500,
-              feeExempt: false,
-              kind: bestPreview.kinds[i] ?? VENUE.EXTERNAL_V4_HOOKLESS,
-            });
-          }
+          amountOut = selected.preview.amountOut;
+          hops.push(...hopsFromAtomicPreview(selected, amountIn));
         }
       }
 

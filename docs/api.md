@@ -10,7 +10,7 @@ Base URL: indexer (local `http://127.0.0.1:43148`).
 | --- | --- | --- |
 | GET | `/markets` | Keyset (`cursor_ts`,`cursor_token`) + NUMERIC sorts. Search/filter. `supply` = initial mint; `current_supply` tracks remaining `totalSupply()` (token burns + bounded reconcile, not ≡); `fdv_usd6` uses `current_supply`. |
 | GET | `/ticker/:ticker` | Canonical status, 24h lock, latest token |
-| POST | `/quote` | One `UserRouteQuoter` eth_call per candidate. Nested 3.5% legs listed separately. |
+| POST | `/quote` | One `UserRouteQuoter` eth_call per candidate. Ticket hops / `amountOut` / `minOut`s / terminal market-leg are atomic to the selected candidate (`PreviewRoute` is `hops+1`). Nested 3.5% legs listed separately. |
 | GET | `/candles/:token` | `interval`, `limit`, `before`, `after`. Bounded. |
 | GET | `/swaps/:token` | Bounded `limit`, `before_id` |
 | GET | `/quote-assets` | Registered quotes |

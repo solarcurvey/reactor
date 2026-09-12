@@ -37,7 +37,7 @@ Do not certify. Do not deploy. Do not propose a new curve or fee split.
 | Nested quotes | RoutePlanner max 3; ValuationEngine recursive; cycle reject; only usdPegOne is $1 | `valuation.test.ts`, `NativeQuote.t.sol` |
 | CORE vest / genesis | 1B; 100M vest 30d cliff + 300d linear; 900M locked; never Top-10 | `CoreGenesis.t.sol`, `CoreLiquiditySim.t.sol` |
 | Indexer / Top-10 | Indexed markets + ValuationService snapshot; no per-request Factory RPC. Event journal schema v8. `tokens.current_supply` is schema v9. `external_price_marks.kind` is schema v10 (#30 reserves v9). Top-10 candidate tables are schema v11. Offchain ms columns are `BIGINT` (schema v6) | `top10-rank.test.ts`, `ingest.valuation.test.ts`, `price-marks.test.ts`, `tick-atomic.test.ts`, `pg-ms-timestamps.test.ts`, `Top10Api.t.sol` |
-| User routes | `UserRouteExecutor` + shared RoutePlanner; bonding nested USDC + graduated v4 | `UserRoute.t.sol` |
+| User routes | `UserRouteExecutor` + shared RoutePlanner; bonding nested USDC + graduated v4. Quote ticket hops/`minOut`s/terminal bind to one `pickBest` candidate (`PreviewRoute` is hops+1) | `UserRoute.t.sol`, `quote-integrity.test.ts` |
 | Routing deltas | `RouteGuard`, `RouteExec`, adapters | `RoutingDeltas.t.sol`, `KeeperMinOut.t.sol` |
 
 ## Overview
@@ -190,6 +190,7 @@ There is no Ownable, admin, bootstrap, or first-caller-wins `bindFactory`.
 
 - Official router is exact-in first. Exact-out exists at the hook but is less tested in the UI.
 - UserRoute `sell` takes caller `minQuoteOut` on the official first-leg and `minFinalOut` on the USDC exit. Intermediate hop floors are caller-supplied (`RouteExec` rejects 0). Sandwich of the official pool reverts when those floors are set from a quote (`UserRoute.t.sol`).
+- `POST /quote` tickets take hops, `amountOut`, hop kinds, hop `minOut`s, and the terminal official/bonding result from **one** selected candidate. `PreviewRoute` is `plannedHops + 1` (BUY appends the market leg; SELL prepends it). The indexer must not pair a max-`finalOut` preview with a differently scored path (`quote-integrity.test.ts`).
 - `launchAndBuy` unsigned path still uses internal curve `minOut=1` then checks the user `minOut` after.
 - No TWAP on buyback; Keeper sets slippage.
 - Fair launch is CCA-inspired, not the Uniswap CCA factory (ADR-002).

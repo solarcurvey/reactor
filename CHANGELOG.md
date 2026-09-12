@@ -17,6 +17,7 @@ External quote USD marks are a configured provider registry with multi-source co
 - Price providers are keyed by canonical quote address (config + `PRICE_PROVIDERS_JSON`), not hardcoded ZEC/WBTC branches. Important assets accept ≥2 independent HTTP sources (`ZEC_HTTP_URL_2`, `WBTC_HTTP_URL_2`, parsers).
 - Consensus applies documented staleness (120s), deviation (150 bps), optional Arc executable-market sanity (400 bps), and `minSources`. Accepted and rejected observations persist (`kind=observation|consensus`). Schema **v10** adds `external_price_marks.kind` (#30). Schema **v9** is `tokens.current_supply` (#23); #30 reserves that slot. Existing v8 databases `ALTER` + backfill `source IN ('consensus','fused','fail','missing')`.
 - Schema **v11** persists official Top-10 candidates (`top10_candidate_epochs` / `top10_candidate_rows`). Ranking reads persisted `current_supply` (not minted − SelfBurn/Top10Buy), 12m VWAP, and ValuationService consensus ancestry. Holder `burn()` changes rank/FDV.
+- Stack includes latest main `#21` (selected route + atomic preview/`minOut`s from the same candidate).
 - ValuationService consumes the latest accepted consensus row only. PROD never falls back to a static dollar.
 - Launch authorization and material Top-10 candidates fail closed on provider outage or deviation. Trading continues. Isolated signer still requires the durable store (#26).
 - Guardian-added external quotes must have providers configured and `/pricing/health` ok before launch eligibility.
@@ -34,7 +35,7 @@ External quote USD marks are a configured provider registry with multi-source co
 
 ## [0.3.2] - 2026-09-12
 
-Postgres millisecond timestamps, media key/URL alignment, signer fail-closed, and canonical Top-10 ValuationService. Tokenomics **unchanged**. Factory **V1**.
+Postgres millisecond timestamps, media key/URL alignment, signer fail-closed, and `#21` quote-ticket atomicity. Tokenomics **unchanged**. Factory **V1**.
 
 ### Security
 

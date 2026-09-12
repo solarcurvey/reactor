@@ -1,29 +1,30 @@
 # BUILD REPORT — Protocol 0.3.3 Top-10 ValuationService
 
-**Status:** Continue on existing REACTOR Origin repo. Stacked on #23 (`57c140b`, `current_supply` v9) after main `#27` (`b4bf25d`) and consuming #30 consensus marks.  
+**Status:** Continue on existing REACTOR Origin repo. Rebased onto latest `main` (`53330db`, `#21` quote-ticket atomicity) and stacked on `#23` (`57c140b`, persisted `current_supply` v9) + `#30` (`ad5292b`, consensus marks, `kind` = v10). This PR does **not** invent `current_supply`.
 
 **Not audited. Not mainnet.**  
 **Economics / 3.5% / curve / Keeper routing / Factory V1 constants: unchanged.**
 
-## Amendment — burn-adjusted USD FDV (issue #8)
+## Amendment — burn-adjusted USD FDV (issue #8, from #23)
 
-Rebased onto `main` after #27 merged (`b4bf25d`). `GET /markets` `fdv_usd6` uses `tokens.current_supply` (**schema v9**, next free after #27 v7 log identity + v8 journal/`event_kind`). Column **tracks** remaining `totalSupply()` — not TokenCreated `tokens.supply`, not a protocol-event sum, not claimed ≡. Public `burn()` is `Transfer` to zero and/or `Burned` via canonical `(chain_id, tx, log_index, event_kind)`. Protocol SelfBurn/Top10/COREBurned are attribution only. Bounded `totalSupply()` reconcile runs every tick including at head (corrects missed / same-tx Transfer+Burned). Architecture and tokenomics unchanged. No mainnet. Leave #8 open.
+`GET /markets` `fdv_usd6` uses `tokens.current_supply` (**schema v9**, next free after #27 v7 log identity + v8 journal/`event_kind`). Column **tracks** remaining `totalSupply()` — not TokenCreated `tokens.supply`, not a protocol-event sum, not claimed ≡. Public `burn()` is `Transfer` to zero and/or `Burned` via canonical `(chain_id, tx, log_index, event_kind)`. Protocol SelfBurn/Top10/COREBurned are attribution only. Bounded `totalSupply()` reconcile runs every tick including at head (corrects missed / same-tx Transfer+Burned). Architecture and tokenomics unchanged. No mainnet. Leave #8 open until #23 merges.
 
 ## This HEAD
 
 | Item | Value |
 | --- | --- |
-| Protocol release | **0.3.3** (`docs/version.json`) — #27 journal + #23 `current_supply` + #30 consensus + #10 Top-10 |
+| Protocol release | **0.3.3** (`docs/version.json`) — main `#21` + #27 journal + #23 `current_supply` + #30 consensus + #10 Top-10 |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
-| Intent | Replace web `discoverTop10` RPC fanout with canonical indexer ValuationService snapshot (issue #10). Rank from persisted `current_supply`. Consume #30 consensus marks (`ad5292b`, kind = v10, v9 reserved). |
-| Foundry | Unchanged from 0.3.1 (**326 passed**) — no contract edits |
-| Indexer / lib | `pnpm --filter indexer test` includes `top10-rank.test.ts` + `price-marks.test.ts` + `pricing.test.ts` + `ingest.valuation.test.ts` + `tick-atomic.test.ts` + `pnpm docs:check` |
+| Intent | Replace web `discoverTop10` RPC fanout with canonical indexer ValuationService snapshot (issue #10). Rank from persisted `#23` `current_supply` reconciled to `totalSupply()`. Consume #30 consensus marks (`ad5292b`, kind = v10, v9 reserved). |
+| Foundry | Unchanged from 0.3.1 (**326 passed**) plus main `#21` UserRoute preview asserts — this PR does not edit contracts |
+| Indexer / lib | `pnpm --filter indexer test` includes `top10-rank.test.ts` + `ingest.valuation.test.ts` + `price-marks.test.ts` + `pricing.test.ts` + `quote-integrity.test.ts` + `tick-atomic.test.ts` + `pnpm docs:check` |
 | Mainnet | **Blocked** |
 
-## Closed this pass (P1 #7, already on parent)
+## Closed this pass (already on parent)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
+| Selected route and atomic preview/`minOut`s from the same candidate (#21) | **Yes** | On latest `main` `53330db`. `quote-select.ts` + `quote-integrity.test.ts`. Preserved on this stack. |
 | `tick()` wrote events then `setState` cursor after the loop | **Yes** | `persistTickBatch` — one `BEGIN` / `BEGIN IMMEDIATE` for log-derived rows + `indexer_state.block` / `block_hash`. RPC (logs, timestamps, head hash) first. SSE after commit. |
 | Crash after some events / before cursor | **Yes** | Injected crash on `indexer_state` or mid-batch write rolls both back. SQLite + Postgres in `tick-atomic.test.ts`; Postgres also in `pg-smoke.ts`. |
 | Reorg rewind `block` then `block_hash` split | **Yes** | `rewindIndexerCursor` is one transaction. Crash on the second write leaves the previous pair. |
@@ -32,13 +33,16 @@ Rebased onto `main` after #27 merged (`b4bf25d`). `GET /markets` `fdv_usd6` uses
 
 Honesty: 0.3.0 docs already said “Store work uses real transactions.” That was true for admission/locks, **not** for ingest cursor vs events. #27 on parent makes that sentence true for `tick()`.
 
-## Closed this run
+## Closed this run (AUDIT BLOCKED on #29 / #10)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
-| Web Top-10 enumerates Factory + values markets | **Yes** | `/api/reactor/top10` proxies `GET {indexer}/top10`. Source assert in `top10-rank.test.ts` |
-| Keeper vs public page drift | **Yes** | Both read persisted `top10_candidate_epochs` payload |
-| Burn-adjusted supply | **Yes** | persisted `current_supply` (holder `Burned` + `totalSupply()` reconcile). SelfBurn/Top10Buy attribution does not move rank |
+| Rank from persisted `current_supply` | **Yes** | `loadGraduatedMarkets` reads `COALESCE(NULLIF(t.current_supply,''), t.supply)`. Writers are #23 `applyTokenLevelBurn` / `applyOnchainTotalSupply`. This PR does not add a second supply column. |
+| Holder `ReactorToken.burn()` changes rank/FDV | **Yes** | `top10-rank.test.ts`: `applyTokenLevelBurn` (`Burned`) drops BIG below $250k; RIVAL stays |
+| No TokenCreated − SelfBurn-only math | **Yes** | Source assert: no `loadBurnedByToken`, no `kind IN ('SelfBurnExecuted'`. Protocol SelfBurn/Top10Buy rows do not move rank/FDV |
+| `totalSupply()` reconcile is authoritative | **Yes** | `applyOnchainTotalSupply` restores BIG after the holder-burn drop |
+| Top-10 tables on next unused schema version | **Yes** | **v11** `top10_candidate_epochs` / `top10_candidate_rows` after v9 `current_supply` (#23) and v10 `kind` (#30). No v7 reuse. |
+| Web / Keeper consume one snapshot | **Yes** | `/api/reactor/top10` proxies `GET {indexer}/top10`. Keeper + watchdog read the same payload |
 | Nested marks via ValuationService | **Yes** | NESTED/ZCAT/ZEC fixture in `top10-rank.test.ts` |
 | Consensus marks | **Yes** | Consumes #30 `kind=consensus` / `source=fused` rows. Schema **v10** (v9 reserved for #23) |
 | Hardcoded ZEC/WBTC price-marks branches | **Yes** | `price-registry.ts` + `config/price-providers.json` |
@@ -46,7 +50,6 @@ Honesty: 0.3.0 docs already said “Store work uses real transactions.” That w
 | CORE excluded data-plane | **Yes** | CORE fixture never in rows |
 | Scale / no O(N) RPC | **Yes** | 8k indexed markets + fetch stub; 0 HTTP/RPC during rank |
 | Assumed 0.30% hookless fallback | **Yes** | Removed from `marketdata.ts` |
-| Schema v11 Top-10 tables | **Yes** | After #23 v9 `current_supply` + #30 v10 `kind` (v9 reserved) |
 
 ## Still blocked (do not fake)
 
@@ -56,7 +59,7 @@ Honesty: 0.3.0 docs already said “Store work uses real transactions.” That w
 | Independent Codex / professional audit | Not performed. Do not claim audited. |
 | Top-10 as onchain oracle | Frozen offchain by design. External USD marks are the same trust class. |
 | Arc Factory claimed | No funded `ARC_TESTNET_PK` in this environment. |
-| Merge-train rebase after #23/#30 land | #30 (`ad5292b`) assigns `kind` to **v10** and reserves **v9** for #23 `current_supply`. This stack matches that map and puts Top-10 tables at **v11**. After those PRs merge, rebase again — do not reuse v7/v8/v9. Keep #10 open. |
+| #23 / #30 not on main yet | Both tips are still based on `b4bf25d` (pre-`#21`). This stack merged `53330db` and consumes those branch tips (`57c140b`, `ad5292b`). Land **#23** (`current_supply` = v9) then **#30** (`kind` = v10) then rebase **this PR last**. Do not merge #23/#30 from here. Keep #10 open. |
 
 ## EIP-170 sizes
 
