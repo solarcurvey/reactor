@@ -115,4 +115,7 @@ async function main() {
   console.log(`docs links ok (${externals.size} external, handbook slugs ${handbookHrefs.size})`);
 }
 
-void main();
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

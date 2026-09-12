@@ -1,10 +1,17 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test, expect } from "@playwright/test";
 
+function repoRoot(): string {
+  const candidates = [process.cwd(), join(process.cwd(), ".."), join(process.cwd(), "..", "..")];
+  for (const c of candidates) {
+    if (existsSync(join(c, "docs", "version.json"))) return c;
+  }
+  return candidates[0]!;
+}
+
 const protocolVersion = (
-  JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "docs", "version.json"), "utf8")) as {
+  JSON.parse(readFileSync(join(repoRoot(), "docs", "version.json"), "utf8")) as {
     protocolVersion: string;
   }
 ).protocolVersion;

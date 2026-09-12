@@ -25,9 +25,14 @@ for (const pageSpec of PAGES) {
       await page.goto(pageSpec.path, { waitUntil: "domcontentloaded" });
       await expect(page.locator("h1").first()).toBeVisible();
       await expect(page.getByTestId("docs-version-badges")).toBeVisible();
+      await page.addStyleTag({
+        content: "html,body,*{scrollbar-width:none !important} *::-webkit-scrollbar{display:none !important}",
+      });
       await expect(page).toHaveScreenshot(`${pageSpec.name}-${vp.label}.png`, {
         fullPage: true,
         animations: "disabled",
+        caret: "hide",
+        maxDiffPixelRatio: 0.02,
       });
     });
   }

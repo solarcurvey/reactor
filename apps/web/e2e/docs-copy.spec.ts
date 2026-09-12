@@ -1,9 +1,15 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test, expect } from "@playwright/test";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+function repoRoot(): string {
+  const candidates = [process.cwd(), join(process.cwd(), ".."), join(process.cwd(), "..", "..")];
+  for (const c of candidates) {
+    if (existsSync(join(c, "docs", "version.json"))) return c;
+  }
+  return candidates[0]!;
+}
+const root = repoRoot();
 const ver = JSON.parse(readFileSync(join(root, "docs", "version.json"), "utf8")) as {
   protocolVersion: string;
   factoryVersionLabel: string;
