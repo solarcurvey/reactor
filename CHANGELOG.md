@@ -15,7 +15,7 @@ External quote USD marks are a configured provider registry with multi-source co
 ### Added / Changed
 
 - Price providers are keyed by canonical quote address (config + `PRICE_PROVIDERS_JSON`), not hardcoded ZEC/WBTC branches. Important assets accept ≥2 independent HTTP sources (`ZEC_HTTP_URL_2`, `WBTC_HTTP_URL_2`, parsers).
-- Consensus applies documented staleness (120s), deviation (150 bps), optional Arc executable-market sanity (400 bps), and `minSources`. Accepted and rejected observations persist (`kind=observation|consensus`). Schema **v9** adds `external_price_marks.kind` after #27 v7 identity / v8 journal. Existing v8 databases `ALTER` + backfill `source IN ('consensus','fused','fail','missing')`.
+- Consensus applies documented staleness (120s), deviation (150 bps), optional Arc executable-market sanity (400 bps), and `minSources`. Accepted and rejected observations persist (`kind=observation|consensus`). Schema **v10** adds `external_price_marks.kind` after #27 v7 identity / v8 journal. v9 is reserved for `tokens.current_supply` (PR #23). Existing v8 databases `ALTER` + backfill `source IN ('consensus','fused','fail','missing')`.
 - ValuationService consumes the latest accepted consensus row only. PROD never falls back to a static dollar.
 - Launch authorization and material Top-10 candidates fail closed on provider outage or deviation. Trading continues. Isolated signer still requires the durable store (#26).
 - Guardian-added external quotes must have providers configured and `/pricing/health` ok before launch eligibility.

@@ -4,7 +4,7 @@
 
 > Protocol release **0.3.3** (`v0.3.3`, 2026-09-12). Factory **V1** is immutable and is not this number.
 
-pre-audit local/testnet — not mainnet. External quote USD is a configured provider registry + multi-source consensus. PROD never uses a static mark. Schema v9 adds mark kind after v8 journal. Factory V1 immutable. Not audited.
+pre-audit local/testnet — not mainnet. External quote USD is a configured provider registry + multi-source consensus. PROD never uses a static mark. Schema v10 adds mark kind after v8 journal (v9 reserved for #23 current_supply). Factory V1 immutable. Not audited.
 
 ## Two version numbers
 

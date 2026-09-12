@@ -1,6 +1,6 @@
 import type { Store } from "./db.ts";
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 /**
  * Wall-clock fields written as `Date.now()` milliseconds (≈1.8e12 today).
@@ -481,13 +481,14 @@ export async function applyMigrations(store: Store): Promise<number> {
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 8, Math.floor(Date.now() / 1000));
     current = 8;
   }
-  if (current < 9) {
+  // v9 is reserved for tokens.current_supply (PR #23, not on main). Kind is v10 so those trains do not collide.
+  if (current < 10) {
     await store.exec("ALTER TABLE external_price_marks ADD COLUMN kind TEXT DEFAULT 'observation'").catch(() => undefined);
     await store.exec(
       "UPDATE external_price_marks SET kind='consensus' WHERE source IN ('consensus','fused','fail','missing') AND (kind IS NULL OR kind='observation')",
     ).catch(() => undefined);
-    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 9, Math.floor(Date.now() / 1000));
-    current = 9;
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 10, Math.floor(Date.now() / 1000));
+    current = 10;
   }
   return current;
 }
