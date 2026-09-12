@@ -1,30 +1,31 @@
-# BUILD REPORT — Protocol 0.3.2 Postgres BIGINT timestamps
+# BUILD REPORT — Protocol 0.3.2
 
-**Status:** Continue on existing REACTOR Origin repo. Parent `e398fd4` (protocol 0.3.1, Factory V1). Local Anvil 5042002 + Arc Public Testnet probe only.  
-**Not audited. Not mainnet. Arc Public Testnet Factory create not claimed unless an explorer hash exists.**  
+**Status:** Continue on existing REACTOR Origin repo. Parent `9f29527` (#20 media key/URL on #19 BIGINT, Factory V1).  
+**Not audited. Not mainnet.**  
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
 ## This HEAD
 
 | Item | Value |
 | --- | --- |
-| Protocol release | **0.3.2** (`docs/version.json`) |
+| Protocol release | **0.3.2** (`docs/version.json`) — one coordinated bump (#19 BIGINT + #20 media + #26 signer) |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
-| Intent | P0: promote millisecond timestamp / lease columns to BIGINT so production Postgres can store `Date.now()` |
-| Foundry | Unchanged this pass (parent 0.3.1 recorded 326 passed, 1 skipped) |
-| Indexer / lib | `pnpm --filter indexer test` + `DATABASE_URL=… pnpm --filter indexer test:pg` + `pnpm docs:check`. CI: `postgres-ms-timestamps` |
+| Intent | Isolated pricing signer fail-closed when the durable store is unavailable (issue #2) |
+| Foundry | Unchanged from 0.3.1 (**326 passed**) — no contract edits |
+| Indexer / lib | `pnpm --filter indexer test` includes `pricing-signer-store.test.ts` + `media-r2.test.ts` + `pnpm docs:check` |
 | Mainnet | **Blocked** |
 
 ## Closed this run
 
-| Leftover | Closed? | Evidence |
+| Item | Closed? | Evidence |
 | --- | --- | --- |
-| Postgres INTEGER overflow on `Date.now()` ms | **Yes** | Schema v6 `BIGINT` on `admission_hits.ts`, `issuance_bucket.updated_ms`, `leader_locks.ts` / `lease_until`, `keeper_operations.ts`, `alerts.ts`. Fresh DDL + v5 `ALTER COLUMN` |
-| Existing v5 / current DB migrate without data loss | **Yes** | `pg-ms-timestamps.test.ts` seeds INTEGER rows, migrates, asserts values |
-| Real Postgres `Date.now()` insert on admission / bucket / lock / job / alert | **Yes** | same test; v5 INTEGER rejects `Date.now()` on all six columns; GitHub Actions `postgres-ms-timestamps` |
-| Keeper leadership + LaunchAuthorization issuance on Postgres | **Yes** | `withLeaderLock` / `tryAdvisoryLock` + `consumeIssuanceToken` + `admit` ALLOW |
-| Seconds vs milliseconds documented | **Yes** | `ARCHITECTURE.md`, `LAUNCH_ADMISSION.md`, `docs/admission.md`, `docs/keeper.md`, `THREAT_MODEL.md` |
-| R2/S3 key = public `/m/<id>.webp` | **Yes** | `mediaObjectKey` / `assertMediaKeyMatchesPublicUri`. Mock SigV4 GET-after-PUT `media-r2.test.ts` |
+| `openStore().catch(() => undefined)` signer bypass | **Yes** | `openSignerStore` + `requireDurableStore`. `SIGNER_STORE_UNAVAILABLE` → 503 |
+| Receipt consume + issuance bucket skipped without store | **Yes** | `consumeDurableAdmission` always runs before EIP-712. Missing `id` refused |
+| Health without store | **Yes** | Isolated signer `/health` requires `durableStore()` |
+| Regression tests | **Yes** | `apps/indexer/src/pricing-signer-store.test.ts` |
+| Launch Admission / Trust Model docs | **Yes** | `LAUNCH_ADMISSION.md`, `docs/admission.md`, `docs/trust.md`, `THREAT_MODEL.md` |
+| Postgres INTEGER overflow on `Date.now()` ms | **Yes (main #19)** | Schema v6 `BIGINT`. Kept in this 0.3.2 changelog |
+| R2/S3 key = public `/m/<id>.webp` | **Yes (main #20)** | `mediaObjectKey` / `assertMediaKeyMatchesPublicUri`. `media-r2.test.ts` |
 
 ## Still blocked (do not fake)
 
@@ -37,13 +38,13 @@
 
 ## EIP-170 sizes
 
-Unchanged from 0.3.1. Factory **stays V1**. This pass is indexer schema only.
+Unchanged from 0.3.1. Factory **stays V1**.
 
 | Contract | Runtime (bytes) | Gate |
 | --- | ---: | --- |
-| ReactorFactory | **23,286** | ≤ 23,552 **pass** (unchanged) |
+| ReactorFactory | **23,286** | ≤ 23,552 **pass** |
 
-## Honest gaps that remain (not leftovers we pretended to close)
+## Honest gaps that remain
 
 - Unix-seconds INTEGER columns still hit the year-2038 wall on Postgres. Not this P0.
 - LOCAL Turnstile bypass when secret unset (explicit LOCAL only).

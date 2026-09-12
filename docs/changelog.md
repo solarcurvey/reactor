@@ -16,7 +16,12 @@ Versioning: [Semantic Versioning](https://semver.org/) for the **protocol releas
 
 ## [0.3.2] - 2026-09-12
 
-Postgres millisecond timestamps. Tokenomics **unchanged**. Factory **V1**.
+Postgres millisecond timestamps, media key/URL alignment, and signer fail-closed. Tokenomics **unchanged**. Factory **V1**.
+
+### Security
+
+- Isolated pricing signer **fail-closes** when the durable store cannot be opened. `openStore().catch(() => undefined)` is gone. Missing store is `SIGNER_STORE_UNAVAILABLE` (HTTP 503). Receipt consume and the signed-auth issuance bucket always run before any EIP-712 `LaunchAuthorization`. Health also requires the store.
+- Regression: `pricing-signer-store.test.ts`.
 
 ### Added / Changed
 

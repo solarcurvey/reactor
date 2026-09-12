@@ -1,13 +1,12 @@
 /**
  * Isolated launch signer. No LaunchAuthorization without a verified ALLOW receipt.
- * FAIL closed if key missing. Anvil key only when REACTOR_ENV=LOCAL.
+ * FAIL closed if key missing or durable store unavailable. Anvil key only when REACTOR_ENV=LOCAL.
  */
 import { privateKeyToAccount } from "viem/accounts";
 import { randomBytes } from "node:crypto";
 import { createPublicClient, http, parseAbi } from "viem";
 import { defineChain } from "viem";
 import deployment from "./deployment.json" with { type: "json" };
-import { ValuationService, fuseExternalUsd6, type QuoteNode } from "../../../packages/reactor/src/valuation.ts";
 import { normalizeTicker } from "../../../packages/reactor/src/ticker.ts";
 import {
   INSTANT_CURVE_V1,
@@ -22,10 +21,50 @@ import {
   resolveFairParams,
 } from "../../../packages/reactor/src/launch-auth.ts";
 import { consumeIssuanceToken, consumeReceipt, verifyReceipt } from "./admission.ts";
-import type { Store } from "./db.ts";
+import { openStore, type Store } from "./db.ts";
 import { loadValuationService } from "./valuation-store.ts";
 import { ANVIL0_PK, isLocalEnv } from "./prod-gates.ts";
 import { ARC_NATIVE_GAS } from "./arc-chain.ts";
+
+/** Isolated signer must not mint LaunchAuthorization without durable receipt + bucket state. */
+export const SIGNER_STORE_UNAVAILABLE = "SIGNER_STORE_UNAVAILABLE";
+
+export function requireDurableStore(store: Store | undefined | null): asserts store is Store {
+  if (!store) throw new Error(SIGNER_STORE_UNAVAILABLE);
+}
+
+/** Open the durable store. Never coerce failure to undefined. */
+export async function openSignerStore(open: () => Promise<Store> = openStore): Promise<Store> {
+  try {
+    const store = await open();
+    requireDurableStore(store);
+    return store;
+  } catch (cause) {
+    if (cause instanceof Error && cause.message.startsWith(SIGNER_STORE_UNAVAILABLE)) throw cause;
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    throw new Error(`${SIGNER_STORE_UNAVAILABLE}: ${detail}`);
+  }
+}
+
+/**
+ * Atomic receipt consume + signed-auth issuance bucket. Fail closed if the
+ * receipt has no durable id or either consume cannot complete.
+ */
+export async function consumeDurableAdmission(store: Store, rec: Record<string, unknown>): Promise<void> {
+  if (!rec.id) throw new Error("INVALID_ADMISSION_RECEIPT");
+  const consumed = await consumeReceipt(store, String(rec.id));
+  if (!consumed) throw new Error("ADMISSION_RECEIPT_CONSUMED");
+  const bucket = await consumeIssuanceToken(store);
+  if (!bucket.ok) throw new Error("LAUNCH_ISSUANCE_THROTTLED");
+}
+
+/** Map signer errors. Store / key unavailability is 503, not 403. */
+export function signerHttpStatus(error: unknown): number {
+  const msg = error instanceof Error ? error.message : "sign failed";
+  if (msg.includes("UNAVAILABLE") || msg.includes("cannot price")) return 503;
+  if (msg.includes("ADMISSION") || msg.includes("SIGNER_") || msg.includes("LAUNCH_ISSUANCE")) return 403;
+  return 500;
+}
 
 const LOCAL = isLocalEnv();
 const ANVIL0 = ANVIL0_PK;
@@ -46,10 +85,6 @@ export function resolveSignerKey(): `0x${string}` {
 const factoryAbi = parseAbi([
   "function virtualQuote0ForUsd(address quote, uint256 quoteUsd6) view returns (uint256)",
   "function instantCurveConfig() view returns (bytes32)",
-]);
-const registryAbi = parseAbi([
-  "function isUsdPegOne(address) view returns (bool)",
-  "function get(address) view returns (address token, string symbol, string name, uint8 decimals, string icon, uint8 category, bool enabled, bool exists, bool rewardsEnabled, bool buybackRouteEnabled, bool hopViaUsdc, bool reactorNative, bool usdPegOne)",
 ]);
 const erc20Abi = parseAbi(["function decimals() view returns (uint8)"]);
 
@@ -108,13 +143,9 @@ export async function signAuthorized(
 ) {
   const authz = assertInternalOrReceipt(gate);
   if (!authz.ok) throw new Error(authz.error);
+  requireDurableStore(store);
   const rec = authz.receipt;
-  if (store && rec.id) {
-    const consumed = await consumeReceipt(store, String(rec.id));
-    if (!consumed) throw new Error("ADMISSION_RECEIPT_CONSUMED");
-    const bucket = await consumeIssuanceToken(store);
-    if (!bucket.ok) throw new Error("LAUNCH_ISSUANCE_THROTTLED");
-  }
+  await consumeDurableAdmission(store, rec);
 
   const key = resolveSignerKey();
   if (process.env.KEEPER_PRIVATE_KEY && process.env.KEEPER_PRIVATE_KEY === key) {
@@ -131,13 +162,6 @@ export async function signAuthorized(
   const registry = addrs.TickerRegistry as `0x${string}` | undefined;
   if (!registry) throw new Error("TickerRegistry missing");
 
-  const peg = await client.readContract({
-    address: addrs.QuoteAssetRegistry as `0x${string}`,
-    abi: registryAbi,
-    functionName: "isUsdPegOne",
-    args: [quote],
-  });
-
   const quoteDecimals = Number(await client.readContract({ address: quote, abi: erc20Abi, functionName: "decimals" }));
   const now = Math.floor(Date.now() / 1000);
 
@@ -145,31 +169,7 @@ export async function signAuthorized(
   if (quote.toLowerCase() === (addrs.ZEC ?? "").toLowerCase() && prod && !process.env.ZEC_HTTP_URL) {
     throw new Error("cannot price quote — static ZEC forbidden in prod");
   }
-  let svc: ValuationService;
-  if (store) {
-    svc = await loadValuationService(store);
-  } else {
-    const ticks: { usd6: bigint; ts: number; name: string }[] = [];
-    if (quote.toLowerCase() === (addrs.ZEC ?? "").toLowerCase() && !prod) {
-      ticks.push({ usd6: BigInt(process.env.ZEC_USD6 ?? 50_000_000), ts: now, name: "local-static" });
-    }
-    const fused = fuseExternalUsd6(ticks, now);
-    const nodes = new Map<string, QuoteNode>([
-      [(addrs.USDC ?? "").toLowerCase(), { token: addrs.USDC, symbol: "USDC", decimals: 6, usdPegOne: true }],
-      [
-        quote.toLowerCase(),
-        {
-          token: quote,
-          symbol: "Q",
-          decimals: quoteDecimals,
-          usdPegOne: Boolean(peg),
-          externalUsd6: fused.usd6,
-          externalOk: fused.ok || Boolean(peg),
-        },
-      ],
-    ]);
-    svc = new ValuationService(nodes);
-  }
+  const svc = await loadValuationService(store);
   const valued = svc.quoteUsd6(quote);
   if (!valued.ok || valued.usd6 === 0n) {
     throw new Error("cannot price quote — valuation unavailable, launch disabled");

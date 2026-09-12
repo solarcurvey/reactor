@@ -181,6 +181,7 @@ There is no Ownable, admin, bootstrap, or first-caller-wins `bindFactory`.
 - Uniswap v4-core behaves as specified.
 - Guardian does not list fee-on-transfer or rebasing quotes.
 - Frontend / indexer / Top-10 API / pricing signer are **not** trusted for balances or USD.
+- Isolated pricing signer **fail-closes** when Postgres/SQLite cannot be opened. A missing store is `SIGNER_STORE_UNAVAILABLE` (503), not an unsigned-or-unchecked mint. Receipt consume + issuance bucket are mandatory.
 - BUSL allows this PoolManager deploy only as **non-production**.
 - Designated Keeper + pricing signer are operational keys. Compromise wastes a chunked pot or authorizes a non-$1 curve init — it cannot steal LP or rewrite fees.
 
@@ -234,7 +235,7 @@ forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0.1:8545 --broadc
 3. CREATE2 hook bits
 4. Keeper sandwich despite `minTargetOut` (operational key + quote-to-exec latency)
 5. Registry listing a hostile quote
-6. Pricing-signer compromise authorizing a non-$1 curve with a wrong `virtualQuote0` (operational; no onchain USD oracle)
+6. Pricing-signer compromise authorizing a non-$1 curve with a wrong `virtualQuote0` (operational; no onchain USD oracle). Store-down is fail-closed (no skip of consume / bucket).
 7. Offchain Top-10 / 10–15m VWAP window bugs (fail-closed only when a **material** candidate is unvalued)
 8. **Codex: protocolExempt reentrancy** — latch + `nonReentrant` + `WalletExemptForbidden`. Named malicious token callback in `ProtocolExemptReentrancy.t.sol`
 9. Intermediate nested-hop floors: `previewSettleQuote` / `previewTop10Hops` / `previewExecuteHops` revert with per-hop outs (`RouteExec.PreviewHops`). Keeper stamps each hop via `stampHopMinOuts`. Last-leg reuse is rejected. Tests: `HopFloors.t.sol`.

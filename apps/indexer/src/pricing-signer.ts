@@ -5,15 +5,31 @@
 import { createServer } from "node:http";
 import { privateKeyToAccount } from "viem/accounts";
 import { SECURITY_HEADERS, logLine, requestId, RateLimit } from "./obs.ts";
-import { resolveSignerKey, signAuthorized, type SignRequest } from "./launch-signer.ts";
-import { openStore } from "./db.ts";
+import {
+  openSignerStore,
+  resolveSignerKey,
+  signAuthorized,
+  signerHttpStatus,
+  type SignRequest,
+} from "./launch-signer.ts";
+import type { Store } from "./db.ts";
 import { assertProductionHardGates } from "./prod-gates.ts";
 
 const PORT = Number(process.env.PRICING_SIGNER_PORT ?? 43149);
 const LOCAL = (process.env.REACTOR_ENV ?? "").toUpperCase() === "LOCAL";
 const limit = new RateLimit(60_000, Number(process.env.PRICING_RPM ?? 30));
 
-const storePromise = openStore().catch(() => undefined);
+let storePromise: Promise<Store> | undefined;
+
+function durableStore(): Promise<Store> {
+  if (!storePromise) {
+    storePromise = openSignerStore().catch((e) => {
+      storePromise = undefined;
+      throw e;
+    });
+  }
+  return storePromise;
+}
 
 const server = createServer(async (req, res) => {
   const rid = requestId({ headers: req.headers as Record<string, string | string[] | undefined> });
@@ -23,6 +39,7 @@ const server = createServer(async (req, res) => {
   res.setHeader("x-request-id", rid);
   if (req.method === "GET" && req.url === "/health") {
     try {
+      await durableStore();
       const acct = privateKeyToAccount(resolveSignerKey());
       res.end(JSON.stringify({ ok: true, signer: acct.address, local: LOCAL, request_id: rid, public: false }));
     } catch (e) {
@@ -45,7 +62,7 @@ const server = createServer(async (req, res) => {
   for await (const c of req) chunks.push(c as Buffer);
   try {
     const body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") as SignRequest;
-    const store = await storePromise;
+    const store = await durableStore();
     const out = await signAuthorized(store, body, {
       receipt: body.receipt ?? String(req.headers["x-admission-receipt"] ?? ""),
       internalToken: String(req.headers["x-internal-signer-token"] ?? ""),
@@ -54,8 +71,7 @@ const server = createServer(async (req, res) => {
     res.end(JSON.stringify({ ...out, request_id: rid }));
   } catch (e) {
     const msg = e instanceof Error ? e.message : "sign failed";
-    const denied = msg.includes("ADMISSION") || msg.includes("SIGNER_");
-    res.statusCode = denied ? 403 : msg.includes("UNAVAILABLE") || msg.includes("cannot price") ? 503 : 500;
+    res.statusCode = signerHttpStatus(e);
     res.end(JSON.stringify({ error: msg, needsAuth: true, request_id: rid }));
   }
 });
