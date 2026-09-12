@@ -12,7 +12,7 @@
 | Factory | **V1** — unchanged |
 | Intent | Replace web `discoverTop10` Factory RPC with canonical indexer ValuationService snapshot (issue #10). Schema **v11** is uniquely Top-10 candidate tables. Do not reintroduce or collide with v9/v10. |
 | Foundry | Unchanged this pass (offchain ranking only). |
-| Indexer / lib | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts`, `schema.test.ts` (v8→v11, v9→v11, v10→v11), `marketdata.test.ts`, `pnpm docs:check` |
+| Indexer / lib | `pnpm --filter indexer test` green locally (includes `top10-rank.test.ts`, `top10.test.ts`, `schema.test.ts` v8→v11 / v9→v11 / v10→v11). `tsx apps/web/src/lib/top10.test.ts` + `marketdata.test.ts` green. `pnpm docs:check` green. CI on PR #33: `constants-version-deployments`, `postgres-ms-timestamps`, `two-worker-postgres` green. |
 | Review shots | **Not regenerated** (no UI chrome change; route now proxies indexer) |
 | Mainnet | **Blocked** |
 
