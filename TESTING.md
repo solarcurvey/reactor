@@ -14,7 +14,7 @@ forge test --match-path test/attack/* -vv
 forge test --match-path test/integration/* -vv
 ```
 
-Web ranker / market-data / keeper / valuation / indexer schema (no RPC):
+Indexer Top-10 / web ranker / keeper / valuation / indexer schema (no per-request RPC):
 
 ```bash
 pnpm --filter indexer test
@@ -184,7 +184,8 @@ pnpm --filter indexer watchdog
 | 21 | Nested hop floors from per-hop sim, not last-leg/dust | `HopFloors.t.sol`, `stampHopMinOuts`, `applyMinOuts` |
 | 22 | Public buyPrefunded drain deleted; router-only pull | `BuyPrefundedDrain.t.sol` |
 | 23 | Keeper executes frozen onchain epoch, not latest API | `frozenEpochTargets` in `keeper.minout.test.ts` |
-| 24 | lastGoodFdvQuote accepts 3 historical samples | `marketdata.test.ts` |
+| 24 | lastGoodFdvQuote accepts 3 historical samples | `marketdata.test.ts`, `top10.test.ts` |
+| 24a | Canonical Top-10 from indexed `current_supply`; holder burn changes rank/FDV; no O(N) RPC | `top10-rank.test.ts` |
 | 25 | CAT/ZCAT nested e2e (not CAT/USDC) | `CurrentArchitecture.t.sol` |
 | 94 | Ticker normalize + 24h lock + no squat | `TickerRegistry.t.sol` |
 | 95 | LaunchAuthorization every launch, unique authId | `LaunchAuthorization.t.sol` |

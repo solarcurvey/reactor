@@ -14,6 +14,7 @@
 | ValuationService | Single USD engine for signer, Top-10, `/markets` |
 | Burn-adjusted supply | Remaining onchain `totalSupply` after any `burn()`. Indexer `current_supply` (schema v9) tracks it via token-level burns + bounded `totalSupply()` reconcile — not a live ≡ and not a protocol-event sum |
 | `fdv_usd6` | USD-6 market cap / FDV = mark × burn-adjusted remaining supply. Not initial 1B × price |
+| `GET /top10` | Canonical persisted Top-10 snapshot. Ranks from `current_supply`. Web and Keeper read only |
 | `usdPegOne` | Explicit $1 flag. EURC / “stable” is not $1 |
 | UserRouteQuoter | Whole-route `eth_call` preview; always reverts `PreviewRoute` |
 | UserRouteExecutor | User nested USDC path. Not a vault |

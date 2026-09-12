@@ -1,8 +1,8 @@
-# BUILD REPORT — Protocol 0.3.2
+# BUILD REPORT — Protocol 0.3.2 Top-10 ValuationService
 
-**Status:** Continue on existing REACTOR Origin repo. Parent `9f29527` (#20 media key/URL on #19 BIGINT, Factory V1).  
+**Status:** Continue on existing REACTOR Origin repo. Rebased on `5c8d7f8` (main: #19 BIGINT + #20 media + #26 signer). Local Anvil 5042002 + Arc Public Testnet probe only.  
 **Not audited. Not mainnet.**  
-**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+**Economics / 3.5% / curve / Keeper routing / Factory V1 constants: unchanged.**
 
 ## Amendment — burn-adjusted USD FDV (issue #8)
 
@@ -12,12 +12,11 @@ Rebased onto `main` after #27 merged (`b4bf25d`). `GET /markets` `fdv_usd6` uses
 
 | Item | Value |
 | --- | --- |
-| Protocol release | **0.3.2** (`docs/version.json`) — not bumped this rebase (indexer durability on top of #19/#20/#26) |
+| Protocol release | **0.3.2** (`docs/version.json`) — #19 BIGINT + #20 media + #26 signer + #27 journal + #10 Top-10 |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
-| Intent | P1 indexer: event writes + cursor advance are one transaction; append-only `(chain_id, tx, log_index, event_kind)` + address journal (issue #7; leave open until merged+verified) |
-| Foundry | Not re-run this pass. Last recorded **326 passed**, 1 skipped on 0.3.1 |
-| Indexer / lib | `tick-atomic.test.ts` SQLite + Postgres; `pnpm --filter indexer test` (includes `pricing-signer-store.test.ts` + `media-r2.test.ts`); `pnpm docs:check` |
-| Review shots | **Not regenerated** this pass (no UI change) |
+| Intent | Replace web `discoverTop10` RPC fanout with canonical indexer ValuationService snapshot (issue #10). Stacked on #23 `current_supply` (v9) after #27 (v8). |
+| Foundry | Unchanged from 0.3.1 (**326 passed**) — no contract edits |
+| Indexer / lib | `pnpm --filter indexer test` includes `top10-rank.test.ts` + `tick-atomic.test.ts` + `ingest.valuation.test.ts` + `pnpm docs:check` |
 | Mainnet | **Blocked** |
 
 ## Closed this pass (P1 #7)
@@ -36,13 +35,18 @@ Honesty: 0.3.0 docs already said “Store work uses real transactions.” That w
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
-| `openStore().catch(() => undefined)` signer bypass | **Yes** | `openSignerStore` + `requireDurableStore`. `SIGNER_STORE_UNAVAILABLE` → 503 |
-| Receipt consume + issuance bucket skipped without store | **Yes** | `consumeDurableAdmission` always runs before EIP-712. Missing `id` refused |
-| Health without store | **Yes** | Isolated signer `/health` requires `durableStore()` |
-| Regression tests | **Yes** | `apps/indexer/src/pricing-signer-store.test.ts` |
-| Launch Admission / Trust Model docs | **Yes** | `LAUNCH_ADMISSION.md`, `docs/admission.md`, `docs/trust.md`, `THREAT_MODEL.md` |
-| Postgres INTEGER overflow on `Date.now()` ms | **Yes (main #19)** | Schema v6 `BIGINT`. Kept in this 0.3.2 changelog |
-| R2/S3 key = public `/m/<id>.webp` | **Yes (main #20)** | `mediaObjectKey` / `assertMediaKeyMatchesPublicUri`. `media-r2.test.ts` |
+| Web Top-10 enumerates Factory + values markets | **Yes** | `/api/reactor/top10` proxies `GET {indexer}/top10`. Source assert in `top10-rank.test.ts` |
+| Keeper vs public page drift | **Yes** | Both read persisted `top10_candidate_epochs` payload |
+| Burn-adjusted supply | **Yes** | persisted `current_supply` (holder `TokenBurned` + `totalSupply()` reconcile). SelfBurn/Top10Buy attribution does not move rank |
+| Nested marks via ValuationService | **Yes** | NESTED/ZCAT/ZEC fixture in `top10-rank.test.ts` |
+| Stale external fail-closed | **Yes** | prior-ranked ZEC leaf pauses epoch |
+| CORE excluded data-plane | **Yes** | CORE fixture never in rows |
+| Scale / no O(N) RPC | **Yes** | 8k indexed markets + fetch stub; 0 HTTP/RPC during rank |
+| Assumed 0.30% hookless fallback | **Yes** | Removed from `marketdata.ts` |
+| Schema v10 Top-10 tables (after #27 v8 journal + #23 v9 `current_supply`) | **Yes** | `migrations.ts`. #30 consensus schema not landed (conflicting); ranker tests still use `source=fused` marks |
+| `openStore().catch(() => undefined)` signer bypass | **Yes (main #26)** | `openSignerStore` + `requireDurableStore`. `SIGNER_STORE_UNAVAILABLE` → 503 |
+| Postgres INTEGER overflow on `Date.now()` ms | **Yes (main #19)** | Schema v6 `BIGINT` |
+| R2/S3 key = public `/m/<id>.webp` | **Yes (main #20)** | `mediaObjectKey` / `assertMediaKeyMatchesPublicUri` |
 
 ## Still blocked (do not fake)
 
@@ -55,7 +59,7 @@ Honesty: 0.3.0 docs already said “Store work uses real transactions.” That w
 
 ## EIP-170 sizes
 
-Unchanged from 0.3.1. Factory **stays V1**.
+Unchanged from 0.3.1. Factory **stays V1**. Top-10 ranking is off-Factory.
 
 | Contract | Runtime (bytes) | Gate |
 | --- | ---: | --- |
@@ -71,5 +75,6 @@ Unchanged from 0.3.1. Factory **stays V1**.
 - SSE is after commit — a crash between commit and publish loses the live event (clients reconnect / HTTP).
 - Ingest tick has no single-writer lease. Two indexer processes rely on UNIQUE + savepoints, not a lock.
 - Process-kill mid-transaction is covered by DB rollback, not a kill -9 fixture in CI.
+- Top-10 remains trusted offchain computation.
 
 Mainnet blocked pending Codex + audits + KMS/Safe rehearsal.

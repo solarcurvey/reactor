@@ -36,4 +36,4 @@ Helpers consume `POST /quote`:
 - Apply slippage locally. Refuse `minOut` ≤ 1.
 - Preserve hop `kind` and `feeLegs[]` in the UI.
 
-`@reactor/core` exports `planCandidates`, `applyMinOuts`, `ValuationService`, `evaluateAdmission`, `fairCurveConfig`, `launchConfigHash`.
+`@reactor/core` exports `planCandidates`, `applyMinOuts`, `ValuationService`, `rankTop10`, `evaluateAdmission`, `fairCurveConfig`, `launchConfigHash`. Official ranks are `GET /top10` on the indexer — do not recompute from RPC.

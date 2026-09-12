@@ -18,6 +18,8 @@ export const TABLES = [
   "flywheel",
   "core_buybacks",
   "top10_epochs",
+  "top10_candidate_epochs",
+  "top10_candidate_rows",
   "targets",
   "keeper_operations",
   "guardian_events",

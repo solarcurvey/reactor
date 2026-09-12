@@ -16,7 +16,7 @@ Versioning: [Semantic Versioning](https://semver.org/) for the **protocol releas
 
 ## [0.3.2] - 2026-09-12
 
-Postgres millisecond timestamps, media key/URL alignment, and signer fail-closed. Tokenomics **unchanged**. Factory **V1**.
+Postgres millisecond timestamps, media key/URL alignment, signer fail-closed, and canonical Top-10 ValuationService. Tokenomics **unchanged**. Factory **V1**.
 
 ### Security
 
@@ -27,12 +27,14 @@ Postgres millisecond timestamps, media key/URL alignment, and signer fail-closed
 
 - Schema **v6** promotes wall-clock millisecond / lease columns to `BIGINT`: `admission_hits.ts`, `issuance_bucket.updated_ms`, `leader_locks.ts`, `leader_locks.lease_until`, `keeper_operations.ts`, `alerts.ts`. Fresh Postgres DDL matches. Existing v5 databases `ALTER COLUMN … TYPE BIGINT` without data loss.
 - Schema **v7** keys append-only event rows by `(chain_id, tx, log_index)`. Schema **v8** adds shared `indexer_event_journal` and per-table uniqueness on `(chain_id, tx, log_index, event_kind)` plus emitting `address`. Ingest `tick()` commits those rows and the `indexer_state` cursor in one transaction. Postgres savepoints `ROLLBACK TO` + `RELEASE`. SQLite + Postgres regressions in `tick-atomic.test.ts`.
+- Schema **v10** persists official Top-10 candidates (`top10_candidate_epochs` / `top10_candidate_rows`) after schema **v9** `tokens.current_supply`. Ranking reads graduated markets, persisted `current_supply` (token-level burns + bounded `totalSupply()` reconcile — not minted − SelfBurn/Top10Buy), 12m VWAP, and ValuationService ancestry. `GET /top10` is the snapshot; web `/api/reactor/top10` and the Keeper only read it. No assumed 0.30% hookless quote/USDC pool. Scale test: thousands of indexed markets do not trigger per-request RPC. Holder `burn()` changes rank/FDV.
 - Real Postgres integration test (`pnpm --filter indexer test:pg`) inserts current `Date.now()` into admission, issuance bucket, leader lock, Keeper job, and alert paths; Keeper leadership and LaunchAuthorization issuance run against Postgres. CI job `postgres-ms-timestamps` runs that test on GitHub.
 - Backend docs record seconds-vs-milliseconds conventions. SQLite INTEGER is already 64-bit; the production bug is Postgres 32-bit INTEGER overflow (~1.8e12 ms vs max 2_147_483_647).
 
 ### Fixed
 
 - R2/S3 object keys match returned public media URLs: upload `m/<id>.webp`, not the bare content id. `MEDIA_CDN_BASE` + `/m/<id>.webp` resolves to the uploaded object. Mock SigV4 GET-after-PUT in `media-r2.test.ts`.
+- Removed `discoverTop10` and the assumed hookless 0.30% quote/USDC pool fallback from `apps/web/src/lib/marketdata.ts`. Material stale/degraded external marks fail closed for relevant candidates. CORE is excluded in the data plane.
 
 ### Tokenomics
 
@@ -42,7 +44,7 @@ Postgres millisecond timestamps, media key/URL alignment, and signer fail-closed
 
 - Not audited. No public mainnet.
 - Arc Factory **not claimed** unless `deployments/arc-factory-attempt.json` has a confirmed explorer hash.
-- Top-10 ranks remain an offchain API.
+- Top-10 ranks remain an offchain API. Contracts check structure only.
 - Factory V1 runtime must stay ≤ 23,552.
 
 ## [0.3.1] - 2026-09-12

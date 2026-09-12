@@ -73,8 +73,9 @@ Pre-graduation Instant trades settle on `InstantCurve` (same 3.5% quote split). 
   - **Milliseconds** (`Date.now()`): `admission_hits.ts`, `issuance_bucket.updated_ms`, `leader_locks.ts`, `leader_locks.lease_until`, `keeper_operations.ts`, `alerts.ts`. Postgres type is `BIGINT` (schema v6). SQLite `INTEGER` is already 64-bit, which is why local tests hid the overflow.
   - **Unix seconds** (`Math.floor(Date.now() / 1000)` or chain `block.timestamp`): trade/candle/market/token timestamps, ticker `locked_until`, admission receipt `expires`/`ts`, challenges, `launch_auths.ts`, `schema_migrations.applied_ts`. These still fit in 32-bit `INTEGER` until 2038.
 - **ValuationService:** one recursive CAT→ZCAT→ZEC→USD path with ancestry. Parent-only USD is rejected.
+- **Top-10:** indexer ranks graduated markets from persisted `current_supply` + ValuationService (`GET /top10`). Web and Keeper only read the snapshot. No per-request Factory RPC fanout. No assumed 0.30% hookless quote/USDC pool. Not minted − SelfBurn/Top10Buy.
 - **Quote API:** `POST /quote` plans proven venues only (≤3 hops). One `UserRouteQuoter` `eth_call` with ERC-20 state overrides (no intermediate wallet balances). Discloses each official 3.5% leg.
-- **Web:** homepage is `GET /markets` (zero per-token RPC). Trades use the quote API — no wallet hop sim for missing intermediate assets.
+- **Web:** homepage is `GET /markets` (zero per-token RPC). Top-10 is `GET /top10` via the web proxy. Trades use the quote API — no wallet hop sim for missing intermediate assets.
 - **Pricing signer:** isolated process. Next never holds the key. Fail closed if down **or if the durable store cannot be opened** (`SIGNER_STORE_UNAVAILABLE` / 503). Receipt consume + signed-auth bucket always run. No Anvil / inline fallback outside `REACTOR_ENV=LOCAL` (production hard gates).
 - **Media:** validate + resize/WebP → object store; short URI onchain. No base64 metadata.
 - **SSE:** `/stream` for launches/trades/bonding/grad/rewards/burns/Top-10/CORE with reconnect/fallback.

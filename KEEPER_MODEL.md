@@ -17,7 +17,7 @@ The Keeper is **not** an owner. It cannot configure quotes, adapters, fees, Guar
 
 ## Top-10
 
-REACTOR API computes ranks and weights offchain about every five minutes.
+The indexer computes ranks and weights offchain about every five minutes (`GET /top10`). Web `/api/reactor/top10` is a proxy of that persisted snapshot. The Keeper consumes the same payload — it does not walk Factory tokens or invent marks.
 
 Eligibility (API, not the contract):
 

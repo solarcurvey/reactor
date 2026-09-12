@@ -1,6 +1,6 @@
 # Trust assumptions
 
-1. **Top-10 ranks are an offchain API.** Contracts check structure only.
+1. **Top-10 ranks are an offchain API.** The indexer ValuationService writes one persisted snapshot (`GET /top10`). Web and Keeper only read it. Contracts check structure only.
 2. Launch Signer prices non-$1 quotes. Not an onchain oracle. Admission + receipt required. The isolated signer **fail-closes** if the durable store is down — it must not skip receipt consume or the signed-auth issuance bucket.
 3. Indexer charts, 24h USD, and candles can lag or be wrong. Onchain truth wins. A tick does not leave events without a cursor (or a cursor without those events): log writes and `indexer_state` advance in one transaction. That is crash consistency, not an oracle.
 4. Guardian can pause, quarantine, rotate signer, permanently lock tickers. Cannot steal locked LP or change 2/1/0.5.

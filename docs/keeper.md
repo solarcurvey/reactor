@@ -12,7 +12,7 @@ Designated Keeper. Not permissionless. Not a bounty. Not Guardian.
 
 Each job takes a **20% chunk** + cooldown. The Keeper supplies `minOut` from a **whole-route, fee-exempt** preview (`planFeeExemptRoute` + ProtocolV4Adapter). That path never shares `UserRouteQuoter`. Successful quotes refuse `minOut` 0 or 1.
 
-Top-10 jobs execute the **frozen onchain epoch**, not the latest API snapshot.
+Top-10 jobs execute the **frozen onchain epoch**, not the latest API snapshot. The daemon reads the same indexer `GET /top10` snapshot the public page proxies. It does not re-value markets.
 
 `submitOnce` — if the RPC is ambiguous (timeout after broadcast), do not resubmit.
 

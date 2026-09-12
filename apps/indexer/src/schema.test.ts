@@ -12,13 +12,13 @@ function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
 }
 
-assert(SCHEMA_VERSION === 9, "schema version 9 adds current_supply after v8 journal identity");
+assert(SCHEMA_VERSION === 10, "schema version 10 adds Top-10 candidate tables after v9 current_supply");
 assert(MS_TIMESTAMP_COLUMNS.length >= 6, "millisecond timestamp columns listed");
 
 const dir = mkdtempSync(join(tmpdir(), "reactor-prod-"));
 const store = await openStore({ sqlitePath: join(dir, "t.sqlite") });
 const migrated = await store.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
-assert(Number(migrated?.n) === 9, "sqlite migrates to v9");
+assert(Number(migrated?.n) === SCHEMA_VERSION, `sqlite migrates to v${SCHEMA_VERSION}`);
 
 for (const t of TABLES) {
   const row = await store.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", t);
@@ -137,9 +137,11 @@ await store.close();
   const preCols = await v8.all<{ name: string }>("PRAGMA table_info(tokens)");
   assert(!preCols.some((c) => c.name === "current_supply"), "pinned v8 tokens has no current_supply");
   const ver = await applyMigrations(v8);
-  assert(ver === 9, `v8 DB migrated to ${ver}, expected 9`);
+  assert(ver === SCHEMA_VERSION, `v8 DB migrated to ${ver}, expected ${SCHEMA_VERSION}`);
   const cols = await v8.all<{ name: string }>("PRAGMA table_info(tokens)");
   assert(cols.some((c) => c.name === "current_supply"), "v9 adds current_supply onto a real post-#27 tokens table");
+  const top10 = await v8.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", "top10_candidate_epochs");
+  assert(top10?.name === "top10_candidate_epochs", "v10 adds Top-10 candidate tables onto a real post-#27 DB");
   const backfilled = await v8.get<{ current_supply: string; supply: string }>(
     "SELECT current_supply, supply FROM tokens WHERE address=?",
     "0xdead",

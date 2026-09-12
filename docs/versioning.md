@@ -4,7 +4,7 @@
 
 > Protocol release **0.3.2** (`v0.3.2`, 2026-09-12). Factory **V1** is immutable and is not this number.
 
-pre-audit local/testnet — not mainnet. Postgres millisecond timestamps to BIGINT (schema v6). R2/S3 keys match public /m/<id>.webp. Pricing signer fail-closed when the durable store is unavailable. Factory V1 immutable. Not audited.
+pre-audit local/testnet — not mainnet. Postgres millisecond timestamps to BIGINT (schema v6). Indexer event journal (schema v8). tokens.current_supply (schema v9). Top-10 ValuationService snapshot tables (schema v10), ranked from current_supply. R2/S3 keys match public /m/<id>.webp. Pricing signer fail-closed when the durable store is unavailable. Factory V1 immutable. Not audited.
 
 ## Two version numbers
 

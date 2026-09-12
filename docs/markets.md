@@ -31,6 +31,10 @@ Indexer HTTP for the homepage board and trade tape.
 
 Bounded `limit` (default 200, max 500), `before_id` keyset.
 
+## `GET /top10`
+
+Canonical Top-10 epoch candidates. Computed from indexed graduated markets (not a Factory `allTokens` walk), persisted `current_supply`, 12m VWAP, and ValuationService ancestry. Persisted so Keeper and the public Reactor page see the same payload. Material stale quote USD fails closed. CORE is omitted. No assumed 0.30% hookless pool. Holder `burn()` that writes `current_supply` changes rank/FDV; protocol SelfBurn/Top10Buy rows alone do not.
+
 ## Events
 
 Inserts treat **only** Postgres `23505` / SQLite `UNIQUE constraint failed` as duplicates. Other errors abort the tick. Append-only rows use `(chain_id, tx, log_index, event_kind)` (shared journal + per-table) so two identical same-kind logs in one transaction both persist.

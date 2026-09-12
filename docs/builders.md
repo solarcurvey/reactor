@@ -4,7 +4,7 @@ Integrate as a client, not a fork. Protocol **0.3.2**. Factory **V1**.
 
 ## Integration order
 
-1. **Discover** — `GET /markets` (keyset + NUMERIC sorts). Do not scrape factory logs in the UI process.
+1. **Discover** — `GET /markets` (keyset + NUMERIC sorts). Do not scrape factory logs in the UI process. Top-10 is `GET /top10` (same snapshot the Keeper uses). Do not rank from RPC.
 2. **Quote** — `POST /quote`. Use the ticket. One `UserRouteQuoter` call per candidate. Do not invent hops. Do not set `minOut` to 0 or 1.
 3. **Launch** — `POST /launch/authorize` (admission + ALLOW receipt + isolated sign). `@reactor/sdk` `authorize` does this. Never call the isolated signer from a public host.
 4. **Media** — `POST /upload` (stream 2MB, sharp, SigV4 remote). Store the returned `publicUrl`. Object key is `m/<id>.webp` (matches `/m/<id>.webp`). No base64 onchain.

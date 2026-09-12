@@ -1,4 +1,4 @@
-import { fdvQuoteRaw, vwapFdvQuoteRaw, lastGoodFdvQuote, MIN_VWAP_SAMPLES, MARK_WINDOW_SEC } from "./marketdata.ts";
+import { fdvQuoteRaw, vwapFdvQuoteRaw, lastGoodFdvQuote, MIN_VWAP_SAMPLES, MARK_WINDOW_SEC } from "../../../../packages/reactor/src/top10.ts";
 import { rankTop10 } from "./top10.ts";
 
 function assert(cond: unknown, msg: string) {

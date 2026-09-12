@@ -119,7 +119,7 @@ try {
   const storeV5 = await openStore({ databaseUrl: url });
   assert(storeV5.dialect === "postgres", "dialect");
   const ver = await applyMigrations(storeV5);
-  assert(ver === SCHEMA_VERSION, `migrated to ${ver}, expected ${SCHEMA_VERSION}`);
+  assert(ver === SCHEMA_VERSION && ver >= 6, `migrated to ${ver}, expected ${SCHEMA_VERSION}`);
   await storeV5.close();
 
   await assertMsColumnsBigint(admin);
