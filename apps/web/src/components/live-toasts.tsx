@@ -5,15 +5,14 @@ import { explorerTx } from "@/lib/utils";
 import { REVIEW_FIXTURES } from "@/lib/review-fixtures";
 import { subscribeReactorStream } from "@/lib/sse";
 import {
-  acceptLiveToast,
-  applyHello,
   clockExpired,
-  createLiveSession,
   createToastClock,
+  ingestLiveEvent,
   LIVE_TOAST_MS,
-  mergeLiveToasts,
+  markSeen,
   pauseToastClock,
   prefersReducedMotion,
+  pushVisibleToast,
   resumeToastClock,
   toastFromLiveEvent,
   type LiveToast,
@@ -63,7 +62,6 @@ function demoToasts(which: string): LiveToast[] {
 }
 
 export function LiveToasts() {
-  const sessionRef = useRef(createLiveSession());
   const clocksRef = useRef(new Map<string, ToastClock>());
   const holdRef = useRef(false);
   const ttlRef = useRef(LIVE_TOAST_MS);
@@ -90,22 +88,25 @@ export function LiveToasts() {
     if (!seeded.length) return;
     holdRef.current = q.get("toastMs") == null;
     const now = Date.now();
-    for (const t of seeded) clocksRef.current.set(t.id, createToastClock(now, ttlRef.current));
-    setToasts((rows) => seeded.reduce((acc, t) => mergeLiveToasts(acc, t), rows));
+    for (const t of seeded) {
+      clocksRef.current.set(t.id, createToastClock(now, ttlRef.current));
+    }
+    setToasts((rows) => {
+      let next = rows;
+      for (const t of seeded) {
+        markSeen(t.id);
+        next = pushVisibleToast(next, t);
+      }
+      return next;
+    });
   }, []);
 
   useEffect(() => {
     return subscribeReactorStream((ev) => {
-      if (ev.type === "hello") {
-        sessionRef.current = applyHello(sessionRef.current, ev.data);
-        return;
-      }
-      if (ev.type === "error") return;
-      const { session, toast } = acceptLiveToast(sessionRef.current, ev);
-      sessionRef.current = session;
+      const toast = ingestLiveEvent(ev);
       if (!toast) return;
       clocksRef.current.set(toast.id, createToastClock(Date.now(), ttlRef.current));
-      setToasts((rows) => mergeLiveToasts(rows, toast));
+      setToasts((rows) => pushVisibleToast(rows, toast));
     });
   }, []);
 

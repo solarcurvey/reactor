@@ -83,6 +83,32 @@ export function createLiveSession(): LiveSession {
   return { cutoff: null, lastSseId: 0, seen: new Set() };
 }
 
+/** Process-wide session. Survives toast dismiss, stack cap, and component remount. */
+let moduleSession: LiveSession = createLiveSession();
+
+export function getLiveSession(): LiveSession {
+  return moduleSession;
+}
+
+export function resetLiveSessionForTests(): void {
+  moduleSession = createLiveSession();
+}
+
+export function rememberCanonical(session: LiveSession, key: string): LiveSession {
+  if (session.seen.has(key)) return session;
+  const seen = new Set(session.seen);
+  seen.add(key);
+  return { ...session, seen };
+}
+
+export function hasSeenCanonical(session: LiveSession, key: string): boolean {
+  return session.seen.has(key);
+}
+
+export function markSeen(key: string): void {
+  moduleSession = rememberCanonical(moduleSession, key);
+}
+
 export function noteSseId(session: LiveSession, sseId: number | undefined): LiveSession {
   const id = Number(sseId ?? 0);
   if (!Number.isFinite(id) || id <= session.lastSseId) return session;
@@ -164,15 +190,29 @@ export function acceptLiveToast(
   }
   const toast = toastFromLiveEvent(ev);
   if (!toast) return { session: next, toast: null };
-  if (next.seen.has(toast.id)) return { session: next, toast: null };
-  const seen = new Set(next.seen);
-  seen.add(toast.id);
-  return { session: { ...next, seen }, toast };
+  if (hasSeenCanonical(next, toast.id)) return { session: next, toast: null };
+  return { session: rememberCanonical(next, toast.id), toast };
 }
 
-export function mergeLiveToasts(existing: LiveToast[], next: LiveToast): LiveToast[] {
-  if (existing.some((t) => t.id === next.id)) return existing;
-  return [...existing, next].slice(-LIVE_TOAST_LIMIT);
+/** First hello / later SSE through the module session. Seen-set is not the visible array. */
+export function ingestLiveEvent(ev: LiveStreamEvent): LiveToast | null {
+  if (ev.type === "hello") {
+    moduleSession = applyHello(moduleSession, ev.data);
+    return null;
+  }
+  if (ev.type === "error" || ev.type === "ping") return null;
+  const { session, toast } = acceptLiveToast(moduleSession, ev);
+  moduleSession = session;
+  return toast;
+}
+
+/**
+ * Display window only. Dedupe is `session.seen` in `acceptLiveToast` /
+ * `ingestLiveEvent` — never reconstruct seen from this list.
+ */
+export function pushVisibleToast(visible: LiveToast[], next: LiveToast): LiveToast[] {
+  if (visible.some((t) => t.id === next.id)) return visible;
+  return [...visible, next].slice(-LIVE_TOAST_LIMIT);
 }
 
 export function createToastClock(now: number, remainingMs = LIVE_TOAST_MS): ToastClock {

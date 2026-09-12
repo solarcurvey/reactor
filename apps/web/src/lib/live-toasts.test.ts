@@ -5,11 +5,15 @@ import {
   clockExpired,
   createLiveSession,
   createToastClock,
+  getLiveSession,
+  hasSeenCanonical,
   identityFromLiveData,
+  ingestLiveEvent,
   isLiveAfterHead,
-  mergeLiveToasts,
   pauseToastClock,
   prefersReducedMotion,
+  pushVisibleToast,
+  resetLiveSessionForTests,
   resumeToastClock,
   streamEndpoint,
   toastFromLiveEvent,
@@ -81,14 +85,16 @@ const coreBurn = toastFromLiveEvent(
 assert(coreBurn, "COREBurned toasts");
 assert(coreBurn.id !== coreBuy.id, "BuybackExecuted and COREBurned are distinct logs");
 
-const mergedKinds = mergeLiveToasts([coreBuy], coreBurn);
+assert(coreBuy.identity.chainId === chainId && coreBuy.identity.logIndex === 1 && coreBuy.identity.eventKind === "BuybackExecuted", "id binds all four identity fields");
+
+const mergedKinds = pushVisibleToast(pushVisibleToast([], coreBuy), coreBurn);
 assert(mergedKinds.length === 2, "distinct eventKinds on the same tx do not collapse");
 
 const topA = toastFromLiveEvent(topEv({ logIndex: 4 }));
 const topB = toastFromLiveEvent(topEv({ logIndex: 5, burned: "3000000000000000000" }));
 assert(topA && topB, "two Top10Buy");
 assert(topA.id !== topB.id, "same-tx distinct-log Top10Buy keys differ");
-assert(mergeLiveToasts([topA], topB).length === 2, "same-tx distinct-log Top10Buy do not collapse");
+assert(pushVisibleToast([topA], topB).length === 2, "same-tx distinct-log Top10Buy do not collapse");
 
 assert(toastFromLiveEvent({ type: "core", data: { name: "BuybackExecuted", tx: coreTx, confirmed: true } }) === null, "missing identity is not toasted");
 assert(toastFromLiveEvent({ type: "burn", data: { name: "SelfBurnAccrued", tx: topTx, chainId, logIndex: 1, eventKind: "SelfBurnAccrued", confirmed: true } }) === null, "no SelfBurnAccrued toast");
@@ -106,10 +112,13 @@ assert(isLiveAfterHead(undefined, 10) === false, "missing id is not live");
 
 assert(identityFromLiveData({ tx: coreTx, chainId: "5042002", logIndex: "7", eventKind: "Top10Buy" })?.logIndex === 7, "identity coerces numbers");
 
-const stacked = mergeLiveToasts(
-  mergeLiveToasts(mergeLiveToasts(mergeLiveToasts([coreBuy], topA), coreBurn), topB),
-  { ...topA, id: canonicalEventKey({ chainId, txHash: `0x${"aa".repeat(32)}`, logIndex: 9, eventKind: "Top10Buy" }), tx: `0x${"aa".repeat(32)}`, identity: { chainId, txHash: `0x${"aa".repeat(32)}`, logIndex: 9, eventKind: "Top10Buy" } },
-);
+const fifth = {
+  ...topA,
+  id: canonicalEventKey({ chainId, txHash: `0x${"aa".repeat(32)}`, logIndex: 9, eventKind: "Top10Buy" }),
+  tx: `0x${"aa".repeat(32)}`,
+  identity: { chainId, txHash: `0x${"aa".repeat(32)}`, logIndex: 9, eventKind: "Top10Buy" },
+};
+const stacked = pushVisibleToast(pushVisibleToast(pushVisibleToast(pushVisibleToast([coreBuy], topA), coreBurn), topB), fifth);
 assert(stacked.length === 4, "cap at 4");
 assert(!stacked.some((t) => t.id === coreBuy.id), "oldest dropped from the visible stack");
 
@@ -161,6 +170,35 @@ assert(!stacked.some((t) => t.id === coreBuy.id), "oldest dropped from the visib
     topEv({ id: 150, logIndex: 8, tx: `0x${"77".repeat(32)}` }),
   );
   assert(missedDup.toast === null, "missed event delivered exactly once");
+
+  let visible: LiveToast[] = [];
+  for (const ev of [
+    coreEv({ id: 201, logIndex: 20, tx: `0x${"a1".repeat(32)}` }),
+    coreEv({ id: 202, logIndex: 21, tx: `0x${"a2".repeat(32)}` }),
+    coreEv({ id: 203, logIndex: 22, tx: `0x${"a3".repeat(32)}` }),
+    coreEv({ id: 204, logIndex: 23, tx: `0x${"a4".repeat(32)}` }),
+    coreEv({ id: 205, logIndex: 24, tx: `0x${"a5".repeat(32)}` }),
+  ]) {
+    const out = acceptLiveToast(session, ev);
+    session = out.session;
+    if (out.toast) visible = pushVisibleToast(visible, out.toast);
+  }
+  assert(visible.length === 4, "visible window capped");
+  const dropped = canonicalEventKey({ chainId, txHash: `0x${"a1".repeat(32)}`, logIndex: 20, eventKind: "BuybackExecuted" });
+  assert(!visible.some((t) => t.id === dropped), "first log left the visible array");
+  assert(hasSeenCanonical(session, dropped), "seen-set still holds the dropped log");
+  const replayDropped = acceptLiveToast(session, coreEv({ id: 206, logIndex: 20, tx: `0x${"a1".repeat(32)}` }));
+  assert(replayDropped.toast === null, "seen-set survives beyond the visible toast array");
+}
+
+{
+  resetLiveSessionForTests();
+  ingestLiveEvent({ type: "hello", data: { ok: true, last: 0, head: 10 } });
+  const first = ingestLiveEvent(coreEv({ id: 11 }));
+  assert(first, "module session toasts live");
+  ingestLiveEvent(coreEv({ id: 12 }));
+  assert(ingestLiveEvent(coreEv({ id: 13 })) === null, "module seen survives a second ingest");
+  assert(hasSeenCanonical(getLiveSession(), first.id), "remount reads the same module seen-set");
 }
 
 assert(streamEndpoint("http://127.0.0.1:43148", 0) === "http://127.0.0.1:43148/stream", "first connect has no after");

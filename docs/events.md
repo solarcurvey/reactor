@@ -36,7 +36,7 @@ Postgres statement failures inside that transaction use a `SAVEPOINT`; on failur
 
 `GET /stream` fans out **after** that commit. The first event is `hello` with `last` (resume cursor) and `head` (hub id at attach). A first-session client toasts only `id > hello.head`. Reconnect uses `?after=<lastSseId>` and/or `Last-Event-ID`; the UI **does not** raise the first-session cutoff (that would drop events that landed while disconnected). Replay of ids `<=` that cutoff is still suppressed.
 
-Dedupe is canonical log identity `(chainId, txHash, logIndex, eventKind)` on the SSE row. The seen-set outlives auto-dismiss, so a replay of the same log cannot re-toast. Two `Top10Buy` logs in one tx at different `logIndex` values are two notices.
+Dedupe is canonical log identity `(chainId, txHash, logIndex, eventKind)` on the SSE row. The module `seen` set outlives the visible toast array (auto-dismiss, stack cap, remount), so a replay of the same log cannot re-toast. Two `Top10Buy` logs in one tx at different `logIndex` values are two notices. The visible stack is a display window only.
 
 The web app shows **bottom-right** toasts only for:
 
