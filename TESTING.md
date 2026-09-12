@@ -19,6 +19,7 @@ Indexer Top-10 / web ranker / keeper / valuation / indexer schema (no per-reques
 ```bash
 pnpm --filter indexer test
 # includes packages/reactor/src/untrusted-metadata.test.ts (malicious metadata + CSP lock)
+# keeper.lease.test.ts TTL / renew / steal cases inject lease-clock.fake.ts (not wall-clock setInterval)
 # tick-atomic.test.ts: SQLite always; Postgres when DATABASE_URL or compose :54329 is up (REQUIRE_PG=1 to fail if missing)
 # two Keeper workers on real Postgres (CI job keeper-lease-pg; docker compose postgres :54329)
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg-lease
@@ -225,8 +226,8 @@ pnpm --filter indexer watchdog
 | 37 | R2/S3 object key equals public `/m/<id>.webp`; mock GET returns the object; PROD upload failure returns no StoredMedia | `media-r2.test.ts` |
 | 38 | Indexer event writes + cursor atomic; log identity `(chain_id, tx, log_index, event_kind)` (schema v8 journal); token burns in the same tick transaction | `tick-atomic.test.ts` (SQLite + Postgres), `pg-smoke.ts` |
 | 39 | Selected route + atomic preview/minOuts/terminal from the same candidate; PreviewRoute is hops+1 (BUY append / SELL prepend) | `quote-integrity.test.ts`, `quote-select.ts`, `UserRoute.t.sol` `test_nested_previewSell_hops_plus_terminal` |
-| 40 | Keeper lease renew + fence: long tick cannot overlap; stale fence cannot send | `keeper.lease.test.ts` |
-| 41 | Two Postgres workers: one winner, renew vs overlap, expiry/crash takeover, stale fence cannot send | `keeper.lease.pg.test.ts` (`test:pg-lease`, CI `keeper-lease-pg`) |
+| 40 | Keeper lease renew + fence: long tick cannot overlap; stale fence cannot send. TTL cases use an injected clock (`lease-clock.fake.ts`) so CI load cannot miss a `setInterval` renew | `keeper.lease.test.ts` |
+| 41 | Two Postgres workers: one winner, renew vs overlap, expiry/crash takeover, stale fence cannot send. AC1 is real `Date.now()` BIGINT; renew/expiry ACs inject the same clock | `keeper.lease.pg.test.ts` (`test:pg-lease`, CI `keeper-lease-pg`) |
 | 42 | Markets keyset cursor matches `sort` (`new`/`vol`/`price`); insert-ahead no dupes | `markets-query.test.ts` |
 | 43 | Candle gap-fill bounded; exclusive aligned `before` | `packages/reactor/src/prices.test.ts` |
 | 44 | Public JSON POSTs reject oversized / chunked bodies (413); env cannot raise past 64KiB hard max | `read-json-body.test.ts`, `limited-json.test.ts` |

@@ -2,11 +2,16 @@
  * SQLite single-Store unit tests (fast, no Postgres).
  * Production two-worker / failover proof is `keeper.lease.pg.test.ts`
  * (`pnpm --filter indexer test:pg-lease`, CI `postgres-ms-timestamps` + `keeper-lease-pg`).
+ *
+ * TTL / renew / steal cases use an injected lease clock (`lease-clock.fake.ts`) so
+ * CI load cannot miss a `setInterval` renew and fail
+ * "renewed leader still holds after work > TTL" (docs-sync after #47).
  */
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openStore } from "./db.ts";
+import { withFakeLeaseTime } from "./lease-clock.fake.ts";
 import {
   acquireLeaderLease,
   renewLeaderLease,
@@ -21,10 +26,6 @@ import {
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
-}
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
 }
 
 const dir = mkdtempSync(join(tmpdir(), "reactor-lease-"));
@@ -46,10 +47,10 @@ const store = await openStore({ sqlitePath: join(dir, "lease.sqlite") });
   await store.releaseLease(KEEPER_LOCK_NAME, a.owner, a.fence);
 }
 
-{
+await withFakeLeaseTime(async (time) => {
   const stale = await acquireLeaderLease(store, "stale", 120);
   assert(stale, "short lease");
-  await sleep(200);
+  await time.advance(200);
   assert(!(await stillLeader(store, stale)), "expired lease is not live");
   assert(!(await renewLeaderLease(store, stale)), "renew must not resurrect an expired lease");
   const fresh = await acquireLeaderLease(store, "fresh", 5_000);
@@ -72,34 +73,33 @@ const store = await openStore({ sqlitePath: join(dir, "lease.sqlite") });
   const ok = await withBroadcastFence(store, fresh, async () => "ok");
   assert(ok === "ok", "live leader may broadcast after renew");
   await store.releaseLease(KEEPER_LOCK_NAME, fresh.owner, fresh.fence);
-}
+});
 
-{
+await withFakeLeaseTime(async (time) => {
   const lease = await acquireLeaderLease(store, "extend", 180);
   assert(lease, "lease to extend");
-  await sleep(90);
+  await time.advance(90);
   assert(await renewLeaderLease(store, lease), "mid-life renew");
-  await sleep(120);
+  await time.advance(120);
   assert(await stillLeader(store, lease), "renew extends past the original TTL");
   assert(!(await acquireLeaderLease(store, "thief", 180)), "cannot steal a renewed lease");
   await store.releaseLease(KEEPER_LOCK_NAME, lease.owner, lease.fence);
-}
+});
 
-{
+await withFakeLeaseTime(async (time) => {
   let followerWon = false;
   const held = await withLeaderLock(
     store,
     "long-tick",
     async (lease) => {
-      const started = Date.now();
-      while (Date.now() - started < 900) {
+      for (let waited = 0; waited < 900; waited += 50) {
+        await time.advance(50);
         const steal = await acquireLeaderLease(store, "overlap", 400);
         if (steal) {
           followerWon = true;
           await store.releaseLease(KEEPER_LOCK_NAME, steal.owner, steal.fence);
           break;
         }
-        await sleep(50);
       }
       assert(await stillLeader(store, lease), "renewed leader still holds after work > TTL");
       let broadcasts = 0;
@@ -109,11 +109,36 @@ const store = await openStore({ sqlitePath: join(dir, "lease.sqlite") });
       assert(broadcasts === 1, "live long-tick leader may still send");
       return "done";
     },
-    { ttlMs: 400, renewEveryMs: 80 },
+    { ttlMs: 400, renewEveryMs: 80, scheduler: time.scheduler },
   );
   assert(held === "done", "withLeaderLock returns fn result");
   assert(!followerWon, "renewal prevents overlapping broadcasters during a long tick");
-}
+});
+
+await withFakeLeaseTime(async (time) => {
+  let followerWon = false;
+  const held = await withLeaderLock(
+    store,
+    "no-renew",
+    async (lease) => {
+      await time.advance(450);
+      const steal = await acquireLeaderLease(store, "overlap-expired", 400);
+      if (steal) {
+        followerWon = true;
+        await store.releaseLease(KEEPER_LOCK_NAME, steal.owner, steal.fence);
+      }
+      assert(!(await stillLeader(store, lease)), "without interval renew, work > TTL loses the fence");
+      return "expired";
+    },
+    {
+      ttlMs: 400,
+      renewEveryMs: 80,
+      scheduler: { start: () => ({ stop() {} }) },
+    },
+  );
+  assert(held === "expired", "critical section still returns after lease loss");
+  assert(followerWon, "follower may take over only when the leader stops renewing");
+});
 
 {
   const gens: number[] = [];

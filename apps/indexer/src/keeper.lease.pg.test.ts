@@ -5,10 +5,13 @@
  *   DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg-lease
  *
  * Schema v6 (#19 / #1) stores `leader_locks.ts` / `lease_until` as BIGINT so
- * Date.now() millisecond fences persist. This test asserts that path.
+ * Date.now() millisecond fences persist. AC1 uses the real wall clock for that.
+ * TTL / renew / expiry cases inject a fake lease clock so CI load cannot miss a
+ * `setInterval` tick (same flake as `keeper.lease.test.ts` after #47).
  */
 import { openStore, type Store } from "./db.ts";
 import { SCHEMA_VERSION } from "./migrations.ts";
+import { withFakeLeaseTime } from "./lease-clock.fake.ts";
 import {
   acquireLeaderLease,
   renewLeaderLease,
@@ -27,10 +30,6 @@ if (!url.startsWith("postgres")) {
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
-}
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
 }
 
 const INT32_MAX = 2_147_483_647;
@@ -90,16 +89,16 @@ await workerA.run("DELETE FROM leader_locks WHERE name=?", lock);
   await workerA.releaseLease(lock, "worker-a", gens[gens.length - 1]!);
 }
 
-/* AC2 — A renews past original TTL; B cannot acquire or broadcast */
-{
+/* AC2 — A renews past original TTL; B cannot acquire or broadcast (injected clock) */
+await withFakeLeaseTime(async (time) => {
   let followerWon = false;
   let followerSent = false;
   const held = await withLeaderLock(
     workerA,
     "worker-a",
     async (lease) => {
-      const started = Date.now();
-      while (Date.now() - started < 900) {
+      for (let waited = 0; waited < 900; waited += 50) {
+        await time.advance(50);
         const steal = await acquireLeaderLease(workerB, "worker-b", 400, lock);
         if (steal) {
           followerWon = true;
@@ -113,23 +112,22 @@ await workerA.run("DELETE FROM leader_locks WHERE name=?", lock);
           await workerB.releaseLease(lock, steal.owner, steal.fence);
           break;
         }
-        await sleep(50);
       }
       assert(await stillLeader(workerB, lease), "worker B's pool still sees A's renewed fence");
       await withBroadcastFence(workerA, lease, async () => "ok");
       return "held";
     },
-    { ttlMs: 400, renewEveryMs: 80, name: lock },
+    { ttlMs: 400, renewEveryMs: 80, name: lock, scheduler: time.scheduler },
   );
   assert(held === "held", "A completed a tick longer than the original TTL");
   assert(!followerWon && !followerSent, "B cannot acquire or broadcast while A renews");
-}
+});
 
 /* AC3 + AC4 — after A expires, B gets a new fence; stale A cannot renew / drop B / send */
-{
+await withFakeLeaseTime(async (time) => {
   const stale = await acquireLeaderLease(workerA, "worker-a", 180, lock);
   assert(stale, "A holds a short lease");
-  await sleep(280);
+  await time.advance(280);
   const fresh = await acquireLeaderLease(workerB, "worker-b", 5_000, lock);
   assert(fresh, "B takes over after A expires without renew");
   assert(fresh.fence !== stale.fence && fresh.fence > INT32_MAX, "B gets a new millisecond fence");
@@ -147,14 +145,14 @@ await workerA.run("DELETE FROM leader_locks WHERE name=?", lock);
   }
   assert(threw && !sent, "stale A cannot pass withBroadcastFence");
   await workerB.releaseLease(lock, fresh.owner, fresh.fence);
-}
+});
 
 /* AC5 — worker crash (no release) + expiry → safe takeover */
-{
+await withFakeLeaseTime(async (time) => {
   const crashed = await acquireLeaderLease(workerA, "worker-a", 180, lock);
   assert(crashed, "A acquired before crash");
   await workerA.close();
-  await sleep(280);
+  await time.advance(280);
   const takeover = await acquireLeaderLease(workerB, "worker-b", 5_000, lock);
   assert(takeover, "B takes over after crash + expiry (no explicit release)");
   assert(takeover.fence !== crashed.fence, "takeover is a new fence");
@@ -174,7 +172,7 @@ await workerA.run("DELETE FROM leader_locks WHERE name=?", lock);
   await workerB.releaseLease(lock, takeover.owner, takeover.fence);
   await resurrected.run("DELETE FROM leader_locks WHERE name=?", lock);
   await resurrected.close();
-}
+});
 
 await workerB.close();
 console.log("keeper lease two-worker postgres tests ok");
