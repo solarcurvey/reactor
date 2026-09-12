@@ -33,6 +33,7 @@ Each activated set records:
 - `retrievedAt`
 - per-source URL / id, HTTP metadata (`ETag`, `Last-Modified`), publication/update fields when present (`Publish_Date` / `DateOfIssue`, `Record_Count`)
 - SHA-256 of each source body and of the normalized address set
+- `sourceGenerationHash` (retrievedAt + ETag / Last-Modified / publish metadata). A same-address refresh is a new immutable version so freshness survives process restart
 - `parserVersion` (`PARSER_VERSION` in `packages/sanctions/src/types.ts`)
 
 `current.json` is replaced with `write + rename`. A partial or broken download does not swing the pointer.

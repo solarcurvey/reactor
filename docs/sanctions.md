@@ -31,6 +31,6 @@ Decisions are **not** a boolean. A missing or stale dataset that does not alread
 
 ## Freshness
 
-Default max age is **7 days** (`SANCTIONS_MAX_AGE_MS`). Refresh is explicit (CLI or ops) and always includes SDN and Consolidated machine-readable files. Completeness: keep ≥85% of last-known-good addresses (and per-source counts); source bodies must not shrink below 50% of prior bytes. A well-formed but catastrophically truncated parse does not activate. The indexer does not pull OFAC on every process start. CI uses **pinned fixtures** under `packages/sanctions/fixtures/`. Live HTTPS is `SANCTIONS_NETWORK=1 pnpm test:sanctions:network` only.
+Default max age is **7 days** (`SANCTIONS_MAX_AGE_MS`). Freshness uses the persisted `retrievedAt` of the active generation. A successful refresh with the same addresses but newer source metadata writes a **new** version id (`contentHash` + `sourceGenerationHash`) so a restart does not age from the previous fetch. Refresh is explicit (CLI or ops) and always includes SDN and Consolidated machine-readable files. Completeness: keep ≥85% of last-known-good addresses (and per-source counts); source bodies must not shrink below 50% of prior bytes. A well-formed but catastrophically truncated parse does not activate. The indexer does not pull OFAC on every process start. CI uses **pinned fixtures** under `packages/sanctions/fixtures/`. Live HTTPS is `SANCTIONS_NETWORK=1 pnpm test:sanctions:network` only.
 
 Runbook: `SANCTIONS.md`.

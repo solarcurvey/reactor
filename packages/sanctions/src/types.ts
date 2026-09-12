@@ -65,6 +65,8 @@ export type DatasetVersion = {
   sources: SourceFetchMeta[];
   sourceCoverage: SourceCoverage[];
   contentHash: string;
+  /** Hash of retrievedAt + source HTTP/publication metadata. Distinct from address-set contentHash. */
+  sourceGenerationHash: string;
   parserVersion: string;
   addressCount: number;
   entryCount: number;

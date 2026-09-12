@@ -6,6 +6,8 @@
 
 **Re-audit pass (source integrity):** default refresh is SDN **and** Consolidated (classic + advanced). Completeness floor is **85%** of prior addresses and per-source counts, plus a 50% per-source byte floor. `allowCatastrophicShrink` / `SANCTIONS_ALLOW_SHRINK=1` is the only override.
 
+**Re-audit pass (freshness durability):** version id includes `sourceGenerationHash` (retrievedAt + source HTTP/publication metadata), not only the address-set `contentHash`. A same-address refresh persists t1 metadata; `loadFromDisk()` freshness ages from t1.
+
 ## This HEAD
 
 | Item | Value |

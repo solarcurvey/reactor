@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { datasetContentHash } from "./hash.ts";
+import { datasetContentHash, datasetVersionId, sourceGenerationHash } from "./hash.ts";
 import { assessFreshness, parserCompatible, screen } from "./screen.ts";
 import { PARSER_VERSION, type AddressFamily, type DatasetSnapshot, type DatasetVersion, type SanctionedAddress, type ScreenResult, type SourceCoverage, type SourceFetchMeta } from "./types.ts";
 
@@ -165,6 +165,9 @@ export class SanctionsStore {
       if (!data.version.sourceCoverage) {
         data.version.sourceCoverage = sourceCoverageOf(data.addresses, data.version.sources ?? []);
       }
+      if (!data.version.sourceGenerationHash) {
+        data.version.sourceGenerationHash = sourceGenerationHash(data.version.sources ?? [], data.version.retrievedAt);
+      }
       this.current = snapshotFromPersisted(data);
       return this.current;
     } catch {
@@ -185,12 +188,14 @@ export class SanctionsStore {
     }
 
     const contentHash = datasetContentHash(input.addresses);
+    const generationHash = sourceGenerationHash(input.sources, input.retrievedAt);
     const version: DatasetVersion = {
-      id: `ofac-${contentHash.slice(0, 16)}`,
+      id: datasetVersionId(contentHash, generationHash),
       retrievedAt: input.retrievedAt,
       sources: input.sources,
       sourceCoverage: sourceCoverageOf(input.addresses, input.sources),
       contentHash,
+      sourceGenerationHash: generationHash,
       parserVersion: PARSER_VERSION,
       addressCount: input.addresses.length,
       entryCount: input.entryCount ?? input.addresses.length,
@@ -213,13 +218,26 @@ export class SanctionsStore {
 
       mkdirSync(dirname(dest), { recursive: true });
       if (existsSync(dest)) {
+        const existing = JSON.parse(readFileSync(join(dest, "dataset.json"), "utf8")) as PersistedDataset;
+        if (existing.version?.sourceGenerationHash !== generationHash || existing.version?.retrievedAt !== input.retrievedAt) {
+          throw new Error("version id collision with different retrieval metadata");
+        }
         rmSync(tmpRoot, { recursive: true, force: true });
       } else {
         renameSync(tmpRoot, dest);
       }
 
       const pointerTmp = join(this.dataDir, `current.json.${randomBytes(4).toString("hex")}.tmp`);
-      writeFileSync(pointerTmp, JSON.stringify({ versionId: version.id, activatedAt: new Date(this.now()).toISOString() }), "utf8");
+      writeFileSync(
+        pointerTmp,
+        JSON.stringify({
+          versionId: version.id,
+          retrievedAt: input.retrievedAt,
+          sourceGenerationHash: generationHash,
+          activatedAt: new Date(this.now()).toISOString(),
+        }),
+        "utf8",
+      );
       renameSync(pointerTmp, join(this.dataDir, "current.json"));
 
       version.activatedAt = JSON.parse(readFileSync(join(this.dataDir, "current.json"), "utf8")).activatedAt;

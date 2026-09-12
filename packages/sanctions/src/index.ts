@@ -41,7 +41,7 @@ export {
 } from "./normalize.ts";
 
 export { parseOfacXml, mergeParseResults, extractPublishDate, extractRecordCount } from "./parse.ts";
-export { sha256Hex, datasetContentHash } from "./hash.ts";
+export { sha256Hex, datasetContentHash, sourceGenerationHash, datasetVersionId } from "./hash.ts";
 export { fetchOfficialSource } from "./fetch.ts";
 export { screen, assessFreshness, parserCompatible, DEFAULT_MAX_AGE_MS } from "./screen.ts";
 export {
