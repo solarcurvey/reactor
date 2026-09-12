@@ -8,6 +8,7 @@ export const DOCS: { slug: string; title: string; group: string; file: string }[
   { slug: "fees", title: "Nested fees", group: "Protocol", file: "fees.md" },
   { slug: "top-10", title: "Top-10", group: "Protocol", file: "top-10.md" },
   { slug: "trust", title: "Trust assumptions", group: "Protocol", file: "trust.md" },
+  { slug: "geo-policy", title: "Geo policy", group: "Protocol", file: "geo-policy.md" },
   { slug: "web-security", title: "Browser security", group: "Protocol", file: "web-security.md" },
   { slug: "core", title: "CORE", group: "Protocol", file: "core.md" },
   { slug: "routes", title: "Routes", group: "Protocol", file: "routes.md" },

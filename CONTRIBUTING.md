@@ -19,6 +19,7 @@ Any change to the following **must** update the corresponding docs **in the same
 | CORE genesis / vest / book | `CORE_GENESIS.md`, `CORE_LIQUIDITY_DESIGN.md`, `/docs/core` |
 | Backend trust assumptions | `THREAT_MODEL.md`, `/docs/index` (Trust), `AUDIT_HANDOFF.md` |
 | Exact official-list screening / OFAC ingest | `SANCTIONS.md`, `/docs/sanctions`, `/docs/api`, `/docs/trust` |
+| Geo / jurisdiction policy | `/docs/geo-policy`, `THREAT_MODEL.md`, `/docs/trust`, versioned `apps/indexer/config/geo-policy-us-comprehensive.v*.json` (source + effective date). No UI country lists. |
 | User-facing behavior | matching `/docs` audience page + `UX_REFERENCE.md` if UX |
 | Deployed addresses / chain / verification | `deployments/registry.json` + `pnpm docs:gen` (never invent mainnet addresses) |
 | Protocol release identity | `docs/version.json`, `CHANGELOG.md`, git tag, `pnpm docs:gen` |

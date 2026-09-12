@@ -9,3 +9,4 @@ export * from "./launch-auth.ts";
 export * from "./admission.ts";
 export * from "./untrusted-metadata.ts";
 export * from "./rpc-batch.ts";
+export * from "./geo-policy.ts";

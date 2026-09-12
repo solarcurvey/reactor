@@ -26,6 +26,8 @@
 
 **Why is script-src nonce'd?** Production CSP does not allow `'unsafe-inline'` scripts. A leftover `'unsafe-inline'` remains on `style-src` only (React / fonts / Tailwind). See [Browser security](/docs/web-security).
 
+**Does the launchpad geo-block from the browser?** No. Jurisdiction policy is a **server** ALLOW / DENY / UNKNOWN evaluator over trusted edge metadata. The UI does not ship a country list. The evaluator is not yet an HTTP gate. This is not a legal opinion and is not a claim of sanctions compliance. See [Geo policy](/docs/geo-policy).
+
 **Why did Arc ignore 8 confirmations?** Arc BFT is final on commit. Default lag is 0.
 
 **When do the bottom-right burn toasts show?** Only after the indexer commits a CORE buy+burn (`BuybackExecuted` / `COREBurned`) or a Top-10 `Top10Buy`. Connecting does not dump the SSE replay buffer. A reconnect still delivers events that landed while you were disconnected, exactly once. Epoch submit and Standard SelfBurn do not toast. Hover or focus pauses auto-dismiss.

@@ -1,4 +1,38 @@
-# BUILD REPORT — Exact official-list sanctions screening (Refs #61)
+# BUILD REPORT — Trusted geo / jurisdiction policy (#63)
+
+**Status:** Ready-for-merge PR for issue **#63** only. Issue **#63 stays open** until independent audit + post-merge verify. Do not auto-close.  
+**Not audited. Not mainnet.**  
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Server-side geo policy interface: ALLOW / DENY / UNKNOWN + reason codes; trusted edge HMAC; versioned comprehensive-jurisdiction file with source + effective date; LOCAL fixtures that cannot load production denylists. |
+| Indexer / lib | `packages/reactor/src/geo-policy.test.ts` + `apps/indexer/src/geo-policy.test.ts` + `pnpm docs:check` |
+| Foundry | Not re-run this pass (offchain policy only) |
+| Mainnet | **Blocked** |
+
+## Closed this run (#63 ACs — issue stays open)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| One server interface ALLOW / DENY / UNKNOWN + reasons | **Yes** | `evaluateGeoPolicy` / `evaluateRequestGeo` |
+| Production geo from trusted edge only | **Yes** | HMAC headers; unsigned `CF-IPCountry` ignored |
+| Versioned deny policy + source / effective date | **Yes** | `geo-policy-us-comprehensive.v1.json` revision 1 / 2026-09-12 |
+| Region-level when metadata exists; else conservative UNKNOWN | **Yes** | UA without region → `UNKNOWN_REGION_METADATA_UNAVAILABLE` |
+| VPN/Tor best-effort only | **Yes** | `confidence: "best_effort"`; T1 → UNKNOWN |
+| LOCAL/test fixtures; no accidental production list | **Yes** | Fixture `FX`/`FY`; `GEO_DENY_COUNTRIES` ignored on LOCAL |
+| No UI country checks | **Yes** | Web source scan in `geo-policy.test.ts` |
+| Docs + tests same change | **Yes** | `/docs/geo-policy`, trust, THREAT_MODEL, AUDIT_HANDOFF, TESTING row 59 |
+| #61 / #62 / #64 / #65 | **Not this PR** | Out of scope |
+| Close #63 | **No** | Leave open until independent audit + post-merge verify |
+
+---
+
+# Prior — Exact official-list sanctions screening (Refs #61 / merged #66)
 
 **Status:** Branch `cursor/ofac-sanctions-dataset-1a33` / PR **#66**, rebased onto `origin/main` `ad7b457` after **#49** (UI QA) on #42 / #50 / #58. Issue **#61 stays open** until merge **and** post-merge verify (parent RELEASE GATE **#60**). Do not auto-close.  
 **Not audited. Not mainnet. Not a legal/OFAC compliance claim.**  
@@ -11,7 +45,7 @@
 
 **Rebase (after #49 / `ad7b457`):** replayed the #61 commits onto `origin/main` `ad7b457`. Conflicts (docs/`package.json` only — no economics rewrite): `package.json` `test:lib` keeps **#61** sanctions fixtures **and** #49 `qa-inject` / console-gate / contrast **and** #42 `safe-genesis` / `docs:links` / `test:web-unit` **and** #50 `indexed` / `page-budget`; `TESTING.md` row 52 stays #61 (53–56 #50, 57 #42, 58 #49); `docs/trust.md` keeps fail-visible UI + screening; `docs/ci.md` keeps always-on `page-budget`, full-only `web-qa` / `docs-links` / Playwright `web`, **and** the #61 fixture slot; `AUDIT_HANDOFF.md` / `BUILD_REPORT.md` keep #61 + #49 + earlier amendments. `#73` single `ci.yml` + `#72/#74/#76/#77` harden kept. Live OFAC HTTPS stays `SANCTIONS_NETWORK=1` / `test:sanctions:network` — not a second workflow. Do not restore `docs-sync.yml` or `web-qa.yml`.
 
-## This HEAD
+## That HEAD
 
 | Item | Value |
 | --- | --- |

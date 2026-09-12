@@ -1,0 +1,82 @@
+{
+  "kind": "production",
+  "policyId": "us-comprehensive-sanctions",
+  "revision": 1,
+  "schemaVersion": 1,
+  "effectiveDate": "2026-09-12",
+  "source": {
+    "publisher": "U.S. Department of the Treasury, Office of Foreign Assets Control",
+    "title": "Sanctions Programs and Country Information",
+    "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information",
+    "retrieved": "2026-09-12"
+  },
+  "disclaimer": "Operational snapshot of jurisdictions and regions under comprehensive U.S. sanctions programs as of the effective date. Not a legal opinion. Not a claim that REACTOR is OFAC-compliant. Sectoral, list-based, and secondary programs are out of scope for this revision.",
+  "jurisdictions": [
+    {
+      "iso2": "CU",
+      "name": "Cuba",
+      "program": "Cuban Assets Control Regulations",
+      "citation": "31 CFR part 515",
+      "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/cuba-sanctions"
+    },
+    {
+      "iso2": "IR",
+      "name": "Iran",
+      "program": "Iranian Transactions and Sanctions Regulations",
+      "citation": "31 CFR part 560",
+      "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/iran-sanctions"
+    },
+    {
+      "iso2": "KP",
+      "name": "North Korea",
+      "program": "North Korea Sanctions Regulations",
+      "citation": "31 CFR part 510",
+      "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/north-korea-sanctions"
+    },
+    {
+      "iso2": "SY",
+      "name": "Syria",
+      "program": "Syrian Sanctions Regulations",
+      "citation": "31 CFR part 542",
+      "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/syria-sanctions"
+    }
+  ],
+  "regions": [
+    {
+      "country": "UA",
+      "iso3166_2": "UA-43",
+      "name": "Crimea",
+      "aliases": ["Krym", "Autonomous Republic of Crimea", "Republic of Crimea"],
+      "program": "Ukraine-/Russia-Related Sanctions",
+      "citation": "E.O. 13685 (2014-12-19)",
+      "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/ukraine-russia-related-sanctions"
+    },
+    {
+      "country": "UA",
+      "iso3166_2": "UA-40",
+      "name": "Sevastopol",
+      "aliases": ["City of Sevastopol"],
+      "program": "Ukraine-/Russia-Related Sanctions",
+      "citation": "E.O. 13685 (2014-12-19)",
+      "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/ukraine-russia-related-sanctions"
+    },
+    {
+      "country": "UA",
+      "iso3166_2": "UA-14",
+      "name": "Donetsk",
+      "aliases": ["Donetsk Oblast", "Donetska", "Donetsk People's Republic", "DNR"],
+      "program": "Ukraine-/Russia-Related Sanctions",
+      "citation": "E.O. 14065 (2022-02-21)",
+      "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/ukraine-russia-related-sanctions"
+    },
+    {
+      "country": "UA",
+      "iso3166_2": "UA-09",
+      "name": "Luhansk",
+      "aliases": ["Lugansk", "Luhansk Oblast", "Luhanska", "Luhansk People's Republic", "LNR"],
+      "program": "Ukraine-/Russia-Related Sanctions",
+      "citation": "E.O. 14065 (2022-02-21)",
+      "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/ukraine-russia-related-sanctions"
+    }
+  ]
+}

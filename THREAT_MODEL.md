@@ -84,6 +84,7 @@ Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, 
 - Rate limits (quote / upload / pricing) are separate. Body caps + RPM are not a complete L7 DoS proof.
 - The consumer UI fails visible on indexer / RPC / quote outages (no empty-board disguise, no 0/1 minOut ticket). Review-only `?inject=` is not a production control.
 - **Exact official-list screening (`@reactor/sanctions`)** loads Treasury/OFAC HTTPS XML into a local index. Per-request screening does not call a third-party API. A missing or stale snapshot is `unavailable`, never `clear`. A listed address can still be `blocked` on last-known-good. This is **not** OFAC compliance, not hop attribution, and not a launch/trade policy gate (RELEASE GATE #60 children). Atomic refresh must not replace last-known-good with a partial parse. Host allowlist is Treasury/OFAC HTTPS only.
+- **Geo policy (#63)** is a server-side ALLOW / DENY / UNKNOWN evaluator. Production geo is a signed reverse-proxy / deployment-edge claim (`GEO_EDGE_SECRET`). Client country headers are ignored. LOCAL cannot activate the production deny revision. The evaluator is **not** yet an HTTP gate (#62). VPN/proxy/Tor is best-effort only. Residual: a compromised edge can mint any country; a missing region on Ukraine is UNKNOWN, not a country-wide deny. Not a legal opinion. Not OFAC-compliance.
 
 ## Repository / GitHub Actions (not custody)
 
