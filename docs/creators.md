@@ -1,6 +1,6 @@
 # Launch a token
 
-> Protocol **0.3.1**. You pick identity and quote. Protocol owns supply, curve, FDV, and fees.
+> Protocol **0.3.2**. You pick identity and quote. Protocol owns supply, curve, FDV, and fees.
 
 Creators do **not** set starting FDV, total supply, or the 3.5% split. Instant uses one protocol curve. Fair uses protocol defaults hashed into the signature.
 

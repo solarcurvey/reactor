@@ -30,6 +30,8 @@ Ticker, quote, factory, metadata, wallet, session, IP, ASN, client, Cloudflare T
 
 Durable state in Postgres/SQLite: `admission_hits`, challenges, image hashes, `issuance_bucket`, receipts. Optional Redis. Not process-local Maps.
 
+**Time units:** `admission_hits.ts` and `issuance_bucket.updated_ms` are wall-clock **milliseconds** (`Date.now()`). Challenge `created_ts` / `solved_ts`, image-hash `first_seen`, receipt `expires`/`ts`, and `launch_auths.ts` are **unix seconds**. Millisecond columns are `BIGINT` (schema v6) because Postgres `INTEGER` is 32-bit and cannot store ~1.8e12. See `ARCHITECTURE.md`.
+
 Receipt consume is atomic. Concurrent consume: one winner.
 
 `permanentlyLockTicker` reverts `TickerUnavailable` if **another** token still holds the active 24h lock.

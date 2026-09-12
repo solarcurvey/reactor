@@ -4,7 +4,7 @@
 
 **Mainnet?** Blocked. Chain 5042 is disabled in Keeper and deploy scripts.
 
-**Is Factory V1 the protocol version?** No. Protocol is semver (`0.3.0`). Factory V1 stays V1 forever.
+**Is Factory V1 the protocol version?** No. Protocol is semver (`0.3.2`). Factory V1 stays V1 forever.
 
 **Why do I see Turnstile?** Admission. CHALLENGE is not a signature. Solve it and retry.
 

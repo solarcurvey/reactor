@@ -6,6 +6,8 @@ Designated Keeper. Not permissionless. Not a bounty. Not Guardian.
 
 **One** mechanism: `leader_locks.lease_until`. Acquire is `UPDATE … RETURNING` (Postgres) or a Store transaction (`BEGIN IMMEDIATE` on SQLite). Do not mix this with `pg_advisory_lock` as a second leader.
 
+`leader_locks.ts`, `leader_locks.lease_until`, and `keeper_operations.ts` are **milliseconds** (`Date.now()` / `Date.now() + ttlMs`), `BIGINT` on Postgres. On-chain Keeper work still uses `block.timestamp` seconds. A 32-bit INTEGER column overflows today's `Date.now()` (~1.8e12).
+
 ## Jobs
 
 Each job takes a **20% chunk** + cooldown. The Keeper supplies `minOut` from a **whole-route, fee-exempt** preview (`planFeeExemptRoute` + ProtocolV4Adapter). That path never shares `UserRouteQuoter`. Successful quotes refuse `minOut` 0 or 1.

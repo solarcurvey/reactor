@@ -36,7 +36,7 @@ Do not certify. Do not deploy. Do not propose a new curve or fee split.
 | Signed pricing | Unique digest: factory+creator+quote+virtualQuote0+curveConfig+salt+deadline+chain. No `pricingNonce` | `LaunchPricing.t.sol` concurrent + replay |
 | Nested quotes | RoutePlanner max 3; ValuationEngine recursive; cycle reject; only usdPegOne is $1 | `valuation.test.ts`, `NativeQuote.t.sol` |
 | CORE vest / genesis | 1B; 100M vest 30d cliff + 300d linear; 900M locked; never Top-10 | `CoreGenesis.t.sol`, `CoreLiquiditySim.t.sol` |
-| Indexer / Top-10 | `block.timestamp` only; durable poolId→token; material vs irrelevant inactivity | `indexer.persist.test.ts`, `Top10Api.t.sol` |
+| Indexer / Top-10 | `block.timestamp` only for onchain/windowed marks; durable poolId→token; material vs irrelevant inactivity. Offchain ms columns (`admission_hits.ts`, `issuance_bucket.updated_ms`, `leader_locks`, `keeper_operations.ts`, `alerts.ts`) are `BIGINT` (schema v6) — Postgres INTEGER overflows `Date.now()` | `indexer.persist.test.ts`, `pg-ms-timestamps.test.ts`, `Top10Api.t.sol` |
 | User routes | `UserRouteExecutor` + shared RoutePlanner; bonding nested USDC + graduated v4 | `UserRoute.t.sol` |
 | Routing deltas | `RouteGuard`, `RouteExec`, adapters | `RoutingDeltas.t.sol`, `KeeperMinOut.t.sol` |
 
