@@ -174,7 +174,8 @@ pnpm --filter indexer watchdog
 | 8 | Inactive low-value does not freeze | `Top10Api.t.sol` thousands inactive |
 | 9 | Material candidate freezes | same |
 | 10 | External spot does not control mark | VWAP window + `fuseExternalUsd6` |
-| 11 | Nested ValuationEngine + cycle reject | `valuation.test.ts` |
+| 11 | Nested ValuationService + cycle reject | `valuation.test.ts` |
+| 38 | Configured price registry + consensus persist + fail-closed launch/Top-10 | `pricing.test.ts`, `price-marks.test.ts` |
 | 12 | EURC not $1 | `LaunchPricing.t.sol` |
 | 13 | USDC still requires LaunchAuthorization | `LaunchAuthorization.t.sol` §95 |
 | 14 | Concurrent auths + no replay | `LaunchPricing.t.sol` |
@@ -222,6 +223,7 @@ pnpm --filter indexer watchdog
 | 45 | Routed SELL `minQuoteOut` is first-leg quoteOut from `splitPreviewRoute` | `quote-sell-floors.test.ts`, `sell-floors.ts` |
 | 46 | Nested official fee legs from scored winner + compound 688 bps; maintenance `exemptOfficialLegs[]` | `quote.test.ts`, `quote-api.test.ts`, `quote-integrity.test.ts` |
 | 47 | Trade ticket does not sum nested fee amounts across quote tokens/decimals (ZEC-8 vs ZCAT-18) | `apps/web/src/lib/fee-legs.test.ts` |
+| 48 | `external_price_marks.kind` is schema v10 after #23 v9 `current_supply`; real v8→v10 and v9→v10 upgrades | `schema.test.ts`, `pg-ms-timestamps.test.ts` |
 
 ## Arc smoke
 

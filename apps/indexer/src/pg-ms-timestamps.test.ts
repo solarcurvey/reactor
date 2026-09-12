@@ -11,7 +11,7 @@ import { openStore } from "./db.ts";
 import { admit, consumeIssuanceToken, consumeReceipt, issueReceipt, persistReceipt } from "./admission.ts";
 import { raiseAlert } from "./alerts.ts";
 import { saveJob, withLeaderLock } from "./keeper-jobs.ts";
-import { applyMigrations, MS_TIMESTAMP_COLUMNS, SCHEMA_VERSION } from "./migrations.ts";
+import { applyMigrations, migrationApplied, MS_TIMESTAMP_COLUMNS, SCHEMA_VERSION } from "./migrations.ts";
 import { TABLES } from "./schema.ts";
 
 const url = process.env.DATABASE_URL ?? "";
@@ -152,41 +152,35 @@ try {
   assert(row.job_ts === "1700000444", "keeper_operations.ts preserved");
   assert(row.alert_ts === "1700000555", "alerts.ts preserved");
 
-  // --- Real post-#27 (v8) DB: full journal identity, then strip only v9 ---
+  // --- Real post-#27 v8: journal identity, no v9/v10. Upgrade writes #23 v9 then kind v10. ---
   await resetPublic(admin);
-  const bootV8 = await openStore({ databaseUrl: url });
-  assert((await applyMigrations(bootV8)) === SCHEMA_VERSION, "boot applies current schema");
-  const journal = await bootV8.get<{ exists: boolean }>(
-    "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='indexer_event_journal') AS exists",
-  );
-  assert(journal?.exists, "post-#27 journal exists before pin");
-  await bootV8.exec("ALTER TABLE tokens DROP COLUMN current_supply");
-  await bootV8.run("DELETE FROM schema_migrations WHERE id >= 9");
-  await bootV8.run(
-    `INSERT INTO tokens(address,symbol,name,decimals,creator,quote,mode,rewards_mode,supply,ticker,factory_version,created_block,created_tx,created_ts)
-     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    "0xdead",
-    "OLD",
-    "Old",
-    18,
-    "",
-    "",
-    0,
-    1,
-    "1000000000000000000000000000",
-    "OLD",
-    1,
-    0,
-    "",
-    0,
-  );
-  const pinned = await bootV8.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
-  assert(Number(pinned?.n) === 8, `pinned post-#27 schema is ${pinned?.n}, expected 8`);
-  await bootV8.close();
-  assert((await columnType(admin, "tokens", "current_supply")) === "", "pinned v8 tokens has no current_supply");
   const storeV8 = await openStore({ databaseUrl: url });
-  assert((await applyMigrations(storeV8)) === SCHEMA_VERSION, `v8 DB migrated to ${SCHEMA_VERSION}`);
-  await storeV8.close();
+  assert((await applyMigrations(storeV8)) === SCHEMA_VERSION, "fresh install reaches SCHEMA_VERSION");
+  const journal = await admin.query<{ n: string }>(
+    "SELECT COUNT(*)::text AS n FROM information_schema.tables WHERE table_schema='public' AND table_name='indexer_event_journal'",
+  );
+  assert(journal.rows[0]?.n === "1", "post-#27 journal exists before pin");
+  await admin.query("ALTER TABLE external_price_marks DROP COLUMN IF EXISTS kind");
+  await admin.query("ALTER TABLE tokens DROP COLUMN IF EXISTS current_supply");
+  await admin.query("DELETE FROM schema_migrations WHERE id >= 9");
+  await admin.query(`
+    INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason)
+      VALUES ('0xzec', 'ZEC', 'fused', '42000000', 1700000100, 1, ''),
+             ('0xzec', 'ZEC', 'coingecko', '41900000', 1700000100, 1, '');
+    INSERT INTO tokens(address,symbol,name,decimals,creator,quote,mode,rewards_mode,supply,ticker,factory_version,created_block,created_tx,created_ts)
+      VALUES ('0xdead','OLD','Old',18,'','',0,1,'1000000000000000000000000000','OLD',1,0,'',0);
+  `);
+  const pinned = await admin.query<{ n: string }>("SELECT COALESCE(MAX(id),0)::text AS n FROM schema_migrations");
+  assert(pinned.rows[0]?.n === "8", `pinned post-#27 schema is ${pinned.rows[0]?.n}, expected 8`);
+  assert(!(await migrationApplied(storeV8, 9)), "pinned v8 has no v9 row");
+  assert(!(await migrationApplied(storeV8, 10)), "pinned v8 has no v10 row");
+  assert((await applyMigrations(storeV8)) === SCHEMA_VERSION, `real v8 upgrades to v${SCHEMA_VERSION}`);
+  assert(await migrationApplied(storeV8, 9), "v8 upgrade writes #23 v9 current_supply");
+  assert(await migrationApplied(storeV8, 10), "v8 upgrade writes v10 kind after v9");
+  const kindCol = await admin.query<{ data_type: string }>(
+    "SELECT data_type FROM information_schema.columns WHERE table_schema='public' AND table_name='external_price_marks' AND column_name='kind'",
+  );
+  assert(kindCol.rows[0]?.data_type === "text", "v10 adds external_price_marks.kind");
   const v8col = await columnType(admin, "tokens", "current_supply");
   assert(v8col === "text", `v9 adds tokens.current_supply onto a real post-#27 DB, got ${v8col || "missing"}`);
   const backfill = await admin.query<{ current_supply: string; supply: string }>(
@@ -197,12 +191,41 @@ try {
       backfill.rows[0]?.supply === "1000000000000000000000000000",
     "v9 backfills current_supply from a real post-#27 tokens row",
   );
+  const kinds = await admin.query<{ source: string; kind: string }>(
+    "SELECT source, kind FROM external_price_marks ORDER BY source",
+  );
+  const bySource = Object.fromEntries(kinds.rows.map((r) => [r.source, r.kind]));
+  assert(bySource.fused === "consensus", "legacy fused backfills to kind=consensus");
+  assert(bySource.coingecko === "observation", "provider rows default to kind=observation");
+  await storeV8.close();
+
+  // --- Preceding schema after #23 is v9. Prove unique v10 kind. ---
+  await resetPublic(admin);
+  const storeV9 = await openStore({ databaseUrl: url });
+  assert((await applyMigrations(storeV9)) === SCHEMA_VERSION, "boot to stack tip");
+  await admin.query("ALTER TABLE external_price_marks DROP COLUMN IF EXISTS kind");
+  await admin.query("DELETE FROM schema_migrations WHERE id >= 10");
+  await admin.query(`
+    INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason)
+      VALUES ('0xzec', 'ZEC', 'fused', '42000000', 1700000100, 1, '');
+  `);
+  assert(await migrationApplied(storeV9, 9), "pinned v9 has current_supply");
+  assert(!(await migrationApplied(storeV9, 10)), "pinned v9 has no kind migration");
+  assert((await applyMigrations(storeV9)) === 10, "real v9 upgrades to v10");
+  assert(await migrationApplied(storeV9, 9), "v9 row remains");
+  assert(await migrationApplied(storeV9, 10), "v10 written after #23");
+  await storeV9.close();
 
   // --- Fresh schema + live Date.now() paths ---
   await resetPublic(admin);
   const store = await openStore({ databaseUrl: url });
   assert(store.dialect === "postgres", "fresh dialect");
   assert((await applyMigrations(store)) === SCHEMA_VERSION, `fresh schema is v${SCHEMA_VERSION}`);
+  const venueMark = await admin.query<{ n: string }>(
+    `SELECT COUNT(*)::text AS n FROM information_schema.columns
+     WHERE table_schema='public' AND table_name='route_venues' AND column_name='last_price_quote_x18'`,
+  );
+  assert(venueMark.rows[0]?.n === "1", "route_venues.last_price_quote_x18 present without claiming a new schema version");
   const supplyCol = await columnType(admin, "tokens", "current_supply");
   assert(supplyCol === "text", `tokens.current_supply expected text, got ${supplyCol || "missing"}`);
 

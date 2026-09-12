@@ -22,7 +22,7 @@ Instant `curveConfig` = `INSTANT_CURVE_V1`. Fair binds `fairCurveConfig(supply, 
 
 Metadata is frozen at launch (`metaFrozen`).
 
-usdPegOne quotes still need the signature. `virtualQuote0` must match protocol geometry (or 0 → protocol default). ValuationService prices every quote. **PROD:** no static ZEC.
+usdPegOne quotes still need the signature. `virtualQuote0` must match protocol geometry (or 0 → protocol default). ValuationService prices every quote from the **accepted consensus** mark (configured provider registry, not hardcoded ZEC/WBTC). **PROD:** no static marks. Provider outage, staleness, or deviation refuses authorization.
 
 ## Offchain signals → ALLOW / CHALLENGE / DENY
 

@@ -8,9 +8,32 @@ Versioning: [Semantic Versioning](https://semver.org/) for the **protocol releas
 - Git tag: `vMAJOR.MINOR.PATCH` (see [Versioning](docs/versioning.md) and `CONTRIBUTING.md`)
 - Factory **V1 stays V1 forever**. A new fee split or curve is Factory V2, not a protocol patch.
 
+## [0.3.3] - 2026-09-12
+
+External quote USD marks are a configured provider registry with multi-source consensus. Tokenomics **unchanged**. Factory **V1**.
+
+### Added / Changed
+
+- Price providers are keyed by canonical quote address (config + `PRICE_PROVIDERS_JSON`), not hardcoded ZEC/WBTC branches. Important assets accept ≥2 independent HTTP sources (`ZEC_HTTP_URL_2`, `WBTC_HTTP_URL_2`, parsers).
+- Consensus applies documented staleness (120s), deviation (150 bps), optional Arc executable-market sanity (400 bps), and `minSources`. Accepted and rejected observations persist (`kind=observation|consensus`). Schema **v10** adds `external_price_marks.kind` after merged #23 **v9** `tokens.current_supply` on main `0b94d67`. A real post-#23 v9 database `ALTER`s + backfills `source IN ('consensus','fused','fail','missing')`. v9 and v10 apply by migration-id existence. Arc sanity reads the executable mark from the verified `route_venues` row (`last_price_quote_x18` / JSON `data`), not a synthetic REACTOR `markets` row.
+- ValuationService consumes the latest accepted consensus row only. PROD never falls back to a static dollar.
+- Launch authorization and material Top-10 candidates fail closed on provider outage or deviation. Trading continues. Isolated signer still requires the durable store (#26).
+- Guardian-added external quotes must have providers configured and `/pricing/health` ok before launch eligibility.
+- Watchdog reads rejected consensus reasons from `/pricing/health`.
+
+### Tokenomics
+
+- No change. Different split = new Factory version, not an edit to V1.
+
+### Known limits (honest)
+
+- Not audited. No public mainnet.
+- Offchain marks are trusted computation, not an onchain oracle.
+- Factory V1 runtime must stay ≤ 23,552.
+
 ## [Unreleased]
 
-API availability hardening. Tokenomics **unchanged**. Factory **V1**. No mainnet.
+API availability hardening on main (#24). Tokenomics **unchanged**. Factory **V1**. No mainnet.
 
 ### Added / Changed
 

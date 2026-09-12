@@ -1,6 +1,7 @@
 import type { PublicClient } from "viem";
 import { encodeAbiParameters } from "viem";
 import type { Store } from "./db.ts";
+import { priceQuoteX18FromSqrt } from "../../../packages/reactor/src/prices.ts";
 import { approvedEdges, planRoute, planCandidates, scoreRoute, pickBest, normalizeVenueKind, type MarketEdge, type QuoteMeta, type PlannedRoute } from "../../../packages/reactor/src/routes.ts";
 
 export function poolKeyBytes(a: `0x${string}`, b: `0x${string}`, fee: number, hooks: `0x${string}`): `0x${string}` {
@@ -34,14 +35,21 @@ export async function persistVenue(
     exists: boolean;
     approved: boolean;
     reliability?: number;
+    lastPriceQuoteX18?: string;
   },
 ) {
   if (!v.exists || !v.approved) return;
   const id = `${v.kind}:${v.tokenIn.toLowerCase()}:${v.tokenOut.toLowerCase()}:${v.adapter.toLowerCase()}`;
+  const mark = v.lastPriceQuoteX18 && v.lastPriceQuoteX18 !== "0" ? v.lastPriceQuoteX18 : "";
   await store.run(
-    `INSERT INTO route_venues(id,token_in,token_out,adapter,kind,data,pool_id,exists_onchain,approved,reliability_bps)
-     VALUES(?,?,?,?,?,?,?,?,?,?)
-     ON CONFLICT(id) DO UPDATE SET exists_onchain=excluded.exists_onchain, approved=excluded.approved, data=excluded.data`,
+    `INSERT INTO route_venues(id,token_in,token_out,adapter,kind,data,pool_id,exists_onchain,approved,reliability_bps,last_price_quote_x18)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?)
+     ON CONFLICT(id) DO UPDATE SET
+       exists_onchain=excluded.exists_onchain,
+       approved=excluded.approved,
+       data=excluded.data,
+       pool_id=CASE WHEN excluded.pool_id != '' THEN excluded.pool_id ELSE route_venues.pool_id END,
+       last_price_quote_x18=CASE WHEN excluded.last_price_quote_x18 != '' THEN excluded.last_price_quote_x18 ELSE route_venues.last_price_quote_x18 END`,
     id,
     v.tokenIn.toLowerCase(),
     v.tokenOut.toLowerCase(),
@@ -52,7 +60,43 @@ export async function persistVenue(
     v.exists ? 1 : 0,
     v.approved ? 1 : 0,
     v.reliability ?? 8_000,
+    mark,
   );
+}
+
+/** Persist the executable mark on verified venues for this pool (PoolManager Swap / slot0). */
+export async function updateVenueMarksFromSqrt(
+  store: Store,
+  poolId: string,
+  sqrtPriceX96: string,
+  quoteDec: Map<string, number>,
+): Promise<void> {
+  if (!poolId || !sqrtPriceX96 || sqrtPriceX96 === "0") return;
+  let sqrt: bigint;
+  try {
+    sqrt = BigInt(sqrtPriceX96);
+  } catch {
+    return;
+  }
+  if (sqrt <= 0n) return;
+  const venues = await store.all<{ id: string; token_in: string; token_out: string }>(
+    `SELECT id, token_in, token_out FROM route_venues
+     WHERE pool_id=? AND exists_onchain=1 AND approved=1`,
+    poolId,
+  );
+  for (const v of venues) {
+    const decIn = quoteDec.get(v.token_in.toLowerCase()) ?? 18;
+    const decOut = quoteDec.get(v.token_out.toLowerCase()) ?? 18;
+    const tokenIs0 = v.token_in.toLowerCase() < v.token_out.toLowerCase();
+    let px = 0n;
+    try {
+      px = priceQuoteX18FromSqrt(sqrt, tokenIs0, decIn, decOut);
+    } catch {
+      continue;
+    }
+    if (px <= 0n) continue;
+    await store.run("UPDATE route_venues SET last_price_quote_x18=? WHERE id=?", px.toString(), v.id);
+  }
 }
 
 export async function loadEdges(store: Store, kind: "protocol" | "user" | "any"): Promise<MarketEdge[]> {

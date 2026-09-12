@@ -1,6 +1,6 @@
 import type { Store } from "./db.ts";
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 /**
  * Wall-clock fields written as `Date.now()` milliseconds (≈1.8e12 today).
@@ -173,10 +173,10 @@ CREATE TABLE IF NOT EXISTS guardian_events (
 );
 CREATE TABLE IF NOT EXISTS route_venues (
   id TEXT PRIMARY KEY, token_in TEXT, token_out TEXT, adapter TEXT, kind TEXT, data TEXT, pool_id TEXT,
-  exists_onchain INTEGER, approved INTEGER, reliability_bps INTEGER
+  exists_onchain INTEGER, approved INTEGER, reliability_bps INTEGER, last_price_quote_x18 TEXT
 );
 CREATE TABLE IF NOT EXISTS external_price_marks (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT
+  id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT, kind TEXT DEFAULT 'observation'
 );
 CREATE TABLE IF NOT EXISTS metadata (
   token TEXT PRIMARY KEY, image TEXT, description TEXT, website TEXT, twitter TEXT, telegram TEXT, media_id TEXT
@@ -482,15 +482,54 @@ export async function applyMigrations(store: Store): Promise<number> {
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 8, Math.floor(Date.now() / 1000));
     current = 8;
   }
-  if (current < 9) {
+  // v9 = tokens.current_supply (#23). v10 = external_price_marks.kind (this PR).
+  // Apply each id by existence so a hole cannot skip the other train.
+  if (!(await migrationApplied(store, 9))) {
     await store.exec("ALTER TABLE tokens ADD COLUMN current_supply TEXT").catch(() => undefined);
     await store.exec(
       `UPDATE tokens SET current_supply = supply WHERE current_supply IS NULL OR current_supply = ''`,
     ).catch(() => undefined);
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 9, Math.floor(Date.now() / 1000));
-    current = 9;
   }
-  return current;
+  if (!(await migrationApplied(store, 10))) {
+    await store.exec("ALTER TABLE external_price_marks ADD COLUMN kind TEXT DEFAULT 'observation'").catch(() => undefined);
+    await store.exec(
+      "UPDATE external_price_marks SET kind='consensus' WHERE source IN ('consensus','fused','fail','missing') AND (kind IS NULL OR kind='observation')",
+    ).catch(() => undefined);
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 10, Math.floor(Date.now() / 1000));
+  }
+  // Executable Arc mark lives on the verified venue row. Column-gated so we do not
+  // claim a new v11 that would shove #29 off the train.
+  await ensureRouteVenueMarkColumn(store);
+  const latest = await store.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
+  return Number(latest?.n ?? 0);
+}
+
+/** True when `schema_migrations` already has this id. Used so v9/v10 do not depend on MAX(id). */
+export async function migrationApplied(store: Store, id: number): Promise<boolean> {
+  const row = await store.get<{ n: number }>("SELECT COUNT(*) as n FROM schema_migrations WHERE id=?", id);
+  return Number(row?.n ?? 0) > 0;
+}
+
+async function tableHasColumn(store: Store, table: string, column: string): Promise<boolean> {
+  if (store.dialect === "postgres") {
+    const row = await store.get<{ n: number }>(
+      `SELECT COUNT(*) as n FROM information_schema.columns
+       WHERE table_schema='public' AND table_name=? AND column_name=?`,
+      table,
+      column,
+    );
+    return Number(row?.n ?? 0) > 0;
+  }
+  const cols = await store.all<{ name: string }>(`PRAGMA table_info(${table})`).catch(() => []);
+  return cols.some((c) => c.name === column);
+}
+
+/** last_price_quote_x18 on route_venues — not a schema_migrations id. */
+export async function ensureRouteVenueMarkColumn(store: Store): Promise<void> {
+  const has = await tableHasColumn(store, "route_venues", "last_price_quote_x18").catch(() => false);
+  if (has) return;
+  await store.exec("ALTER TABLE route_venues ADD COLUMN last_price_quote_x18 TEXT").catch(() => undefined);
 }
 
 function postgres(sql: string): string {

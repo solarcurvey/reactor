@@ -125,32 +125,142 @@ export function valueQuoteUsd6(
 
 export type ExternalTick = { usd6: bigint; ts: number; name: string };
 
-/** Multi-source median + staleness + deviation + optional Arc sanity band. */
+export type RejectedTick = ExternalTick & { rejectReason: string };
+
+export type FuseOpts = {
+  maxAgeSec?: number;
+  maxDevBps?: number;
+  arcUsd6?: bigint;
+  arcMaxDevBps?: number;
+  minSources?: number;
+};
+
+export type FusedMark = {
+  usd6: bigint;
+  ok: boolean;
+  reason: string;
+  n: number;
+  accepted: ExternalTick[];
+  rejected: RejectedTick[];
+};
+
+export const DEFAULT_MAX_AGE_SEC = 120;
+export const DEFAULT_MAX_DEV_BPS = 150;
+export const DEFAULT_ARC_MAX_DEV_BPS = 400;
+/** ValuationService treats a consensus row older than this as stale. */
+export const ACCEPTED_MARK_FRESH_SEC = 180;
+
+function parseFuseArgs(
+  maxAgeSecOrOpts: number | FuseOpts,
+  maxDevBps: number,
+  arcUsd6: bigint | undefined,
+  arcMaxDevBps: number,
+): Required<Pick<FuseOpts, "maxAgeSec" | "maxDevBps" | "arcMaxDevBps" | "minSources">> & Pick<FuseOpts, "arcUsd6"> {
+  if (typeof maxAgeSecOrOpts === "object") {
+    return {
+      maxAgeSec: maxAgeSecOrOpts.maxAgeSec ?? DEFAULT_MAX_AGE_SEC,
+      maxDevBps: maxAgeSecOrOpts.maxDevBps ?? DEFAULT_MAX_DEV_BPS,
+      arcUsd6: maxAgeSecOrOpts.arcUsd6,
+      arcMaxDevBps: maxAgeSecOrOpts.arcMaxDevBps ?? DEFAULT_ARC_MAX_DEV_BPS,
+      minSources: maxAgeSecOrOpts.minSources ?? 1,
+    };
+  }
+  return {
+    maxAgeSec: maxAgeSecOrOpts,
+    maxDevBps,
+    arcUsd6,
+    arcMaxDevBps,
+    minSources: 1,
+  };
+}
+
+function medianUsd6(ticks: ExternalTick[]): bigint {
+  const sorted = ticks.map((s) => s.usd6).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return sorted[Math.floor(sorted.length / 2)]!;
+}
+
+function bpsAway(value: bigint, ref: bigint): bigint {
+  if (ref <= 0n) return 10_000n;
+  const diff = value > ref ? value - ref : ref - value;
+  return (diff * 10_000n) / ref;
+}
+
+/**
+ * Multi-source median + staleness + deviation + optional Arc executable-market sanity.
+ * Stale/empty prints are rejected observations. A single outlier among ≥3 fresh sources
+ * is dropped when enough inliers remain; two-source disagreement fails closed.
+ */
 export function fuseExternalUsd6(
   sources: ExternalTick[],
   now: number,
-  maxAgeSec = 120,
-  maxDevBps = 150,
+  maxAgeSecOrOpts: number | FuseOpts = DEFAULT_MAX_AGE_SEC,
+  maxDevBps = DEFAULT_MAX_DEV_BPS,
   arcUsd6?: bigint,
-  arcMaxDevBps = 400,
-): { usd6: bigint; ok: boolean; reason: string; n: number } {
-  const fresh = sources.filter((s) => s.usd6 > 0n && now - s.ts <= maxAgeSec);
-  if (fresh.length === 0) return { usd6: 0n, ok: false, reason: "stale or empty", n: 0 };
-  const sorted = fresh.map((s) => s.usd6).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-  const mid = sorted[Math.floor(sorted.length / 2)]!;
+  arcMaxDevBps = DEFAULT_ARC_MAX_DEV_BPS,
+): FusedMark {
+  const opts = parseFuseArgs(maxAgeSecOrOpts, maxDevBps, arcUsd6, arcMaxDevBps);
+  const rejected: RejectedTick[] = [];
+  const fresh: ExternalTick[] = [];
+  for (const s of sources) {
+    if (s.usd6 <= 0n) {
+      rejected.push({ ...s, rejectReason: "empty" });
+      continue;
+    }
+    if (now - s.ts > opts.maxAgeSec) {
+      rejected.push({ ...s, rejectReason: "stale" });
+      continue;
+    }
+    fresh.push(s);
+  }
+  const fail = (reason: string, accepted: ExternalTick[] = []): FusedMark => ({
+    usd6: 0n,
+    ok: false,
+    reason,
+    n: fresh.length,
+    accepted,
+    rejected,
+  });
+  if (fresh.length === 0) return fail("stale or empty");
+  if (fresh.length < opts.minSources) return fail(`insufficient sources ${fresh.length}<${opts.minSources}`);
+
+  const mid = medianUsd6(fresh);
+  const inliers: ExternalTick[] = [];
   for (const s of fresh) {
-    const diff = s.usd6 > mid ? s.usd6 - mid : mid - s.usd6;
-    if ((diff * 10_000n) / mid > BigInt(maxDevBps)) {
-      return { usd6: 0n, ok: false, reason: `deviation ${s.name}`, n: fresh.length };
+    if (bpsAway(s.usd6, mid) > BigInt(opts.maxDevBps)) {
+      rejected.push({ ...s, rejectReason: `deviation ${s.name}` });
+    } else {
+      inliers.push(s);
     }
   }
-  if (arcUsd6 && arcUsd6 > 0n) {
-    const diff = mid > arcUsd6 ? mid - arcUsd6 : arcUsd6 - mid;
-    if ((diff * 10_000n) / arcUsd6 > BigInt(arcMaxDevBps)) {
-      return { usd6: 0n, ok: false, reason: "arc sanity", n: fresh.length };
+  const outlierCount = fresh.length - inliers.length;
+  if (outlierCount > 0) {
+    const canDrop = inliers.length >= opts.minSources && inliers.length >= 2;
+    if (!canDrop) {
+      const first = rejected.find((r) => r.rejectReason.startsWith("deviation"));
+      return fail(first?.rejectReason ?? "deviation", inliers);
+    }
+    const inlierMid = medianUsd6(inliers);
+    for (const s of inliers) {
+      if (bpsAway(s.usd6, inlierMid) > BigInt(opts.maxDevBps)) {
+        return fail(`deviation ${s.name}`, inliers);
+      }
     }
   }
-  return { usd6: mid, ok: true, reason: `fused ${fresh.length}`, n: fresh.length };
+  const accepted = outlierCount > 0 ? inliers : fresh;
+  const fused = medianUsd6(accepted);
+  if (opts.arcUsd6 && opts.arcUsd6 > 0n) {
+    if (bpsAway(fused, opts.arcUsd6) > BigInt(opts.arcMaxDevBps)) {
+      return fail("arc sanity", accepted);
+    }
+  }
+  return {
+    usd6: fused,
+    ok: true,
+    reason: `fused ${accepted.length}`,
+    n: accepted.length,
+    accepted,
+    rejected,
+  };
 }
 
 export function virtualQuote0ForUsd(supply: bigint, quoteDecimals: number, quoteUsd6: bigint): bigint {
