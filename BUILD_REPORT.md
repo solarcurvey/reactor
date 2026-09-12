@@ -40,7 +40,7 @@
 
 Empty-step FAILURE is the account spending-limit / payment block — not a Solidity / docs / size-guard regression. Do not weaken gates to “fix” it.
 
-After billing recovered, `ci-full` on **`606e569`** ran the real full tier ([`34725661667`](https://github.com/solarcurvey/reactor/actions/runs/34725661667)): `docs-links`, `web`, `web-production-security`, `live-toasts-ui`, `postgres-ms-timestamps`, and `constants-version-deployments` **succeeded**. `solidity + size-guard` failed before any test: `binaries.soliditylang.org` connection reset while fetching `solc-linux-amd64-v0.8.26`. That is not an assertion failure. `setup-foundry` now prefetches `solc 0.8.26` with retries after the `~/.svm` cache restore. Exact-head `ci-ok` (Attack suite, CREATE2 `test_hookBits`, size-guard, `docs:links`) is still required. Do not treat `606e569` or historical `6140ce0` as the closer.
+After billing recovered, `ci-full` on **`606e569`** / **`759cc75`** ran the real full tier. Sibling jobs (`docs-links`, `web`, `web-production-security`, `live-toasts-ui`, `postgres-ms-timestamps`, `constants-version-deployments`) **succeeded**. `solidity + size-guard` failed **before any test**: first a `binaries.soliditylang.org` reset ([`34725661667`](https://github.com/solarcurvey/reactor/actions/runs/34725661667)), then the `svm install` prefetch on `759cc75` ([`34725829776`](https://github.com/solarcurvey/reactor/actions/runs/34725829776)) — Foundry 1.8 has no `svm` CLI, so Attack / CREATE2 / `size:guard` were skipped. That is not an assertion failure. `setup-foundry` now `curl`s `solc 0.8.26` from official mirrors into `~/.svm`. Exact-head `ci-ok` is still required. Do not treat `759cc75` or historical `6140ce0` as the closer.
 
 ## What this is not
 

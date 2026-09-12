@@ -25,23 +25,43 @@ runs:
         if [ ! -d lib/v4-core/lib/solmate ]; then
           git -C lib/v4-core submodule update --init --recursive
         fi
-    - name: Prefetch solc 0.8.26 (retry CDN)
+    # Foundry 1.8 does not ship a `svm` CLI. Prefetch the pinned compiler into
+    # ~/.svm so forge test / Attack / CREATE2 / size-guard are not skipped on a
+    # one-shot binaries.soliditylang.org reset. GitHub Releases is the fallback.
+    - name: Prefetch solc 0.8.26 (retry official mirrors)
       shell: bash
       run: |
         set -euo pipefail
         ver=0.8.26
-        if find "${HOME}/.svm" -type f \( -name "solc-0.8.26" -o -name "solc-0.8.26+*" -o -path "*0.8.26*solc*" \) 2>/dev/null | grep -q .; then
-          echo "solc 0.8.26 already in ~/.svm"
-          find "${HOME}/.svm" -type f -name "solc*" | head
+        dest="${HOME}/.svm/${ver}"
+        bin="${dest}/solc-${ver}"
+        mkdir -p "$dest"
+        if [ -x "$bin" ] && "$bin" --version | grep -q "${ver}"; then
+          echo "solc ${ver} already in ~/.svm"
+          "$bin" --version
           exit 0
         fi
-        for attempt in 1 2 3 4 5; do
-          echo "svm install ${ver} (attempt ${attempt})"
-          if command -v svm >/dev/null && svm install "${ver}"; then
-            exit 0
-          fi
-          echo "svm install failed; retrying after $((attempt * 4))s" >&2
-          sleep $((attempt * 4))
+        urls=(
+          "https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a"
+          "https://github.com/ethereum/solidity/releases/download/v0.8.26/solc-static-linux"
+        )
+        tmp="${bin}.tmp"
+        for url in "${urls[@]}"; do
+          for attempt in 1 2 3; do
+            echo "GET ${url} (attempt ${attempt})"
+            rm -f "$tmp"
+            if curl -fsSL --retry 3 --retry-delay 4 --retry-all-errors -o "$tmp" "$url"; then
+              chmod +x "$tmp"
+              if "$tmp" --version | grep -q "${ver}"; then
+                mv "$tmp" "$bin"
+                "$bin" --version
+                exit 0
+              fi
+              echo "downloaded file is not solc ${ver}" >&2
+            fi
+            sleep $((attempt * 3))
+          done
         done
-        echo "failed to download solc ${ver} from binaries.soliditylang.org after retries" >&2
+        rm -f "$tmp"
+        echo "failed to install solc ${ver} from official mirrors" >&2
         exit 1
