@@ -49,6 +49,11 @@ export type QuoteResponse = {
   amountIn: string;
   amountOut: string;
   minOut: string;
+  /**
+   * SELL only. Floor on the first official/bonding leg, in **quote** units.
+   * From `splitPreviewRoute(selected).terminalOut`, never tokenIn.
+   */
+  minQuoteOut?: string;
   hops: QuoteHop[];
   feeLegs: FeeLeg[];
   /** Nested REACTOR official hops — each 3.5% listed separately. */

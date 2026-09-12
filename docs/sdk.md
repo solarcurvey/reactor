@@ -34,6 +34,7 @@ Helpers consume `POST /quote`:
 
 - Use returned `tx.to` / `tx.data` / `amountOut`. Hops, `amountOut`, and `minOut`s are one candidate.
 - Apply slippage locally. Refuse `minOut` ≤ 1.
+- On SELL, `minQuoteOut` is the first official/bonding quote floor from the same selected preview; `minOut` is the final USDC floor. Do not treat `amountIn` as `minQuoteOut`.
 - Preserve hop `kind` and `feeLegs[]` in the UI.
 
 `@reactor/core` exports `planCandidates`, `applyMinOuts`, `ValuationService`, `evaluateAdmission`, `fairCurveConfig`, `launchConfigHash`.

@@ -28,4 +28,14 @@ If `UserRouteQuoter` is **not deployed**, the indexer falls back to one `UserRou
 
 `buildMaintenanceQuote` uses `planFeeExemptRoute` + ProtocolV4Adapter. It never shares the user quoter. Successful maintenance quotes refuse `minOut` 0 or 1 (`applySlippage` / `applyMinOuts` / `RouteExec`).
 
+## SELL floors
+
+SELL tickets apply slippage independently on the **same** selected `PreviewedRoute`:
+
+1. `splitPreviewRoute.terminalOut` (first-leg quoteOut) → `minQuoteOut`
+2. `amountOut` (final USDC) → `minOut` / executor `minFinalOut`
+3. each routing hop out → that hop’s `minOut`
+
+`minQuoteOut` is quote units. It is never launch-token `amountIn`. A missing first-leg (`hopOuts` empty) or malformed `plannedHops+1` preview fails the ticket (`ok: false`, no `tx`). Routed SELLs do not rebuild `hopOuts` from sequential hop sims — they use the selected `#21` `PreviewedRoute` only.
+
 A failed preview is **unavailable** — the API returns `ok: false`, not a dust floor.
