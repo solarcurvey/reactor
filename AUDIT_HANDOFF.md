@@ -36,13 +36,8 @@ Do not certify. Do not deploy. Do not propose a new curve or fee split.
 | Signed pricing | Unique digest: factory+creator+quote+virtualQuote0+curveConfig+salt+deadline+chain. No `pricingNonce` | `LaunchPricing.t.sol` concurrent + replay |
 | Nested quotes | RoutePlanner max 3; ValuationEngine recursive; cycle reject; only usdPegOne is $1 | `valuation.test.ts`, `NativeQuote.t.sol` |
 | CORE vest / genesis | 1B; 100M vest 30d cliff + 300d linear; 900M locked; never Top-10 | `CoreGenesis.t.sol`, `CoreLiquiditySim.t.sol` |
-<<<<<<< HEAD
-| Indexer / Top-10 | `block.timestamp` only for onchain/windowed marks; durable poolId→token; event writes (including token burn journal / `current_supply`) + cursor one transaction; append-only `(chain_id, tx, log_index, event_kind)` + address (`indexer_event_journal`, schema v8; `current_supply` is schema **v9** from #23). `external_price_marks.kind` is schema **v10**. Offchain ms columns are `BIGINT` (schema v6) — Postgres INTEGER overflows `Date.now()` | `indexer.persist.test.ts`, `tick-atomic.test.ts`, `schema.test.ts`, `pg-ms-timestamps.test.ts`, `price-marks.test.ts`, `Top10Api.t.sol` |
-| Indexer markets / candles | Keyset cursor matches `sort`; candle gap-fill ≤ `limit` (max 1000); exclusive `before`; `listMarkets` projects `current_supply` | `markets-query.test.ts`, `prices.test.ts` |
-=======
 | Indexer / Top-10 | `block.timestamp` only for onchain/windowed marks; durable poolId→token; event writes (including token burn journal / `current_supply`) + cursor one transaction; append-only `(chain_id, tx, log_index, event_kind)` + address (`indexer_event_journal`, schema v8; `current_supply` is schema **v9** from #23). `external_price_marks.kind` is schema **v10**. Arc sanity mark is on `route_venues.last_price_quote_x18` (column-gated, not a new migration id). Offchain ms columns are `BIGINT` (schema v6) — Postgres INTEGER overflows `Date.now()` | `indexer.persist.test.ts`, `tick-atomic.test.ts`, `schema.test.ts`, `pg-ms-timestamps.test.ts`, `price-marks.test.ts`, `Top10Api.t.sol` |
-| Indexer markets / candles | Keyset cursor matches `sort`; candle gap-fill ≤ `limit` (max 1000); exclusive `before` | `markets-query.test.ts`, `prices.test.ts` |
->>>>>>> 301cdb5 (Read Arc sanity marks from verified route_venues)
+| Indexer markets / candles | Keyset cursor matches `sort`; candle gap-fill ≤ `limit` (max 1000); exclusive `before`; `listMarkets` projects `current_supply` | `markets-query.test.ts`, `prices.test.ts` |
 | Public JSON body caps (P1) | Stream 16KiB default / 64KiB hard max on `/quote`, `/launch/admit`, `/launch/authorize` (chunked included; env cannot disable). Upload remains 2MB. | `read-json-body.test.ts` |
 | User routes | `UserRouteExecutor` + shared RoutePlanner; bonding nested USDC + graduated v4 | `UserRoute.t.sol` |
 | Routing deltas | `RouteGuard`, `RouteExec`, adapters | `RoutingDeltas.t.sol`, `KeeperMinOut.t.sol` |
