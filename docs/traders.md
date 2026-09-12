@@ -38,7 +38,7 @@ USDC → nested quote → official/bonding goes through `UserRouteExecutor`. Bon
 | FDV / market cap | `fdv_usd6` — mark × `tokens.current_supply`, which tracks remaining onchain `totalSupply()` after `burn()` (not the initial 1B mint, not a live ≡) |
 | Chart | `GET /candles/:token?interval=&limit=&before=&after=` (exclusive `before`/`after`; gap-fill ≤ `limit`, max 1000) |
 | Tape | `GET /swaps/:token?limit=&before_id=` (bounded) |
-| Live | `GET /stream` SSE |
+| Live | `GET /stream` SSE. Bottom-right toasts fire only after the indexer commits a CORE `BuybackExecuted` / `COREBurned` or a Top-10 `Top10Buy` — not on pending txs, not on epoch submit, not on Standard SelfBurn |
 
 ## Rewards
 

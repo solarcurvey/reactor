@@ -8,7 +8,7 @@ Integrate as a client, not a fork. Protocol **0.3.3**. Factory **V1**.
 2. **Quote** — `POST /quote`. Use the ticket. One `UserRouteQuoter` call per candidate; hops, `feeLegs[]`, and SELL `minQuoteOut` are bound to the `pickBest` winner. Render each `feeLegs[]` entry in that hop’s quote asset/decimals (or show only `aggregateProtocolImpactBps`). Do not invent hops. Do not add raw fee amounts across ZEC and ZCAT. Do not mix another candidate's preview onto the selected path. Do not set `minOut` to 0 or 1. Do not derive SELL `minQuoteOut` from tokenIn. JSON body is capped at **16KiB** default / **64KiB** hard max (413 if over, including chunked).
 3. **Launch** — `POST /launch/authorize` (admission + ALLOW receipt + isolated sign). `@reactor/sdk` `authorize` does this. Never call the isolated signer from a public host. Same JSON cap.
 4. **Media** — `POST /upload` (stream 2MB, sharp, SigV4 remote). Store the returned `publicUrl`. Object key is `m/<id>.webp` (matches `/m/<id>.webp`). No base64 onchain.
-5. **Live** — `GET /stream` SSE for tape / board invalidation.
+5. **Live** — `GET /stream` SSE for tape / board invalidation. Named events (`core`, `burn`, `top10`, …). `hello.head` marks replay. Official UI toasts only committed CORE `BuybackExecuted` / `COREBurned` and `Top10Buy`.
 
 ## Proven venues only
 

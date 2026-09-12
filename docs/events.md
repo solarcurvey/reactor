@@ -32,4 +32,19 @@ Any other error **aborts the tick**. The indexer does not swallow “looks like 
 
 Postgres statement failures inside that transaction use a `SAVEPOINT`; on failure the savepoint is `ROLLBACK TO` **and** `RELEASE` so caught `23505` does not accumulate nested savepoint state. Prefer `ON CONFLICT DO NOTHING` on the log identity. SQLite uses `BEGIN IMMEDIATE`. SSE publishes **after** commit. Full-market 24h roll and `populateExternalPriceMarks` run **after** commit (incremental rolls stay inside). Proof: `tick-atomic.test.ts` (SQLite + Postgres) and `pg-smoke.ts`.
 
+## Live UI (confirmed only)
+
+`GET /stream` fans out **after** that commit. The first event is `hello` with `last` (client `Last-Event-ID`) and `head` (hub id at attach). Buffered replay is not a live confirmation.
+
+The web app shows **bottom-right** toasts only for:
+
+| SSE | Onchain | Toast |
+| --- | --- | --- |
+| `core` | `BuybackExecuted` / `COREBurned` | CORE buy+burn confirmed (one per tx) |
+| `burn` + `name=Top10Buy` | `Top10Buy` | Top-10 buy+burn confirmed |
+
+No toast for pending wallet txs, `SelfBurnAccrued` / `SelfBurnExecuted`, holder `Burned`, `EpochSubmitted`, or replayed ids `<= hello.head`. Amounts on those SSE rows are attribution (`quoteIn` / `coreOut` / `usdcIn` / `burned`), not a second supply subtract.
+
+See [Traders](/docs/traders), [CORE](/docs/core), [Top-10](/docs/top-10).
+
 See [Markets](/docs/markets). Auditor event list: `AUDIT_HANDOFF.md`.

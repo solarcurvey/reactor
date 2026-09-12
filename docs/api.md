@@ -17,7 +17,7 @@ Base URL: indexer (local `http://127.0.0.1:43148`).
 | GET | `/valuation` | One ValuationService (nested multiply + ancestry). Consumes accepted consensus only. |
 | GET | `/top10` | Canonical epoch candidates from ValuationService + persisted `current_supply`. Snapshot TTL 15m (`computedTs`); stale + failed refresh pauses. No per-request Factory RPC. |
 | GET | `/pricing/health` | Per-asset consensus, accepted/rejected observations, Arc sanity from the verified `route_venues` executable mark (not a synthetic `markets` row). 503 in PROD when an important mark fails. |
-| GET | `/stream` | SSE |
+| GET | `/stream` | SSE named events after persist commit. `hello` includes `head` (last id at attach). Replay is `id <= head`. Live CORE/Top-10 toasts use only `id > head`. `core` = `BuybackExecuted` / `COREBurned`; `burn` `Top10Buy` is the Top-10 execute. Accruals and `EpochSubmitted` (`top10`) are not buy+burn confirms. |
 | GET | `/health` | Liveness |
 | POST | `/upload` | Stream 2MB + sharp + SigV4 remote. Returns `uri` `/m/<id>.webp` (R2/S3 key `m/<id>.webp`). |
 | GET | `/m/:file` | Local WebP by filename (`<id>.webp`). CDN uses the same path as the object key. |

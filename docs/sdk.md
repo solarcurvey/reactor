@@ -28,6 +28,10 @@ if (out.decision === "CHALLENGE") {
 
 On ALLOW the body includes `launchConfigHash`. The signer recomputes it. A mismatch is a hard fail.
 
+## Live stream
+
+`ReactorClient.stream` opens `GET /stream` and listens for **named** events (`trade`, `launch`, `bonding`, `graduation`, `rewards`, `burn`, `top10`, `core`, `hello`). `onmessage` is not enough — the hub sets `event: <type>`. `hello.head` is the last id at attach; ids `<= head` are replay. Official buy+burn toasts use only live `core` executes and `burn` + `Top10Buy`.
+
 ## Markets board
 
 `ReactorClient.markets` calls `GET /markets`. Pass `sort` (`new` / `vol` / `price`) with `cursor_ts` + `cursor_token` from `next_cursor`. `cursor_ts` is that sort’s key, not always a timestamp.

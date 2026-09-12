@@ -18,4 +18,6 @@
 
 **Why did Arc ignore 8 confirmations?** Arc BFT is final on commit. Default lag is 0.
 
+**When do the bottom-right burn toasts show?** Only after the indexer commits a CORE buy+burn (`BuybackExecuted` / `COREBurned`) or a Top-10 `Top10Buy`. Connecting does not dump the SSE replay buffer. Epoch submit and Standard SelfBurn do not toast.
+
 **Where is the Safe JSON?** `deployments/safe-genesis-builder.json`. Deployer ≠ Guardian. Fill env and regenerate.

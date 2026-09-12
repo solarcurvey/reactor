@@ -78,7 +78,7 @@ Pre-graduation Instant trades settle on `InstantCurve` (same 3.5% quote split). 
 - **Keeper daemon:** designated maintenance. One `leader_locks` lease; `ts` is the acquire fence. TTL (~50s) is failover only — the leader renews during long ticks and immediately before each broadcast. Lost fence refuses send (no overlapping broadcasters). Mainnet 5042 disabled.
 - **Pricing signer:** isolated process. Next never holds the key. Fail closed if down **or if the durable store cannot be opened** (`SIGNER_STORE_UNAVAILABLE` / 503). Receipt consume + signed-auth bucket always run. No Anvil / inline fallback outside `REACTOR_ENV=LOCAL` (production hard gates).
 - **Media:** validate + resize/WebP → object store; short URI onchain. No base64 metadata.
-- **SSE:** `/stream` for launches/trades/bonding/grad/rewards/burns/Top-10/CORE with reconnect/fallback.
+- **SSE:** `/stream` for launches/trades/bonding/grad/rewards/burns/Top-10/CORE with reconnect/fallback. `hello.head` separates replay from live. Web toasts only confirmed CORE buy+burn and Top-10 `Top10Buy`.
 
 ## Trust boundaries
 

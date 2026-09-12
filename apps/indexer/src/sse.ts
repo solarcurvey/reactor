@@ -5,12 +5,27 @@ export type SseEvent = {
   data: unknown;
 };
 
+export type SseHello = {
+  ok: true;
+  last: number;
+  /** Last published event id at attach time. Live clients toast only ids > head. */
+  head: number;
+};
+
+export function streamHello(last: number, head: number): SseHello {
+  return { ok: true, last, head };
+}
+
 type Client = { res: ServerResponse; lastId: number };
 
 export class SseHub {
   private clients = new Set<Client>();
   private buf: Array<{ id: number; ev: SseEvent }> = [];
   private nextId = 1;
+
+  get headId() {
+    return this.nextId - 1;
+  }
 
   publish(ev: SseEvent) {
     const id = this.nextId++;
@@ -37,7 +52,7 @@ export class SseHub {
     const last = Number(req.headers["last-event-id"] ?? 0);
     const client: Client = { res, lastId: last };
     this.clients.add(client);
-    res.write(`event: hello\ndata: ${JSON.stringify({ ok: true, last })}\n\n`);
+    res.write(`event: hello\ndata: ${JSON.stringify(streamHello(last, this.headId))}\n\n`);
     for (const row of this.buf) {
       if (row.id > last) {
         res.write(`id: ${row.id}\nevent: ${row.ev.type}\ndata: ${JSON.stringify(row.ev.data)}\n\n`);

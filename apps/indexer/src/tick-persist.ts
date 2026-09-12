@@ -335,7 +335,7 @@ async function persistOneLog(
        ${EVENT_IDENTITY_CONFLICT}`,
       token.toLowerCase(),
       String(args.quote ?? ""),
-      String(args.amount ?? args.quoteIn ?? "0"),
+      String(args.amount ?? args.quoteIn ?? args.usdcIn ?? "0"),
       String(args.burned ?? "0"),
       name,
       block,
@@ -345,7 +345,21 @@ async function persistOneLog(
       logIndex,
       name,
     );
-    if (burned || burnRow) sse.publish({ type: "burn", data: { token, name, tx } });
+    if (burned || burnRow) {
+      sse.publish({
+        type: "burn",
+        data: {
+          token,
+          name,
+          tx,
+          quote: String(args.quote ?? ""),
+          amount: String(args.amount ?? args.quoteIn ?? args.usdcIn ?? "0"),
+          burned: String(args.burned ?? "0"),
+          epoch: args.epoch ?? args.epochId ?? "",
+          confirmed: true,
+        },
+      });
+    }
   }
   if (name === "FlywheelAccrued" || name === "QuoteSettled") {
     const quote = String(args.quote ?? "").toLowerCase();
@@ -394,7 +408,19 @@ async function persistOneLog(
       logIndex,
       name,
     );
-    if (bought || buyRow) sse.publish({ type: "core", data: { name, tx } });
+    if (bought || buyRow) {
+      sse.publish({
+        type: "core",
+        data: {
+          name,
+          tx,
+          quote: String(args.quote ?? ""),
+          quoteIn: String(args.quoteIn ?? "0"),
+          coreOut: String(args.coreOut ?? args.amount ?? "0"),
+          confirmed: true,
+        },
+      });
+    }
   }
 }
 

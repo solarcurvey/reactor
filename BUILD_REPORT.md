@@ -1,10 +1,40 @@
-# BUILD REPORT — Top-10 fail-closed gaps after #33 (Refs #10)
+# BUILD REPORT — Live CORE / Top-10 buy+burn toasts (Refs #38)
+
+**Status:** Rebased onto latest `origin/main` `c2b84ff` (#53 Top-10 fail-closed after #33). Issue **#38 stays open** — use `Refs #38`, do not auto-close.  
+**Not audited. Not mainnet.**  
+**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | P2 live UI: bottom-right confirmed CORE and Top-10 buy+burn notifications (Refs #38). Canonical `(chainId, txHash, logIndex, eventKind)` seen-set outlives the visible toast array. |
+| Foundry | Unchanged this pass (no Solidity). |
+| Indexer / lib | `sse.test.ts` + `live-sse.test.ts` + `apps/web/src/lib/live-toasts.test.ts` + Playwright `e2e/live-toasts.spec.ts` + CI job **`live-toasts-ui`** + `pnpm docs:check` |
+| Review shots | Live toast chrome is new; fixture board otherwise unchanged |
+| Mainnet | **Blocked** |
+
+## Closed this run (AC on #38 — issue stays open)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Confirmed-only (post-commit SSE) | **Yes** | Indexer publishes after `persistTickBatch`. First-session `hello.head` + `id > cutoff` |
+| Canonical dedupe | **Yes** | `(chainId, txHash, logIndex, eventKind)`. Module session `seen` survives dismiss and remount. Same-tx distinct-log Top10Buy stay two notices |
+| Reconnect without loss/dup/history storm | **Yes** | Cutoff never raised. `?after=` / `Last-Event-ID` |
+| Hover/focus pause + safe-area + reduced-motion | **Yes** | Clock helpers + `e2e/live-toasts.spec.ts` |
+| Visible CI/release gate | **Yes** | `.github/workflows/live-toasts.yml` job `live-toasts-ui` |
+| Tokenomics / Factory | **Unchanged** | No contract edits |
+| Close #38 | **No** | Stays open until post-merge verify. Do not `Fixes #38`. |
+
+---
+
+# Prior — Top-10 fail-closed gaps after #33 (Refs #10)
 
 **Status:** Fresh branch off latest `origin/main` `0c30029` (PR **#33** merged). Issue **#10 stays open** — use `Refs #10`, do not auto-close.  
 **Not audited. Not mainnet.**  
 **Economics / 3.5% / curve / Keeper routing / Factory V1 constants: unchanged.**
-
-## This HEAD
 
 | Item | Value |
 | --- | --- |

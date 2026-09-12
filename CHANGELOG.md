@@ -37,6 +37,7 @@ Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33)
 
 ### Added / Changed
 
+- Live UI: bottom-right toasts for **confirmed** CORE `BuybackExecuted` / `COREBurned` and Top-10 `Top10Buy` after indexer SSE commit (`hello.head` skips replay). Not pending txs, not `EpochSubmitted`, not Standard SelfBurn. Economics unchanged.
 - Schema **v11** persists official Top-10 candidates (`top10_candidate_epochs` / `top10_candidate_rows`) after merged #23 **v9** `tokens.current_supply` and #30 **v10** `external_price_marks.kind`. Ranking reads persisted `current_supply` (not minted − SelfBurn/Top10Buy), 12m VWAP, and ValuationService consensus ancestry.
 - Indexer `GET /top10` is the official snapshot. Web `/api/reactor/top10`, Keeper, and watchdog consume that path. `discoverTop10` Factory RPC walk and the assumed hookless 0.30% quote/USDC fallback are removed.
 - Snapshot TTL 15 minutes (`TOP10_SNAPSHOT_TTL_SEC`) is shared by API serve and Keeper. Age past TTL + failed refresh pauses; ingest tick persist-on-fail replaces the last healthy row. Refs #10.

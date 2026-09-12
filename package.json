@@ -13,7 +13,7 @@
     "size:guard": "tsx scripts/size-guard.ts",
     "arc:factory-attempt": "tsx scripts/arc-factory-deploy.ts",
     "safe:genesis": "tsx scripts/safe-genesis-builder.ts",
-    "test:lib": "pnpm --filter indexer test && tsx apps/web/src/lib/top10.test.ts && tsx apps/web/src/lib/marketdata.test.ts && tsx apps/web/src/lib/limited-json.test.ts && tsx apps/web/src/lib/fee-legs.test.ts && tsx scripts/sync-docs.ts check",
+    "test:lib": "pnpm --filter indexer test && tsx apps/web/src/lib/top10.test.ts && tsx apps/web/src/lib/marketdata.test.ts && tsx apps/web/src/lib/limited-json.test.ts && tsx apps/web/src/lib/fee-legs.test.ts && tsx apps/web/src/lib/live-toasts.test.ts && tsx scripts/sync-docs.ts check",
     "signer": "pnpm --filter indexer signer"
   },
   "devDependencies": {
