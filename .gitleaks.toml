@@ -1,0 +1,29 @@
+# Allowlist for known public fixtures. Re-run a full-history scan
+# immediately before any visibility change (see docs/publicization.md).
+# Refs #72. This file is not a claim that the repo is secret-clean forever.
+
+title = "REACTOR"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public test fixtures / placeholders — not live credentials"
+paths = [
+  '''apps/web/src/lib/obs/redact\.test\.ts''',
+  '''apps/web/src/lib/review-fixtures\.ts''',
+  '''packages/reactor/src/untrusted-metadata\.test\.ts''',
+]
+regexes = [
+  # Well-known Foundry / Anvil account #0 (public, LOCAL-only).
+  '''ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80''',
+  # Ethereum addresses (gitleaks generic-api-key false positives).
+  '''0x[a-fA-F0-9]{40}''',
+  # Dummy JWT used by redaction tests (not a signed production token).
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.''',
+  # Placeholder DSN / URL credentials in examples and hostile-metadata tests.
+  '''postgres://user:pass@''',
+  '''https://user:(pass|hunter2)@''',
+  # AWS documentation example access key (not a live credential).
+  '''AKIAIOSFODNN7EXAMPLE''',
+]

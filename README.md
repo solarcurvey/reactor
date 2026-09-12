@@ -108,6 +108,7 @@ pnpm safe:genesis # Safe Transaction Builder JSON from deployments/local.json (d
 | `FUTURE.md` | Explicitly not built |
 | `PRIVILEGE_MAP.md` | Guardian / Keeper / one-time slots |
 | `HARDENING_REPORT.md` | P0/P1 findings and proof |
+| `docs/publicization.md` | Repo visibility checklist (Refs #72). Do not publicize without founder instruction. |
 
 ## License
 

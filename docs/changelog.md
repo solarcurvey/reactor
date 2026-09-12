@@ -41,6 +41,10 @@ External quote USD marks are a configured provider registry with multi-source co
 
 Public launchpad treats token metadata as untrusted (#41). Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33). Tokenomics **unchanged**. Factory **V1**. No mainnet.
 
+### CI / ops
+
+- Public-fork GitHub Actions hardening (Refs #72): workflow + job `contents: read`, `actions/checkout` `persist-credentials: false`, no `pull_request_target`, no workflow secrets. Compatible with #69 three-tier CI / concurrency. Operator checklist `/docs/publicization`. Visibility was **not** changed. History was **not** rewritten. Tokenomics unchanged.
+
 ### Security
 
 - Names, tickers, and descriptions are sanitized (no raw HTML). Website / X / Telegram use an `https:` scheme allowlist and host allowlists. Images are first-party `/m/<id>.webp` or `/icons/` only — `javascript:`, `data:`, and arbitrary remote hosts are dropped.

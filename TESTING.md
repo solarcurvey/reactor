@@ -31,6 +31,8 @@ npx --yes tsx apps/web/src/lib/tx-guard.test.ts
 npx --yes tsx apps/web/src/lib/secret-sentinel.test.ts
 npx --yes tsx packages/reactor/src/untrusted-metadata.test.ts
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
+npx --yes tsx scripts/ci-public-harden.test.ts  # #72: permissions / persist-credentials / no pull_request_target
+# CI: workflow + job contents:read; actions/checkout persist-credentials:false. Compatible with #69 ci.yml fold.
 pnpm --filter web test          # Playwright smoke + interactive + live-toasts (dev server)
 pnpm test:live-toasts           # #38 gate: identity unit + Playwright dismiss / multi-log / reconnect / safe-area / reduced-motion
 # CI: .github/workflows/live-toasts.yml job live-toasts-ui (required visible check). #38 stays open until post-merge verify.
@@ -43,6 +45,8 @@ pnpm test:web-security          # production next build/start: live headers, bun
 ```
 
 `pnpm docs:check` (and `.github/workflows/docs-sync.yml`) **must fail** when generated constants, `docs/version.json`, Factory labels, or deployment tables have drifted from Solidity/config. Do not edit generated `docs/versioning.md` / `docs/deployments.md` / `docs/changelog.md` by hand — run `pnpm docs:gen`.
+
+Public-fork hardening (Refs #72) is `scripts/ci-public-harden.test.ts` inside `pnpm test:lib`. It does not skip Foundry, `docs:check`, `test:web-security`, or `live-toasts-ui`. Do not publicize without founder instruction — see `/docs/publicization`.
 
 Authoritative current-architecture walk (Foundry, no live chain):
 
