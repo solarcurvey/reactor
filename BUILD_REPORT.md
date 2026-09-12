@@ -13,8 +13,8 @@ Official **#62 / PR #68** is on `main`. This branch binds launchpad UX to `GET /
 | Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
 | Intent | Dedicated `/restricted` production state, disable operated write CTAs before wallet prompts, honest disclosure of hosted sanctions/geo controls and what they cannot do on permissionless chain reads. |
-| Server dependency | Official #62 / #68 `apps/indexer/src/operator-policy.ts` + `packages/reactor/src/sanctions-policy.ts`. Decision read is `GET /operator-policy/status`. Challenge is not a decision. |
-| Tests | `operator-policy-ux.test.ts`, `operator-policy-status.test.ts`, Playwright `e2e/restricted.spec.ts`, `e2e/restricted-prod.spec.ts`, `pnpm docs:check`. |
+| Server dependency | Official #62 / #68 `apps/indexer/src/operator-policy.ts` + `packages/reactor/src/sanctions-policy.ts`. Decision read is `GET /operator-policy/status`. Challenge is not a decision. Subject is the EIP-191 signer. Claimed browser wallet is ignored. |
+| Tests | `operator-policy-ux` / `operator-policy-status` / official `sanctions-policy` / `operator-policy` / Playwright `e2e/restricted.spec.ts` / `e2e/restricted-prod.spec.ts` / `pnpm docs:check`. LOCAL page `?fixture=` is forwarded by the provider; production ignores it. |
 | Mainnet | **Blocked** |
 
 ## Closed this run (#65 ACs — issue stays open)

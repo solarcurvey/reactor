@@ -93,6 +93,14 @@ const ALLOW = {
   writesAllowed: true,
 };
 
+test("LOCAL page fixture query applies geo denial without a mocked policy", async ({ page }) => {
+  await page.goto("/launch?fixture=DENY_GEO_BLOCKED");
+  await expect(page.getByTestId("restricted-banner")).toHaveAttribute("data-kind", "geo");
+  const launch = page.getByTestId("launch-submit");
+  await expect(launch).toBeDisabled();
+  await expect(launch).toHaveText(/Unavailable here/i);
+});
+
 test("allowed user keeps Launch Instant and no restricted banner", async ({ page }) => {
   const status = page.waitForResponse((res) => res.url().includes("/api/operator-policy") && res.status() < 500);
   await page.goto("/launch");

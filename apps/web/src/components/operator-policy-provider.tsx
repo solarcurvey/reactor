@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useSignMessage } from "wagmi";
 import {
+  isOperatorPolicyReason,
   parseWritePolicyError,
   type PublicOperatorPolicyView,
   type RestrictedUxKind,
@@ -91,7 +92,13 @@ export function OperatorPolicyProvider({ children }: { children: React.ReactNode
         const proof = await ensureProof();
         if (proof) Object.assign(headers, proof);
       }
-      const res = await fetch("/api/operator-policy", { cache: "no-store", headers });
+      const pageFixture =
+        typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("fixture") : null;
+      const qs =
+        pageFixture && isOperatorPolicyReason(pageFixture)
+          ? `?fixture=${encodeURIComponent(pageFixture)}`
+          : "";
+      const res = await fetch(`/api/operator-policy${qs}`, { cache: "no-store", headers });
       const json: unknown = await res.json();
       const parsed = parseWritePolicyError(json);
       if (parsed) {

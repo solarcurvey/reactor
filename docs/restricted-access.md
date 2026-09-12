@@ -6,7 +6,14 @@ The public launchpad has a dedicated **`/restricted`** state when a server polic
 
 This is **not** an onchain pause. Immutable public contracts remain callable. The launchpad does not pretend it can censor permissionless chain reads.
 
-Issue **#65** (child of RELEASE GATE **#60**). Server authority is **#62** (`evaluateOperatorPolicy`, merged **#68** on `main` `2002aed`), with address screening **#61** / **#66** and trusted geo **#63** / **#67**. Official decision read is `GET /operator-policy/status` (same evaluator as write gates). `GET /operator-policy/challenge` is a signing helper only. **LOCAL** continues to allow writes when the indexer status path is missing; **production-like** environments fail closed as temporarily unavailable.
+Issue **#65** (child of RELEASE GATE **#60**). Server authority is **#62** (`evaluateOperatorPolicy`, merged **#68** on `main` `2002aed`), with address screening **#61** / **#66** and trusted geo **#63** / **#67**. This branch binds the launchpad to the official recovered-wallet model:
+
+- `GET /operator-policy/status` is the official decision read (same `evaluateOperatorPolicy` as write gates). Optional `x-reactor-wallet-proof` screens the recovered signer. Claimed `wallet` / country / `clear` are ignored.
+- `GET /operator-policy/challenge` issues an HMAC + EIP-191 message (`REACTOR operator-policy v1`, purpose `operator-policy-write`). It is not a decision.
+- Writes (`POST /quote`, `/launch/admit`, `/launch/authorize`, `/upload`) require that recovered proof.
+- Next `GET /api/operator-policy` forwards only the proof header (never a claimed wallet). The provider acquires challenge → `personal_sign` → proof header. Production `next start` fail-closes if the indexer status path is missing.
+
+**LOCAL** continues to allow writes when the indexer status path is missing; **production-like** environments fail closed as temporarily unavailable. LOCAL-only demo fixtures: `OPERATOR_POLICY_UX_FIXTURE`, `x-reactor-ux-fixture`, or a page `?fixture=` query (the provider forwards it to the BFF; production ignores it).
 
 ## What the user sees
 
