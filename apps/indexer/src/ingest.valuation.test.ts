@@ -12,6 +12,7 @@ import {
   upsertMarket,
   upsertToken,
 } from "./ingest.ts";
+import { persistTokenBurnLogs } from "./tick-persist.ts";
 import { fdvUsd6 } from "../../../packages/reactor/src/prices.ts";
 
 function assert(cond: unknown, msg: string) {
@@ -309,6 +310,58 @@ assert((await currentSupplyRaw(store, TOKEN)) === INITIAL, "current supply start
   const onchain = INITIAL - 2n * BURN;
   await applyOnchainTotalSupply(store, multi, onchain);
   assert((await currentSupplyRaw(store, multi)) === onchain, "totalSupply() wins over event attribution");
+}
+
+{
+  // Log path: Burned + Transfer-to-zero through persistTokenBurnLogs (canonical identity).
+  const viaLogs = "0x1111111111111111111111111111111111110005";
+  const ZERO = "0x0000000000000000000000000000000000000000";
+  await upsertToken(store, { address: viaLogs, symbol: "LOG", quote: USDC, supply: INITIAL.toString(), ts: now });
+  const first = await persistTokenBurnLogs(store, {
+    chainId: CHAIN,
+    timestamps: new Map([[12, now + 70]]),
+    logs: [
+      {
+        eventName: "Transfer",
+        args: { from: "0xholder", to: ZERO, amount: HOLDER_BURN.toString() },
+        address: viaLogs,
+        blockNumber: 12n,
+        transactionHash: "0xlog-burn",
+        logIndex: 20,
+      },
+      {
+        eventName: "Burned",
+        args: { account: "0xholder", amount: HOLDER_BURN.toString() },
+        address: viaLogs,
+        blockNumber: 12n,
+        transactionHash: "0xlog-burn",
+        logIndex: 21,
+      },
+    ],
+  });
+  assert(first.burned.includes(viaLogs), "token burn logs are applied");
+  assert((await currentSupplyRaw(store, viaLogs)) === INITIAL - 2n * HOLDER_BURN, "Transfer and Burned are two identities");
+  const replay = await persistTokenBurnLogs(store, {
+    chainId: CHAIN,
+    timestamps: new Map([[12, now + 70]]),
+    logs: [
+      {
+        eventName: "Transfer",
+        args: { from: "0xholder", to: ZERO, amount: HOLDER_BURN.toString() },
+        address: viaLogs,
+        blockNumber: 12n,
+        transactionHash: "0xlog-burn",
+        logIndex: 20,
+      },
+    ],
+  });
+  assert(replay.burned.length === 0, "canonical (chain_id,tx,log_index,event_kind) replay is a no-op");
+  assert((await currentSupplyRaw(store, viaLogs)) === INITIAL - 2n * HOLDER_BURN, "replay does not decrement twice");
+  const honest = INITIAL - HOLDER_BURN;
+  await reconcileCurrentSupplies(store, async (addr) => (addr.toLowerCase() === viaLogs ? honest : null), {
+    priority: [viaLogs],
+  });
+  assert((await currentSupplyRaw(store, viaLogs)) === honest, "totalSupply() corrects same-tx Transfer+Burned via log path");
 }
 
 await store.close();
