@@ -7,7 +7,7 @@ import { rpcFromEnv } from "./rpc.ts";
 import { SseHub } from "./sse.ts";
 import { ObjectStore, publicMediaUrl } from "./media.ts";
 import { RateLimit, SECURITY_HEADERS, logLine, requestId } from "./obs.ts";
-import { getState, rollMarketAggregations } from "./ingest.ts";
+import { getState, reconcileCurrentSupplies, rollMarketAggregations, setState } from "./ingest.ts";
 import { loadValuationService } from "./valuation-store.ts";
 import { populateExternalPriceMarks } from "./price-marks.ts";
 import { buildQuote } from "./quote-service.ts";
@@ -15,7 +15,7 @@ import { fillContinuous, CANDLE_INTERVALS } from "../../../packages/reactor/src/
 import { raiseAlert, recentAlerts } from "./alerts.ts";
 import type { ValuationService } from "../../../packages/reactor/src/valuation.ts";
 import { consensusUsd6, StaticProvider } from "../../../packages/reactor/src/pricing.ts";
-import { persistTickBatch, rewindIndexerCursor } from "./tick-persist.ts";
+import { persistTickBatch, persistTokenBurnLogs, rewindIndexerCursor } from "./tick-persist.ts";
 import { admit, tryNormalizeTicker } from "./admission.ts";
 import { authorizeLaunch } from "./authorize.ts";
 import { isReservedTicker, RESERVED_TICKERS } from "../../../packages/reactor/src/ticker.ts";
@@ -59,6 +59,13 @@ const events = [
   parseAbiItem("event BuybackExecuted(address indexed quote, uint256 quoteIn, uint256 coreOut, address indexed caller)"),
   parseAbiItem("event COREBurned(uint256 amount)"),
 ];
+
+const TOKEN_BURN_EVENTS = [
+  parseAbiItem("event Burned(address indexed account, uint256 amount)"),
+  parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 amount)"),
+];
+
+const TOTAL_SUPPLY_ABI = [{ name: "totalSupply", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] }] as const;
 
 const factory = addrs.ReactorFactory as `0x${string}`;
 const hook = addrs.ReactorHook as `0x${string}`;
@@ -112,41 +119,96 @@ async function tick(store: Store) {
     }
   }
   let from = last > 0n ? last + 1n : 0n;
-  if (from > head) return;
-  const to = head - from > 2000n ? from + 2000n : head;
-  const watch = [factory, hook, addrs.BuybackVault, addrs.FlywheelVault, addrs.InstantCurve, addrs.SelfBurnVault, addrs.PoolManager, addrs.TickerRegistry]
-    .filter(Boolean) as `0x${string}`[];
-  const logs = await client.getLogs({ address: watch, events, fromBlock: from, toBlock: to });
-  const timestamps = new Map<number, number>();
-  const needed = new Set<number>([Number(to)]);
-  for (const log of logs) needed.add(Number(log.blockNumber));
-  for (const n of needed) timestamps.set(n, await chainTs(BigInt(n)));
-  const headBlk = await client.getBlock({ blockNumber: to });
-  const published = await persistTickBatch(store, {
-    logs: logs.map((log) => ({
-      eventName: log.eventName,
-      args: (log.args ?? {}) as Record<string, unknown>,
-      address: log.address,
-      blockNumber: log.blockNumber,
-      transactionHash: log.transactionHash,
-      logIndex: log.logIndex,
-    })),
-    timestamps,
-    cursorBlock: to.toString(),
-    cursorHash: headBlk.hash ?? "",
-    ctx: {
+  const burnedThisTick = new Set<string>();
+  const createdThisTick = new Set<string>();
+  const coreAddr = String(addrs.CoreToken ?? addrs.TestCORE ?? "").toLowerCase();
+  if (from <= head) {
+    const to = head - from > 2000n ? from + 2000n : head;
+    const watch = [factory, hook, addrs.BuybackVault, addrs.FlywheelVault, addrs.InstantCurve, addrs.SelfBurnVault, addrs.PoolManager, addrs.TickerRegistry]
+      .filter(Boolean) as `0x${string}`[];
+    const logs = await client.getLogs({ address: watch, events, fromBlock: from, toBlock: to });
+    for (const log of logs) {
+      if (log.eventName === "TokenCreated") {
+        const created = String((log.args as { token?: string } | undefined)?.token ?? "").toLowerCase();
+        if (created) createdThisTick.add(created);
+      }
+    }
+    const timestamps = new Map<number, number>();
+    const needed = new Set<number>([Number(to)]);
+    for (const log of logs) needed.add(Number(log.blockNumber));
+    for (const n of needed) timestamps.set(n, await chainTs(BigInt(n)));
+    const headBlk = await client.getBlock({ blockNumber: to });
+    const published = await persistTickBatch(store, {
+      logs: logs.map((log) => ({
+        eventName: log.eventName,
+        args: (log.args ?? {}) as Record<string, unknown>,
+        address: log.address,
+        blockNumber: log.blockNumber,
+        transactionHash: log.transactionHash,
+        logIndex: log.logIndex,
+      })),
+      timestamps,
+      cursorBlock: to.toString(),
+      cursorHash: headBlk.hash ?? "",
+      ctx: {
+        chainId: deployment.chainId,
+        factory,
+        hook,
+        protocolAdapter: (addrs.ProtocolV4Adapter ?? addrs.V4Adapter) as string | undefined,
+        userAdapter: (addrs.V4Adapter ?? addrs.UniswapV4Adapter) as string | undefined,
+        tokenByPool,
+        quoteDec,
+      },
+    });
+    for (const ev of published) sse.publish(ev);
+    // After TokenCreated upserts so a same-window public burn() is not missed.
+    const knownTokens = await store.all<{ address: string }>("SELECT address FROM tokens");
+    const burnWatch = [...new Set([...knownTokens.map((r) => r.address.toLowerCase()), coreAddr].filter(Boolean))] as `0x${string}`[];
+    const tokenBurnLogs = burnWatch.length
+      ? await client.getLogs({ address: burnWatch, events: TOKEN_BURN_EVENTS, fromBlock: from, toBlock: to })
+      : [];
+    for (const log of tokenBurnLogs) needed.add(Number(log.blockNumber));
+    for (const n of needed) {
+      if (!timestamps.has(n)) timestamps.set(n, await chainTs(BigInt(n)));
+    }
+    const burns = await persistTokenBurnLogs(store, {
+      logs: tokenBurnLogs.map((log) => ({
+        eventName: log.eventName,
+        args: (log.args ?? {}) as Record<string, unknown>,
+        address: log.address,
+        blockNumber: log.blockNumber,
+        transactionHash: log.transactionHash,
+        logIndex: log.logIndex,
+      })),
+      timestamps,
       chainId: deployment.chainId,
-      factory,
-      hook,
-      protocolAdapter: (addrs.ProtocolV4Adapter ?? addrs.V4Adapter) as string | undefined,
-      userAdapter: (addrs.V4Adapter ?? addrs.UniswapV4Adapter) as string | undefined,
-      tokenByPool,
-      quoteDec,
+    });
+    for (const ev of burns.events) sse.publish(ev);
+    for (const addr of burns.burned) burnedThisTick.add(addr);
+    await populateExternalPriceMarks(store).catch(() => undefined);
+  }
+  const cursor = (await getState(store, "supply_reconcile_cursor")) ?? "";
+  const rec = await reconcileCurrentSupplies(
+    store,
+    async (addr) => {
+      try {
+        return (await client.readContract({
+          address: addr as `0x${string}`,
+          abi: TOTAL_SUPPLY_ABI,
+          functionName: "totalSupply",
+        })) as bigint;
+      } catch {
+        return null;
+      }
     },
-  });
-  for (const ev of published) sse.publish(ev);
+    {
+      limit: Number(process.env.SUPPLY_RECONCILE_LIMIT ?? 40),
+      after: cursor,
+      priority: [coreAddr, ...burnedThisTick, ...createdThisTick],
+    },
+  );
+  await setState(store, "supply_reconcile_cursor", rec.nextCursor);
   await rollMarketAggregations(store);
-  await populateExternalPriceMarks(store).catch(() => undefined);
 }
 
 async function refreshQuotes(store: Store) {
@@ -262,7 +324,7 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     );
     const items = await store.all<Record<string, unknown>>(
       `SELECT m.token,m.quote,m.pool_id,m.stage,m.market_live,m.fair_id,m.bonding_bps,m.real_quote,m.grad_target,m.price_quote_x18,m.price_usd6,m.fdv_usd6,m.volume_24h_quote,m.volume_24h_usd6,m.trades_24h,m.lifetime_rewards,m.image,m.description,m.updated_ts,
-              t.symbol,t.name,t.creator,t.ticker,t.factory_version,t.rewards_mode,t.supply,
+              t.symbol,t.name,t.decimals,t.creator,t.ticker,t.factory_version,t.rewards_mode,t.supply,t.current_supply,
               q.symbol as quote_symbol, q.decimals as quote_decimals
        FROM markets m
        LEFT JOIN tokens t ON t.address=m.token

@@ -1,6 +1,6 @@
 import type { Store } from "./db.ts";
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 /**
  * Wall-clock fields written as `Date.now()` milliseconds (≈1.8e12 today).
@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS tokens (
   mode INTEGER,
   rewards_mode INTEGER,
   supply TEXT,
+  current_supply TEXT,
   ticker TEXT,
   factory_version INTEGER,
   created_block INTEGER,
@@ -480,6 +481,14 @@ export async function applyMigrations(store: Store): Promise<number> {
     }
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 8, Math.floor(Date.now() / 1000));
     current = 8;
+  }
+  if (current < 9) {
+    await store.exec("ALTER TABLE tokens ADD COLUMN current_supply TEXT").catch(() => undefined);
+    await store.exec(
+      `UPDATE tokens SET current_supply = supply WHERE current_supply IS NULL OR current_supply = ''`,
+    ).catch(() => undefined);
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 9, Math.floor(Date.now() / 1000));
+    current = 9;
   }
   return current;
 }

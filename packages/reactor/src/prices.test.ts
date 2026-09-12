@@ -1,4 +1,4 @@
-import { priceQuoteX18, priceQuoteX18FromSqrt, usd6FromPriceQuote, fdvUsd6, applyTradeToCandle, fillContinuous, CANDLE_INTERVALS } from "./prices.ts";
+import { priceQuoteX18, priceQuoteX18FromSqrt, usd6FromPriceQuote, fdvUsd6, burnAdjustedSupply, fdvUsd6BurnAdjusted, applyTradeToCandle, fillContinuous, CANDLE_INTERVALS } from "./prices.ts";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -21,6 +21,17 @@ function assert(cond: unknown, msg: string) {
 {
   const fdv = fdvUsd6(2n * 10n ** 18n, 1_000_000_000n * 10n ** 18n, 18, 1_000_000n);
   assert(fdv === 2_000_000_000n * 1_000_000n, `fdv ${fdv}`);
+}
+{
+  const initial = 1_000_000_000n * 10n ** 18n;
+  const burned = 100_000_000n * 10n ** 18n;
+  const remaining = burnAdjustedSupply(initial, burned);
+  assert(remaining === 900_000_000n * 10n ** 18n, "remaining after burn");
+  assert(burnAdjustedSupply(initial, 0n) === initial, "zero burns");
+  assert(burnAdjustedSupply(initial, initial + 1n) === 0n, "burn ≥ supply clamps to 0");
+  const full = fdvUsd6(2n * 10n ** 18n, initial, 18, 1_000_000n);
+  const adj = fdvUsd6BurnAdjusted(2n * 10n ** 18n, initial, burned, 18, 1_000_000n);
+  assert(adj < full && adj === fdvUsd6(2n * 10n ** 18n, remaining, 18, 1_000_000n), "burn-adjusted FDV");
 }
 {
   const one = 1n << 96n;

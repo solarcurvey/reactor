@@ -153,7 +153,7 @@ Every hop: real balance deltas in and out; next hop uses **actual** out, not ada
 `apps/web/src/lib/marketdata.ts` **discovers** factory tokens on-chain (not env JSON):
 
 - Graduated only; skip CORE
-- Supply after burns (`totalSupply`)
+- Supply after burns (`totalSupply`). Indexer `/markets` `fdv_usd6` uses `tokens.current_supply` (schema v9 after #27 v8 journal identity), which tracks `totalSupply()` (token `Burned` / Transfer-to-zero via `(chain_id,tx,log_index,event_kind)` + bounded reconcile, including at head). Not TokenCreated `tokens.supply`, not a protocol-event sum, and not claimed ≡ between reconciles
 - Official 10–15m VWAP/TWAP-like from indexed official trades (**chain `block.timestamp`**, never `Date.now()`)
 - External quote USD: offchain multi-source + Arc sanity + staleness/deviation (`fuseExternalUsd6`). No onchain oracle
 - Depth 3, cycle set, **$250k** floor

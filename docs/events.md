@@ -1,6 +1,6 @@
 # Events
 
-Indexer watches Factory, InstantLaunchModule, hook, curve, vaults, PoolManager, TickerRegistry.
+Indexer watches Factory, InstantLaunchModule, hook, curve, vaults, PoolManager, TickerRegistry. Token / CORE addresses are watched separately for `Burned` and `Transfer` (only `to == address(0)` counts as a burn).
 
 | Event | Effect |
 | --- | --- |
@@ -9,7 +9,9 @@ Indexer watches Factory, InstantLaunchModule, hook, curve, vaults, PoolManager, 
 | `TickerClaimed` / `TickerPermanentlyLocked` | Ticker board |
 | `OfficialPoolCreated` / `GraduationCompleted` | Official pool UPSERT + `OFFICIAL_REACTOR_V4` venue |
 | `CurveBuy` / `CurveSell` / `SwapFeeAccrued` / `Swap` | Trades + candles + 24h incremental roll |
-| `RewardClaimed` / `SelfBurn*` / `Flywheel*` / `BuybackExecuted` / `COREBurned` | Side tables |
+| `RewardClaimed` / `SelfBurn*` / `Top10Buy` / `Flywheel*` / `BuybackExecuted` / `COREBurned` | Attribution side tables. They do **not** subtract supply a second time |
+| `Burned` / `Transfer` to zero | Public `burn()`. Fetched **after** `TokenCreated` upserts. Canonical `(chain_id, tx, log_index, event_kind)` — Transfer and Burned are two logs |
+| Tick `totalSupply()` | Bounded reconcile even when at head (CORE + recently burned + newly created + rotating page). Corrects missed / same-tx burns. `current_supply` tracks this; not a live ≡ |
 
 ## Idempotence
 
