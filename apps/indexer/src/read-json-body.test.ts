@@ -17,10 +17,10 @@ function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
 }
 
-function listen(limit = 1024): Promise<{ url: URL; close: () => Promise<void> }> {
+function listen(limit: number | "env" = 1024): Promise<{ url: URL; close: () => Promise<void> }> {
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     try {
-      const body = await readJsonBody(req, limit);
+      const body = limit === "env" ? await readJsonBody(req) : await readJsonBody(req, limit);
       res.writeHead(200, { "content-type": "application/json", connection: "close" });
       res.end(JSON.stringify({ ok: true, body }));
     } catch (e) {
@@ -254,6 +254,21 @@ await close();
 }
 
 {
+  const prev = process.env.JSON_BODY_LIMIT_BYTES;
+  process.env.JSON_BODY_LIMIT_BYTES = "1000000000";
+  assert(jsonBodyLimitBytes() === MAX_JSON_BODY_LIMIT_BYTES, "production helper clamps absurd env");
+  const prod = await listen("env");
+  const over = `{"pad":"${"x".repeat(MAX_JSON_BODY_LIMIT_BYTES)}"}`;
+  assert(Buffer.byteLength(over) > MAX_JSON_BODY_LIMIT_BYTES && Buffer.byteLength(over) < 1_000_000_000, "between hard max and absurd env");
+  const hit = await post(prod.url, { body: over, chunked: true });
+  assert(hit.status === 413, `absurd env still 413 on production readJsonBody() ${hit.status} ${hit.raw}`);
+  assert(String(hit.json.error).includes(`${MAX_JSON_BODY_LIMIT_BYTES} byte JSON limit`), `env hard-max error ${hit.raw}`);
+  await prod.close();
+  if (prev === undefined) delete process.env.JSON_BODY_LIMIT_BYTES;
+  else process.env.JSON_BODY_LIMIT_BYTES = prev;
+}
+
+{
   const here = dirname(fileURLToPath(import.meta.url));
   const indexer = readFileSync(join(here, "index.ts"), "utf8");
   assert(!indexer.includes("function readBody("), "unbounded readBody must stay deleted");
@@ -266,6 +281,9 @@ await close();
   const signer = readFileSync(join(here, "pricing-signer.ts"), "utf8");
   assert(signer.includes("readJsonBody"), "isolated signer uses bounded reader");
   assert(!signer.includes("for await (const c of req) chunks.push"), "signer no longer buffers unbounded");
+  const reader = readFileSync(join(here, "read-json-body.ts"), "utf8");
+  assert(reader.includes("export const MAX_JSON_BODY_LIMIT_BYTES = 64 * 1024"), "compile-time 64KiB ceiling");
+  assert(reader.includes("return clampJsonBodyLimit(Number(process.env.JSON_BODY_LIMIT_BYTES"), "env always clamped");
 }
 
 console.log("read-json-body tests ok");
