@@ -34,6 +34,8 @@ Postgres millisecond timestamps, media key/URL alignment, and signer fail-closed
 
 - R2/S3 object keys match returned public media URLs: upload `m/<id>.webp`, not the bare content id. `MEDIA_CDN_BASE` + `/m/<id>.webp` resolves to the uploaded object. Mock SigV4 GET-after-PUT in `media-r2.test.ts`.
 - Routed SELL `minQuoteOut` is the slipped first-leg quoteOut from the same selected `PreviewedRoute` / `splitPreviewRoute` terminal (6/8/18-dec quotes). Never launch-token `amountIn`. Preview failure returns no ticket.
+- `GET /markets` keyset (`cursor_ts` + `cursor_token`) uses the same column as `sort`: `new` → `updated_ts`, `vol` → `volume_24h_usd6`, `price` → `price_usd6`. `sort=price` no longer pages on `updated_ts`.
+- `GET /candles/:token` gap-fill materializes at most `limit` buckets (hard cap 1000). `before` / `after` stay exclusive on `t` (aligned `before` does not synthesize that bucket). A sparse 1m series does not allocate every minute from the first trade to now.
 
 ### Tokenomics
 
