@@ -9,6 +9,7 @@ import { REVIEW_FIXTURES } from "@/lib/review-fixtures";
 import { useReactorStream } from "@/lib/sse";
 import { launchPath, quotePath } from "@/lib/untrusted-metadata";
 import { SafeTokenImage } from "@/components/safe-media";
+import { UntrustedText } from "@/components/untrusted-text";
 
 const filters = ["Trending", "New", "Bonding", "Rewards", "Buy+Burn", "Batch Fair", "USDC-quoted"] as const;
 
@@ -166,8 +167,12 @@ export default function HomePage() {
                           {!t.image ? t.symbol.slice(0, 2) : null}
                         </span>
                         <span>
-                          <span className="font-medium text-white">{t.name}</span>
-                          <span className="ml-1.5 font-mono text-[11px] text-zinc-500">${t.symbol}</span>
+                          <UntrustedText field="name" className="font-medium text-white">
+                            {t.name}
+                          </UntrustedText>
+                          <UntrustedText field="ticker" className="ml-1.5 font-mono text-[11px] text-zinc-500">
+                            ${t.symbol}
+                          </UntrustedText>
                         </span>
                       </Link>
                     </td>

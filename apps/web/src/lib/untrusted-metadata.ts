@@ -4,10 +4,12 @@ export {
   DISPLAY_TICKER_MAX,
   DISPLAY_URL_MAX,
   fairPath,
+  isEvmAddress,
   launchPath,
   quotePath,
   sanitizeAddress,
   sanitizeDescription,
+  sanitizeDisplayText,
   sanitizeDocHref,
   sanitizeExternalUrl,
   sanitizeFairId,
@@ -20,4 +22,4 @@ export {
   sanitizeWebsiteUrl,
   tokenPath,
   untrustedMetadataReasons,
-} from "@reactor/untrusted-metadata";
+} from "../../../../packages/reactor/src/untrusted-metadata.ts";

@@ -8,8 +8,13 @@ const FCAT = "0x1111111111111111111111111111111111110003" as `0x${string}`;
 const CAT = "0x1111111111111111111111111111111111110006" as `0x${string}`;
 const BOND = "0x1111111111111111111111111111111111110007" as `0x${string}`;
 const NEON = "0x1111111111111111111111111111111111110004" as `0x${string}`;
+const XSS = "0x11111111111111111111111111111111111100aa" as `0x${string}`;
+const LONG = "0x11111111111111111111111111111111111100ab" as `0x${string}`;
 const USDC = "0x4826533B4897376654Bb4d4AD88B7faFD0C98528" as `0x${string}`;
 const ZEC = "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf" as `0x${string}`;
+
+export const XSS_TOKEN = XSS;
+export const LONG_TOKEN = LONG;
 
 export const FIXTURE_TOKENS: LaunchToken[] = [
   {
@@ -171,6 +176,58 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     fdvUsd6: (8_000n * 1_000_000n).toString(),
     volume24hUsd6: (2_200n * 1_000_000n).toString(),
   },
+  {
+    token: XSS,
+    quote: USDC,
+    creator: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    mode: 0,
+    poolId: "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    marketLive: true,
+    fairId: 0n,
+    name: '<img src=x onerror=alert(1)><script>window.__xss=1</script>XSSCat',
+    symbol: "XSS<>",
+    decimals: 18,
+    supply: 1_000_000_000n * 10n ** 18n,
+    image: "javascript:alert(1)",
+    description: "javascript:alert(1)<iframe src=javascript:alert(1)> holders earn",
+    bonding: false,
+    rewardsMode: true,
+    website: "javascript:alert(document.cookie)",
+    twitter: "javascript:alert(1)",
+    telegram: "data:text/html,<script>alert(1)</script>",
+    quoteSymbol: "USDC",
+    quoteDecimals: 6,
+    lifetimeRewards: 0n,
+    priceQuoteX18: (1n * 10n ** 13n).toString(),
+    fdvUsd6: (1_000n * 1_000_000n).toString(),
+    volume24hUsd6: (100n * 1_000_000n).toString(),
+  },
+  {
+    token: LONG,
+    quote: USDC,
+    creator: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    mode: 0,
+    poolId: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeefe",
+    marketLive: true,
+    fairId: 0n,
+    name: `\u202E\u200B${"W".repeat(200)}`,
+    symbol: "LONG",
+    decimals: 18,
+    supply: 1_000_000_000n * 10n ** 18n,
+    image: "data:image/svg+xml,<svg onload=alert(1)>",
+    description: `${"Very long untrusted description ".repeat(40)}\u202E\u200Binvisible`,
+    bonding: false,
+    rewardsMode: true,
+    website: "https://user:pass@evil.example/",
+    twitter: "https://evil.example/x",
+    telegram: "//evil.example/chan",
+    quoteSymbol: "USDC",
+    quoteDecimals: 6,
+    lifetimeRewards: 0n,
+    priceQuoteX18: (1n * 10n ** 13n).toString(),
+    fdvUsd6: (900n * 1_000_000n).toString(),
+    volume24hUsd6: (50n * 1_000_000n).toString(),
+  },
 ];
 
 export const FIXTURE_BONDING_TOKEN = NEON;
@@ -196,4 +253,36 @@ export const FIXTURE_RANKS = [
   { rank: 2, symbol: "GIGA", token: GIGA, mcap: "$381k", weight: "28%", quote: "USDC" },
   { rank: 3, symbol: "NEON", token: "0x1111111111111111111111111111111111110004", mcap: "$340k", weight: "25%", quote: "USDC" },
   { rank: 4, symbol: "VOLT", token: "0x1111111111111111111111111111111111110005", mcap: "$290k", weight: "16%", quote: "BTC" },
+  {
+    rank: 10,
+    symbol: "<script>window.__xss=1</script>XSS",
+    token: XSS,
+    mcap: "$1k",
+    weight: "0%",
+    quote: "USDC",
+  },
+];
+
+export const FIXTURE_REACTOR_EVENTS = [
+  {
+    name: "<script>window.__xss=1</script>FlywheelAccrued",
+    token: XSS,
+    payload: "javascript:alert(1)",
+    block: 1,
+    tx: `0x${"11".repeat(32)}`,
+  },
+];
+
+export const FIXTURE_XSS_SWAPS = [
+  {
+    t: 9,
+    notional: "1000000",
+    holders: "20000",
+    buyback: "15000",
+    flywheel: "10000",
+    coreAmt: "5000",
+    sqrtPrice: "79228162514264337593543950336",
+    source: '<img src=x onerror=alert(1)>tape',
+    px: "0",
+  },
 ];

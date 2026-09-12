@@ -1,6 +1,6 @@
 # BUILD REPORT — Untrusted token metadata / CSP (#41)
 
-**Status:** Rebased onto latest `origin/main` `5fba655` (#43 live CORE/Top-10 toasts after #53/#33/#30). Issue **#41 stays open**.  
+**Status:** Same PR **#47** / same branch `cursor/harden-untrusted-metadata-csp-6228`, rebased onto latest `origin/main` `5fba655` (#43 live CORE/Top-10 toasts after #53/#33/#30). Independent audit kept #41 open; this HEAD keeps the AC gaps closed on that PR (no duplicate). Issue **#41 stays open** until merge + post-merge verify.
 **Not audited. Not mainnet.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
@@ -10,20 +10,23 @@
 | --- | --- |
 | Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
-| Intent | Public launchpad treats creator name/ticker/description/URLs/images as untrusted. No raw HTML. URL scheme + media allowlists. Production CSP / security headers. Admission DENY for `javascript:` / `data:` / HTML names. Addresses #41. |
-| Indexer / lib | `untrusted-metadata.test.ts` + `security-headers.test.ts` + `admission-unit.test.ts` + `pnpm docs:check` |
+| Intent | Close remaining #41 ACs: production-build header/browser suite; client-bundle secret sentinel; XSS corpus + layout; tx-guard (metadata cannot steer wallet; chain mismatch blocks writes); production `script-src` nonce (no `'unsafe-inline'`). |
+| Indexer / lib | `untrusted-metadata.test.ts` + `security-headers.test.ts` + `tx-guard.test.ts` + `secret-sentinel.test.ts` + `admission-unit.test.ts` + `pnpm docs:check` |
+| Web production | `pnpm test:web-security` — `next build` + live CSP/headers + `.next/static` scan + Playwright corpus. CI job `web-production-security`. |
 | Foundry | Not re-run this pass (web/admission only) |
 | Mainnet | **Blocked** |
 
-## Closed this run (#41)
+## Closed this run (#41 ACs — issue stays open)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
-| Raw HTML / XSS via token identity | **Yes** | Strip + no `dangerouslySetInnerHTML`. Lock in `untrusted-metadata.test.ts` |
-| `javascript:` / `data:` links and images | **Yes** | Scheme allowlist. Admission DENY. UI sanitizes on read |
-| Arbitrary remote / SVG media | **Yes** | `/m/<id>.webp` + `/icons/` only. `SafeTokenImage` |
-| Production CSP + headers | **Yes** | `launchpadSecurityHeaders()`. HSTS only `REACTOR_ENV=PROD` |
-| Docs | **Yes** | `/docs/web-security`, trust, media, admission, creators, traders, FAQ, THREAT_MODEL, HARDENING_REPORT, AUDIT_HANDOFF |
+| Security suite vs production build + live headers | **Yes** | `e2e/prod-security.spec.ts` + `playwright.prod-security.config.ts` (`next start`). CI `web-production-security`. |
+| Client-bundle secret sentinel | **Yes** | `secret-sentinel.test.ts` + `scripts/scan-client-bundle.ts`. No `NEXT_PUBLIC_*` for Keeper/Launch/Guardian keys or private RPC. |
+| Browser XSS corpus + long/bidi/invisible layout | **Yes** | Review fixtures XSS/LONG. Playwright home/search/terminal/toasts/activity. `UntrustedText` isolate + wrap. |
+| Metadata cannot steer wallet; chain mismatch blocks | **Yes** | `tx-guard.ts` / `tx-guard.test.ts`. Trade / launch / fair / claim wired. Indexer `tx` discarded. |
+| Production `script-src` `'unsafe-inline'` | **Yes (replaced)** | Middleware nonce + `strict-dynamic`. Residual `'unsafe-inline'` is **`style-src` only** — documented in `/docs/web-security`. |
+| Rebase onto #43 / `5fba655` | **Yes** | Kept #43 live toasts + #53 TTL / `quote_lp` / no mint-supply fallback. TESTING row 50 = #53; row 51 = #41 prod suite. |
+| Docs | **Yes** | `/docs/web-security`, trust, TESTING row 51, CHANGELOG, THREAT_MODEL, HARDENING_REPORT, AUDIT_HANDOFF |
 
 ---
 

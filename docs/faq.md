@@ -20,6 +20,10 @@
 
 **Why did admission DENY my name?** HTML tags and dangerous URL schemes in identity fields are hard-denied. That is not a Turnstile CHALLENGE.
 
+**Why is Confirm / Launch disabled on the wrong chain?** The launchpad hard-blocks wallet writes when `wallet.chainId` is not the official deployment. The red banner is not the only control.
+
+**Why is script-src nonce'd?** Production CSP does not allow `'unsafe-inline'` scripts. A leftover `'unsafe-inline'` remains on `style-src` only (React / fonts / Tailwind). See [Browser security](/docs/web-security).
+
 **Why did Arc ignore 8 confirmations?** Arc BFT is final on commit. Default lag is 0.
 
 **When do the bottom-right burn toasts show?** Only after the indexer commits a CORE buy+burn (`BuybackExecuted` / `COREBurned`) or a Top-10 `Top10Buy`. Connecting does not dump the SSE replay buffer. A reconnect still delivers events that landed while you were disconnected, exactly once. Epoch submit and Standard SelfBurn do not toast. Hover or focus pauses auto-dismiss.

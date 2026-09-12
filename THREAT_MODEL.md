@@ -73,7 +73,8 @@ Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, 
 - Social hosts are allowlisted (`x.com` / `twitter.com`, `t.me`). Images are first-party `/m/<id>.webp` or `/icons/…` — not arbitrary remote HTTPS (SVG XSS / tracking).
 - Production security headers include CSP (`object-src 'none'`, `frame-ancestors 'none'`, tight `img-src`), COOP, nosniff, DENY frames. HSTS only when `REACTOR_ENV=PROD`.
 - Admission DENYs the same payloads before EIP-712. The UI still sanitizes on read (hostile or historical onchain rows).
-- Residual: phishing via a valid `https://` website that looks official; CSP `script-src` still includes `'unsafe-inline'` for Next.js + Turnstile.
+- Wallet `to` / recipient / calldata are resolved by `tx-guard` (official chain, official contracts, connected wallet). Creator metadata and quote-API `tx` cannot steer the write. Residual: a hostile indexer can still supply a well-formed but wrong InstantCurve **clone** address.
+- Residual: phishing via a valid `https://` website that looks official; production `style-src` still includes `'unsafe-inline'` (React / `next/font` / Tailwind). Production `script-src` is nonce + `strict-dynamic` only.
 
 ## API / indexer controls
 

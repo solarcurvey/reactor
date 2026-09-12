@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { usePublicClient, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "viem/actions";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,13 @@ import { parseUnitsSafe } from "@/lib/utils";
 import { TurnstileWidget, turnstileSiteKey } from "@/components/turnstile";
 import { sanitizeDescription, sanitizeMediaUrl, sanitizeTokenName, untrustedMetadataReasons } from "@/lib/untrusted-metadata";
 import { SafeTokenImage } from "@/components/safe-media";
+import { TxGuardError, resolveTradeWrite } from "@/lib/tx-guard";
+import { useOfficialChain } from "@/lib/use-official-chain";
+import { UntrustedText } from "@/components/untrusted-text";
 
 export default function LaunchPage() {
   const router = useRouter();
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, writesEnabled, matched, mismatchMessage, chainId } = useOfficialChain();
   const client = usePublicClient();
   const { data: quotes } = useQuotes();
   const { writeContractAsync, isPending } = useWriteContract();
@@ -143,7 +146,19 @@ export default function LaunchPage() {
       setError("Connect a wallet and pick a quote asset.");
       return;
     }
+    if (!writesEnabled) {
+      setError(mismatchMessage);
+      return;
+    }
     try {
+      const write = resolveTradeWrite({
+        chainId,
+        connected: address,
+        token: selected.token,
+        quote: selected.token,
+        kind: "factory",
+        metadata: { name, image, website: "" },
+      });
       const safeName = sanitizeTokenName(name);
       const safeDescription = sanitizeDescription(description);
       const safeImage = sanitizeMediaUrl(image);
@@ -181,19 +196,19 @@ export default function LaunchPage() {
             address: selected.token,
             abi: erc20.abi,
             functionName: "allowance",
-            args: [address, factory.address],
+            args: [write.recipient, write.to],
           })) as bigint;
           if (allowance < params.devBuyQuote) {
             const ah = await writeContractAsync({
               address: selected.token,
               abi: erc20.abi,
               functionName: "approve",
-              args: [factory.address, params.devBuyQuote],
+              args: [write.to, params.devBuyQuote],
             });
             await waitForTransactionReceipt(client, { hash: ah });
           }
           const hash = await writeContractAsync({
-            address: factory.address,
+            address: write.to,
             abi: launchAbi,
             functionName: "launchAndBuy",
             args: [params, rewards, 1n, priced.auth, priced.signature],
@@ -201,7 +216,7 @@ export default function LaunchPage() {
           await waitForTransactionReceipt(client, { hash });
         } else if (rewards) {
           const hash = await writeContractAsync({
-            address: factory.address,
+            address: write.to,
             abi: launchAbi,
             functionName: "instantLaunch",
             args: [params, priced.auth, priced.signature],
@@ -209,7 +224,7 @@ export default function LaunchPage() {
           await waitForTransactionReceipt(client, { hash });
         } else {
           const hash = await writeContractAsync({
-            address: factory.address,
+            address: write.to,
             abi: launchAbi,
             functionName: "launchStandard",
             args: [params, priced.auth, priced.signature],
@@ -219,7 +234,7 @@ export default function LaunchPage() {
         router.push("/");
       } else {
         const hash = await writeContractAsync({
-          address: factory.address,
+          address: write.to,
           abi: launchAbi,
           functionName: "createFairLaunch",
           args: [
@@ -246,7 +261,7 @@ export default function LaunchPage() {
         router.push("/");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Launch failed");
+      setError(e instanceof TxGuardError || e instanceof Error ? e.message : "Launch failed");
     }
   }
 
@@ -469,9 +484,18 @@ export default function LaunchPage() {
         )}
       </Card>
 
-      {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
-      <Button className="mt-4 w-full" onClick={submit} disabled={isPending || !isConnected || !name || !symbol || !quote}>
-        {isPending ? "Signing…" : path === "instant" ? "Launch Instant" : "Open Fair Launch"}
+      {error && (
+        <UntrustedText as="p" field="toast" className="mt-3 text-sm text-red-300">
+          {error}
+        </UntrustedText>
+      )}
+      {!matched && isConnected && (
+        <UntrustedText as="p" field="toast" className="mt-3 text-sm text-red-300">
+          {mismatchMessage}
+        </UntrustedText>
+      )}
+      <Button className="mt-4 w-full" onClick={submit} disabled={isPending || !writesEnabled || !name || !symbol || !quote}>
+        {!matched ? "Wrong network" : isPending ? "Signing…" : path === "instant" ? "Launch Instant" : "Open Fair Launch"}
       </Button>
     </div>
   );

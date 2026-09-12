@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useLaunchTokens } from "@/lib/hooks";
 import { formatUnitsSafe } from "@/lib/utils";
 import { tokenPath } from "@/lib/untrusted-metadata";
+import { UntrustedText } from "@/components/untrusted-text";
 
 export default function SearchPage() {
   const { data, isLoading, isError } = useLaunchTokens();
@@ -63,8 +64,12 @@ export default function SearchPage() {
           <li key={t.token}>
             <Link href={tokenPath(t.token)} className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.03]">
               <span>
-                <span className="font-medium">{t.name}</span>
-                <span className="ml-2 font-mono text-[12px] text-zinc-500">${t.symbol}</span>
+                <UntrustedText field="name" className="font-medium">
+                  {t.name}
+                </UntrustedText>
+                <UntrustedText field="ticker" className="ml-2 font-mono text-[12px] text-zinc-500">
+                  ${t.symbol}
+                </UntrustedText>
               </span>
               <span className="text-[11px] uppercase tracking-wider text-cyan-100">
                 {t.rewardsMode === false ? "BUY+BURN" : `EARNS ${t.quoteSymbol}`}

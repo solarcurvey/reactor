@@ -179,7 +179,11 @@ Always re-read `factory.hook()` after bytecode changes.
 | Untrusted name/ticker/description rendered as HTML | **FIXED** | Strip tags/bidi/controls. No `dangerouslySetInnerHTML`. `untrusted-metadata.test.ts` |
 | `javascript:` / `data:` website, social, image | **FIXED** | Scheme allowlist + host allowlist. Admission **DENY**. UI sanitizes on read |
 | Arbitrary remote images / SVG XSS | **FIXED** | Media allowlist `/m/<id>.webp` + `/icons/`. `SafeTokenImage` + `referrerPolicy=no-referrer` |
-| Missing production CSP | **FIXED** | `launchpadSecurityHeaders()` — tight `img-src`, `object-src 'none'`, `frame-ancestors 'none'`. HSTS only `REACTOR_ENV=PROD` |
+| Missing production CSP | **FIXED** | Middleware nonce CSP — production `script-src` is `'nonce-…' 'strict-dynamic'` (no `'unsafe-inline'`). Static headers still `launchpadSecurityHeaders()`. HSTS only `REACTOR_ENV=PROD` |
+| CSP only asserted in source | **FIXED** | `pnpm test:web-security` hits live `next start` headers |
+| Secrets in `NEXT_PUBLIC_*` / client chunks | **FIXED** | `secret-sentinel.test.ts` + `scan-client-bundle.ts` |
+| Metadata steers wallet tx | **FIXED** | `tx-guard.ts` — chain mismatch hard-blocks; indexer `tx` discarded |
+| Long / bidi / invisible layout | **FIXED** | `UntrustedText` isolate + wrap; Playwright corpus |
 | Media GET sniffable as HTML | **FIXED** | `/m/` nosniff + `default-src 'none'; sandbox` |
 
 Economics / 3.5% / Factory V1 / no mainnet: unchanged.

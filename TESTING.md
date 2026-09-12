@@ -26,11 +26,15 @@ npx --yes tsx apps/web/src/lib/top10.test.ts
 npx --yes tsx apps/web/src/lib/marketdata.test.ts
 npx --yes tsx apps/web/src/lib/live-toasts.test.ts
 npx --yes tsx apps/web/src/lib/security-headers.test.ts
+npx --yes tsx apps/web/src/lib/tx-guard.test.ts
+npx --yes tsx apps/web/src/lib/secret-sentinel.test.ts
 npx --yes tsx packages/reactor/src/untrusted-metadata.test.ts
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
-pnpm --filter web test          # Playwright smoke + interactive + live-toasts
+pnpm --filter web test          # Playwright smoke + interactive + live-toasts (dev server)
 pnpm test:live-toasts           # #38 gate: identity unit + Playwright dismiss / multi-log / reconnect / safe-area / reduced-motion
 # CI: .github/workflows/live-toasts.yml job live-toasts-ui (required visible check). #38 stays open until post-merge verify.
+pnpm test:web-security          # production next build/start: live headers, bundle sentinel, XSS corpus
+# CI: .github/workflows/docs-sync.yml job web-production-security
 # Real Postgres (docker compose postgres on :54329, or local 5432)
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
@@ -232,7 +236,7 @@ pnpm --filter indexer watchdog
 | 48 | `external_price_marks.kind` is schema v10 after #23 v9 `current_supply`; real v8→v10 and v9→v10 upgrades | `schema.test.ts`, `pg-ms-timestamps.test.ts` |
 | 49 | Top-10 ranks from indexer ValuationService snapshot (schema v11); no `discoverTop10` Factory RPC | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts`, `apps/web/src/lib/marketdata.test.ts` |
 | 50 | Top-10 snapshot TTL: healthy → age past 15m → refresh fails → API pauses and Keeper refuses; indexed `quote_lp` liquidity arm; no mint-supply fallback after v9 | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts` |
-| 51 | Untrusted token metadata (no raw HTML, URL scheme allowlist, media policy) + production CSP | `untrusted-metadata.test.ts`, `security-headers.test.ts`, `admission-unit.test.ts` |
+| 51 | Untrusted token metadata (no raw HTML, URL scheme allowlist, media policy) + production CSP (nonce `script-src`, live headers, bundle sentinel, browser XSS corpus, tx-guard / chain mismatch) | `untrusted-metadata.test.ts`, `security-headers.test.ts`, `tx-guard.test.ts`, `secret-sentinel.test.ts`, `e2e/prod-security.spec.ts`, `admission-unit.test.ts` |
 
 ## Arc smoke
 

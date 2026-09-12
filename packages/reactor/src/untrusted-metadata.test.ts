@@ -44,6 +44,11 @@ function walk(dir: string, acc: string[] = []): string[] {
   assert(sanitizeTokenName("A".repeat(200)).length === 64, "name length cap");
   assert(sanitizeTokenName("Cat\u0000\u0007") === "Cat", "strip C0 from name");
   assert(sanitizeTokenName("C\u202Eat") === "Cat", "strip bidi override");
+  assert(!sanitizeTokenName(`\u202E${"W".repeat(80)}`).includes("\u202E"), "long name drops bidi");
+  assert(sanitizeTokenName(`\u200B${"W".repeat(80)}`).length === 64, "invisible + long name caps at 64");
+  assert(!sanitizeTokenName("Cat\u200B\u2066").includes("\u200B"), "zero-width stripped");
+  assert(sanitizeDescription(`${"x".repeat(800)}\u202E`).length === 500, "long description cap");
+  assert(!sanitizeDescription("ok\u202Ehidden").includes("\u202E"), "description drops bidi");
   assert(sanitizeDescription("hello <iframe src=javascript:alert(1)>") === "hello", "strip iframe from description");
   assert(sanitizeDescription("buy\n\nnow").includes("buy"), "description keeps words");
   assert(sanitizeTicker("cat<script>") === "CAT", "ticker alnum only");
@@ -190,6 +195,8 @@ function walk(dir: string, acc: string[] = []): string[] {
   assert(!/<img\b[^>]*src=\{t\.image\}/.test(joined), "no raw img src={t.image}");
   assert(!/<img\b[^>]*src=\{image\}/.test(joined), "no raw img src={image}");
   assert(joined.includes("SafeTokenImage"), "SafeTokenImage is used");
+  assert(joined.includes("UntrustedText"), "UntrustedText wraps identity");
+  assert(joined.includes("resolveTradeWrite"), "wallet writes go through tx-guard");
   assert(joined.includes("sanitizeLaunchFields") || joined.includes("sanitizeMediaUrl"), "hooks sanitize");
 }
 

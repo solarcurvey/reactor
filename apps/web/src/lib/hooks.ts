@@ -7,7 +7,7 @@ import { addresses } from "./addresses";
 import { factory, registry, token, erc20, buyback, core, curve } from "./contracts";
 import { CATEGORY_LABELS } from "./addresses";
 import { INDEXER_URL } from "./chain";
-import { FIXTURE_TOKENS, REVIEW_FIXTURES } from "./review-fixtures";
+import { FIXTURE_REACTOR_EVENTS, FIXTURE_TOKENS, FIXTURE_XSS_SWAPS, REVIEW_FIXTURES } from "./review-fixtures";
 import { sanitizeAddress, sanitizeLaunchFields } from "./untrusted-metadata";
 
 function cleanLaunch(t: LaunchToken): LaunchToken {
@@ -510,12 +510,13 @@ export function useSwapSeries(token?: string) {
         { t: 1, notional: "1000000000", holders: "20000000", buyback: "15000000", flywheel: "10000000", coreAmt: "5000000", sqrtPrice: "79228162514264337593543950336" },
         { t: 2, notional: "2000000000", holders: "40000000", buyback: "30000000", flywheel: "20000000", coreAmt: "10000000", sqrtPrice: "85000000000000000000000000000" },
         { t: 3, notional: "800000000", holders: "16000000", buyback: "12000000", flywheel: "8000000", coreAmt: "4000000", sqrtPrice: "91000000000000000000000000000" },
+        ...FIXTURE_XSS_SWAPS,
       ];
       const res = await fetch(`${INDEXER_URL}/swaps/${token}`).catch(() => null);
       if (!res?.ok) return REVIEW_FIXTURES ? fixtures : empty;
       const rows = (await res.json()) as typeof empty;
       if (REVIEW_FIXTURES && rows.length === 0) return fixtures;
-      return rows;
+      return REVIEW_FIXTURES ? [...rows, ...FIXTURE_XSS_SWAPS] : rows;
     },
     refetchInterval: 8_000,
   });
@@ -526,8 +527,11 @@ export function useReactorEvents() {
     queryKey: ["reactor-events"],
     queryFn: async () => {
       const res = await fetch(`${INDEXER_URL}/reactor`).catch(() => null);
-      if (!res?.ok) return { events: [] as { name: string; token: string; payload: string; block: number; tx: string }[] };
-      return (await res.json()) as { events: { name: string; token: string; payload: string; block: number; tx: string }[] };
+      const empty = { events: [] as { name: string; token: string; payload: string; block: number; tx: string }[] };
+      if (!res?.ok) return REVIEW_FIXTURES ? { events: FIXTURE_REACTOR_EVENTS } : empty;
+      const body = (await res.json()) as { events: { name: string; token: string; payload: string; block: number; tx: string }[] };
+      if (REVIEW_FIXTURES) return { events: [...FIXTURE_REACTOR_EVENTS, ...(body.events ?? [])] };
+      return body;
     },
     refetchInterval: 8_000,
   });
@@ -539,7 +543,8 @@ export function useTokenByAddress(address?: string) {
     const found = data?.find((t) => t.token.toLowerCase() === address?.toLowerCase());
     if (found) return found;
     if (REVIEW_FIXTURES) {
-      return FIXTURE_TOKENS.find((t) => t.token.toLowerCase() === address?.toLowerCase());
+      const fixture = FIXTURE_TOKENS.find((t) => t.token.toLowerCase() === address?.toLowerCase());
+      return fixture ? cleanLaunch(fixture) : undefined;
     }
     return found;
   }, [data, address]);

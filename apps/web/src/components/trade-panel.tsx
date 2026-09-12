@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { usePublicClient, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "viem/actions";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
@@ -18,11 +18,14 @@ import {
   protocolQuoteFallbacks,
   type TicketFeeLeg,
 } from "@/lib/fee-legs";
+import { TxGuardError, resolveTradeWrite, sanitizeRouteHops } from "@/lib/tx-guard";
+import { useOfficialChain } from "@/lib/use-official-chain";
+import { UntrustedText } from "./untrusted-text";
 
 const QUOTE_TTL_MS = 30_000;
 
 export function TradePanel({ t }: { t: LaunchToken }) {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, writesEnabled, matched, mismatchMessage, chainId } = useOfficialChain();
   const client = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
   const [side, setSide] = useState<"buy" | "sell">("buy");
@@ -40,7 +43,6 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   const [feeLegs, setFeeLegs] = useState<TicketFeeLeg[]>([]);
   const [aggregateImpactBps, setAggregateImpactBps] = useState(0);
   const [reactorFeeCount, setReactorFeeCount] = useState(0);
-  const [, setQuoteTx] = useState<{ to: string; data: `0x${string}`; functionName: string } | null>(null);
   const { data: quotes } = useQuotes();
 
   const quoteDec = t.quoteDecimals ?? 18;
@@ -99,11 +101,11 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       }
       setQuotedOut(BigInt(q.amountOut));
       setQuotedAt(Date.now());
-      setLiveHops(q.hops ?? []);
+      setLiveHops(q.hops ? sanitizeRouteHops(q.hops) : []);
       setFeeLegs(q.feeLegs ?? []);
       setAggregateImpactBps(q.aggregateProtocolImpactBps ?? 0);
       setReactorFeeCount(q.reactorFeeCount ?? q.feeLegs?.filter((f) => f.reactorOfficial && !f.feeExempt).length ?? 0);
-      setQuoteTx(q.tx ?? null);
+      void q.tx;
       // First-leg floor is quote units from the atomic preview — never tokenIn / minOut.
       if (q.minQuoteOut) setMinQuoteOut(BigInt(q.minQuoteOut));
       else if (side === "sell" && q.minOut) setMinQuoteOut(BigInt(q.minOut));
@@ -119,6 +121,10 @@ export function TradePanel({ t }: { t: LaunchToken }) {
     setHash(null);
     if (!address || !client) {
       setError("Connect a wallet on the local Arc-compatible chain.");
+      return;
+    }
+    if (!writesEnabled) {
+      setError(mismatchMessage);
       return;
     }
     if (parsed === 0n) {
@@ -144,15 +150,26 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         return;
       }
       const bonding = Boolean(t.bonding && t.curve && !t.marketLive);
-      const hops = liveHops;
+      const hops = sanitizeRouteHops(liveHops);
+      const kind = usdcRoute && userRoute.address ? "userRoute" : bonding ? "curve" : "router";
+      const write = resolveTradeWrite({
+        chainId,
+        connected: address,
+        token: t.token,
+        quote: t.quote,
+        curve: t.curve,
+        kind,
+        indexerTx: null,
+        metadata: { name: t.name, image: t.image, website: t.website, twitter: t.twitter, telegram: t.telegram },
+      });
       // API already applied slippage to minQuoteOut (quote units) and minOut (final).
       const firstMin = side === "sell" ? (minQuoteOut ?? minOut) : minOut;
       if (side === "sell" && usdcRoute && (firstMin === 0n || firstMin === 1n)) {
         setError("minQuoteOut is dust. Increase size.");
         return;
       }
-      const spender = usdcRoute && userRoute.address ? userRoute.address : bonding ? t.curve! : addresses.ReactorRouter;
-      const asset = side === "buy" ? (usdcRoute ? addresses.USDC : t.quote) : t.token;
+      const spender = write.to;
+      const asset = side === "buy" ? (usdcRoute ? addresses.USDC : write.quote) : write.token;
       const allowance = (await client.readContract({
         address: asset,
         abi: erc20.abi,
@@ -170,38 +187,39 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       }
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 300);
       const tx =
-        usdcRoute && userRoute.address
+        kind === "userRoute"
           ? await writeContractAsync({
-              address: userRoute.address,
+              address: write.to,
               abi: userRoute.abi,
               functionName: side === "buy" ? "buy" : "sell",
               args:
                 side === "buy"
-                  ? [t.token, parsed, hops, minOut, deadline]
-                  : [t.token, parsed, hops, firstMin, minOut, deadline],
+                  ? [write.token, parsed, hops, minOut, deadline]
+                  : [write.token, parsed, hops, firstMin, minOut, deadline],
             })
-          : bonding
+          : kind === "curve"
             ? await writeContractAsync({
-                address: t.curve!,
+                address: write.to,
                 abi: curve.abi,
                 functionName: side === "buy" ? "buy" : "sell",
-                args: [t.token, parsed, minOut],
+                args: [write.token, parsed, minOut],
               })
             : await writeContractAsync({
-                ...router,
+                address: write.to,
+                abi: router.abi,
                 functionName: "swap",
                 args: [
-                  officialPoolKey(t.token, t.quote),
-                  side === "buy" ? buyZeroForOne(t.token, t.quote) : !buyZeroForOne(t.token, t.quote),
+                  officialPoolKey(write.token, write.quote),
+                  side === "buy" ? buyZeroForOne(write.token, write.quote) : !buyZeroForOne(write.token, write.quote),
                   -parsed,
                   minOut,
-                  address,
+                  write.recipient,
                 ],
               });
       await waitForTransactionReceipt(client, { hash: tx });
       setHash(tx);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Trade failed.");
+      setError(e instanceof TxGuardError || e instanceof Error ? e.message : "Trade failed.");
     }
   }
 
@@ -309,18 +327,33 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         <Input className="h-8 w-16" value={slippage} onChange={(e) => setSlippage(e.target.value)} /> %
       </div>
       <div className="mt-4 flex gap-2">
-        <Button variant="outline" className="flex-1" onClick={refreshQuote} disabled={!isConnected || parsed === 0n}>
+        <Button variant="outline" className="flex-1" onClick={refreshQuote} disabled={!writesEnabled || parsed === 0n}>
           Quote
         </Button>
         <Button
           className="flex-1"
           onClick={submit}
-          disabled={!isConnected || isPending || (!t.marketLive && !t.bonding)}
+          disabled={!writesEnabled || isPending || (!t.marketLive && !t.bonding)}
         >
-          {!t.marketLive && !t.bonding ? "Market not live" : isPending ? "Pending…" : `Confirm ${side}`}
+          {!matched
+            ? "Wrong network"
+            : !t.marketLive && !t.bonding
+              ? "Market not live"
+              : isPending
+                ? "Pending…"
+                : `Confirm ${side}`}
         </Button>
       </div>
-      {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
+      {error && (
+        <UntrustedText as="p" field="toast" className="mt-3 text-sm text-red-300">
+          {error}
+        </UntrustedText>
+      )}
+      {!matched && isConnected && (
+        <UntrustedText as="p" field="toast" className="mt-3 text-sm text-red-300">
+          {mismatchMessage}
+        </UntrustedText>
+      )}
       {t.ready && t.curve && !t.marketLive && (
         <Button
           className="mt-3 w-full"
@@ -328,11 +361,20 @@ export function TradePanel({ t }: { t: LaunchToken }) {
           onClick={async () => {
             if (!client) return;
             try {
+              const write = resolveTradeWrite({
+                chainId,
+                connected: address,
+                token: t.token,
+                quote: t.quote,
+                curve: t.curve,
+                kind: "curve",
+                metadata: { name: t.name, image: t.image, website: t.website },
+              });
               const tx = await writeContractAsync({
-                address: t.curve!,
+                address: write.to,
                 abi: curve.abi,
                 functionName: "graduate",
-                args: [t.token],
+                args: [write.token],
               });
               await waitForTransactionReceipt(client, { hash: tx });
               setHash(tx);
@@ -340,6 +382,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
               setError(e instanceof Error ? e.message : "Graduation failed");
             }
           }}
+          disabled={!writesEnabled || isPending}
         >
           Graduate to locked v4
         </Button>
@@ -350,7 +393,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
 }
 
 export function RewardsModule({ t }: { t: LaunchToken }) {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, writesEnabled, chainId } = useOfficialChain();
   const client = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
   const [pending, setPending] = useState<bigint | null>(null);
@@ -371,11 +414,19 @@ export function RewardsModule({ t }: { t: LaunchToken }) {
     setMsg(null);
     if (!address) return;
     try {
+      const write = resolveTradeWrite({
+        chainId,
+        connected: address,
+        token: t.token,
+        quote: t.quote,
+        kind: "token",
+        metadata: { name: t.name, image: t.image, website: t.website },
+      });
       const hash = await writeContractAsync({
-        address: t.token,
+        address: write.to,
         abi: tokenC.abi,
         functionName: "claimRewards",
-        args: [address],
+        args: [write.recipient],
       });
       if (client) await waitForTransactionReceipt(client, { hash });
       setMsg(`Claimed. ${hash}`);
@@ -399,11 +450,15 @@ export function RewardsModule({ t }: { t: LaunchToken }) {
         <Button variant="outline" onClick={refresh} disabled={!isConnected}>
           Refresh
         </Button>
-        <Button onClick={claim} disabled={!isConnected || isPending}>
+        <Button onClick={claim} disabled={!writesEnabled || isPending}>
           {isPending ? "Claiming…" : "Claim"}
         </Button>
       </div>
-      {msg && <p className="mt-3 break-all text-xs text-zinc-400">{msg}</p>}
+      {msg && (
+        <UntrustedText as="p" field="toast" className="mt-3 break-all text-xs text-zinc-400">
+          {msg}
+        </UntrustedText>
+      )}
     </Card>
   );
 }

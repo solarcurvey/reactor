@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useAccount, usePublicClient, useReadContract, useWriteContract } from "wagmi";
+import { usePublicClient, useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "viem/actions";
 import { useState } from "react";
 import { factory, erc20 } from "@/lib/contracts";
@@ -13,12 +13,15 @@ import { parseUnitsSafe, formatUnitsSafe } from "@/lib/utils";
 import { unwrapFair, useLaunchTokens } from "@/lib/hooks";
 import { tokenPath } from "@/lib/untrusted-metadata";
 import { FIXTURE_FAIR, REVIEW_FIXTURES } from "@/lib/review-fixtures";
+import { resolveTradeWrite } from "@/lib/tx-guard";
+import { useOfficialChain } from "@/lib/use-official-chain";
+import { UntrustedText } from "@/components/untrusted-text";
 
 export default function FairPage() {
   const { id } = useParams<{ id: string }>();
   const fairId = BigInt(id);
   const router = useRouter();
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, writesEnabled, matched, mismatchMessage, chainId } = useOfficialChain();
   const client = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
   const { data: tokens } = useLaunchTokens();
@@ -53,25 +56,38 @@ export default function FairPage() {
   async function bid() {
     setError(null);
     if (!address || !client) return;
+    if (!writesEnabled) {
+      setError(mismatchMessage);
+      return;
+    }
     try {
+      const write = resolveTradeWrite({
+        chainId,
+        connected: address,
+        token,
+        quote,
+        kind: "factory",
+        metadata: { name: launch?.name, image: launch?.image, website: launch?.website },
+      });
       const raw = parseUnitsSafe(amount, qdec);
       const allowance = (await client.readContract({
-        address: quote,
+        address: write.quote,
         abi: erc20.abi,
         functionName: "allowance",
-        args: [address, factory.address],
+        args: [write.recipient, write.to],
       })) as bigint;
       if (allowance < raw) {
         const h = await writeContractAsync({
-          address: quote,
+          address: write.quote,
           abi: erc20.abi,
           functionName: "approve",
-          args: [factory.address, raw],
+          args: [write.to, raw],
         });
         await waitForTransactionReceipt(client, { hash: h });
       }
       const tx = await writeContractAsync({
-        ...factory,
+        address: write.to,
+        abi: factory.abi,
         functionName: "bid",
         args: [fairId, raw],
       });
@@ -85,9 +101,22 @@ export default function FairPage() {
   async function finalize() {
     setError(null);
     if (!client) return;
+    if (!writesEnabled) {
+      setError(mismatchMessage);
+      return;
+    }
     try {
+      const write = resolveTradeWrite({
+        chainId,
+        connected: address,
+        token,
+        quote,
+        kind: "factory",
+        metadata: { name: launch?.name, image: launch?.image },
+      });
       const tx = await writeContractAsync({
-        ...factory,
+        address: write.to,
+        abi: factory.abi,
         functionName: "finalizeFairLaunch",
         args: [fairId],
       });
@@ -101,10 +130,19 @@ export default function FairPage() {
 
   async function claim() {
     if (!address) return;
+    const write = resolveTradeWrite({
+      chainId,
+      connected: address,
+      token,
+      quote,
+      kind: "factory",
+      metadata: { name: launch?.name, image: launch?.image },
+    });
     const tx = await writeContractAsync({
-      ...factory,
+      address: write.to,
+      abi: factory.abi,
       functionName: "claimFairTokens",
-      args: [fairId, address],
+      args: [fairId, write.recipient],
     });
     if (client) await waitForTransactionReceipt(client, { hash: tx });
   }
@@ -112,7 +150,9 @@ export default function FairPage() {
   return (
     <div className="mx-auto max-w-xl">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">{launch?.name ?? "Batch Fair Launch"}</h1>
+        <UntrustedText as="h1" field="name" className="text-2xl font-semibold">
+          {launch?.name ?? "Batch Fair Launch"}
+        </UntrustedText>
         {migrated ? <Badge>Market live</Badge> : finalized ? <Badge>Finalized</Badge> : <Badge>Auction open</Badge>}
       </div>
       <p className="mt-1 text-[13px] text-zinc-400">
@@ -138,10 +178,10 @@ export default function FairPage() {
         <Card className="mt-4 space-y-2 p-4">
           <Input value={amount} onChange={(e) => setAmount(e.target.value)} />
           <div className="flex gap-2">
-            <Button className="flex-1" onClick={bid} disabled={!isConnected || isPending}>
-              Place bid
+            <Button className="flex-1" onClick={bid} disabled={!writesEnabled || isPending}>
+              {matched ? "Place bid" : "Wrong network"}
             </Button>
-            <Button className="flex-1" variant="outline" onClick={finalize} disabled={isPending}>
+            <Button className="flex-1" variant="outline" onClick={finalize} disabled={!writesEnabled || isPending}>
               Finalize
             </Button>
           </div>
@@ -149,7 +189,7 @@ export default function FairPage() {
       )}
       {finalized && (
         <div className="mt-4 flex gap-2">
-          <Button onClick={claim} disabled={!isConnected}>
+          <Button onClick={claim} disabled={!writesEnabled}>
             Claim tokens / refund
           </Button>
           {launch?.marketLive && (
@@ -159,7 +199,11 @@ export default function FairPage() {
           )}
         </div>
       )}
-      {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
+      {error && (
+        <UntrustedText as="p" field="toast" className="mt-3 text-sm text-red-300">
+          {error}
+        </UntrustedText>
+      )}
     </div>
   );
 }

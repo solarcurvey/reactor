@@ -10,7 +10,7 @@ export function OhlcvChart({ candles }: { candles: Candle[] }) {
     const el = ref.current;
     if (!el) return;
     let disposed = false;
-    let chart: { remove: () => void } | undefined;
+    let chart: { remove: () => void; addSeries: (type: unknown, opts: Record<string, unknown>) => { setData: (d: unknown[]) => void } } | undefined;
     (async () => {
       const lc = await import("lightweight-charts");
       if (disposed || !ref.current) return;

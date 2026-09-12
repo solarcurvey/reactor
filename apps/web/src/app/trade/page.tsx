@@ -5,6 +5,7 @@ import Link from "next/link";
 import { TradePanel } from "@/components/trade-panel";
 import { useLaunchTokens } from "@/lib/hooks";
 import { tokenPath } from "@/lib/untrusted-metadata";
+import { UntrustedText } from "@/components/untrusted-text";
 
 export default function TradePage() {
   const { data, isLoading, isError } = useLaunchTokens();
@@ -37,7 +38,9 @@ export default function TradePage() {
               }`}
             >
               <span>
-                <span className="font-medium text-white">${t.symbol}</span>
+                <UntrustedText field="ticker" className="font-medium text-white">
+                  ${t.symbol}
+                </UntrustedText>
                 <span className="ml-2 text-[11px] text-zinc-500">earns {t.quoteSymbol}</span>
               </span>
               <Link href={tokenPath(t.token)} className="text-[11px] text-cyan-200" onClick={(e) => e.stopPropagation()}>
