@@ -8,6 +8,7 @@ export const TABLES = [
   "quote_assets",
   "pool_relationships",
   "trades",
+  "indexer_event_journal",
   "candles",
   "bonding_states",
   "graduations",
