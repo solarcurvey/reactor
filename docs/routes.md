@@ -1,6 +1,6 @@
 # Routes
 
-> Protocol **0.3.3**. Max 3 hops. Proven venues only. One eth_call per candidate.
+> Protocol **{{protocolVersion}}**. Max 3 hops. Proven venues only. One eth_call per candidate.
 
 `POST /quote` previews **exact** RouteGraph edges through `UserRouteQuoter`. Kinds are preserved on every hop:
 

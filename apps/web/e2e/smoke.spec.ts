@@ -1,4 +1,13 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
+
+const protocolVersion = (
+  JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "docs", "version.json"), "utf8")) as {
+    protocolVersion: string;
+  }
+).protocolVersion;
 
 test("home renders explore and ignite", async ({ page }) => {
   await page.goto("/");
@@ -24,7 +33,7 @@ test("docs are in primary nav", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /For traders/i })).toBeVisible();
   await page.goto("/docs/versioning");
   await expect(page.getByRole("heading", { name: /Versioning/i })).toBeVisible();
-  await expect(page.getByText(/Protocol release 0\.3\.4/i)).toBeVisible();
+  await expect(page.getByText(new RegExp(`Protocol release ${protocolVersion.replace(/\./g, "\\.")}`, "i"))).toBeVisible();
 });
 
 test("observability docs and release endpoint", async ({ page, request }) => {
@@ -33,7 +42,7 @@ test("observability docs and release endpoint", async ({ page, request }) => {
   const res = await request.get("/api/version");
   expect(res.ok()).toBeTruthy();
   const body = (await res.json()) as { release?: string; mainnet?: boolean; audited?: boolean };
-  expect(body.release).toMatch(/^reactor@0\.3\.4\+/);
+  expect(body.release).toMatch(new RegExp(`^reactor@${protocolVersion.replace(/\./g, "\\.")}\\+`));
   expect(body.mainnet).toBe(false);
   expect(body.audited).toBe(false);
 });

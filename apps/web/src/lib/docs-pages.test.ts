@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { adjacentDocs, DOCS, docHref, slugify } from "./docs-nav.ts";
+import { loadReleaseIdentity } from "./release-identity.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const docsDir = join(root, "docs");
@@ -85,10 +86,11 @@ assert.equal(home.prev, undefined);
 const last = adjacentDocs(DOCS[DOCS.length - 1]!.slug);
 assert.equal(last.next, undefined);
 
+const rel = loadReleaseIdentity(root);
 const llms = readFileSync(join(docsDir, "llms.txt"), "utf8");
 const publicLlms = readFileSync(join(root, "apps/web/public/llms.txt"), "utf8");
 assert.equal(llms, publicLlms, "docs/llms.txt drifted from apps/web/public/llms.txt");
-assert.match(llms, /Protocol 0\.3\.3/);
+assert.match(llms, new RegExp(`Protocol ${rel.protocolVersion.replace(/\./g, "\\.")}`));
 assert.match(llms, /\/docs\/economics/);
 assert.match(llms, /\/docs\/security/);
 assert.match(llms, /\/docs\/troubleshooting/);

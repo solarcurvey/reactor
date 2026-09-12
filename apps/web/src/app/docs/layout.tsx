@@ -1,10 +1,11 @@
 import { DocsChrome } from "@/components/docs-chrome";
-import { loadProtocolVersion } from "@/lib/docs";
+import { loadDocsSearchIndex, loadRelease } from "@/lib/docs";
 
 export default function DocsLayout({ children }: { children: React.ReactNode }) {
-  const ver = loadProtocolVersion();
+  const release = loadRelease();
+  const searchIndex = loadDocsSearchIndex();
   return (
-    <DocsChrome version={ver.protocolVersion} factoryLabel={ver.factoryVersionLabel}>
+    <DocsChrome release={release} searchIndex={searchIndex}>
       {children}
     </DocsChrome>
   );

@@ -1,6 +1,6 @@
 # Local demo
 
-> Protocol **0.3.3** · Factory **V1** · Anvil chain **5042002** · Not audited · No public mainnet
+> Protocol **{{protocolVersion}}** · Factory **{{factoryVersionLabel}}** · Anvil chain **5042002** · Not audited · No public mainnet
 
 This is the supported way to run REACTOR on a laptop. It does **not** claim Arc Public Testnet or mainnet. Addresses land in `deployments/local.json` after the demo deploy. Never invent a chain-5042 address.
 

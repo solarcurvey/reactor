@@ -1,6 +1,6 @@
 # Architecture
 
-> Immutable modules. No upgrade proxies. Official identity is the hooked 0% LP pool. Protocol **0.3.3**. Factory **V1**.
+> Immutable modules. No upgrade proxies. Official identity is the hooked 0% LP pool. Protocol **{{protocolVersion}}**. Factory **{{factoryVersionLabel}}**.
 
 Fewer moving parts than a full periphery stack: no PositionManager NFT, no Universal Router, no upgrade proxies. Source: `ARCHITECTURE.md`.
 

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DocsMarkdown } from "@/components/docs-md";
 import { adjacentDocs, docHref } from "@/lib/docs-nav";
-import { DOCS, headings, loadDoc, loadProtocolVersion } from "@/lib/docs";
+import { DOCS, headings, loadDoc, loadRelease } from "@/lib/docs";
 
 export function generateStaticParams() {
   return DOCS.map((d) => ({ slug: d.slug ? [d.slug] : [] }));
@@ -13,7 +13,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
   const doc = loadDoc(slug);
   if (!doc) notFound();
   const toc = headings(doc.markdown);
-  const ver = loadProtocolVersion();
+  const ver = loadRelease();
   const { prev, next } = adjacentDocs(slug);
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_180px]">
@@ -42,9 +42,10 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
             <span />
           )}
         </nav>
-        <p className="mt-10 text-[11px] text-zinc-600">
-          Protocol {ver.protocolVersion} ({ver.releaseTag}). Factory {ver.factoryVersionLabel}. Not audited. No public
-          mainnet. Constants must match ReactorConstants.
+        <p className="mt-10 text-[11px] text-zinc-600" data-testid="docs-footer-badges">
+          Protocol {ver.protocolVersion} ({ver.releaseTag}). Factory {ver.factoryVersionLabel}. API {ver.apiVersion}. SDK{" "}
+          {ver.sdkVersion}. Source {ver.sourceRelease}. Not audited. No public mainnet. Constants must match
+          ReactorConstants.
         </p>
       </article>
       <aside className="hidden lg:block">

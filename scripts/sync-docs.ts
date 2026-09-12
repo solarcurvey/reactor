@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DOCS, docHref } from "../apps/web/src/lib/docs-nav.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -285,7 +286,24 @@ ${body}
 `;
 }
 
-export function generate(): { versioning: string; deployments: string; changelog: string } {
+export function renderLlms(ver: ProtocolVersion): string {
+  const c = loadCodeConstants();
+  const pages = DOCS.map((d) => `- ${docHref(d.slug)} ${d.title}`).join("\n");
+  return `# REACTOR
+
+Launch. Reflect. Burn. Token launchpad for Arc.
+
+Official REACTOR pools are Uniswap v4 markets with a 0% LP fee and a 3.5% quote-side protocol charge (2% holders / 1% Top-10 / 0.5% CORE buy+burn). Protocol ${ver.protocolVersion}. Factory ${c.factoryVersionLabel}. Not audited. No public mainnet.
+
+## Docs
+${pages}
+
+## Honesty
+Do not claim the protocol is audited or trustless. Top-10 ranks are an offchain API. Contracts check structure only. CHALLENGE is not ALLOW. The launch signer is not public. Instant is bonding curve → ready → frozen → graduate → locked v4. CORE is genesis 100M vest + 900M locked, never Top-10. Mainnet is blocked pending Codex + audits + KMS/Safe rehearsal.
+`;
+}
+
+export function generate(): { versioning: string; deployments: string; changelog: string; llms: string } {
   const ver = loadVersion();
   const c = loadCodeConstants();
   const registry = readJson<Registry>("deployments/registry.json");
@@ -293,6 +311,7 @@ export function generate(): { versioning: string; deployments: string; changelog
     versioning: renderVersioning(ver, c),
     deployments: renderDeployments(ver, registry),
     changelog: renderChangelogDoc(read("CHANGELOG.md"), ver),
+    llms: renderLlms(ver),
   };
 }
 
@@ -301,6 +320,8 @@ export function writeGenerated(): void {
   writeFileSync(join(root, "docs/versioning.md"), g.versioning);
   writeFileSync(join(root, "docs/deployments.md"), g.deployments);
   writeFileSync(join(root, "docs/changelog.md"), g.changelog);
+  writeFileSync(join(root, "docs/llms.txt"), g.llms);
+  writeFileSync(join(root, "apps/web/public/llms.txt"), g.llms);
 }
 
 function mustMatch(rel: string, expected: string, errors: string[]) {
@@ -371,6 +392,8 @@ export function check(): string[] {
   mustMatch("docs/versioning.md", g.versioning, errors);
   mustMatch("docs/deployments.md", g.deployments, errors);
   mustMatch("docs/changelog.md", g.changelog, errors);
+  mustMatch("docs/llms.txt", g.llms, errors);
+  mustMatch("apps/web/public/llms.txt", g.llms, errors);
 
   const docs = collectDocCorpus();
   const expectMentions: [RegExp, string][] = [
@@ -455,7 +478,7 @@ const cmd = process.argv[2] ?? "check";
 if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith("sync-docs.ts")) {
   if (cmd === "generate" || cmd === "gen") {
     writeGenerated();
-    console.log("docs generated: versioning.md deployments.md changelog.md");
+    console.log("docs generated: versioning.md deployments.md changelog.md llms.txt");
   } else if (cmd === "check") {
     const errors = check();
     if (errors.length) {

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { slugify } from "@/lib/docs-nav";
 import { SafeDocLink } from "./safe-link";
 
@@ -164,12 +164,25 @@ export function DocsMarkdown({ source }: { source: string }) {
 
 function Copy({ text }: { text: string }) {
   return (
+    <CopyButton text={text} />
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
     <button
       type="button"
-      className="absolute right-2 top-2 rounded-md bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-zinc-300 opacity-0 group-hover:opacity-100"
-      onClick={() => navigator.clipboard.writeText(text)}
+      data-testid="docs-copy"
+      aria-label={copied ? "Copied" : "Copy code"}
+      className="absolute right-2 top-2 rounded-md bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-zinc-300 opacity-100"
+      onClick={async () => {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1600);
+      }}
     >
-      Copy
+      {copied ? "Copied" : "Copy"}
     </button>
   );
 }

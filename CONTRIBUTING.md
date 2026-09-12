@@ -63,8 +63,12 @@ A protocol `0.1.1` / `0.2.0` bump does not rewrite Factory V1. A different 3.5% 
 - Factory version labels vs `FACTORY_VERSION`
 - Protocol semver vs `package.json` / CHANGELOG / generated pages
 - `deployments/local.json` vs web + indexer copies
+<<<<<<< HEAD
 - Stale `docs/versioning.md`, `docs/deployments.md`, `docs/changelog.md`
 - Tracked docs / `BUILD_REPORT.md` still contain `<<<<<<<` / `>>>>>>>` conflict markers
+=======
+- Stale `docs/versioning.md`, `docs/deployments.md`, `docs/changelog.md`, `docs/llms.txt`
+>>>>>>> 2f9c1a2 (Close handbook AC gaps: full-text search, link CI, version matrix.)
 - A mainnet (5042) address appearing in generated tables
 
 Do not “fix” a red check by editing generated markdown. Edit `docs/version.json` / `deployments/registry.json` / the Solidity source and regenerate.
@@ -76,15 +80,17 @@ Public-fork Actions hardening (Refs #72): every workflow has `permissions: conte
 See `AGENTS.md`. Security > cleverness. Do not change tokenomics to make a test pass. Do not deploy mainnet.
 
 ```bash
-pnpm docs:check          # version + constants + deployments
+pnpm docs:check          # version + constants + deployments + llms.txt
 pnpm docs:links          # in-repo docs slugs + relative files (no network)
 tsx apps/web/src/lib/docs-pages.test.ts  # handbook nav + llms.txt twins
-pnpm test:lib            # indexer + web unit + #61 sanctions fixtures + docs-pages + docs:check + docs:links + safe-genesis + page-budget + CI-cost + public-fork harden
+tsx apps/web/src/lib/docs-search.test.ts # full-text body search regression
+pnpm test:lib            # indexer + web unit + #61 sanctions + geo + operator-policy + obs + docs-pages + docs-search + docs:check + docs:links + safe-genesis + page-budget + CI-cost + public-fork harden
 pnpm test:ci-cost        # workflow inventory / no duplicate push+PR / fail-safe paths
 pnpm test:web-unit       # web lib unit (also in test:lib)
 pnpm --filter web test:qa  # visual / a11y / failure-injection (CI ci.yml job web-qa, full/main)
 pnpm test:e2e:release    # #35 production Next + wallet E2E (full/main job e2e-release-gate)
 cd contracts && forge test
+pnpm --filter web test -- e2e/docs-copy.spec.ts e2e/docs-visual.spec.ts
 ```
 
 GitHub Actions is three-tier (Refs #69): fast PR (`test:lib` + always-on `page-budget`), including docs-only/trivial ready-for-review PRs; full merge-candidate (non-draft **code**, label `ci-full`, or `workflow_dispatch`); main post-merge once. Docs-only PRs do not launch Solidity / Postgres / browser / `obs-ui` matrices unless labeled `ci-full`. #17 leftover extras (`docs:links`, Playwright smoke + interactive), #36 `web-qa`, #39 `obs-ui`, and the #35 `e2e-release-gate` are full-only jobs on this same `ci.yml`. Do not add a feature-branch `push` + `pull_request` pair. Operator + before/after inventory: [`/docs/ci`](docs/ci.md). **#69 stays open** until one protected-main full run after merged #46 is green.
