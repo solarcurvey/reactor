@@ -14,12 +14,12 @@ import { buildQuote } from "./quote-service.ts";
 import { fillContinuous, CANDLE_INTERVALS } from "../../../packages/reactor/src/prices.ts";
 import { raiseAlert, recentAlerts } from "./alerts.ts";
 import type { ValuationService } from "../../../packages/reactor/src/valuation.ts";
-import { consensusUsd6, StaticProvider } from "../../../packages/reactor/src/pricing.ts";
 import { persistTickBatch, rewindIndexerCursor } from "./tick-persist.ts";
 import { admit, tryNormalizeTicker } from "./admission.ts";
 import { authorizeLaunch } from "./authorize.ts";
 import { isReservedTicker, RESERVED_TICKERS } from "../../../packages/reactor/src/ticker.ts";
-import { HttpJsonProvider } from "../../../packages/reactor/src/pricing.ts";
+import { consensusForAsset } from "../../../packages/reactor/src/pricing.ts";
+import { assetsToPrice, loadPriceRegistry, loadQuoteAssetRows, loadVerifiedVenueUsd6 } from "./price-registry.ts";
 import { assertProductionHardGates } from "./prod-gates.ts";
 import { assertSharpWorks } from "./sharp-check.ts";
 
@@ -510,25 +510,45 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       return;
     }
     const now = Math.floor(Date.now() / 1000);
-    const prod = (process.env.REACTOR_ENV ?? "").toUpperCase() === "PROD";
-    const providers = [];
-    if (process.env.ZEC_HTTP_URL) {
-      providers.push(
-        new HttpJsonProvider("zec-http", () => process.env.ZEC_HTTP_URL as string, (body) => {
-          const n = Number((body as { usd6?: string; price?: number }).usd6 ?? (body as { price?: number }).price);
-          if (!Number.isFinite(n) || n <= 0) return null;
-          return { usd6: BigInt(Math.round(n)), ts: now };
-        }),
-      );
-    } else if (!prod) {
-      providers.push(new StaticProvider("local-static", new Map([["ZEC", { usd6: BigInt(process.env.ZEC_USD6 ?? 50_000_000), ts: now }]])));
+    const registry = loadPriceRegistry();
+    const quotes = await loadQuoteAssetRows(store).catch(() => []);
+    const assets = assetsToPrice(registry, quotes);
+    const usdc = (addrs.USDC ?? "").toLowerCase();
+    const rows = [];
+    for (const asset of assets) {
+      const arcUsd6 = usdc ? await loadVerifiedVenueUsd6(store, asset.token, usdc) : undefined;
+      const fused = await consensusForAsset(asset, now, { arcUsd6 });
+      rows.push({
+        token: asset.token,
+        symbol: asset.symbol,
+        important: Boolean(asset.important),
+        ok: fused.ok,
+        usd6: fused.usd6.toString(),
+        reason: fused.reason,
+        n: fused.n,
+        sources: fused.sources,
+        observations: fused.observations.map((o) => ({
+          source: o.source,
+          kind: o.kind,
+          ok: o.ok,
+          usd6: o.usd6.toString(),
+          reason: o.reason,
+        })),
+      });
     }
-    if (prod && providers.length === 0) {
-      json(res, 503, { ok: false, error: "static ZEC forbidden in prod — set ZEC_HTTP_URL", request_id: rid }, rid);
-      return;
-    }
-    const fused = await consensusUsd6(providers, "ZEC", now);
-    json(res, 200, { ...fused, usd6: fused.usd6.toString(), request_id: rid }, rid);
+    const ok = rows.every((r) => r.ok || !r.important);
+    const status = (process.env.REACTOR_ENV ?? "").toUpperCase() === "PROD" && !ok ? 503 : 200;
+    json(
+      res,
+      status,
+      {
+        ok,
+        assets: rows,
+        trust: "Offchain multi-source consensus + optional Arc venue sanity. Not an onchain oracle. PROD never uses a static mark.",
+        request_id: rid,
+      },
+      rid,
+    );
     return;
   }
   json(res, 404, { error: "not found", request_id: rid }, rid);

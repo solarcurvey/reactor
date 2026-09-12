@@ -1,6 +1,6 @@
-# BUILD REPORT — Protocol 0.3.2
+# BUILD REPORT — Protocol 0.3.3 external price consensus
 
-**Status:** Continue on existing REACTOR Origin repo. Parent `9f29527` (#20 media key/URL on #19 BIGINT, Factory V1).  
+**Status:** Continue on existing REACTOR Origin repo. Parent `b4bf25d` (protocol 0.3.2: #19 BIGINT + #20 media + #26 signer fail-closed + #27 event identity / tick atomicity, Factory V1).  
 **Not audited. Not mainnet.**  
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
@@ -8,15 +8,15 @@
 
 | Item | Value |
 | --- | --- |
-| Protocol release | **0.3.2** (`docs/version.json`) — not bumped this rebase (indexer durability on top of #19/#20/#26) |
+| Protocol release | **0.3.3** (`docs/version.json`) |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
-| Intent | P1 indexer: event writes + cursor advance are one transaction; append-only `(chain_id, tx, log_index, event_kind)` + address journal (issue #7; leave open until merged+verified) |
-| Foundry | Not re-run this pass. Last recorded **326 passed**, 1 skipped on 0.3.1 |
-| Indexer / lib | `tick-atomic.test.ts` SQLite + Postgres; `pnpm --filter indexer test` (includes `pricing-signer-store.test.ts` + `media-r2.test.ts`); `pnpm docs:check` |
+| Intent | Generalize external USD marks: configured provider registry, multi-source consensus, persist accept/reject, fail closed for launch + material Top-10. Fixes #11. Schema **v9** adds `external_price_marks.kind` after #27 v7/v8. Rebased onto `b4bf25d`. Land before the final #29 Top-10 rebase so ranker tests run against this consensus schema. |
+| Foundry | Unchanged this pass (offchain pricing only). Last recorded **326 passed**, 1 skipped on 0.3.1 |
+| Indexer / lib | `pnpm --filter indexer test` includes `pricing.test.ts` + `price-marks.test.ts` + `tick-atomic.test.ts` + 0.3.2 signer/media tests + v8→v9 upgrade in `schema.test.ts` + `pnpm docs:check` |
 | Review shots | **Not regenerated** this pass (no UI change) |
 | Mainnet | **Blocked** |
 
-## Closed this pass (P1 #7)
+## Closed this pass (P1 #7, already on parent)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
@@ -26,19 +26,18 @@
 | Postgres UNIQUE inside the tick transaction | **Yes** | Statement `SAVEPOINT` so caught `23505` does not abort the batch. Replay of the same logs stays idempotent. After `ROLLBACK TO SAVEPOINT`, the savepoint is `RELEASE`d. Prefer `ON CONFLICT DO NOTHING` on log identity. |
 | Append-only event identity too coarse | **Yes** | Schema **v8** (v6 remains BIGINT ms from #19; v7 was `(chain_id, tx, log_index)`): shared `indexer_event_journal` PK `(chain_id, tx, log_index, event_kind)` plus `address`; side tables unique on the same tuple. Inserts pass real `logIndex` + `chainId` + Solidity event name. Two identical same-kind logs in one tx both persist; two kinds at the same log index both persist; replay does not duplicate; other `chain_id` does not collide. |
 
-Honesty: 0.3.0 docs already said “Store work uses real transactions.” That was true for admission/locks, **not** for ingest cursor vs events. This pass makes that sentence true for `tick()`.
+Honesty: 0.3.0 docs already said “Store work uses real transactions.” That was true for admission/locks, **not** for ingest cursor vs events. #27 on parent makes that sentence true for `tick()`.
 
 ## Closed this run
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
-| `openStore().catch(() => undefined)` signer bypass | **Yes** | `openSignerStore` + `requireDurableStore`. `SIGNER_STORE_UNAVAILABLE` → 503 |
-| Receipt consume + issuance bucket skipped without store | **Yes** | `consumeDurableAdmission` always runs before EIP-712. Missing `id` refused |
-| Health without store | **Yes** | Isolated signer `/health` requires `durableStore()` |
-| Regression tests | **Yes** | `apps/indexer/src/pricing-signer-store.test.ts` |
-| Launch Admission / Trust Model docs | **Yes** | `LAUNCH_ADMISSION.md`, `docs/admission.md`, `docs/trust.md`, `THREAT_MODEL.md` |
-| Postgres INTEGER overflow on `Date.now()` ms | **Yes (main #19)** | Schema v6 `BIGINT`. Kept in this 0.3.2 changelog |
-| R2/S3 key = public `/m/<id>.webp` | **Yes (main #20)** | `mediaObjectKey` / `assertMediaKeyMatchesPublicUri`. `media-r2.test.ts` |
+| Hardcoded ZEC/WBTC price-marks branches | **Yes** | `price-registry.ts` + `config/price-providers.json`. Tests in `pricing.test.ts`, `price-marks.test.ts` |
+| Single HTTP source / silent static PROD fallback | **Yes** | Important assets `minSources=2`. Static skipped in PROD. Persist `ok=0` |
+| Consensus without persisted rejects | **Yes** | Schema **v9** `kind=observation\|consensus` on `external_price_marks` (after v8 journal). Watchdog `/pricing/health`. v8 production DBs upgrade in `schema.test.ts` |
+| ValuationService vs a second pricer | **Yes** | Store loads latest consensus only. Ranker `consumeIndexerValuation` fail-closes when reachable |
+| Guardian quote with no providers | **Yes** | Scheduled as unconfigured; launch disabled until `/pricing/health` is ok |
+| Docs / version | **Yes** | 0.3.3 patch on top of 0.3.2. `pnpm docs:check` |
 
 ## Still blocked (do not fake)
 
@@ -46,19 +45,14 @@ Honesty: 0.3.0 docs already said “Store work uses real transactions.” That w
 | --- | --- |
 | Public mainnet (5042) | Hard blocked. No addresses. |
 | Independent Codex / professional audit | Not performed. Do not claim audited. |
-| Top-10 as onchain oracle | Frozen offchain by design. |
+| Top-10 as onchain oracle | Frozen offchain by design. External USD marks are the same trust class. |
 | Arc Factory claimed | No funded `ARC_TESTNET_PK` in this environment. |
-
-## EIP-170 sizes
-
-Unchanged from 0.3.1. Factory **stays V1**.
-
-| Contract | Runtime (bytes) | Gate |
-| --- | ---: | --- |
-| ReactorFactory | **23,286** | ≤ 23,552 **pass** |
 
 ## Honest gaps that remain
 
+- LOCAL may still use an explicit static ZEC mark when no HTTP URLs are set.
+- Public HTTP hosts (CoinGecko / Coinbase / Kraken parsers) are operator-configured, not a trustless feed.
+- Thin or missing Arc venues skip the 400 bps sanity band rather than inventing a pool price.
 - Unix-seconds INTEGER columns still hit the year-2038 wall on Postgres. Not this P0.
 - LOCAL Turnstile bypass when secret unset (explicit LOCAL only).
 - Funding-parent is a heuristic (ASN + /16 + optional first-USDC-funder).

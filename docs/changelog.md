@@ -2,7 +2,7 @@
 
 # Changelog
 
-Protocol release **0.3.2** (`v0.3.2`). Factory **V1** is unchanged by this number.
+Protocol release **0.3.3** (`v0.3.3`). Factory **V1** is unchanged by this number.
 
 The canonical file is `CHANGELOG.md` at the repo root. Same content below.
 
@@ -13,6 +13,29 @@ Versioning: [Semantic Versioning](https://semver.org/) for the **protocol releas
 - Protocol source of truth: `docs/version.json` (`protocolVersion`)
 - Git tag: `vMAJOR.MINOR.PATCH` (see [Versioning](docs/versioning.md) and `CONTRIBUTING.md`)
 - Factory **V1 stays V1 forever**. A new fee split or curve is Factory V2, not a protocol patch.
+
+## [0.3.3] - 2026-09-12
+
+External quote USD marks are a configured provider registry with multi-source consensus. Tokenomics **unchanged**. Factory **V1**.
+
+### Added / Changed
+
+- Price providers are keyed by canonical quote address (config + `PRICE_PROVIDERS_JSON`), not hardcoded ZEC/WBTC branches. Important assets accept ≥2 independent HTTP sources (`ZEC_HTTP_URL_2`, `WBTC_HTTP_URL_2`, parsers).
+- Consensus applies documented staleness (120s), deviation (150 bps), optional Arc executable-market sanity (400 bps), and `minSources`. Accepted and rejected observations persist (`kind=observation|consensus`). Schema **v9** adds `external_price_marks.kind` after #27 v7 identity / v8 journal. Existing v8 databases `ALTER` + backfill `source IN ('consensus','fused','fail','missing')`.
+- ValuationService consumes the latest accepted consensus row only. PROD never falls back to a static dollar.
+- Launch authorization and material Top-10 candidates fail closed on provider outage or deviation. Trading continues. Isolated signer still requires the durable store (#26).
+- Guardian-added external quotes must have providers configured and `/pricing/health` ok before launch eligibility.
+- Watchdog reads rejected consensus reasons from `/pricing/health`.
+
+### Tokenomics
+
+- No change. Different split = new Factory version, not an edit to V1.
+
+### Known limits (honest)
+
+- Not audited. No public mainnet.
+- Offchain marks are trusted computation, not an onchain oracle.
+- Factory V1 runtime must stay ≤ 23,552.
 
 ## [0.3.2] - 2026-09-12
 

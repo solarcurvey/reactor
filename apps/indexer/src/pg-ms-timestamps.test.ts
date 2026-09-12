@@ -152,6 +152,35 @@ try {
   assert(row.job_ts === "1700000444", "keeper_operations.ts preserved");
   assert(row.alert_ts === "1700000555", "alerts.ts preserved");
 
+  // --- v8 production marks (no kind) upgrade to v9 ---
+  await resetPublic(admin);
+  await admin.query(`
+    CREATE TABLE schema_migrations (id INTEGER PRIMARY KEY, applied_ts BIGINT NOT NULL);
+    CREATE TABLE external_price_marks (
+      id BIGSERIAL PRIMARY KEY, token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT
+    );
+    CREATE UNIQUE INDEX idx_external_marks_unique ON external_price_marks(token, source, ts);
+    INSERT INTO schema_migrations(id, applied_ts) VALUES
+      (1, 1700000000),(2, 1700000000),(3, 1700000000),(4, 1700000000),
+      (5, 1700000000),(6, 1700000000),(7, 1700000000),(8, 1700000000);
+    INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason)
+      VALUES ('0xzec', 'ZEC', 'fused', '42000000', 1700000100, 1, ''),
+             ('0xzec', 'ZEC', 'coingecko', '41900000', 1700000100, 1, '');
+  `);
+  const storeV8 = await openStore({ databaseUrl: url });
+  assert((await applyMigrations(storeV8)) === SCHEMA_VERSION, `v8 upgrades to v${SCHEMA_VERSION}`);
+  const kindCol = await admin.query<{ data_type: string }>(
+    "SELECT data_type FROM information_schema.columns WHERE table_schema='public' AND table_name='external_price_marks' AND column_name='kind'",
+  );
+  assert(kindCol.rows[0]?.data_type === "text", "v9 adds external_price_marks.kind");
+  const kinds = await admin.query<{ source: string; kind: string }>(
+    "SELECT source, kind FROM external_price_marks ORDER BY source",
+  );
+  const bySource = Object.fromEntries(kinds.rows.map((r) => [r.source, r.kind]));
+  assert(bySource.fused === "consensus", "legacy fused backfills to kind=consensus");
+  assert(bySource.coingecko === "observation", "provider rows default to kind=observation");
+  await storeV8.close();
+
   // --- Fresh schema + live Date.now() paths ---
   await resetPublic(admin);
   const store = await openStore({ databaseUrl: url });

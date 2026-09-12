@@ -36,7 +36,7 @@ Do not certify. Do not deploy. Do not propose a new curve or fee split.
 | Signed pricing | Unique digest: factory+creator+quote+virtualQuote0+curveConfig+salt+deadline+chain. No `pricingNonce` | `LaunchPricing.t.sol` concurrent + replay |
 | Nested quotes | RoutePlanner max 3; ValuationEngine recursive; cycle reject; only usdPegOne is $1 | `valuation.test.ts`, `NativeQuote.t.sol` |
 | CORE vest / genesis | 1B; 100M vest 30d cliff + 300d linear; 900M locked; never Top-10 | `CoreGenesis.t.sol`, `CoreLiquiditySim.t.sol` |
-| Indexer / Top-10 | `block.timestamp` only for onchain/windowed marks; durable poolId→token; event writes + cursor one transaction; append-only `(chain_id, tx, log_index, event_kind)` + address (`indexer_event_journal`, schema v8). Offchain ms columns are `BIGINT` (schema v6) — Postgres INTEGER overflows `Date.now()` | `indexer.persist.test.ts`, `tick-atomic.test.ts`, `pg-ms-timestamps.test.ts`, `Top10Api.t.sol` |
+| Indexer / Top-10 | `block.timestamp` only for onchain/windowed marks; durable poolId→token; event writes + cursor one transaction; append-only `(chain_id, tx, log_index, event_kind)` + address (`indexer_event_journal`, schema v8). `external_price_marks.kind` is schema **v9** (after v8). Offchain ms columns are `BIGINT` (schema v6) — Postgres INTEGER overflows `Date.now()` | `indexer.persist.test.ts`, `tick-atomic.test.ts`, `schema.test.ts`, `pg-ms-timestamps.test.ts`, `Top10Api.t.sol` |
 | User routes | `UserRouteExecutor` + shared RoutePlanner; bonding nested USDC + graduated v4 | `UserRoute.t.sol` |
 | Routing deltas | `RouteGuard`, `RouteExec`, adapters | `RoutingDeltas.t.sol`, `KeeperMinOut.t.sol` |
 
@@ -116,7 +116,7 @@ Only **usdPegOne** quotes (Guardian flag; initially canonical USDC) may use unsi
 
 `factory, creator, quote, quoteDecimals, virtualQuote0, curveConfig, salt, deadline` + `chainId` in the digest.
 
-Signer is `ReactorGuardian.launchSigner` (≠ Keeper ≠ Guardian Safe; Guardian may rotate). Domain is `TickerRegistry.domainSeparator`. Replay via `TickerRegistry.usedAuthorization[digest]`. **No per-quote serial nonce** — concurrent same-quote launches use unique `authId`. TTL ≤ 30 minutes. Creator must be `msg.sender`. EIP-712 binds the full immutable identity (ticker, name, metadata hash, quote, mode, virtualQuote0, curve, factory version). **No onchain ZEC/USD oracle** — the signature attests protocol curve constants for that quote’s decimals. ValuationEngine (offchain, multi-source + Arc sanity) produces `virtualQuote0`; if unreliable that quote launch is disabled.
+Signer is `ReactorGuardian.launchSigner` (≠ Keeper ≠ Guardian Safe; Guardian may rotate). Domain is `TickerRegistry.domainSeparator`. Replay via `TickerRegistry.usedAuthorization[digest]`. **No per-quote serial nonce** — concurrent same-quote launches use unique `authId`. TTL ≤ 30 minutes. Creator must be `msg.sender`. EIP-712 binds the full immutable identity (ticker, name, metadata hash, quote, mode, virtualQuote0, curve, factory version). **No onchain ZEC/USD oracle** — the signature attests protocol curve constants for that quote’s decimals. ValuationService (offchain configured registry + multi-source consensus + optional Arc venue sanity) produces `virtualQuote0`; if unreliable that quote launch is disabled. PROD never uses a static mark.
 
 Attack tests: expired / replay / wrong chain / factory / quote / creator / params / decimals / old signer after rotation / zero salt / concurrent / quarantine.
 
@@ -155,7 +155,7 @@ Every hop: real balance deltas in and out; next hop uses **actual** out, not ada
 - Graduated only; skip CORE
 - Supply after burns (`totalSupply`)
 - Official 10–15m VWAP/TWAP-like from indexed official trades (**chain `block.timestamp`**, never `Date.now()`)
-- External quote USD: offchain multi-source + Arc sanity + staleness/deviation (`fuseExternalUsd6`). No onchain oracle
+- External quote USD: configured provider registry (canonical address) + ≥2 independent HTTP sources where available + median consensus + staleness/deviation + optional Arc executable-market sanity (`fuseExternalUsd6`). Accepted and rejected observations persist in `external_price_marks` (`kind`, schema v9). ValuationService consumes the consensus row only. PROD never uses a static mark. No onchain oracle
 - Depth 3, cycle set, **$250k** floor
 - Fail-closed **only** for MATERIAL uncertainty (prior ranked, last-good ≥ floor, liquidity, window volume). Thousands of dead low-value graduates with &lt;3 trades do **not** freeze the epoch
 

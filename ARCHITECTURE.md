@@ -72,7 +72,7 @@ Pre-graduation Instant trades settle on `InstantCurve` (same 3.5% quote split). 
 - **Time units (do not mix in one column):**
   - **Milliseconds** (`Date.now()`): `admission_hits.ts`, `issuance_bucket.updated_ms`, `leader_locks.ts`, `leader_locks.lease_until`, `keeper_operations.ts`, `alerts.ts`. Postgres type is `BIGINT` (schema v6). SQLite `INTEGER` is already 64-bit, which is why local tests hid the overflow.
   - **Unix seconds** (`Math.floor(Date.now() / 1000)` or chain `block.timestamp`): trade/candle/market/token timestamps, ticker `locked_until`, admission receipt `expires`/`ts`, challenges, `launch_auths.ts`, `schema_migrations.applied_ts`. These still fit in 32-bit `INTEGER` until 2038.
-- **ValuationService:** one recursive CAT→ZCAT→ZEC→USD path with ancestry. Parent-only USD is rejected.
+- **ValuationService:** one recursive CAT→ZCAT→ZEC→USD path with ancestry. Parent-only USD is rejected. External USD comes from the configured provider registry (consensus), not hardcoded ZEC/WBTC branches.
 - **Quote API:** `POST /quote` plans proven venues only (≤3 hops). One `UserRouteQuoter` `eth_call` with ERC-20 state overrides (no intermediate wallet balances). Discloses each official 3.5% leg.
 - **Web:** homepage is `GET /markets` (zero per-token RPC). Trades use the quote API — no wallet hop sim for missing intermediate assets.
 - **Pricing signer:** isolated process. Next never holds the key. Fail closed if down **or if the durable store cannot be opened** (`SIGNER_STORE_UNAVAILABLE` / 503). Receipt consume + signed-auth bucket always run. No Anvil / inline fallback outside `REACTOR_ENV=LOCAL` (production hard gates).

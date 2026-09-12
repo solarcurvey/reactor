@@ -23,7 +23,7 @@ There is no owner, admin, proxy admin, upgrader, governor, or treasury owner.
 | Authorize / deprecate factory versions | `authorizeFactory`, `deprecateFactory` — **new launches only** |
 | Permanently lock a ticker | `permanentlyLockTicker` — one-way qualitative judgment, **not** an mcap oracle |
 | Emergency trading / safe-mode pause | `pauseTrading` (curve + official v4 swaps) |
-| Add / quarantine **external** quotes | `QuoteAssetRegistry.register`, `setEnabled`, `setBuybackRoute`, **`setUsdPegOne` (explicit; Stablecoins ≠ $1)** |
+| Add / quarantine **external** quotes | `QuoteAssetRegistry.register`, `setEnabled`, `setBuybackRoute`, **`setUsdPegOne` (explicit; Stablecoins ≠ $1)**. Registering onchain does **not** price the asset. Configure `price-providers.json` / `PRICE_PROVIDERS_JSON` (≥2 independent HTTP sources where available) and confirm `/pricing/health` before treating the quote as launch-eligible. PROD never uses a static mark. |
 | Add / disable reviewed routing adapters | `setAdapter` |
 | Approve extra v4 hooks | **Removed in V1.** Adapters accept hookless + official REACTOR hook only. |
 
