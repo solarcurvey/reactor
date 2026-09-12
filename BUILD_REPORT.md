@@ -15,7 +15,7 @@
 | Protocol release | **0.3.2** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
 | Intent | Burn-adjusted `/markets` FDV (`Addresses #8`). Schema v9 after main v8. Canonical burn identity in the same `persistTickBatch` transaction as the cursor. Bounded `totalSupply()` reconcile. |
-| Indexer / lib | `ingest.valuation.test.ts` + `schema.test.ts` + `quote-integrity.test.ts` + `quote-sell-floors.test.ts` + `keeper.lease.test.ts` + `tick-atomic.test.ts` + `pnpm --filter indexer test` |
+| Indexer / lib | `ingest.valuation.test.ts` + `schema.test.ts` + `quote-integrity.test.ts` + `quote-sell-floors.test.ts` + `keeper.lease.test.ts` + `tick-atomic.test.ts` (SQLite + Postgres burn+cursor) + `pg-ms-timestamps.test.ts` v8→v9 + `pg-smoke.ts` + `pnpm --filter indexer test` + `pnpm docs:check` |
 | Foundry | Not re-run this pass. Last recorded **326 passed**, 1 skipped on 0.3.1 |
 | Mainnet | **Blocked** |
 
