@@ -31,10 +31,11 @@ REACTOR_ENV=LOCAL pnpm --filter indexer dev   # http://127.0.0.1:43148  Postgres
 # docker compose up -d postgres
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg
+# DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg-lease
 REACTOR_ENV=LOCAL pnpm --filter indexer signer   # isolated pricing signer :43149
 pnpm --filter web dev                 # http://127.0.0.1:43147
 # optional — local Anvil only (KEEPER_MODE=LOCAL|DRY_RUN|ARC_TESTNET; mainnet disabled)
-pnpm --filter indexer keeper          # Postgres jobs + advisory lock
+pnpm --filter indexer keeper          # Postgres jobs + single lease (renew + fence)
 pnpm --filter indexer watchdog        # independent heartbeat + on-chain epoch check
 ```
 

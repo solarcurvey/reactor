@@ -19,6 +19,8 @@ Web ranker / market-data / keeper / valuation / indexer schema (no RPC):
 ```bash
 pnpm --filter indexer test
 # tick-atomic.test.ts: SQLite always; Postgres when DATABASE_URL or compose :54329 is up (REQUIRE_PG=1 to fail if missing)
+# two Keeper workers on real Postgres (CI job keeper-lease-pg; docker compose postgres :54329)
+# DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg-lease
 npx --yes tsx apps/web/src/lib/top10.test.ts
 npx --yes tsx apps/web/src/lib/marketdata.test.ts
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
@@ -26,7 +28,7 @@ pnpm --filter web test          # Playwright smoke + interactive
 # Real Postgres (docker compose postgres on :54329, or local 5432)
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
-# CI: .github/workflows/docs-sync.yml job postgres-ms-timestamps
+# CI: .github/workflows/docs-sync.yml job postgres-ms-timestamps (includes test:pg-lease)
 ```
 
 `pnpm docs:check` (and `.github/workflows/docs-sync.yml`) **must fail** when generated constants, `docs/version.json`, Factory labels, or deployment tables have drifted from Solidity/config. Do not edit generated `docs/versioning.md` / `docs/deployments.md` / `docs/changelog.md` by hand — run `pnpm docs:gen`.
@@ -210,6 +212,8 @@ pnpm --filter indexer watchdog
 | 37 | R2/S3 object key equals public `/m/<id>.webp`; mock GET returns the object; PROD upload failure returns no StoredMedia | `media-r2.test.ts` |
 | 38 | Indexer event writes + cursor atomic; log identity `(chain_id, tx, log_index, event_kind)` (schema v8 journal) | `tick-atomic.test.ts` (SQLite + Postgres), `pg-smoke.ts` |
 | 39 | Selected route + atomic preview/minOuts/terminal from the same candidate; PreviewRoute is hops+1 (BUY append / SELL prepend) | `quote-integrity.test.ts`, `quote-select.ts`, `UserRoute.t.sol` `test_nested_previewSell_hops_plus_terminal` |
+| 40 | Keeper lease renew + fence: long tick cannot overlap; stale fence cannot send | `keeper.lease.test.ts` |
+| 41 | Two Postgres workers: one winner, renew vs overlap, expiry/crash takeover, stale fence cannot send | `keeper.lease.pg.test.ts` (`test:pg-lease`, CI `keeper-lease-pg`) |
 
 ## Arc smoke
 
