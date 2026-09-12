@@ -30,7 +30,7 @@ On ALLOW the body includes `launchConfigHash`. The signer recomputes it. A misma
 
 ## Live stream
 
-`ReactorClient.stream` opens `GET /stream` and listens for **named** events (`trade`, `launch`, `bonding`, `graduation`, `rewards`, `burn`, `top10`, `core`, `hello`). `onmessage` is not enough — the hub sets `event: <type>`. `hello.head` is the last id at attach; ids `<= head` are replay. Official buy+burn toasts use only live `core` executes and `burn` + `Top10Buy`.
+`ReactorClient.stream` opens `GET /stream` and listens for **named** events (`trade`, `launch`, `bonding`, `graduation`, `rewards`, `burn`, `top10`, `core`, `hello`). `onmessage` is not enough — the hub sets `event: <type>`. First-session `hello.head` is history. Resume with `?after=` / `Last-Event-ID`. Official buy+burn toasts use live `core` executes and `burn` + `Top10Buy`, keyed by `(chainId, tx, logIndex, eventKind)`.
 
 ## Markets board
 

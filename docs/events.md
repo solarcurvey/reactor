@@ -34,16 +34,20 @@ Postgres statement failures inside that transaction use a `SAVEPOINT`; on failur
 
 ## Live UI (confirmed only)
 
-`GET /stream` fans out **after** that commit. The first event is `hello` with `last` (client `Last-Event-ID`) and `head` (hub id at attach). Buffered replay is not a live confirmation.
+`GET /stream` fans out **after** that commit. The first event is `hello` with `last` (resume cursor) and `head` (hub id at attach). A first-session client toasts only `id > hello.head`. Reconnect uses `?after=<lastSseId>` and/or `Last-Event-ID`; the UI **does not** raise the first-session cutoff (that would drop events that landed while disconnected). Replay of ids `<=` that cutoff is still suppressed.
+
+Dedupe is canonical log identity `(chainId, txHash, logIndex, eventKind)` on the SSE row. The seen-set outlives auto-dismiss, so a replay of the same log cannot re-toast. Two `Top10Buy` logs in one tx at different `logIndex` values are two notices.
 
 The web app shows **bottom-right** toasts only for:
 
 | SSE | Onchain | Toast |
 | --- | --- | --- |
-| `core` | `BuybackExecuted` / `COREBurned` | CORE buy+burn confirmed (one per tx) |
-| `burn` + `name=Top10Buy` | `Top10Buy` | Top-10 buy+burn confirmed |
+| `core` | `BuybackExecuted` / `COREBurned` | CORE buy+burn confirmed (per log identity) |
+| `burn` + `eventKind=Top10Buy` | `Top10Buy` | Top-10 buy+burn confirmed (per log identity) |
 
-No toast for pending wallet txs, `SelfBurnAccrued` / `SelfBurnExecuted`, holder `Burned`, `EpochSubmitted`, or replayed ids `<= hello.head`. Amounts on those SSE rows are attribution (`quoteIn` / `coreOut` / `usdcIn` / `burned`), not a second supply subtract.
+No toast for pending wallet txs, `SelfBurnAccrued` / `SelfBurnExecuted`, holder `Burned`, or `EpochSubmitted`. Hover/focus pauses auto-dismiss. The stack uses `safe-area-inset-*`. `prefers-reduced-motion: reduce` disables the enter animation. Amounts on those SSE rows are attribution (`quoteIn` / `coreOut` / `usdcIn` / `burned`), not a second supply subtract.
+
+Issue **#38 stays open** until merge and post-merge verify.
 
 See [Traders](/docs/traders), [CORE](/docs/core), [Top-10](/docs/top-10).
 

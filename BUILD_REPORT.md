@@ -22,9 +22,11 @@
 | --- | --- | --- |
 | Confirmed-only (post-commit SSE) | **Yes** | Indexer publishes after `persistTickBatch`. First-session `hello.head` + `id > cutoff` |
 | Canonical dedupe | **Yes** | `(chainId, txHash, logIndex, eventKind)`. Module session `seen` survives dismiss and remount. Same-tx distinct-log Top10Buy stay two notices |
-| Reconnect without loss/dup/history storm | **Yes** | Cutoff never raised. `?after=` / `Last-Event-ID` |
+| Reconnect without loss/dup/history storm | **Yes** | Cutoff never raised. `?after=` / `Last-Event-ID`. `live-toasts.test.ts` + Playwright |
 | Hover/focus pause + safe-area + reduced-motion | **Yes** | Clock helpers + `e2e/live-toasts.spec.ts` |
+| CORE / Top-10 only | **Yes** | Not SelfBurn, not epoch, not holder burn, not mempool |
 | Visible CI/release gate | **Yes** | `.github/workflows/live-toasts.yml` job `live-toasts-ui` |
+| Docs | **Yes** | `/docs/events`, `/docs/traders`, `/docs/core`, `/docs/top-10`, `/docs/api`, `UX_REFERENCE.md` |
 | Tokenomics / Factory | **Unchanged** | No contract edits |
 | Close #38 | **No** | Stays open until post-merge verify. Do not `Fixes #38`. |
 

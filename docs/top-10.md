@@ -13,6 +13,6 @@
 - Keeper executes the **frozen onchain epoch**, not a later API refresh. It refuses `pauseEpoch` **or** a snapshot whose `computedTs` is older than the TTL.
 - Contracts check structure only. Compromised ranks are residual risk #1.
 
-Live UI: a bottom-right toast appears when `Top10Buy` is committed (SSE `burn` + `name=Top10Buy`). `EpochSubmitted` updates THE REACTOR table; it is not a buy+burn confirm. Ranks stay offchain.
+Live UI: a bottom-right toast appears when `Top10Buy` is committed (SSE `burn` + `eventKind=Top10Buy`). Two same-tx logs at different `logIndex` values are two notices. `EpochSubmitted` updates THE REACTOR table; it is not a buy+burn confirm. Ranks stay offchain.
 
 See [Trust](/docs/trust), [Valuation](/docs/valuation), `KEEPER_MODEL.md`.

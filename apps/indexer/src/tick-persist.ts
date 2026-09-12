@@ -351,7 +351,10 @@ async function persistOneLog(
         data: {
           token,
           name,
+          eventKind: name,
           tx,
+          chainId,
+          logIndex,
           quote: String(args.quote ?? ""),
           amount: String(args.amount ?? args.quoteIn ?? args.usdcIn ?? "0"),
           burned: String(args.burned ?? "0"),
@@ -413,7 +416,10 @@ async function persistOneLog(
         type: "core",
         data: {
           name,
+          eventKind: name,
           tx,
+          chainId,
+          logIndex,
           quote: String(args.quote ?? ""),
           quoteIn: String(args.quoteIn ?? "0"),
           coreOut: String(args.coreOut ?? args.amount ?? "0"),

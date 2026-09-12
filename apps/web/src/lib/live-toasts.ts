@@ -11,12 +11,33 @@ export type LiveStreamEvent = {
 
 export type LiveToastKind = "core" | "top10";
 
+export type LogIdentity = {
+  chainId: number;
+  txHash: string;
+  logIndex: number;
+  eventKind: string;
+};
+
 export type LiveToast = {
   id: string;
   kind: LiveToastKind;
   title: string;
   body: string;
   tx: string;
+  identity: LogIdentity;
+};
+
+export type LiveSession = {
+  /** First-connect `hello.head`. Never reset on reconnect. */
+  cutoff: number | null;
+  lastSseId: number;
+  seen: Set<string>;
+};
+
+export type ToastClock = {
+  remainingMs: number;
+  running: boolean;
+  startedAt: number | null;
 };
 
 const EXEC_CORE = new Set(["BuybackExecuted", "COREBurned"]);
@@ -41,10 +62,43 @@ export function isLiveAfterHead(eventId: number | undefined, head: number): bool
   return Number.isFinite(id) && id > head;
 }
 
-export function toastDedupeKey(kind: LiveToastKind, tx: string, token = ""): string {
-  const t = tx.toLowerCase();
-  if (kind === "core") return `core:${t}`;
-  return `top10:${t}:${token.toLowerCase()}`;
+/** Canonical `(chainId, txHash, logIndex, eventKind)` — not tx-only. */
+export function canonicalEventKey(id: LogIdentity): string {
+  return `${id.chainId}:${id.txHash.toLowerCase()}:${id.logIndex}:${id.eventKind}`;
+}
+
+export function identityFromLiveData(data: Record<string, unknown>, fallbackKind = ""): LogIdentity | null {
+  const txHash = str(data.tx ?? data.txHash).trim();
+  const eventKind = str(data.eventKind ?? data.name ?? fallbackKind);
+  const logIndex = Number(data.logIndex);
+  const chainId = Number(data.chainId);
+  if (!txHash || txHash === "0x" || txHash.length < 10) return null;
+  if (!eventKind) return null;
+  if (!Number.isFinite(logIndex) || logIndex < 0) return null;
+  if (!Number.isFinite(chainId) || chainId <= 0) return null;
+  return { chainId, txHash, logIndex, eventKind };
+}
+
+export function createLiveSession(): LiveSession {
+  return { cutoff: null, lastSseId: 0, seen: new Set() };
+}
+
+export function noteSseId(session: LiveSession, sseId: number | undefined): LiveSession {
+  const id = Number(sseId ?? 0);
+  if (!Number.isFinite(id) || id <= session.lastSseId) return session;
+  return { ...session, lastSseId: id };
+}
+
+/** First hello sets cutoff. Reconnect hello must not raise it (that drops missed live events). */
+export function applyHello(session: LiveSession, hello: { head?: unknown; last?: unknown }): LiveSession {
+  if (session.cutoff != null) return session;
+  const head = Number(hello.head ?? hello.last ?? 0);
+  return { ...session, cutoff: Number.isFinite(head) ? head : 0 };
+}
+
+export function streamEndpoint(base: string, after = 0): string {
+  const root = base.replace(/\/$/, "");
+  return after > 0 ? `${root}/stream?after=${after}` : `${root}/stream`;
 }
 
 function formatCoreBody(data: Record<string, unknown>): string {
@@ -67,46 +121,86 @@ function formatTop10Body(data: Record<string, unknown>): string {
   return parts.length ? parts.join(" · ") : "Top-10 buy+burn landed onchain.";
 }
 
-/** Map a post-commit SSE event to a CORE / Top-10 toast. Accruals and epoch submits are ignored. */
+/** Map a post-commit SSE event to a CORE / Top-10 toast. Requires canonical log identity. */
 export function toastFromLiveEvent(ev: LiveStreamEvent): LiveToast | null {
   const data = ev.data ?? {};
-  const tx = str(data.tx).trim();
-  if (!tx || tx === "0x" || tx.length < 10) return null;
   if (data.confirmed === false) return null;
+  const identity = identityFromLiveData(data);
+  if (!identity) return null;
 
   if (ev.type === "core") {
-    const name = str(data.name);
-    if (name && !EXEC_CORE.has(name)) return null;
-    if (!name && rawAmt(data.coreOut ?? data.amount) === 0n && rawAmt(data.quoteIn) === 0n) return null;
+    if (!EXEC_CORE.has(identity.eventKind)) return null;
     return {
-      id: toastDedupeKey("core", tx),
+      id: canonicalEventKey(identity),
       kind: "core",
       title: "CORE buy+burn confirmed",
       body: formatCoreBody(data),
-      tx,
+      tx: identity.txHash,
+      identity,
     };
   }
 
-  if (ev.type === "burn" && str(data.name) === "Top10Buy") {
-    const token = str(data.token);
+  if (ev.type === "burn" && identity.eventKind === "Top10Buy") {
     return {
-      id: toastDedupeKey("top10", tx, token),
+      id: canonicalEventKey(identity),
       kind: "top10",
       title: "Top-10 buy+burn confirmed",
       body: formatTop10Body(data),
-      tx,
+      tx: identity.txHash,
+      identity,
     };
   }
 
   return null;
 }
 
-export function mergeLiveToasts(existing: LiveToast[], next: LiveToast): LiveToast[] {
-  const idx = existing.findIndex((t) => t.id === next.id);
-  if (idx >= 0) {
-    const copy = existing.slice();
-    copy[idx] = { ...copy[idx], ...next };
-    return copy;
+export function acceptLiveToast(
+  session: LiveSession,
+  ev: LiveStreamEvent,
+): { session: LiveSession; toast: LiveToast | null } {
+  const next = noteSseId(session, ev.id);
+  if (next.cutoff == null || !isLiveAfterHead(ev.id, next.cutoff)) {
+    return { session: next, toast: null };
   }
+  const toast = toastFromLiveEvent(ev);
+  if (!toast) return { session: next, toast: null };
+  if (next.seen.has(toast.id)) return { session: next, toast: null };
+  const seen = new Set(next.seen);
+  seen.add(toast.id);
+  return { session: { ...next, seen }, toast };
+}
+
+export function mergeLiveToasts(existing: LiveToast[], next: LiveToast): LiveToast[] {
+  if (existing.some((t) => t.id === next.id)) return existing;
   return [...existing, next].slice(-LIVE_TOAST_LIMIT);
+}
+
+export function createToastClock(now: number, remainingMs = LIVE_TOAST_MS): ToastClock {
+  return { remainingMs, running: true, startedAt: now };
+}
+
+export function pauseToastClock(clock: ToastClock, now: number): ToastClock {
+  if (!clock.running || clock.startedAt == null) {
+    return { remainingMs: clock.remainingMs, running: false, startedAt: null };
+  }
+  return {
+    remainingMs: Math.max(0, clock.remainingMs - (now - clock.startedAt)),
+    running: false,
+    startedAt: null,
+  };
+}
+
+export function resumeToastClock(clock: ToastClock, now: number): ToastClock {
+  if (clock.running) return clock;
+  return { remainingMs: clock.remainingMs, running: true, startedAt: now };
+}
+
+export function clockExpired(clock: ToastClock, now: number): boolean {
+  if (clock.remainingMs <= 0) return true;
+  if (!clock.running || clock.startedAt == null) return false;
+  return now - clock.startedAt >= clock.remainingMs;
+}
+
+export function prefersReducedMotion(media: { matches: boolean } | null | undefined): boolean {
+  return Boolean(media?.matches);
 }

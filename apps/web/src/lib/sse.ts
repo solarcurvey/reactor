@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { INDEXER_URL } from "./chain";
+import { streamEndpoint } from "./live-toasts";
 
 export type LiveEvent = { type: string; data: Record<string, unknown>; id?: number };
 
@@ -11,6 +12,7 @@ type Listener = (ev: LiveEvent) => void;
 
 let es: EventSource | null = null;
 let refs = 0;
+let lastEventId = 0;
 const listeners = new Set<Listener>();
 let healthPoll: ReturnType<typeof setInterval> | undefined;
 
@@ -21,11 +23,12 @@ function emit(ev: LiveEvent) {
 function openStream() {
   if (es) return;
   try {
-    es = new EventSource(`${INDEXER_URL}/stream`);
+    es = new EventSource(streamEndpoint(INDEXER_URL, lastEventId));
     const on = (type: string) => (ev: MessageEvent) => {
       try {
         const data = JSON.parse(String(ev.data)) as Record<string, unknown>;
         const id = Number(ev.lastEventId || 0);
+        if (Number.isFinite(id) && id > lastEventId) lastEventId = id;
         emit({ type, data, id: Number.isFinite(id) ? id : undefined });
       } catch {
         /* ignore */
@@ -37,6 +40,7 @@ function openStream() {
       es?.close();
       es = null;
       if (healthPoll) clearInterval(healthPoll);
+      const retryMs = Number((window as unknown as { __reactorSseRetryMs?: number }).__reactorSseRetryMs);
       healthPoll = setInterval(async () => {
         const res = await fetch(`${INDEXER_URL}/health`).catch(() => null);
         if (!res?.ok) return;
@@ -45,7 +49,7 @@ function openStream() {
           healthPoll = undefined;
         }
         if (refs > 0) openStream();
-      }, 8_000);
+      }, Number.isFinite(retryMs) && retryMs > 0 ? retryMs : 8_000);
     };
   } catch {
     emit({ type: "error", data: { ok: false } });

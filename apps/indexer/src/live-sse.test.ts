@@ -81,6 +81,9 @@ assert(bought?.tx === coreTx, "BuybackExecuted tx");
 assert(bought?.confirmed === true, "BuybackExecuted confirmed after commit");
 assert(bought?.quoteIn === "2500000", "BuybackExecuted quoteIn");
 assert(bought?.coreOut === "1000000000000000000", "BuybackExecuted coreOut");
+assert(bought?.chainId === 5042002, "BuybackExecuted chainId");
+assert(bought?.logIndex === 1, "BuybackExecuted logIndex");
+assert(bought?.eventKind === "BuybackExecuted", "BuybackExecuted eventKind");
 
 const burnedCore = core.find((e) => (e.data as { name?: string }).name === "COREBurned")?.data as Record<string, unknown>;
 assert(burnedCore?.coreOut === "1000000000000000000", "COREBurned amount as coreOut");
@@ -93,6 +96,24 @@ assert(top?.confirmed === true, "Top10Buy confirmed");
 assert(top?.amount === "4000000", "Top10Buy usdcIn as amount");
 assert(top?.burned === "2000000000000000000", "Top10Buy burned");
 assert(String(top?.token).toLowerCase() === token, "Top10Buy token");
+assert(top?.chainId === 5042002, "Top10Buy chainId");
+assert(top?.logIndex === 3, "Top10Buy logIndex");
+assert(top?.eventKind === "Top10Buy", "Top10Buy eventKind");
+
+const topTx2 = `0x${randomBytes(32).toString("hex")}`;
+const twoLogs = await persistTickBatch(store, {
+  logs: [
+    log("Top10Buy", { epoch: 8n, token, usdcIn: "1", burned: "1" }, { transactionHash: topTx2, logIndex: 10, address: addr("fly") }),
+    log("Top10Buy", { epoch: 8n, token, usdcIn: "2", burned: "2" }, { transactionHash: topTx2, logIndex: 11, address: addr("fly") }),
+  ],
+  timestamps,
+  cursorBlock: "43",
+  cursorHash: "0xabd",
+  ctx: ctx(),
+});
+const twins = twoLogs.filter((e) => e.type === "burn" && (e.data as { eventKind?: string }).eventKind === "Top10Buy");
+assert(twins.length === 2, "two same-tx Top10Buy logs both publish");
+assert((twins[0].data as { logIndex: number }).logIndex !== (twins[1].data as { logIndex: number }).logIndex, "distinct logIndex on same tx");
 
 const accrued = burns.find((e) => (e.data as { name?: string }).name === "SelfBurnAccrued");
 assert(accrued, "SelfBurnAccrued still published as burn (UI must not toast it)");
