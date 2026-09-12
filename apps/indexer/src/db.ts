@@ -239,7 +239,7 @@ class PostgresStore implements Store {
 }
 
 export async function openStore(opts?: { sqlitePath?: string; databaseUrl?: string }): Promise<Store> {
-  const url = opts?.databaseUrl ?? process.env.DATABASE_URL ?? "";
+  const url = opts?.databaseUrl ?? (opts?.sqlitePath != null ? "" : process.env.DATABASE_URL) ?? "";
   if (url.startsWith("postgres")) {
     const pg = await import("pg");
     const pool = new pg.default.Pool({ connectionString: url, max: 8 });
