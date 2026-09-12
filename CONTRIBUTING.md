@@ -61,7 +61,7 @@ A protocol `0.1.1` / `0.2.0` bump does not rewrite Factory V1. A different 3.5% 
 
 Do not “fix” a red check by editing generated markdown. Edit `docs/version.json` / `deployments/registry.json` / the Solidity source and regenerate.
 
-Public-fork Actions hardening (Refs #72): every workflow has `permissions: contents: read`; every `actions/checkout` sets `persist-credentials: false`; no `pull_request_target`. Compatible with #69 three-tier CI when those three files fold into `ci.yml`. `pnpm test:lib` runs `scripts/ci-public-harden.test.ts`. Operator checklist: [`docs/publicization.md`](docs/publicization.md). **Do not publicize without founder instruction. Do not flip visibility from an agent. Do not run another history rewrite unless the founder authorizes it.**
+Public-fork Actions hardening (Refs #72): every workflow has `permissions: contents: read`; every `actions/checkout` sets `persist-credentials: false`; no `pull_request_target`. Compatible with #69 three-tier CI when those three files fold into `ci.yml`. `pnpm test:lib` runs `scripts/ci-public-harden.test.ts`. Operator checklist: [`docs/publicization.md`](docs/publicization.md). **Do not publicize without founder instruction. Do not flip visibility from an agent. Do not run another history rewrite unless the founder authorizes it.** Residual pre-rewrite objects on GitHub `refs/pull/*` are an accepted residual; Support purge/GC is not a #72 AC.
 
 ## Engineering rules
 

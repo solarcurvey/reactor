@@ -4,7 +4,7 @@
 
 Refs **#72**. Coordinate with **#69** (CI cost / concurrency / staging). Do not weaken **#15 / #17 / #18** release gates.
 
-Inventory snapshot: **2026-09-12** after the founder-authorized history rewrite. Re-audit immediately before any visibility change — this page goes stale.
+Inventory snapshot: **2026-09-12** after the founder-authorized history rewrite, plus the same-day founder decision that Support purge/GC is **not required**. Re-audit immediately before any visibility change — this page goes stale.
 
 ## Hard constraints (this pass)
 
@@ -18,9 +18,9 @@ Inventory snapshot: **2026-09-12** after the founder-authorized history rewrite.
 
 ## Operator checklist (in order)
 
-1. **Email rewrite.** **Done** (founder-authorized). Verify with the commands below. Do not run another rewrite unless the founder authorizes a new remap.
+1. **Email rewrite (AC1).** **Done** (founder-authorized). Personal mailbox must be absent from **advertised** refs: `main`, active open-PR heads, and intentional tags. Residual GitHub dangling objects are accepted — see [Accepted residuals / non-blocking](#accepted-residuals--non-blocking). Do not run another rewrite unless the founder authorizes a new remap.
 2. **Branch prune.** **Done** for merged/superseded `cursor/*` leftovers. Keep only `main` + active open-PR heads + intentional tags. See [Branch inventory](#branch-inventory).
-3. **Secret-scan clean.** Re-run gitleaks + trufflehog over `--all` reachable **heads and tags** after every rewrite. Classify fixtures vs live credentials. Rotate anything live **before** visibility changes. See [Secret scan](#secret-scan).
+3. **Secret-scan clean.** Re-run gitleaks + trufflehog over `--all` reachable **advertised** refs (heads and tags) after every rewrite. Classify fixtures vs live credentials. Rotate anything live **before** visibility changes. See [Secret scan](#secret-scan).
 4. **Actions harden.** Confirm every workflow still has `permissions: contents: read`, every `actions/checkout` has `persist-credentials: false`, and there is no `pull_request_target` + untrusted checkout. Compatible with #69 staging / cancellation. See [Actions hardening](#actions-hardening).
 5. **Re-audit immediately before visibility change.** Repeat steps 2–4 on the exact SHA you would publicize. Open drafts become world-readable. See [Open drafts](#open-drafts).
 6. **Do not publicize without founder instruction.** A green CI run is not permission to flip visibility.
@@ -60,10 +60,11 @@ git log --all --format='%ae %ce %B' | grep -Ei 'gmail|hotmail|icloud' && echo FA
 
 `main` after this docs commit will move again (ordinary fast-forward). The filter-repo mapping above is the history rewrite itself.
 
-### Verification (post-rewrite, heads + tags only)
+### Verification (advertised refs: `main`, active PR heads, intentional tags)
 
 ```bash
 git fetch origin --prune '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*'
+# Default fetch is heads + tags only — not refs/pull/*.
 git log --all --format='%ae %ce %B' | grep -Ei 'gmail|hotmail|icloud' && echo FAIL || echo clean
 # Expect: clean
 ```
@@ -78,11 +79,15 @@ Author / committer / trailer emails on reachable heads+tags after rewrite:
 | `noreply@github.com` | GitHub committer on squash merges |
 | `noreply@cursor.com` | Initial commit |
 
-No personal mailbox remains in `%ae`, `%ce`, or `%B` on those refs.
+No personal mailbox remains in `%ae`, `%ce`, or `%B` on those advertised refs.
 
-### GitHub leftover (not a branch)
+## Accepted residuals / non-blocking
 
-`git clone` / default fetches do **not** get `refs/pull/*`. GitHub still stores pre-rewrite SHAs on closed/merged pull refs (`refs/pull/<n>/head`). Those objects are **not** reachable from current heads or tags. Agents cannot rewrite GitHub’s pull-ref namespace. Treat that as residual cache, not an advertised branch.
+Founder (Davis) decided Support purge/GC of pre-rewrite dangling SHAs is **not required**. Residual old-SHA exposure is **accepted**. These items are **not** remaining #72 acceptance criteria and are **not** a visibility-flip blocker.
+
+- GitHub still stores pre-rewrite objects on closed/merged pull refs (`refs/pull/<n>/head`). `git clone` / default fetches do **not** get `refs/pull/*`. Those objects are not advertised as `main`, open-PR heads, or intentional tags.
+- Agents cannot rewrite GitHub’s pull-ref namespace. Treat leftover `refs/pull/*` as residual cache, not an advertised branch.
+- No operator ticket, Support request, or extra GC wait is part of #72.
 
 ## Branch inventory
 
@@ -180,15 +185,27 @@ Close, convert, or redact before visibility changes if any draft is not ready fo
 
 ## Remaining #72 ACs (founder)
 
-- [x] Founder personal email removed from reachable **heads and tags** (verify command above)
+- [x] **AC1.** Personal mailbox scrubbed from **advertised** refs (`main`, active open-PR heads, intentional tags). Residual GitHub dangling objects are **accepted** (see [Accepted residuals / non-blocking](#accepted-residuals--non-blocking)).
 - [x] Merged/superseded Cursor branches pruned; active list intentional
-- [x] Full-history/all-ref secret scan clean after fixture classification
+- [x] Full-history/all-ref secret scan clean after fixture classification (advertised refs)
 - [x] Any real credential rotated (none found)
 - [x] Public-fork Actions least privilege + no dangerous `pull_request_target`
 - [x] #69 cost controls still compatible
-- [x] Final audit/scan notes on exact refs after rewrite (this page)
+- [x] Final audit/scan notes on exact advertised refs after rewrite (this page)
 - [ ] **Visibility flip** — still a **FOUNDER DECISION GATE**. Agents must not publicize.
-- [ ] Optional: GitHub support / time for `refs/pull/*` GC of pre-rewrite objects (not advertised as branches)
+
+Support purge/GC is listed under [Accepted residuals / non-blocking](#accepted-residuals--non-blocking), not here.
+
+### Advertised-ref check (2026-09-12 founder follow-up)
+
+Checked tip commit **author / committer / message** on `origin/main` `0bd9b82`, tag `v0.3.1` `d60d315`, and every then-open PR head (#75, #73, #70, #68, #67, #66, #58, #54, #52, #50, #49, #48, #46, #45, #44, #42). Full history reachable from those advertised refs was also scanned.
+
+| Check | Result |
+| --- | --- |
+| Personal gmail / hotmail / icloud on advertised-ref tips | **clean** |
+| Same patterns in advertised-ref history (`%ae` `%ce` `%B`) | **clean** |
+| Emails present | `cursoragent@cursor.com`, `122492451+solarcurvey@users.noreply.github.com`, `solarcurvey@users.noreply.github.com` (trailers), `noreply@github.com`, `noreply@cursor.com` |
+| Secret scan (post-rewrite, advertised heads+tags) | gitleaks 8.24.3: 32 fixture hits, **0 live credentials**. trufflehog 3.88.29: 11 unverified, **0 verified**. GitHub secret-scanning API was not readable from this agent (403). This follow-up did not re-run gitleaks/trufflehog (binaries not in the environment). Classification is unchanged: nothing to rotate. |
 
 ## What this pass did not do
 
@@ -196,6 +213,6 @@ Close, convert, or redact before visibility changes if any draft is not ready fo
 - Did **not** close #72.
 - Did **not** deploy Arc Mainnet or change frozen V1 economics.
 - Did **not** invent a LICENSE.
-- Did **not** rewrite GitHub `refs/pull/*` metadata.
+- Did **not** rewrite GitHub `refs/pull/*` metadata. Residual dangling objects remain and are **accepted**.
 
 See `CONTRIBUTING.md`, `TESTING.md`, `THREAT_MODEL.md`. Protocol identity stays in `docs/version.json`.
