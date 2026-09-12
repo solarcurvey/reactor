@@ -199,6 +199,11 @@ try {
   const store = await openStore({ databaseUrl: url });
   assert(store.dialect === "postgres", "fresh dialect");
   assert((await applyMigrations(store)) === SCHEMA_VERSION, `fresh schema is v${SCHEMA_VERSION}`);
+  const venueMark = await admin.query<{ n: string }>(
+    `SELECT COUNT(*)::text AS n FROM information_schema.columns
+     WHERE table_schema='public' AND table_name='route_venues' AND column_name='last_price_quote_x18'`,
+  );
+  assert(venueMark.rows[0]?.n === "1", "route_venues.last_price_quote_x18 present without claiming a new schema version");
 
   for (const t of TABLES) {
     const exists = await store.get<{ exists: boolean }>(

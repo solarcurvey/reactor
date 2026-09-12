@@ -10,9 +10,9 @@
 | --- | --- |
 | Protocol release | **0.3.3** (`docs/version.json`) |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
-| Intent | Generalize external USD marks: configured provider registry, multi-source consensus, persist accept/reject, fail closed for launch + material Top-10. Addresses #11. Schema **v10** adds `external_price_marks.kind` after the #27/#23 train (main is v8; v9 reserved for #23 `current_supply`). Rebased onto `53330db` (#21). Land before the final #29 Top-10 rebase so ranker tests run against this consensus schema. |
+| Intent | Generalize external USD marks: configured provider registry, multi-source consensus, persist accept/reject, fail closed for launch + material Top-10. Addresses #11. Schema **v10** adds `external_price_marks.kind` after the #27/#23 train (main is v8; v9 reserved for #23 `current_supply`). Arc sanity reads `route_venues.last_price_quote_x18` (column-gated; no v11). Rebased onto `53330db` (#21). Land before the final #29 Top-10 rebase. |
 | Foundry | Unchanged this pass (offchain pricing only). Last recorded **326 passed**, 1 skipped on 0.3.1 |
-| Indexer / lib | `pnpm --filter indexer test` includes `pricing.test.ts` + `price-marks.test.ts` + `tick-atomic.test.ts` + `quote-integrity.test.ts` + 0.3.2 signer/media tests + real v8→v10 upgrade in `schema.test.ts` + `pnpm docs:check` |
+| Indexer / lib | `pnpm --filter indexer test` includes `pricing.test.ts` + `price-marks.test.ts` (route_venues-only Arc mark + deviation reject) + `tick-atomic.test.ts` + `quote-integrity.test.ts` + 0.3.2 signer/media tests + real v8→v10 upgrade in `schema.test.ts` + `pnpm docs:check` |
 | Review shots | **Not regenerated** this pass (no UI change) |
 | Mainnet | **Blocked** |
 
@@ -23,6 +23,7 @@
 | Hardcoded ZEC/WBTC price-marks branches | **Yes** | `price-registry.ts` + `config/price-providers.json`. Tests in `pricing.test.ts`, `price-marks.test.ts` |
 | Single HTTP source / silent static PROD fallback | **Yes** | Important assets `minSources=2`. Static skipped in PROD. Persist `ok=0` |
 | Consensus without persisted rejects | **Yes** | Schema **v10** `kind=observation\|consensus` on `external_price_marks` (after v8 journal; v9 reserved for #23). Watchdog `/pricing/health`. A real post-#27 v8 DB (journal + identity indexes, no `kind`) upgrades in `schema.test.ts` |
+| Arc sanity skipped in production (synthetic `markets` row in the regression) | **Yes** | `loadVerifiedVenueUsd6` reads the verified `route_venues` mark. Test seeds hookless quote↔USDC only (no `markets` row) and proves `arcUsd6` is obtained and >400 bps HTTP consensus is rejected. |
 | ValuationService vs a second pricer | **Yes** | Store loads latest consensus only. Ranker `consumeIndexerValuation` fail-closes when reachable |
 | Guardian quote with no providers | **Yes** | Scheduled as unconfigured; launch disabled until `/pricing/health` is ok |
 | Docs / version | **Yes** | 0.3.3 patch on top of 0.3.2. `pnpm docs:check` |

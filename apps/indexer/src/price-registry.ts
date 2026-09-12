@@ -15,7 +15,7 @@ import {
   type PriceRegistry,
   type PriceSourceConfig,
 } from "../../../packages/reactor/src/pricing.ts";
-import { usd6FromPriceQuote } from "../../../packages/reactor/src/prices.ts";
+import { usd6FromPriceQuote, X18 } from "../../../packages/reactor/src/prices.ts";
 import { USDC_ONE } from "../../../packages/reactor/src/valuation.ts";
 import type { Store } from "./db.ts";
 
@@ -151,6 +151,84 @@ export async function loadQuoteAssetRows(store: Store): Promise<QuoteAssetRow[]>
   );
 }
 
+export type VenueMarkRow = {
+  token_in: string;
+  token_out: string;
+  data?: string | null;
+  last_price_quote_x18?: string | null;
+};
+
+function jsonVenueFields(data: string | null | undefined): { priceQuoteX18?: string; usd6?: string } {
+  const raw = (data ?? "").trim();
+  if (!raw || (raw[0] !== "{" && raw[0] !== "[")) return {};
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object") return {};
+    const priceQuoteX18 = parsed.priceQuoteX18 ?? parsed.price_quote_x18;
+    const usd6 = parsed.usd6;
+    return {
+      priceQuoteX18: typeof priceQuoteX18 === "string" || typeof priceQuoteX18 === "number" ? String(priceQuoteX18) : undefined,
+      usd6: typeof usd6 === "string" || typeof usd6 === "number" ? String(usd6) : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function firstPositiveBigint(...vals: Array<string | null | undefined>): bigint | undefined {
+  for (const v of vals) {
+    if (v == null || v === "" || v === "0") continue;
+    try {
+      const n = BigInt(v);
+      if (n > 0n) return n;
+    } catch {
+      /* skip */
+    }
+  }
+  return undefined;
+}
+
+function invertPriceQuoteX18(px: bigint): bigint | undefined {
+  if (px <= 0n) return undefined;
+  return (X18 * X18) / px;
+}
+
+/** Executable quote-per-token (x18) persisted on a verified venue — not a REACTOR markets row. */
+export function priceQuoteX18FromVenueRow(row: VenueMarkRow, token: string, quote: string): bigint | undefined {
+  const t = token.toLowerCase();
+  const q = quote.toLowerCase();
+  const tin = row.token_in.toLowerCase();
+  const tout = row.token_out.toLowerCase();
+  const json = jsonVenueFields(row.data);
+  const px = firstPositiveBigint(row.last_price_quote_x18, json.priceQuoteX18);
+  if (!px) return undefined;
+  if (tin === t && tout === q) return px;
+  if (tin === q && tout === t) return invertPriceQuoteX18(px);
+  return undefined;
+}
+
+export function usd6FromVenueRow(row: VenueMarkRow, token: string, usdcToken: string): bigint | undefined {
+  const t = token.toLowerCase();
+  const u = usdcToken.toLowerCase();
+  const tin = row.token_in.toLowerCase();
+  const tout = row.token_out.toLowerCase();
+  const directed = (tin === t && tout === u) || (tin === u && tout === t);
+  if (!directed) return undefined;
+  const json = jsonVenueFields(row.data);
+  const jsonUsd6 = firstPositiveBigint(json.usd6);
+  if (jsonUsd6 && tin === t && tout === u) return jsonUsd6;
+  const px = priceQuoteX18FromVenueRow(row, t, u);
+  if (!px) return undefined;
+  const usd6 = usd6FromPriceQuote(px, USDC_ONE);
+  return usd6 > 0n ? usd6 : undefined;
+}
+
+/**
+ * Arc executable mark for an external quote↔USDC venue.
+ * Reads the verified `route_venues` row (last_price_quote_x18 or JSON data).
+ * Does not require a synthetic REACTOR `markets` row. Official Instant Launch
+ * pools may still use `markets.price_quote_x18` when `official_pools` has the pair.
+ */
 export async function loadVerifiedVenueUsd6(
   store: Store,
   token: string,
@@ -159,8 +237,8 @@ export async function loadVerifiedVenueUsd6(
   const t = token.toLowerCase();
   const u = usdcToken.toLowerCase();
   if (!t || !u || t === u) return undefined;
-  const venue = await store.get<{ n: number }>(
-    `SELECT COUNT(*) as n FROM route_venues
+  const venues = await store.all<VenueMarkRow>(
+    `SELECT token_in, token_out, data, last_price_quote_x18 FROM route_venues
      WHERE exists_onchain=1 AND approved=1
        AND ((lower(token_in)=? AND lower(token_out)=?) OR (lower(token_in)=? AND lower(token_out)=?))`,
     t,
@@ -168,17 +246,19 @@ export async function loadVerifiedVenueUsd6(
     u,
     t,
   );
-  if (!venue || Number(venue.n) === 0) {
-    const official = await store.get<{ n: number }>(
-      `SELECT COUNT(*) as n FROM official_pools
-       WHERE (lower(token)=? AND lower(quote)=?) OR (lower(token)=? AND lower(quote)=?)`,
-      t,
-      u,
-      u,
-      t,
-    );
-    if (!official || Number(official.n) === 0) return undefined;
+  for (const row of venues) {
+    const usd6 = usd6FromVenueRow(row, t, u);
+    if (usd6) return usd6;
   }
+  const official = await store.get<{ n: number }>(
+    `SELECT COUNT(*) as n FROM official_pools
+     WHERE (lower(token)=? AND lower(quote)=?) OR (lower(token)=? AND lower(quote)=?)`,
+    t,
+    u,
+    u,
+    t,
+  );
+  if (!official || Number(official.n) === 0) return undefined;
   const mkt = await store.get<{ price_quote_x18: string }>(
     `SELECT price_quote_x18 FROM markets
      WHERE lower(token)=? AND lower(quote)=? AND price_quote_x18 IS NOT NULL AND price_quote_x18 != '0'

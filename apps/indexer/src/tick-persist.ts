@@ -15,7 +15,7 @@ import {
   upsertToken,
   type SsePublisher,
 } from "./ingest.ts";
-import { persistVenue, poolKeyBytes } from "./route-graph.ts";
+import { persistVenue, poolKeyBytes, updateVenueMarksFromSqrt } from "./route-graph.ts";
 import { EVENT_IDENTITY_CONFLICT, insertLogOnce, journalEvent, normalizeEventAddress } from "./event-identity.ts";
 import { priceQuoteX18FromSqrt } from "../../../packages/reactor/src/prices.ts";
 
@@ -203,7 +203,10 @@ async function persistOneLog(
       sse.publish({ type: "graduation", data: { token, poolId, tx } });
     }
   }
-  if (name === "Swap" && args.id && args.sqrtPriceX96) lastSqrt.set(String(args.id), String(args.sqrtPriceX96));
+  if (name === "Swap" && args.id && args.sqrtPriceX96) {
+    lastSqrt.set(String(args.id), String(args.sqrtPriceX96));
+    await updateVenueMarksFromSqrt(store, String(args.id), String(args.sqrtPriceX96), quoteDec);
+  }
   if (name === "BondingProgress") {
     await store.run(
       `INSERT INTO bonding_states(token,real_quote,grad_target,inventory,ready,graduated,bonding_bps,updated_ts)

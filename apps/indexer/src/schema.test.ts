@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { openStore } from "./db.ts";
 import { consumeIssuanceToken } from "./admission.ts";
 import { raiseAlert } from "./alerts.ts";
@@ -26,6 +27,11 @@ for (const t of TABLES) {
 }
 const markCols = await store.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
 assert(markCols.some((c) => c.name === "kind"), "v10 external_price_marks.kind");
+const venueCols = await store.all<{ name: string }>("PRAGMA table_info(route_venues)");
+assert(
+  venueCols.some((c) => c.name === "last_price_quote_x18"),
+  "route_venues.last_price_quote_x18 is column-gated (not a new schema_migrations id)",
+);
 
 for (const idx of [
   "idx_claims_identity",
@@ -160,6 +166,40 @@ rmSync(dir, { recursive: true, force: true });
   assert(afterKind.some((c) => c.name === "kind"), "kind column survives a later v9 insert");
   await upgraded.close();
   rmSync(upgradeDir, { recursive: true, force: true });
+}
+
+// Already-at-v10 DB missing the venue mark column: add the column, do not claim v9 or v11.
+{
+  const colDir = mkdtempSync(join(tmpdir(), "reactor-v10-venue-"));
+  const colPath = join(colDir, "v10.sqlite");
+  const seed = new DatabaseSync(colPath);
+  seed.exec(`
+    CREATE TABLE schema_migrations (id INTEGER PRIMARY KEY, applied_ts INTEGER NOT NULL);
+    CREATE TABLE route_venues (
+      id TEXT PRIMARY KEY, token_in TEXT, token_out TEXT, adapter TEXT, kind TEXT, data TEXT, pool_id TEXT,
+      exists_onchain INTEGER, approved INTEGER, reliability_bps INTEGER
+    );
+    CREATE TABLE external_price_marks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT, kind TEXT DEFAULT 'observation'
+    );
+  `);
+  const insertMig = seed.prepare("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)");
+  for (const id of [1, 2, 3, 4, 5, 6, 7, 8, 10]) insertMig.run(id, 1_700_000_000);
+  const before = seed.prepare("PRAGMA table_info(route_venues)").all() as Array<{ name: string }>;
+  assert(!before.some((c) => c.name === "last_price_quote_x18"), "pre-column v10 venue table");
+  seed.close();
+
+  const patched = await openStore({ sqlitePath: colPath });
+  assert((await applyMigrations(patched)) === 10, "column check does not bump past v10");
+  const skipped = await patched.get<{ n: number }>("SELECT COUNT(*) as n FROM schema_migrations WHERE id=9");
+  assert(Number(skipped?.n) === 0, "still no v9 row");
+  const extra = await patched.get<{ n: number }>("SELECT COUNT(*) as n FROM schema_migrations WHERE id>10");
+  assert(Number(extra?.n) === 0, "did not invent v11");
+  const cols = await patched.all<{ name: string }>("PRAGMA table_info(route_venues)");
+  assert(cols.some((c) => c.name === "last_price_quote_x18"), "column-gated last_price_quote_x18");
+  await patched.close();
+  rmSync(colDir, { recursive: true, force: true });
 }
 
 console.log("schema/store tests ok");
