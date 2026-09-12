@@ -35,7 +35,7 @@ Hostile-reader notes for Codex / external review. **Not an audit.**
 6. **Buyback CORE target immutable**; designated Keeper routes via approved adapters (≤3 hops); tokenIn from bucket; recipient is the vault then burn; cooldown / chunk; reentrancy guard. Vault execute **returns** burned/core/target/usdc — Keeper must consume the sim result (never invent minOut).
 13. **`protocolExempt` latch** is router-scoped and `nonReentrant`. User `swap` is forbidden while the latch is set. Malicious FoT callback cannot sneak a fee-free user trade (`ProtocolExemptReentrancy.t.sol`).
 14. **usdPegOne-only $1**. Guardian must set the peg flag. EURC is not $1.
-15. **Launch auth digest** is unique (no serial nonce griefing). Replay is `usedPricing[digest]`.
+15. **Launch auth digest** is unique (no serial nonce griefing). Replay is `TickerRegistry.usedAuthorization[digest]`.
 7. **Batch Fair finalize once**; `FairClaimVault` eligible; auction has no hook.
 10. **Canonical flush** — quote derived from `marketOfToken`; two-arg flush reverts on mismatch.
 11. **Exact-in + nonzero minOut + incomplete-fill revert** on the router.

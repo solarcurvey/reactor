@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
-import {IHooks} from "v4-core/interfaces/IHooks.sol";
-import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {PoolId} from "v4-core/types/PoolId.sol";
-import {Currency} from "v4-core/types/Currency.sol";
-import {TickMath} from "v4-core/libraries/TickMath.sol";
-import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
 import {ReactorToken} from "./ReactorToken.sol";
 import {ReactorHook} from "./ReactorHook.sol";
 import {ReactorRouter} from "./ReactorRouter.sol";
@@ -15,8 +9,6 @@ import {ReactorLiquidityVault} from "./ReactorLiquidityVault.sol";
 import {FairClaimVault} from "./FairClaimVault.sol";
 import {QuoteAssetRegistry} from "./QuoteAssetRegistry.sol";
 import {ReactorConstants} from "./ReactorConstants.sol";
-import {LaunchMath} from "./libraries/LaunchMath.sol";
-import {LiquidityAmounts} from "./libraries/LiquidityAmounts.sol";
 import {IERC20MinimalExt} from "./interfaces/IERC20MinimalExt.sol";
 import {InstantCurve} from "./InstantCurve.sol";
 import {SelfBurnVault} from "./SelfBurnVault.sol";
@@ -25,14 +17,12 @@ import {BuybackVault} from "./BuybackVault.sol";
 import {ReactorGuardian} from "./ReactorGuardian.sol";
 import {LaunchPricing} from "./libraries/LaunchPricing.sol";
 import {LaunchAuthorization} from "./libraries/LaunchAuthorization.sol";
-import {Ticker} from "./libraries/Ticker.sol";
 import {TickerRegistry} from "./TickerRegistry.sol";
 import {CurveMath} from "./libraries/CurveMath.sol";
+import {IInstantLaunchModule} from "./interfaces/IInstantLaunchModule.sol";
 
 contract ReactorFactory {
-    using StateLibrary for IPoolManager;
 
-    IPoolManager public immutable poolManager;
     ReactorHook public immutable hook;
     ReactorRouter public immutable router;
     ReactorLiquidityVault public immutable vault;
@@ -44,10 +34,9 @@ contract ReactorFactory {
     uint32 public constant FACTORY_VERSION = 1;
 
     InstantCurve public curve;
+    IInstantLaunchModule public launchModule;
     SelfBurnVault public selfBurn;
     mapping(address => bool) public standardMode;
-    mapping(bytes32 => bool) public usedPricing;
-    bytes32 public immutable pricingDomain;
     bytes32 public immutable authDomain;
 
     uint256 public launchCount;
@@ -108,6 +97,7 @@ contract ReactorFactory {
         address indexed token, address indexed quote, address indexed creator, bool rewards, uint256 gradTarget
     );
     event CurveBound(address curve, address selfBurn);
+    event LaunchModuleBound(address indexed module);
     event BatchFairLaunchCreated(uint256 indexed fairId, address indexed token, uint64 startTime, uint64 endTime);
     event FairBid(uint256 indexed fairId, address indexed bidder, uint256 amount, uint256 totalBids);
     event BatchFairLaunchFinalized(uint256 indexed fairId, uint256 totalBids, uint256 auctionTokens);
@@ -115,29 +105,19 @@ contract ReactorFactory {
     event MetadataSet(address indexed token, string image, string description);
     event LaunchAuthorized(address indexed token, string ticker, bytes32 authId, uint32 factoryVersion);
 
-    error BadQuote();
     error BadParams();
-    error NotCreator();
     error AuctionClosed();
     error AuctionOpen();
     error AlreadyFinalized();
     error AlreadyMigrated();
     error NothingToClaim();
-    error CoreForbidden();
-    error AuctionBpsLocked();
-    error BuybackRouteRequired();
-    error InstantFdvRange();
-    error MetaFrozen();
     error AlreadyBound();
     error NotCurve();
     error CurveUnbound();
-    error LaunchesArePaused();
     error NeedPricingAuth();
-    error NeedLaunchAuth();
-    error FactoryInactive();
+    error ModuleUnbound();
 
     constructor(
-        IPoolManager manager_,
         ReactorHook hook_,
         ReactorRouter router_,
         ReactorLiquidityVault vault_,
@@ -146,7 +126,6 @@ contract ReactorFactory {
         ReactorGuardian auth_,
         TickerRegistry tickers_
     ) {
-        poolManager = manager_;
         hook = hook_;
         router = router_;
         vault = vault_;
@@ -156,15 +135,6 @@ contract ReactorFactory {
         if (address(tickers_) == address(0)) revert BadParams();
         tickers = tickers_;
         fairVault = new FairClaimVault(address(this));
-        pricingDomain = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256("REACTOR"),
-                keccak256("1"),
-                block.chainid,
-                address(this)
-            )
-        );
         authDomain = tickers_.domainSeparator();
     }
 
@@ -181,6 +151,23 @@ contract ReactorFactory {
         address bb = address(hook.buybackVault());
         if (bb != address(0)) BuybackVault(bb).setCurve(address(curve_));
         emit CurveBound(address(curve_), address(selfBurn_));
+    }
+
+    function bindLaunchModule(address m) external {
+        if (msg.sender != auth.guardian()) revert ReactorGuardian.NotGuardian();
+        if (address(launchModule) != address(0)) revert AlreadyBound();
+        if (m == address(0)) revert BadParams();
+        launchModule = IInstantLaunchModule(m);
+        emit LaunchModuleBound(m);
+    }
+
+    /// @notice Public wrapper so InstantLaunchModule can reuse Factory quote floors.
+    function virtualQuote0Checked(address quote, uint8 qdec, LaunchAuthorization.Auth calldata a)
+        external
+        view
+        returns (uint256)
+    {
+        return _virtualQuote0(quote, qdec, a);
     }
 
     function bindUserRouter(address exec) external {
@@ -253,34 +240,6 @@ contract ReactorFactory {
         return _instantLaunch(p, rewards, p.devBuyQuote, minOut, a, sig);
     }
 
-    /// @dev Legacy names — same as instantLaunch / launchStandard / launchAndBuy.
-    function instantLaunchPriced(InstantParams calldata p, LaunchAuthorization.Auth calldata a, bytes calldata sig)
-        external
-        returns (address token, PoolId poolId)
-    {
-        auth.requireLaunchesOpen();
-        (token, poolId,) = _instantLaunch(p, true, p.devBuyQuote, 1, a, sig);
-    }
-
-    function launchStandardPriced(InstantParams calldata p, LaunchAuthorization.Auth calldata a, bytes calldata sig)
-        external
-        returns (address token, PoolId poolId)
-    {
-        auth.requireLaunchesOpen();
-        (token, poolId,) = _instantLaunch(p, false, p.devBuyQuote, 1, a, sig);
-    }
-
-    function launchAndBuyPriced(
-        InstantParams calldata p,
-        bool rewards,
-        uint256 minOut,
-        LaunchAuthorization.Auth calldata a,
-        bytes calldata sig
-    ) external returns (address token, PoolId poolId, uint256 tokensOut) {
-        auth.requireLaunchesOpen();
-        return _instantLaunch(p, rewards, p.devBuyQuote, minOut, a, sig);
-    }
-
     function _usdPegOne(address quote) internal view returns (bool) {
         return registry.isUsdPegOne(quote);
     }
@@ -298,42 +257,12 @@ contract ReactorFactory {
         bytes memory sig
     ) internal returns (address token, PoolId poolId, uint256 tokensOut) {
         if (address(curve) == address(0)) revert CurveUnbound();
-        if (!registry.canLaunch(p.quote)) revert BuybackRouteRequired();
-        if (p.quote == core) revert CoreForbidden();
-        if (!tickers.isActiveFactory(address(this))) revert FactoryInactive();
-        uint256 supply = ReactorConstants.DEFAULT_SUPPLY;
-        uint8 dec = ReactorConstants.DEFAULT_DECIMALS;
-        string memory ticker = Ticker.normalize(p.symbol);
-        uint8 qdec = IERC20MinimalExt(p.quote).decimals();
-        bytes32 digest_ = LaunchAuthorization.verify(
-            auth,
-            authDomain,
-            address(this),
-            msg.sender,
-            p.quote,
-            qdec,
-            LaunchAuthorization.INSTANT_CURVE_V1,
-            ticker,
-            a,
-            sig
-        );
-        uint256 vq0 = _virtualQuote0(p.quote, qdec, a);
-
-        token = address(
-            new ReactorToken(
-                p.name,
-                ticker,
-                dec,
-                supply,
-                p.quote,
-                address(hook),
-                address(poolManager),
-                address(vault),
-                address(0),
-                address(curve),
-                true
-            )
-        );
+        if (address(launchModule) == address(0)) revert ModuleUnbound();
+        bytes32 digest_;
+        string memory ticker;
+        uint256 vq0;
+        (token, digest_, ticker, vq0) =
+            launchModule.createInstant(msg.sender, abi.encode(p), rewards, address(curve), a, sig);
         tickers.claimOnLaunch(ticker, token, digest_);
         tokenFactoryVersion[token] = FACTORY_VERSION;
         tokenTicker[token] = ticker;
@@ -341,10 +270,11 @@ contract ReactorFactory {
         _excludeSinks(token);
         if (address(selfBurn) != address(0)) ReactorToken(token).excludeProtocol(address(selfBurn));
         ReactorToken(token).excludeProtocol(address(curve));
-        emit TokenCreated(token, msg.sender, p.name, ticker, supply);
+        emit TokenCreated(token, msg.sender, p.name, ticker, ReactorConstants.DEFAULT_SUPPLY);
         emit LaunchAuthorized(token, ticker, a.authId, FACTORY_VERSION);
 
-        curve.open(token, p.quote, msg.sender, rewards, qdec, supply, vq0);
+        uint8 qdec = IERC20MinimalExt(p.quote).decimals();
+        curve.open(token, p.quote, msg.sender, rewards, qdec, ReactorConstants.DEFAULT_SUPPLY, vq0);
         standardMode[token] = !rewards;
 
         tokenInfo[token] = TokenInfo({
@@ -391,35 +321,14 @@ contract ReactorFactory {
         returns (address token, uint256 fairId)
     {
         auth.requireLaunchesOpen();
-        if (!registry.canLaunch(p.quote)) revert BuybackRouteRequired();
-        if (p.quote == core) revert CoreForbidden();
-        if (!tickers.isActiveFactory(address(this))) revert FactoryInactive();
-        uint256 supply = p.supply == 0 ? ReactorConstants.DEFAULT_SUPPLY : p.supply;
-        uint8 dec = p.decimals == 0 ? ReactorConstants.DEFAULT_DECIMALS : p.decimals;
-        uint64 duration = p.duration == 0 ? ReactorConstants.DEFAULT_FAIR_DURATION : p.duration;
-        uint16 auctionBps = p.auctionBps == 0 ? ReactorConstants.DEFAULT_AUCTION_BPS : p.auctionBps;
-        if (auctionBps != ReactorConstants.DEFAULT_AUCTION_BPS) revert AuctionBpsLocked();
-        string memory ticker = Ticker.normalize(p.symbol);
-        uint8 qdec = IERC20MinimalExt(p.quote).decimals();
-        bytes32 digest_ = LaunchAuthorization.verify(
-            auth, authDomain, address(this), msg.sender, p.quote, qdec, LaunchAuthorization.FAIR_V1, ticker, a, sig
-        );
-
-        token = address(
-            new ReactorToken(
-                p.name,
-                ticker,
-                dec,
-                supply,
-                p.quote,
-                address(hook),
-                address(poolManager),
-                address(vault),
-                address(0),
-                address(fairVault),
-                false
-            )
-        );
+        if (address(launchModule) == address(0)) revert ModuleUnbound();
+        bytes32 digest_;
+        string memory ticker;
+        uint256 supply;
+        uint64 duration;
+        uint16 auctionBps;
+        (token, digest_, ticker, supply, duration, auctionBps) =
+            launchModule.createFair(msg.sender, abi.encode(p), a, sig);
         tickers.claimOnLaunch(ticker, token, digest_);
         tokenFactoryVersion[token] = FACTORY_VERSION;
         tokenTicker[token] = ticker;
@@ -488,32 +397,10 @@ contract ReactorFactory {
 
         address token = fl.token;
         address quote = fl.quote;
-        PoolKey memory key = _poolKey(token, quote);
-        // Official pool opens at the auction clearing price: FDV of locked LP tokens = total bids.
-        uint160 sqrtP = LaunchMath.sqrtPriceFromFdv(token, quote, fl.lpTokens, fl.totalBids);
-        poolManager.initialize(key, sqrtP);
-        poolId = key.toId();
-        fl.poolId = poolId;
-
-        int24 lo = TickMath.minUsableTick(ReactorConstants.TICK_SPACING);
-        int24 hi = TickMath.maxUsableTick(ReactorConstants.TICK_SPACING);
-        (uint160 sqrtNow,,,) = poolManager.getSlot0(poolId);
-        uint256 amt0;
-        uint256 amt1;
-        if (token < quote) {
-            amt0 = fl.lpTokens;
-            amt1 = fl.totalBids;
-        } else {
-            amt0 = fl.totalBids;
-            amt1 = fl.lpTokens;
-        }
-        uint128 liq = LiquidityAmounts.getLiquidityForAmounts(
-            sqrtNow, TickMath.getSqrtPriceAtTick(lo), TickMath.getSqrtPriceAtTick(hi), amt0, amt1
-        );
-
         fairVault.pullTo(token, address(vault), fl.lpTokens);
         IERC20MinimalExt(quote).transfer(address(vault), fl.totalBids);
-        vault.lockLiquidity(key, lo, hi, int256(uint256(liq)));
+        poolId = launchModule.openOfficialPool(token, quote, fl.lpTokens, fl.totalBids);
+        fl.poolId = poolId;
 
         tokenInfo[token].poolId = poolId;
         tokenInfo[token].marketLive = true;
@@ -537,20 +424,6 @@ contract ReactorFactory {
         amount = (bidAmt * fl.auctionTokens) / fl.totalBids;
         if (amount == 0) revert NothingToClaim();
         fairVault.settleClaim(fl.token, fl.quote, amount, dest);
-    }
-
-    function setMetadata(
-        address token,
-        string calldata image,
-        string calldata description,
-        string calldata website,
-        string calldata twitter,
-        string calldata telegram
-    ) external {
-        if (tokenInfo[token].creator != msg.sender) revert NotCreator();
-        if (metaFrozen[token]) revert MetaFrozen();
-        _setMeta(token, image, description, website, twitter, telegram);
-        metaFrozen[token] = true;
     }
 
     function allTokensLength() external view returns (uint256) {
@@ -584,23 +457,6 @@ contract ReactorFactory {
             CurveMath.virtualQuote0ForUsd(
                 ReactorConstants.DEFAULT_SUPPLY, IERC20MinimalExt(quote).decimals(), quoteUsd6
             );
-    }
-
-    function _validateLaunch(address quote, uint256 supply, uint8, uint256) internal view {
-        if (!registry.canLaunch(quote)) revert BuybackRouteRequired();
-        if (quote == core) revert CoreForbidden();
-        if (supply == 1) revert BadParams();
-    }
-
-    function _poolKey(address token, address quote) internal view returns (PoolKey memory key) {
-        (address a, address b) = token < quote ? (token, quote) : (quote, token);
-        key = PoolKey({
-            currency0: Currency.wrap(a),
-            currency1: Currency.wrap(b),
-            fee: ReactorConstants.LP_FEE,
-            tickSpacing: ReactorConstants.TICK_SPACING,
-            hooks: IHooks(address(hook))
-        });
     }
 
     function _registerNativeQuote(address token) internal {

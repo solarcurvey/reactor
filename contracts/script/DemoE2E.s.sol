@@ -60,6 +60,8 @@ contract DemoE2E is Script {
             alice,
             zecAddr,
             "ZCAT",
+            zp.name,
+            LaunchAuthorization.hashMetadata(zp.image, zp.description, zp.website, zp.twitter, zp.telegram),
             factory.virtualQuote0ForUsd(zecAddr, 50e6),
             LaunchAuthorization.INSTANT_CURVE_V1
         );
@@ -97,8 +99,17 @@ contract DemoE2E is Script {
             twitter: "",
             telegram: ""
         });
-        (LaunchAuthorization.Auth memory fa, bytes memory fs) =
-            _sign(factory, pk, alice, zecAddr, "FCAT", 0, LaunchAuthorization.FAIR_V1);
+        (LaunchAuthorization.Auth memory fa, bytes memory fs) = _sign(
+            factory,
+            pk,
+            alice,
+            zecAddr,
+            "FCAT",
+            fp.name,
+            LaunchAuthorization.hashMetadata(fp.image, fp.description, fp.website, fp.twitter, fp.telegram),
+            0,
+            LaunchAuthorization.FAIR_V1
+        );
         (address fcat, uint256 fairId) = factory.createFairLaunch(fp, fa, fs);
         zec.approve(factoryAddr, 1_000e8);
         factory.bid(fairId, 1_000e8);
@@ -125,6 +136,8 @@ contract DemoE2E is Script {
         address creator,
         address quote,
         string memory symbol,
+        string memory name,
+        bytes32 metadataHash,
         uint256 vq0,
         bytes32 curveConfig
     ) internal view returns (LaunchAuthorization.Auth memory a, bytes memory sig) {
@@ -132,12 +145,18 @@ contract DemoE2E is Script {
         string memory ticker = Ticker.normalize(symbol);
         a = LaunchAuthorization.Auth({
             factory: address(factory),
+            factoryVersion: 1,
             creator: creator,
             quote: quote,
             quoteDecimals: dec,
+            mode: curveConfig == LaunchAuthorization.FAIR_V1
+                ? LaunchAuthorization.MODE_FAIR
+                : LaunchAuthorization.MODE_REWARDS,
+            ticker: ticker,
+            name: name,
+            metadataHash: metadataHash,
             virtualQuote0: vq0,
             curveConfig: curveConfig,
-            tickerHash: Ticker.hashCanonical(ticker),
             authId: keccak256(abi.encode(quote, ticker, creator, block.timestamp)),
             deadline: block.timestamp + 15 minutes
         });

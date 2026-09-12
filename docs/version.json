@@ -1,9 +1,9 @@
 {
-  "protocolVersion": "0.1.0",
+  "protocolVersion": "0.2.0",
   "factoryVersion": 1,
   "factoryVersionLabel": "V1",
-  "releaseTag": "v0.1.0",
-  "releaseDate": "2026-09-11",
-  "status": "pre-audit local/testnet baseline — not mainnet",
-  "notes": "First explicit REACTOR protocol semver. Factory V1 is immutable on-chain and is not this number. A fee-split or curve change is a new Factory version, not a protocol patch."
+  "releaseTag": "v0.2.0",
+  "releaseDate": "2026-09-12",
+  "status": "pre-audit local/testnet — not mainnet",
+  "notes": "P0 admission gate, full EIP-712 launch identity, InstantLaunchModule EIP-170 split, RouteGraph-exact quotes, durable anti-spam. Factory V1 is immutable and is not this number."
 }

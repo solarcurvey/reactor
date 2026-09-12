@@ -37,6 +37,8 @@ import {CoreVesting} from "../src/CoreVesting.sol";
 import {CoreLiquidityVault} from "../src/CoreLiquidityVault.sol";
 import {CoreBuybackExecutor} from "../src/CoreBuybackExecutor.sol";
 import {RouteGuard} from "../src/libraries/RouteGuard.sol";
+import {InstantLaunchModule} from "../src/InstantLaunchModule.sol";
+import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
 
 contract Deploy is Script {
     struct Addresses {
@@ -54,6 +56,7 @@ contract Deploy is Script {
         BuybackVault buyback;
         FlywheelVault flywheel;
         ReactorFactory factory;
+        InstantLaunchModule launchMod;
         InstantCurve curve;
         SelfBurnVault selfBurn;
         ReactorGuardian auth;
@@ -164,10 +167,25 @@ contract Deploy is Script {
             new FlywheelVault(a.auth, address(a.hook), address(a.usdc), address(a.core), a.pm, address(a.router));
         a.hook.bindFlywheel(IFeeSink(address(a.flywheel)));
         a.auth.bindTickerRegistry(address(a.tickers));
-        a.factory = new ReactorFactory(a.pm, a.hook, a.router, a.vault, a.registry, address(a.core), a.auth, a.tickers);
+        a.factory = new ReactorFactory(a.hook, a.router, a.vault, a.registry, address(a.core), a.auth, a.tickers);
+        a.launchMod = new InstantLaunchModule(
+            address(a.factory),
+            a.auth,
+            a.tickers,
+            a.registry,
+            IPoolManager(address(a.pm)),
+            a.hook,
+            a.vault,
+            address(a.core),
+            address(a.factory.fairVault()),
+            a.factory.authDomain()
+        );
+        a.factory.bindLaunchModule(address(a.launchMod));
         a.auth.authorizeFactory(address(a.factory), 1);
         a.hook.bindFactory(address(a.factory));
+        a.hook.bindLaunchModule(address(a.launchMod));
         a.vault.bindFactory(address(a.factory));
+        a.vault.bindLaunchModule(address(a.launchMod));
         a.registry.bindFactory(address(a.factory));
         a.flywheel.bind(a.factory);
         a.buyback.bindFactory(address(a.factory));
@@ -227,7 +245,19 @@ contract Deploy is Script {
         );
         a.flywheel =
             new FlywheelVault(a.auth, address(a.hook), address(a.usdc), address(a.core), a.pm, address(a.router));
-        a.factory = new ReactorFactory(a.pm, a.hook, a.router, a.vault, a.registry, address(a.core), a.auth, a.tickers);
+        a.factory = new ReactorFactory(a.hook, a.router, a.vault, a.registry, address(a.core), a.auth, a.tickers);
+        a.launchMod = new InstantLaunchModule(
+            address(a.factory),
+            a.auth,
+            a.tickers,
+            a.registry,
+            IPoolManager(address(a.pm)),
+            a.hook,
+            a.vault,
+            address(a.core),
+            address(a.factory.fairVault()),
+            a.factory.authDomain()
+        );
         a.curve =
             new InstantCurve(IInstantFactory(address(a.factory)), a.hook, a.router, a.vault, a.registry, a.pm, a.auth);
         a.selfBurn = new SelfBurnVault(a.auth, address(a.factory), address(a.hook), a.curve, a.router);
@@ -314,6 +344,7 @@ contract Deploy is Script {
         console2.log("Buyback", address(a.buyback));
         console2.log("Flywheel", address(a.flywheel));
         console2.log("Factory", address(a.factory));
+        console2.log("InstantLaunchModule", address(a.launchMod));
         console2.log("InstantCurve", address(a.curve));
         console2.log("SelfBurnVault", address(a.selfBurn));
         console2.log("V4Adapter", address(a.v4Adapter));
@@ -355,6 +386,7 @@ contract Deploy is Script {
             _kv("BuybackVault", address(a.buyback)),
             _kv("FlywheelVault", address(a.flywheel)),
             _kv("ReactorFactory", address(a.factory)),
+            _kv("InstantLaunchModule", address(a.launchMod)),
             _kv("InstantCurve", address(a.curve)),
             _kv("SelfBurnVault", address(a.selfBurn)),
             _kv("V4Adapter", address(a.v4Adapter)),

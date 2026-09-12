@@ -49,7 +49,7 @@ contract NativeQuoteTest is Base {
             alice, "CHL", parent, factory.expectedVirtualQuote0(parent), LaunchAuthorization.INSTANT_CURVE_V1
         );
         vm.prank(alice);
-        (address child,) = factory.instantLaunchPriced(cp, a, sig);
+        (address child,) = factory.instantLaunch(cp, a, sig);
         assertEq(ReactorToken(child).quoteAsset(), parent);
         _buy(alice, child, parent, ReactorToken(parent).balanceOf(alice) / 10);
         assertGt(curve.realQuoteOf(child), 0);

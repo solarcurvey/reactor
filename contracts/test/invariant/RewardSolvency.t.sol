@@ -43,7 +43,7 @@ contract RewardSolvencyRegressionTest is Test {
         address vault = makeAddr("vault");
         uint256 supply = 1_000_000 ether + 17;
         ReactorToken token = new ReactorToken(
-            "T", "T", 18, supply, address(quote), address(this), makeAddr("pm"), vault, address(0), a, false
+            "T", "T", 18, supply, address(quote), address(this), makeAddr("pm"), vault, address(0), a, false, address(0)
         );
 
         for (uint256 i = 1; i <= 80; i++) {
@@ -68,7 +68,7 @@ contract RewardSolvencyRegressionTest is Test {
         address c = makeAddr("c");
         uint256 supply = 1_000_000 ether + 17;
         ReactorToken token = new ReactorToken(
-            "T", "T", 18, supply, address(quote), address(this), makeAddr("pm"), makeAddr("vault"), address(0), a, false
+            "T", "T", 18, supply, address(quote), address(this), makeAddr("pm"), makeAddr("vault"), address(0), a, false, address(0)
         );
         vm.prank(a);
         token.transfer(b, 333_333 ether + 5);
@@ -114,7 +114,8 @@ contract RewardSolvencyRegressionTest is Test {
             makeAddr("v"),
             address(0),
             a,
-            false
+            false,
+            address(0)
         );
         quote.mint(address(token), 100);
         token.creditRewards(100);

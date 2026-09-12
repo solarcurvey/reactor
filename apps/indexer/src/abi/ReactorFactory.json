@@ -3,11 +3,6 @@
     "type": "constructor",
     "inputs": [
       {
-        "name": "manager_",
-        "type": "address",
-        "internalType": "contract IPoolManager"
-      },
-      {
         "name": "hook_",
         "type": "address",
         "internalType": "contract ReactorHook"
@@ -36,9 +31,27 @@
         "name": "auth_",
         "type": "address",
         "internalType": "contract ReactorGuardian"
+      },
+      {
+        "name": "tickers_",
+        "type": "address",
+        "internalType": "contract TickerRegistry"
       }
     ],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "FACTORY_VERSION",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -81,6 +94,19 @@
         "name": "",
         "type": "address",
         "internalType": "contract ReactorGuardian"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "authDomain",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "stateMutability": "view"
@@ -140,6 +166,32 @@
         "name": "selfBurn_",
         "type": "address",
         "internalType": "contract SelfBurnVault"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "bindLaunchModule",
+    "inputs": [
+      {
+        "name": "m",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "bindUserRouter",
+    "inputs": [
+      {
+        "name": "exec",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -281,6 +333,83 @@
             "internalType": "string"
           }
         ]
+      },
+      {
+        "name": "a",
+        "type": "tuple",
+        "internalType": "struct LaunchAuthorization.Auth",
+        "components": [
+          {
+            "name": "factory",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "factoryVersion",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "creator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "quote",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "quoteDecimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "mode",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "ticker",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "metadataHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "virtualQuote0",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "curveConfig",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "authId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "sig",
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [
@@ -554,102 +683,21 @@
             "internalType": "string"
           }
         ]
-      }
-    ],
-    "outputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "poolId",
-        "type": "bytes32",
-        "internalType": "PoolId"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "instantLaunchPriced",
-    "inputs": [
-      {
-        "name": "p",
-        "type": "tuple",
-        "internalType": "struct ReactorFactory.InstantParams",
-        "components": [
-          {
-            "name": "name",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "symbol",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "decimals",
-            "type": "uint8",
-            "internalType": "uint8"
-          },
-          {
-            "name": "supply",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "quote",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "fdvQuoteRaw",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "devBuyQuote",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "image",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "description",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "website",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "twitter",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "telegram",
-            "type": "string",
-            "internalType": "string"
-          }
-        ]
       },
       {
         "name": "a",
         "type": "tuple",
-        "internalType": "struct LaunchPricing.Auth",
+        "internalType": "struct LaunchAuthorization.Auth",
         "components": [
           {
             "name": "factory",
             "type": "address",
             "internalType": "address"
+          },
+          {
+            "name": "factoryVersion",
+            "type": "uint32",
+            "internalType": "uint32"
           },
           {
             "name": "creator",
@@ -667,6 +715,26 @@
             "internalType": "uint8"
           },
           {
+            "name": "mode",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "ticker",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "metadataHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
             "name": "virtualQuote0",
             "type": "uint256",
             "internalType": "uint256"
@@ -677,7 +745,7 @@
             "internalType": "bytes32"
           },
           {
-            "name": "salt",
+            "name": "authId",
             "type": "bytes32",
             "internalType": "bytes32"
           },
@@ -826,117 +894,21 @@
         "name": "minOut",
         "type": "uint256",
         "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "poolId",
-        "type": "bytes32",
-        "internalType": "PoolId"
-      },
-      {
-        "name": "tokensOut",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "launchAndBuyPriced",
-    "inputs": [
-      {
-        "name": "p",
-        "type": "tuple",
-        "internalType": "struct ReactorFactory.InstantParams",
-        "components": [
-          {
-            "name": "name",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "symbol",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "decimals",
-            "type": "uint8",
-            "internalType": "uint8"
-          },
-          {
-            "name": "supply",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "quote",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "fdvQuoteRaw",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "devBuyQuote",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "image",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "description",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "website",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "twitter",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "telegram",
-            "type": "string",
-            "internalType": "string"
-          }
-        ]
-      },
-      {
-        "name": "rewards",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "minOut",
-        "type": "uint256",
-        "internalType": "uint256"
       },
       {
         "name": "a",
         "type": "tuple",
-        "internalType": "struct LaunchPricing.Auth",
+        "internalType": "struct LaunchAuthorization.Auth",
         "components": [
           {
             "name": "factory",
             "type": "address",
             "internalType": "address"
+          },
+          {
+            "name": "factoryVersion",
+            "type": "uint32",
+            "internalType": "uint32"
           },
           {
             "name": "creator",
@@ -954,6 +926,26 @@
             "internalType": "uint8"
           },
           {
+            "name": "mode",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "ticker",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "metadataHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
             "name": "virtualQuote0",
             "type": "uint256",
             "internalType": "uint256"
@@ -964,7 +956,7 @@
             "internalType": "bytes32"
           },
           {
-            "name": "salt",
+            "name": "authId",
             "type": "bytes32",
             "internalType": "bytes32"
           },
@@ -1009,6 +1001,19 @@
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "launchModule",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IInstantLaunchModule"
       }
     ],
     "stateMutability": "view"
@@ -1083,102 +1088,21 @@
             "internalType": "string"
           }
         ]
-      }
-    ],
-    "outputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "poolId",
-        "type": "bytes32",
-        "internalType": "PoolId"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "launchStandardPriced",
-    "inputs": [
-      {
-        "name": "p",
-        "type": "tuple",
-        "internalType": "struct ReactorFactory.InstantParams",
-        "components": [
-          {
-            "name": "name",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "symbol",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "decimals",
-            "type": "uint8",
-            "internalType": "uint8"
-          },
-          {
-            "name": "supply",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "quote",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "fdvQuoteRaw",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "devBuyQuote",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "image",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "description",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "website",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "twitter",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "telegram",
-            "type": "string",
-            "internalType": "string"
-          }
-        ]
       },
       {
         "name": "a",
         "type": "tuple",
-        "internalType": "struct LaunchPricing.Auth",
+        "internalType": "struct LaunchAuthorization.Auth",
         "components": [
           {
             "name": "factory",
             "type": "address",
             "internalType": "address"
+          },
+          {
+            "name": "factoryVersion",
+            "type": "uint32",
+            "internalType": "uint32"
           },
           {
             "name": "creator",
@@ -1196,6 +1120,26 @@
             "internalType": "uint8"
           },
           {
+            "name": "mode",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "ticker",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "metadataHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
             "name": "virtualQuote0",
             "type": "uint256",
             "internalType": "uint256"
@@ -1206,7 +1150,7 @@
             "internalType": "bytes32"
           },
           {
-            "name": "salt",
+            "name": "authId",
             "type": "bytes32",
             "internalType": "bytes32"
           },
@@ -1315,32 +1259,6 @@
   },
   {
     "type": "function",
-    "name": "poolManager",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IPoolManager"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "pricingDomain",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "registry",
     "inputs": [],
     "outputs": [
@@ -1380,44 +1298,6 @@
   },
   {
     "type": "function",
-    "name": "setMetadata",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "image",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "description",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "website",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "twitter",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "telegram",
-        "type": "string",
-        "internalType": "string"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "standardMode",
     "inputs": [
       {
@@ -1431,6 +1311,38 @@
         "name": "",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "tickers",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract TickerRegistry"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "tokenFactoryVersion",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint32",
+        "internalType": "uint32"
       }
     ],
     "stateMutability": "view"
@@ -1486,19 +1398,19 @@
   },
   {
     "type": "function",
-    "name": "usedPricing",
+    "name": "tokenTicker",
     "inputs": [
       {
         "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [
       {
         "name": "",
-        "type": "bool",
-        "internalType": "bool"
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "stateMutability": "view"
@@ -1512,6 +1424,102 @@
         "name": "",
         "type": "address",
         "internalType": "contract ReactorLiquidityVault"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "virtualQuote0Checked",
+    "inputs": [
+      {
+        "name": "quote",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "qdec",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "a",
+        "type": "tuple",
+        "internalType": "struct LaunchAuthorization.Auth",
+        "components": [
+          {
+            "name": "factory",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "factoryVersion",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "creator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "quote",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "quoteDecimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "mode",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "ticker",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "metadataHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "virtualQuote0",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "curveConfig",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "authId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -1716,6 +1724,37 @@
   },
   {
     "type": "event",
+    "name": "LaunchAuthorized",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "ticker",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "authId",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "factoryVersion",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "LaunchCreated",
     "inputs": [
       {
@@ -1732,6 +1771,19 @@
       },
       {
         "name": "quote",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LaunchModuleBound",
+    "inputs": [
+      {
+        "name": "module",
         "type": "address",
         "indexed": true,
         "internalType": "address"
@@ -1843,11 +1895,6 @@
   },
   {
     "type": "error",
-    "name": "AuctionBpsLocked",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "AuctionClosed",
     "inputs": []
   },
@@ -1863,47 +1910,7 @@
   },
   {
     "type": "error",
-    "name": "BadQuote",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "BadSigner",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "BuybackRouteRequired",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "CoreForbidden",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "CurveUnbound",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "Expired",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "InstantFdvRange",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "InvalidPrice",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "LaunchesArePaused",
     "inputs": []
   },
   {
@@ -1913,12 +1920,12 @@
   },
   {
     "type": "error",
-    "name": "NeedPricingAuth",
+    "name": "ModuleUnbound",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "NotCreator",
+    "name": "NeedPricingAuth",
     "inputs": []
   },
   {
@@ -1943,32 +1950,7 @@
   },
   {
     "type": "error",
-    "name": "Replay",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "WrongCreator",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "WrongDecimals",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "WrongFactory",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "WrongParams",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "WrongQuote",
     "inputs": []
   }
 ]

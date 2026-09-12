@@ -84,13 +84,30 @@ export class ObjectStore {
   private async maybeRemote(id: string, buf: Buffer, type: string) {
     const endpoint = process.env.R2_ENDPOINT ?? process.env.S3_ENDPOINT;
     const bucket = process.env.R2_BUCKET ?? process.env.S3_BUCKET;
-    if (!endpoint || !bucket) return;
-    void id;
-    void buf;
-    void type;
+    const prod = (process.env.REACTOR_ENV ?? "").toUpperCase() === "PROD";
+    if (!endpoint || !bucket) {
+      if (prod) throw new Error("R2/S3 required in prod — media fail-closed");
+      return;
+    }
+    const keyId = process.env.R2_ACCESS_KEY ?? process.env.S3_ACCESS_KEY;
+    const secret = process.env.R2_SECRET_KEY ?? process.env.S3_SECRET_KEY;
+    if (!keyId || !secret) {
+      if (prod) throw new Error("R2/S3 credentials missing — media fail-closed");
+      return;
+    }
+    const url = `${endpoint.replace(/\/$/, "")}/${bucket}/${id}`;
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: { "content-type": type, "x-amz-acl": "public-read" },
+      body: new Uint8Array(buf),
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!res.ok) {
+      if (prod) throw new Error(`R2/S3 upload failed ${res.status} — media fail-closed`);
+      throw new Error(`R2/S3 upload failed ${res.status}`);
+    }
     void dirname;
     void randomBytes;
-    // Production: PUT via signed S3/R2. Local stores on disk; CDN prefix MEDIA_CDN_BASE.
   }
 }
 

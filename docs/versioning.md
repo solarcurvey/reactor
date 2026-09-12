@@ -2,15 +2,15 @@
 
 # Versioning
 
-> Protocol release **0.1.0** (`v0.1.0`, 2026-09-11). Factory **V1** is immutable and is not this number.
+> Protocol release **0.2.0** (`v0.2.0`, 2026-09-12). Factory **V1** is immutable and is not this number.
 
-pre-audit local/testnet baseline — not mainnet. First explicit REACTOR protocol semver. Factory V1 is immutable on-chain and is not this number. A fee-split or curve change is a new Factory version, not a protocol patch.
+pre-audit local/testnet — not mainnet. P0 admission gate, full EIP-712 launch identity, InstantLaunchModule EIP-170 split, RouteGraph-exact quotes, durable anti-spam. Factory V1 is immutable and is not this number.
 
 ## Two version numbers
 
 | Kind | What it is | Source of truth | This HEAD |
 | --- | --- | --- | --- |
-| **Protocol release** | Overall REACTOR software + docs release (semver) | `docs/version.json` → `protocolVersion` | **0.1.0** |
+| **Protocol release** | Overall REACTOR software + docs release (semver) | `docs/version.json` → `protocolVersion` | **0.2.0** |
 | **Factory version** | Immutable on-chain factory label for **new launches** | `ReactorFactory.FACTORY_VERSION` | **V1** (`1`) |
 
 Factory **V1 stays V1 forever**. A different fee split, supply, Dev Buy cap, or curve is a **new factory deploy** (V2, V3, …), authorized by Guardian for new launches only. Existing V1 tokens are untouched. See `FACTORY_VERSIONING.md`.
@@ -41,8 +41,8 @@ Every **production** protocol release:
 5. Create an annotated git tag matching `releaseTag`:
 
 ```
-git tag -a v0.1.0 -m "REACTOR protocol 0.1.0"
-git push origin v0.1.0
+git tag -a v0.2.0 -m "REACTOR protocol 0.2.0"
+git push origin v0.2.0
 ```
 
 Rules:

@@ -1,29 +1,10 @@
-# Ticker Registry
+# Ticker registry
 
-Global launch identity. **Not** inside one factory. Survives Factory V1 / V2 / ….
+Global launch identity. Survives Factory V1/V2. Not owned by one factory.
 
-## Canonical form
+- Normalize: uppercase `A–Z0–9`, max 10. Same rules in `Ticker.sol` and `packages/reactor/src/ticker.ts`.
+- Successful launch → **24h** global lock via `claimOnLaunch`. Failed/expired auth does not squat.
+- Reserved at deploy: CORE, REACTOR, USDC, ZEC, WBTC, EURC (`reserveTicker` / constructor `_reserve`). Separate from launched-token locks.
+- `permanentlyLockTicker(ticker, token)`: Guardian only. Requires a **REACTOR-native** token from an authorized factory whose onchain ticker matches. `token == 0` is rejected (`ReservedSeparate`). Irreversible.
 
-Shared by contracts (`Ticker.sol`), `@reactor/sdk`, the indexer, and the launch UI:
-
-- Uppercase ASCII `A–Z` / `0–9` only
-- Length 1–10
-- No Unicode, whitespace, punctuation, or confusable mapping
-
-Invalid input is **rejected**, not rewritten.
-
-## Locks
-
-| Event | Onchain effect |
-| --- | --- |
-| Successful launch | 24h **global** lock of that ticker across quotes, factories, and modes |
-| Failed / expired auth | **No squat.** Digest is not consumed. Ticker stays free. |
-| `permanentlyLockTicker(ticker, canonicalToken)` | Guardian-only, one-way. Qualitative judgment — **not** an mcap oracle |
-
-Reserved at genesis (permanent, no launch token): `CORE`, `REACTOR`, `USDC`, `ZEC`, `WBTC`, `EURC`.
-
-## Lookups
-
-- Contract: `TickerRegistry.status(ticker)`
-- API: `GET /ticker/:ticker`
-- SDK: `client.ticker("moon")`
+API: `GET /ticker/:ticker`.

@@ -27,4 +27,10 @@ export const TABLES = [
   "alerts",
   "tickers",
   "launch_auths",
+  "admission_hits",
+  "admission_challenges",
+  "admission_image_hashes",
+  "issuance_state",
+  "admission_receipts",
+  "official_pools",
 ] as const;

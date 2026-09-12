@@ -60,7 +60,8 @@ contract ReactorToken is IReactorToken {
         address liquidityVault,
         address flywheelVault,
         address recipient,
-        bool excludeRecipient
+        bool excludeRecipient,
+        address factory_
     ) {
         if (quote == address(0) || hook_ == address(0) || poolManager_ == address(0) || recipient == address(0)) {
             revert ZeroAddress();
@@ -72,7 +73,7 @@ contract ReactorToken is IReactorToken {
         quoteAsset = quote;
         hook = hook_;
         poolManager = poolManager_;
-        factory = msg.sender;
+        factory = factory_ == address(0) ? msg.sender : factory_;
 
         _exclude(address(0));
         _exclude(ReactorConstants.DEAD);

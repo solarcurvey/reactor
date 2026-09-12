@@ -73,6 +73,10 @@ contract ReactorGuardian {
         tickers.permanentlyLockTicker(ticker, canonicalToken);
     }
 
+    function reserveTicker(string calldata ticker) external onlyGuardian {
+        tickers.reserveTicker(ticker);
+    }
+
     function authorizeFactory(address factory, uint32 version) external onlyGuardian {
         tickers.authorizeFactory(factory, version);
     }

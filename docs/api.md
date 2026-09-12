@@ -17,11 +17,12 @@ Base URL: indexer (local `http://127.0.0.1:43148`).
 | GET | `/valuation` | One ValuationService (nested multiply + ancestry) |
 | GET | `/stream` | SSE |
 | GET | `/health` | Liveness |
-| POST | `/launch/admit` | ALLOW / CHALLENGE / DENY. Partner header `x-partner-key` |
+| POST | `/launch/admit` | ALLOW / CHALLENGE / DENY. Partner header `x-partner-key`. No signature. |
+| POST | `/launch/authorize` | Public. Admission → ALLOW receipt → isolated signer. CHALLENGE ≠ ALLOW. |
 
 ## Launch signer (isolated process)
 
-`POST /launch/authorize` on the signer (`:43149`), proxied by the web app. Signs `LaunchAuthorization` for **every** quote, including USDC. Domain `verifyingContract` is the **TickerRegistry**.
+Binds `127.0.0.1`. Requires an ALLOW `AdmissionReceipt` (or internal token on loopback). Not generally callable. Domain `verifyingContract` is the **TickerRegistry**. Full identity: factory, Factory V1, creator, quote, mode, ticker, name, metadata hash, `virtualQuote0`, curve, `authId`, deadline, chain.
 
 ## Ops
 

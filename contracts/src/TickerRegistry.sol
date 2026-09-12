@@ -5,6 +5,10 @@ import {ReactorGuardian} from "./ReactorGuardian.sol";
 import {ITickerAdmin} from "./interfaces/ITickerAdmin.sol";
 import {Ticker} from "./libraries/Ticker.sol";
 
+interface IERC20Symbol {
+    function symbol() external view returns (string memory);
+}
+
 /// @notice Global launch identity. Survives Factory V1/V2/…. Not owned by one factory.
 /// Successful launch → 24h global ticker lock. Failed/expired auth does not squat.
 /// Permanent lock is Guardian judgment only — never an mcap oracle.
@@ -54,6 +58,9 @@ contract TickerRegistry is ITickerAdmin {
     error TickerPermanent();
     error Replay();
     error BadVersion();
+    error NotReactorNative();
+    error TickerMismatch();
+    error ReservedSeparate();
 
     modifier onlyGuardian() {
         if (msg.sender != auth.guardian() && msg.sender != address(auth)) revert NotGuardian();
@@ -130,16 +137,38 @@ contract TickerRegistry is ITickerAdmin {
         return _free(records[Ticker.key(raw)]);
     }
 
-    /// @notice One-way. Guardian qualitative judgment. Not an oracle.
-    function permanentlyLockTicker(string calldata raw, address canonicalToken) external onlyGuardian {
+    /// @notice Protocol-reserved name (CORE, USDC, …). Separate from locking a launched token.
+    /// token == address(0) + permanent. Irreversible.
+    function reserveTicker(string calldata raw) external onlyGuardian {
         string memory canonical = Ticker.normalize(raw);
         bytes32 k = Ticker.hashCanonical(canonical);
         Record storage rec = records[k];
         if (rec.permanent) revert TickerPermanent();
+        if (rec.token != address(0) && rec.lockedUntil > block.timestamp) revert TickerUnavailable();
+        rec.token = address(0);
+        rec.factory = address(0);
+        rec.lockedUntil = type(uint64).max;
+        rec.permanent = true;
+        rec.factoryVersion = 0;
+        emit TickerPermanentlyLocked(canonical, address(0));
+    }
+
+    /// @notice One-way lock of a REACTOR-native token from an authorized factory with matching ticker.
+    /// Reserved names use `reserveTicker`. Not an oracle. Irreversible.
+    function permanentlyLockTicker(string calldata raw, address canonicalToken) external onlyGuardian {
+        if (canonicalToken == address(0)) revert ReservedSeparate();
+        string memory canonical = Ticker.normalize(raw);
+        bytes32 k = Ticker.hashCanonical(canonical);
+        Record storage rec = records[k];
+        if (rec.permanent) revert TickerPermanent();
+        if (tokenFactoryVersion[canonicalToken] == 0) revert NotReactorNative();
+        if (tokenTickerKey[canonicalToken] != k) revert TickerMismatch();
+        string memory onchain = Ticker.normalize(IERC20Symbol(canonicalToken).symbol());
+        if (Ticker.hashCanonical(onchain) != k) revert TickerMismatch();
         rec.permanent = true;
         rec.lockedUntil = type(uint64).max;
-        if (canonicalToken != address(0)) rec.token = canonicalToken;
-        emit TickerPermanentlyLocked(canonical, rec.token);
+        rec.token = canonicalToken;
+        emit TickerPermanentlyLocked(canonical, canonicalToken);
     }
 
     /// @notice Called by an active factory on a successful launch. Reverts the whole create if taken.

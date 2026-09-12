@@ -12,7 +12,7 @@ import selfBurnAbi from "./abi/SelfBurnVault.json";
 import { parseAbi } from "viem";
 
 const launchAuthTuple =
-  "(address factory,address creator,address quote,uint8 quoteDecimals,uint256 virtualQuote0,bytes32 curveConfig,bytes32 tickerHash,bytes32 authId,uint256 deadline)";
+  "(address factory,uint32 factoryVersion,address creator,address quote,uint8 quoteDecimals,uint8 mode,string ticker,string name,bytes32 metadataHash,uint256 virtualQuote0,bytes32 curveConfig,bytes32 authId,uint256 deadline)";
 
 export const launchAbi = parseAbi([
   `function instantLaunch((string name,string symbol,uint8 decimals,uint256 supply,address quote,uint256 fdvQuoteRaw,uint256 devBuyQuote,string image,string description,string website,string twitter,string telegram) p, ${launchAuthTuple} a, bytes sig) returns (address token, bytes32 poolId)`,

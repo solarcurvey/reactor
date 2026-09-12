@@ -16,7 +16,10 @@ import { ValuationService, type QuoteNode } from "../../../packages/reactor/src/
 import { consensusUsd6, StaticProvider } from "../../../packages/reactor/src/pricing.ts";
 import { priceQuoteX18FromSqrt } from "../../../packages/reactor/src/prices.ts";
 import { admit, tryNormalizeTicker } from "./admission.ts";
+import { authorizeLaunch } from "./authorize.ts";
 import { isReservedTicker, RESERVED_TICKERS } from "../../../packages/reactor/src/ticker.ts";
+import { HttpJsonProvider } from "../../../packages/reactor/src/pricing.ts";
+import { rollMarketAggregations, upsertOfficialPool } from "./ingest.ts";
 
 const PORT = Number(process.env.INDEXER_PORT ?? 43148);
 const addrs = deployment.addresses as Record<string, string>;
@@ -92,11 +95,12 @@ async function tick(store: Store) {
   const head = await client.getBlockNumber();
   const last = BigInt((await getState(store, "block")) ?? "0");
   const lastHash = await getState(store, "block_hash");
+  const confirmations = BigInt(process.env.ARC_FINALITY_CONFIRMATIONS ?? 8);
   if (last > 0n && lastHash) {
     try {
       const blk = await client.getBlock({ blockNumber: last });
       if (blk.hash && blk.hash !== lastHash) {
-        const rewind = last > 8n ? last - 8n : 0n;
+        const rewind = last > confirmations ? last - confirmations : 0n;
         await setState(store, "block", rewind.toString());
         await setState(store, "block_hash", "");
         return;
@@ -169,13 +173,24 @@ async function tick(store: Store) {
       const poolId = String(args.poolId ?? "");
       const quoteFromHook = String(args.quote ?? "");
       tokenByPool.set(poolId, { token: token.toLowerCase(), quote: quoteFromHook });
+      await upsertOfficialPool(store, {
+        poolId,
+        token,
+        quote: String(args.quote ?? ""),
+        factory,
+        mode: Number(args.mode ?? (name === "GraduationCompleted" ? 0 : 0)),
+        hook: hook ?? "",
+        block,
+        tx,
+        ts,
+      });
       await store.run(
         `INSERT INTO pool_relationships(pool_id,token,quote,venue,fee,hooks,exists_onchain,approved,created_block)
-         VALUES(?,?,?,?,?,?,1,1,?) ON CONFLICT(pool_id) DO UPDATE SET exists_onchain=1, approved=1`,
+         VALUES(?,?,?,?,?,?,1,1,?) ON CONFLICT(pool_id) DO UPDATE SET exists_onchain=1, approved=1, token=excluded.token, quote=COALESCE(NULLIF(excluded.quote,''),pool_relationships.quote)`,
         poolId,
         token.toLowerCase(),
         String(args.quote ?? "").toLowerCase(),
-        "official_v4",
+        "OFFICIAL_REACTOR_V4",
         0,
         hook ?? "",
         block,
@@ -311,6 +326,7 @@ async function tick(store: Store) {
   const headBlk = await client.getBlock({ blockNumber: to });
   await setState(store, "block", to.toString());
   await setState(store, "block_hash", headBlk.hash ?? "");
+  await rollMarketAggregations(store);
 }
 
 async function refreshQuotes(store: Store) {
@@ -580,13 +596,42 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     return;
   }
   if (url.pathname === "/launch/admit" && req.method === "POST") {
+    const partner = process.env.PARTNER_KEYS;
+    if (partner) {
+      const key = String(req.headers["x-partner-key"] ?? "");
+      if (!partner.split(",").includes(key)) {
+        json(res, 401, { error: "partner key required", request_id: rid }, rid);
+        return;
+      }
+    }
     const body = await readBody(req);
     const out = await admit(store, {
       ...body,
       ip: String(req.socket.remoteAddress ?? ""),
+      asn: String(body.asn ?? ""),
+      session: String(body.session ?? ""),
+      client: String(req.headers["user-agent"] ?? ""),
       turnstile: String(body.turnstile ?? body.cfTurnstile ?? ""),
     });
     json(res, out.decision === "DENY" ? 403 : 200, { ...out, request_id: rid, bond: "FUTURE — refundable launch bond is not collected" }, rid);
+    return;
+  }
+  if (url.pathname === "/launch/authorize" && req.method === "POST") {
+    const body = await readBody(req);
+    try {
+      const out = await authorizeLaunch(store, {
+        ...body,
+        ip: String(req.socket.remoteAddress ?? ""),
+        asn: String(body.asn ?? ""),
+        session: String(body.session ?? ""),
+        client: String(req.headers["user-agent"] ?? ""),
+        turnstile: String(body.turnstile ?? body.cfTurnstile ?? ""),
+        wallet: String(body.wallet ?? body.creator ?? ""),
+      });
+      json(res, out.status, { ...out.body, request_id: rid }, rid);
+    } catch (e) {
+      json(res, 503, { error: e instanceof Error ? e.message : "authorize failed", request_id: rid }, rid);
+    }
     return;
   }
   if (url.pathname === "/pricing/health") {
@@ -595,12 +640,24 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       return;
     }
     const now = Math.floor(Date.now() / 1000);
-    const zec = Number(process.env.ZEC_USD6 ?? 50_000_000);
-    const fused = await consensusUsd6(
-      [new StaticProvider("local-static", new Map([["ZEC", { usd6: BigInt(zec), ts: now }]]))],
-      "ZEC",
-      now,
-    );
+    const prod = (process.env.REACTOR_ENV ?? "").toUpperCase() === "PROD";
+    const providers = [];
+    if (process.env.ZEC_HTTP_URL) {
+      providers.push(
+        new HttpJsonProvider("zec-http", () => process.env.ZEC_HTTP_URL as string, (body) => {
+          const n = Number((body as { usd6?: string; price?: number }).usd6 ?? (body as { price?: number }).price);
+          if (!Number.isFinite(n) || n <= 0) return null;
+          return { usd6: BigInt(Math.round(n)), ts: now };
+        }),
+      );
+    } else if (!prod) {
+      providers.push(new StaticProvider("local-static", new Map([["ZEC", { usd6: BigInt(process.env.ZEC_USD6 ?? 50_000_000), ts: now }]])));
+    }
+    if (prod && providers.length === 0) {
+      json(res, 503, { ok: false, error: "static ZEC forbidden in prod — set ZEC_HTTP_URL", request_id: rid }, rid);
+      return;
+    }
+    const fused = await consensusUsd6(providers, "ZEC", now);
     json(res, 200, { ...fused, usd6: fused.usd6.toString(), request_id: rid }, rid);
     return;
   }

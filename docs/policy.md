@@ -22,7 +22,7 @@ If you touch contracts, tokenomics, Factory behavior, Guardian/Keeper powers, ro
 
 ## Versions (do not confuse them)
 
-- **Protocol release** uses semantic versioning (`0.1.0`). Source: `docs/version.json`.
+- **Protocol release** uses semantic versioning (`0.2.0`). Source: `docs/version.json`.
 - **Factory V1** is an immutable on-chain constant. It stays V1 forever.
 
 CI (`pnpm docs:check`) fails if fees, 1B supply, 5% Dev Buy, 24h ticker lock, Factory V1 labels, protocol semver, or deployment tables drift from code/config.

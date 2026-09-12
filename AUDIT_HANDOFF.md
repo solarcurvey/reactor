@@ -116,7 +116,7 @@ Only **usdPegOne** quotes (Guardian flag; initially canonical USDC) may use unsi
 
 `factory, creator, quote, quoteDecimals, virtualQuote0, curveConfig, salt, deadline` + `chainId` in the digest.
 
-Signer is `ReactorGuardian.pricingSigner` (starts as Keeper; Guardian may rotate). Domain is the factory. Replay via `usedPricing[digest]=true`. **No per-quote serial nonce** — concurrent same-quote launches use unique `salt`. TTL ≤ 30 minutes. Creator must be `msg.sender`. **No onchain ZEC/USD oracle** — the signature attests protocol curve constants for that quote’s decimals. ValuationEngine (offchain, multi-source + Arc sanity) produces `virtualQuote0`; if unreliable that quote launch is disabled.
+Signer is `ReactorGuardian.launchSigner` (≠ Keeper ≠ Guardian Safe; Guardian may rotate). Domain is `TickerRegistry.domainSeparator`. Replay via `TickerRegistry.usedAuthorization[digest]`. **No per-quote serial nonce** — concurrent same-quote launches use unique `authId`. TTL ≤ 30 minutes. Creator must be `msg.sender`. EIP-712 binds the full immutable identity (ticker, name, metadata hash, quote, mode, virtualQuote0, curve, factory version). **No onchain ZEC/USD oracle** — the signature attests protocol curve constants for that quote’s decimals. ValuationEngine (offchain, multi-source + Arc sanity) produces `virtualQuote0`; if unreliable that quote launch is disabled.
 
 Attack tests: expired / replay / wrong chain / factory / quote / creator / params / decimals / old signer after rotation / zero salt / concurrent / quarantine.
 

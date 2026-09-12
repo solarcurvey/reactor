@@ -1,7 +1,7 @@
 import type { PublicClient } from "viem";
 import { encodeAbiParameters } from "viem";
 import type { Store } from "./db.ts";
-import { approvedEdges, planRoute, scoreRoute, pickBest, type MarketEdge, type QuoteMeta, type PlannedRoute } from "../../../packages/reactor/src/routes.ts";
+import { approvedEdges, planRoute, planCandidates, scoreRoute, pickBest, normalizeVenueKind, type MarketEdge, type QuoteMeta, type PlannedRoute } from "../../../packages/reactor/src/routes.ts";
 
 export function poolKeyBytes(a: `0x${string}`, b: `0x${string}`, fee: number, hooks: `0x${string}`): `0x${string}` {
   const [c0, c1] = a.toLowerCase() < b.toLowerCase() ? [a, b] : [b, a];
@@ -75,7 +75,7 @@ export async function loadEdges(store: Store, kind: "protocol" | "user" | "any")
       from: r.token_in,
       to: r.token_out,
       adapter: r.adapter,
-      kind: r.kind as MarketEdge["kind"],
+      kind: normalizeVenueKind(r.kind),
       data: r.data as `0x${string}`,
       usable: true,
       exists: true,
@@ -187,16 +187,25 @@ export async function planAndScore(
   const hookless = await loadEdges(store, "any");
   const merged = [...edges, ...hookless.filter((e) => e.kind === "hookless")];
   const quotes = await loadQuoteMetas(store);
-  const planned = planRoute(tokenIn, tokenOut, merged, quotes, { protocol, adapters });
-  const simmed = await sim(planned);
-  return pickBest([
-    scoreRoute(planned, {
-      amountOut: simmed.amountOut,
-      impactBps: simmed.impactBps,
-      gasEstimate: 80_000 + planned.hops.length * 90_000,
-      reliabilityBps: Math.max(1_000, 9_500 - planned.hops.length * 400),
-    }),
-  ]);
+  const candidates = planCandidates(tokenIn, tokenOut, merged, quotes, { protocol, adapters, maxCandidates: 8 });
+  const scored = [];
+  for (const planned of candidates) {
+    try {
+      const simmed = await sim(planned);
+      if (simmed.amountOut <= 1n) continue;
+      scored.push(
+        scoreRoute(planned, {
+          amountOut: simmed.amountOut,
+          impactBps: simmed.impactBps,
+          gasEstimate: 80_000 + planned.hops.length * 90_000,
+          reliabilityBps: Math.max(1_000, 9_500 - planned.hops.length * 400),
+        }),
+      );
+    } catch {
+      /* candidate unavailable */
+    }
+  }
+  return pickBest(scored);
 }
 
 void (null as unknown as PublicClient);

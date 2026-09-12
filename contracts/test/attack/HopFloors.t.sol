@@ -72,7 +72,7 @@ contract HopFloorsTest is Base {
             alice, "CAT", zcat, factory.expectedVirtualQuote0(zcat), LaunchAuthorization.INSTANT_CURVE_V1
         );
         vm.prank(alice);
-        (address cat,) = factory.instantLaunchPriced(cp, a, sig);
+        (address cat,) = factory.instantLaunch(cp, a, sig);
         _buy(alice, cat, zcat, ReactorToken(zcat).balanceOf(alice) / 5);
         _fillAndGraduate(alice, cat);
 

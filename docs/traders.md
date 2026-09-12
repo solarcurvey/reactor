@@ -1,14 +1,18 @@
 # For traders
 
+> Protocol **0.2.0** · Official charge **3.5%** (2% holders / 1% / 0.5% CORE)
+
 ## Board
 
-The homepage is `GET /markets` — search, stage, quote, sort. No per-token RPC on the board. Live tape via SSE `/stream`.
+The homepage is `GET /markets` — SQL search, stage, quote, sort, limit, offset. No per-token RPC on the board. Live tape via SSE `/stream`. Dedicated search: `/search`.
 
 ## Ticket
 
-`POST /quote` plans **proven** venues only (≤3 hops). Official 3.5% legs are listed **separately**. The UI does not invent a 0.30% pool that is not in the route graph.
+`POST /quote` plans **proven** RouteGraph venues only (≤3 hops). Kinds: `OFFICIAL_REACTOR_V4`, `EXTERNAL_V4_HOOKLESS`, `BONDING_CURVE`. Official 3.5% legs are listed **separately**. The API does not invent a 0.30% pool that is not in the graph. If simulation fails, the quote is **unavailable** — never `minOut` 0 or 1.
 
 You submit exact-in with a **nonzero minOut**. Incomplete fills revert.
+
+Terminal: Lightweight Charts OHLCV + tape on `/token/[address]`.
 
 ## Bonding vs v4
 

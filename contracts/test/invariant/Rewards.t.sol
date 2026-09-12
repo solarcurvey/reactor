@@ -24,7 +24,8 @@ contract RewardsInvariantTest is Test {
             makeAddr("vault"),
             makeAddr("bb"),
             a,
-            false
+            false,
+            address(0)
         );
 
         quote.mint(address(token), 1_000e6);
@@ -68,7 +69,8 @@ contract RewardsInvariantTest is Test {
             makeAddr("vault"),
             makeAddr("bb"),
             a,
-            false
+            false,
+            address(0)
         );
 
         vm.prank(a);

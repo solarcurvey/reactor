@@ -26,7 +26,11 @@ type Ops = {
 };
 
 export default function OpsPage() {
-  const token = typeof window !== "undefined" ? window.sessionStorage.getItem("ops-token") ?? process.env.NEXT_PUBLIC_OPS_TOKEN ?? "" : "";
+  const token =
+    typeof window !== "undefined"
+      ? window.sessionStorage.getItem("ops-token") ?? new URLSearchParams(window.location.search).get("token") ?? ""
+      : "";
+  const locked = (process.env.NEXT_PUBLIC_REACTOR_ENV ?? process.env.REACTOR_ENV ?? "").toUpperCase() === "PROD" && !token;
   const { data, isError, refetch, isLoading } = useQuery({
     queryKey: ["ops", token],
     queryFn: async () => {
@@ -51,6 +55,18 @@ export default function OpsPage() {
   const health = data?.health ?? {};
   const jobs = beat?.jobs ?? [];
   const pending = jobs.filter((j) => j.includes("pending") || j.includes("ambiguous"));
+
+  if (locked) {
+    return (
+      <div className="mx-auto max-w-lg">
+        <h1 className="text-2xl font-semibold">Ops is private</h1>
+        <p className="mt-2 text-sm text-zinc-400">
+          Production ops requires an <code>OPS_TOKEN</code>. Open <code>/ops?token=…</code> or set{" "}
+          <code>sessionStorage.ops-token</code>. Not linked from public nav.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>

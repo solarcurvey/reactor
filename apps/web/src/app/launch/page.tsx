@@ -57,52 +57,69 @@ export default function LaunchPage() {
   }, [symbol]);
 
   async function authorizeLaunch(quoteAddr: `0x${string}`, ticker: string, mode: "instant" | "fair") {
-    const admit = await fetch(`${(await import("@/lib/chain")).INDEXER_URL}/launch/admit`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ticker, quote: quoteAddr, wallet: address, name }),
-    }).catch(() => null);
-    const admitted = admit ? ((await admit.json()) as { decision?: string; reasons?: string[]; ticker?: string }) : null;
-    if (admitted?.decision === "DENY") throw new Error(admitted.reasons?.join(", ") || "Launch denied");
     const res = await fetch("/api/launch-pricing", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ quote: quoteAddr, creator: address, ticker, mode }),
+      body: JSON.stringify({
+        quote: quoteAddr,
+        creator: address,
+        wallet: address,
+        ticker,
+        mode: mode === "fair" ? "fair" : rewards ? "rewards" : "standard",
+        name,
+        image,
+        description,
+        turnstile: typeof window !== "undefined" ? (window as unknown as { turnstileToken?: string }).turnstileToken : "",
+      }),
     });
     const body = (await res.json()) as {
       needsAuth?: boolean;
       ticker?: string;
+      decision?: string;
+      challenge?: string;
+      reasons?: string[];
       auth?: {
         factory: `0x${string}`;
+        factoryVersion: number;
         creator: `0x${string}`;
         quote: `0x${string}`;
         quoteDecimals: number;
+        mode: number;
+        ticker: string;
+        name: string;
+        metadataHash: `0x${string}`;
         virtualQuote0: string;
         curveConfig: `0x${string}`;
-        tickerHash: `0x${string}`;
         authId: `0x${string}`;
         deadline: string;
       };
       signature?: `0x${string}`;
       error?: string;
     };
+    if (body.decision === "CHALLENGE") {
+      throw new Error(body.error ?? "Complete the launch challenge (Turnstile) — CHALLENGE is not ALLOW.");
+    }
     if (!res.ok || !body.auth || !body.signature) {
-      throw new Error(body.error ?? "Launch authorization unavailable");
+      throw new Error(body.error ?? body.reasons?.join(", ") ?? "Launch authorization unavailable");
     }
     return {
       auth: {
         factory: body.auth.factory,
+        factoryVersion: body.auth.factoryVersion,
         creator: body.auth.creator,
         quote: body.auth.quote,
         quoteDecimals: body.auth.quoteDecimals,
+        mode: body.auth.mode,
+        ticker: body.auth.ticker,
+        name: body.auth.name,
+        metadataHash: body.auth.metadataHash,
         virtualQuote0: BigInt(body.auth.virtualQuote0),
         curveConfig: body.auth.curveConfig,
-        tickerHash: body.auth.tickerHash,
         authId: body.auth.authId,
         deadline: BigInt(body.auth.deadline),
       },
       signature: body.signature,
-      ticker: body.ticker ?? ticker,
+      ticker: body.ticker ?? body.auth.ticker ?? ticker,
     };
   }
 
@@ -210,7 +227,14 @@ export default function LaunchPage() {
       <h1 className="mt-1 text-2xl font-semibold">Ignite a market</h1>
       <p className="mt-1 text-[13px] text-zinc-400">
         You pick image, name, ticker, description, quote, and Standard vs Rewards. Protocol owns supply, curve, FDV,
-        and fees. Same Instant config for every launch.
+        and fees. Same Instant config for every launch.{" "}
+        <a href="/docs/creators" className="text-cyan-200 underline">
+          Creator docs
+        </a>
+        {" · "}
+        <a href="/docs/tickers" className="text-cyan-200 underline">
+          Ticker rules
+        </a>
       </p>
 
       <Card className="mt-4 space-y-3 p-4">

@@ -19,3 +19,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Fail on constants / version / deployment drift
         run: pnpm docs:check
+      - name: Admission + route + launch-auth unit tests
+        run: pnpm --filter indexer test

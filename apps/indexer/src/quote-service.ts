@@ -1,7 +1,8 @@
 import { encodeFunctionData, parseAbi, type PublicClient } from "viem";
 import type { Store } from "./db.ts";
 import { loadEdges, loadQuoteMetas, planFeeExemptRoute } from "./route-graph.ts";
-import { planRoute, applyMinOuts, type Hop } from "../../../packages/reactor/src/routes.ts";
+import { decodeAbiParameters } from "viem";
+import { planCandidates, applyMinOuts, pickBest, scoreRoute, VENUE, type Hop } from "../../../packages/reactor/src/routes.ts";
 import {
   applySlippage,
   splitQuoteFee,
@@ -48,15 +49,37 @@ function officialKey(token: string, quote: string, hook: string) {
   };
 }
 
-function hooklessKey(a: string, b: string) {
-  const [c0, c1] = a.toLowerCase() < b.toLowerCase() ? [a, b] : [b, a];
-  return {
-    currency0: c0 as `0x${string}`,
-    currency1: c1 as `0x${string}`,
-    fee: 3000,
-    tickSpacing: 60,
-    hooks: "0x0000000000000000000000000000000000000000" as `0x${string}`,
-  };
+function decodeEdgeKey(data: `0x${string}` | string, fallbackOfficial?: ReturnType<typeof officialKey>) {
+  if (data && data !== "0x" && data.length > 10) {
+    try {
+      const [key] = decodeAbiParameters(
+        [
+          {
+            type: "tuple",
+            components: [
+              { name: "currency0", type: "address" },
+              { name: "currency1", type: "address" },
+              { name: "fee", type: "uint24" },
+              { name: "tickSpacing", type: "int24" },
+              { name: "hooks", type: "address" },
+            ],
+          },
+        ],
+        data as `0x${string}`,
+      );
+      return {
+        currency0: key.currency0,
+        currency1: key.currency1,
+        fee: Number(key.fee),
+        tickSpacing: Number(key.tickSpacing),
+        hooks: key.hooks,
+      };
+    } catch {
+      /* fall through */
+    }
+  }
+  if (fallbackOfficial) return fallbackOfficial;
+  throw new Error("route edge missing proven pool key — refusing fabricated 0.30% hookless");
 }
 
 async function simSwap(
@@ -134,7 +157,13 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
         const adapters = new Set([ (addrs.V4Adapter ?? addrs.UniswapV4Adapter ?? "").toLowerCase() ].filter(Boolean));
         const src = req.kind === "BUY" ? req.tokenIn : market!.quote;
         const dst = req.kind === "BUY" ? market!.quote : req.tokenOut;
-        const planned = planRoute(src, dst, edges, metas, { protocol: false, adapters });
+        const candidates = planCandidates(src, dst, edges, metas, { protocol: false, adapters, maxCandidates: 8 });
+        const scored = [];
+        for (const c of candidates) {
+          if (c.hops.length > 3) continue;
+          scored.push(scoreRoute(c, { amountOut: 1_000_000n - BigInt(c.hops.length), impactBps: c.hops.length * 10, gasEstimate: c.hops.length * 90_000, reliabilityBps: 9_000 - c.hops.length * 200 }));
+        }
+        const planned = pickBest(scored);
         plannedHops = planned.hops;
         path = planned.path;
       }
@@ -158,9 +187,14 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
       }
 
       for (const h of plannedHops) {
-        const key = hooklessKey(h.tokenIn, h.tokenOut);
-        const out = await simSwap(ctx, key, h.tokenIn, cursor, account);
-        if (out <= 1n) return fail(rid, req, "hop quote is dust");
+        const key = decodeEdgeKey(h.data);
+        let out: bigint;
+        try {
+          out = await simSwap(ctx, key, h.tokenIn, cursor, account);
+        } catch {
+          return fail(rid, req, `${VENUE.EXTERNAL_V4_HOOKLESS} sim failed — unavailable`);
+        }
+        if (out <= 1n) return fail(rid, req, "hop quote is dust — unavailable");
         hops.push({
           ...h,
           minOut: 0n,
@@ -209,7 +243,9 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
         : { hops, path, reason: "quote" };
       for (let i = 0; i < hops.length; i++) hops[i] = { ...hops[i]!, minOut: stamped.hops[i]!.minOut };
 
+      if (amountOut <= 1n) return fail(rid, req, "quote unavailable — amountOut dust");
       const minOut = applySlippage(amountOut, slip);
+      if (minOut <= 1n) return fail(rid, req, "quote unavailable — minOut dust");
       const deadline = Math.floor(Date.now() / 1000) + QUOTE_TTL_SEC;
       if (payingUsdc && userRoute) {
         data = encodeFunctionData({
@@ -288,13 +324,18 @@ async function buildMaintenanceQuote(
   let simulated = planned.hops.length === 0;
   for (const h of planned.hops) {
     const official = h.adapter.toLowerCase() === protocol && !!hook;
-    const key = official ? officialKey(h.tokenIn, h.tokenOut, hook) : hooklessKey(h.tokenIn, h.tokenOut);
+    let key;
+    try {
+      key = decodeEdgeKey(h.data, official ? officialKey(h.tokenIn, h.tokenOut, hook) : undefined);
+    } catch {
+      return fail(rid, req, "maintenance route missing proven edge — unavailable");
+    }
     let out = 0n;
     try {
       out = await simSwap(ctx, key, h.tokenIn, cursor, account);
       simulated = true;
     } catch {
-      out = 0n;
+      return fail(rid, req, "maintenance sim failed — unavailable");
     }
     hops.push({
       ...h,
@@ -315,11 +356,12 @@ async function buildMaintenanceQuote(
       const stamped = applyMinOuts({ hops, path: planned.path, reason: planned.reason }, outs.map((o) => applySlippage(o, slip)));
       for (let i = 0; i < hops.length; i++) hops[i] = { ...hops[i]!, minOut: stamped.hops[i]!.minOut };
     } else {
-      for (const h of hops) h.minOut = 1n;
+      return fail(rid, req, "maintenance hop dust — unavailable");
     }
   }
   const amountOut = hops.length ? BigInt(hops[hops.length - 1]!.amountOut) : BigInt(req.amountIn);
-  const minOut = amountOut > 1n ? applySlippage(amountOut, slip) : 0n;
+  if (amountOut <= 1n) return fail(rid, req, "maintenance quote unavailable");
+  const minOut = applySlippage(amountOut, slip);
   const vault =
     req.kind === "CORE"
       ? addrs.BuybackVault
