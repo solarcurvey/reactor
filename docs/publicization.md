@@ -220,4 +220,4 @@ Checked tip commit **author / committer / message** on `origin/main` `0bd9b82`, 
 - Did **not** invent a LICENSE.
 - Did **not** rewrite GitHub `refs/pull/*` metadata. Residual dangling objects remain and are **accepted**.
 
-See `CONTRIBUTING.md`, `TESTING.md`, `THREAT_MODEL.md`. Protocol identity stays in `docs/version.json`.
+See [Trust](/docs/trust), [Docs policy](/docs/policy), [FAQ](/docs/faq). Root files `CONTRIBUTING.md`, `TESTING.md`, `THREAT_MODEL.md` remain operator sources. Protocol identity stays in `docs/version.json`.
