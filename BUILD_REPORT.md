@@ -1,6 +1,6 @@
 # BUILD REPORT — Exact official-list sanctions screening (Refs #61)
 
-**Status:** Branch `cursor/ofac-sanctions-dataset-1a33` / draft PR **#66**, rebased onto `origin/main` `0bd9b82` after #74/#76. Issue **#61 stays open** for independent audit (parent RELEASE GATE **#60**). Do not auto-close.  
+**Status:** Branch `cursor/ofac-sanctions-dataset-1a33` / draft PR **#66**, rebased onto `origin/main` `0db39c0` after #77. Issue **#61 stays open** for independent audit (parent RELEASE GATE **#60**). Do not auto-close.  
 **Not audited. Not mainnet. Not a legal/OFAC compliance claim.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Protocol release remains 0.3.3** — do not restore a pre-rewrite version.
@@ -9,7 +9,7 @@
 
 **Re-audit pass (freshness durability):** version id includes `sourceGenerationHash` (retrievedAt + source HTTP/publication metadata), not only the address-set `contentHash`. A same-address refresh persists t1 metadata; `loadFromDisk()` freshness ages from t1.
 
-**Rebase (after #74/#76):** replayed the four #61 commits onto rewritten `main`. Conflicts were docs/`package.json` only (`AUDIT_HANDOFF.md`, `BUILD_REPORT.md`, `docs/faq.md`, `docs/trust.md`, `package.json`). Kept both #61 screening text and #72/#74 publicization/harden. `test:lib` includes sanctions fixtures **and** `ci-public-harden.test.ts`.
+**Rebase (after #77):** replayed the five #61 commits onto `origin/main` `0db39c0`. Conflicts were docs only (`AUDIT_HANDOFF.md`, `BUILD_REPORT.md`, `docs/faq.md`, `docs/trust.md`). Kept both #61 screening text and #72/#74/#77 publicization/harden (advertised-ref AC1; Support purge/GC accepted residual). `test:lib` includes sanctions fixtures **and** `ci-public-harden.test.ts`.
 
 ## This HEAD
 
