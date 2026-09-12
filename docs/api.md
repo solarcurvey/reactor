@@ -10,7 +10,7 @@ Base URL: indexer (local `http://127.0.0.1:43148`).
 | --- | --- | --- |
 | GET | `/markets` | Keyset (`cursor_ts`,`cursor_token`) matches `sort`: `new`/`vol`/`price`. NUMERIC casts. Search/filter. |
 | GET | `/ticker/:ticker` | Canonical status, 24h lock, latest token |
-| POST | `/quote` | One `UserRouteQuoter` eth_call per candidate. Ticket hops / `amountOut` / `minOut`s / terminal market-leg are atomic to the selected candidate (`PreviewRoute` is `hops+1`). SELL includes `minQuoteOut` (first-leg quote) and `minOut` (final USDC). Nested 3.5% legs listed separately. JSON body **16KiB** (stream + chunked). |
+| POST | `/quote` | One `UserRouteQuoter` eth_call per candidate. Ticket hops / `amountOut` / `minOut`s / terminal market-leg are atomic to the selected candidate (`PreviewRoute` is `hops+1`). SELL includes `minQuoteOut` (first-leg quote) and `minOut` (final USDC). Nested 3.5% legs listed separately. JSON body **16KiB** default / **64KiB** hard max (stream + chunked). |
 | GET | `/candles/:token` | `interval`, `limit`, exclusive `before`/`after` on `t`. Gap-fill ≤ `limit` (max 1000). |
 | GET | `/swaps/:token` | Bounded `limit`, `before_id` |
 | GET | `/quote-assets` | Registered quotes |
@@ -19,8 +19,8 @@ Base URL: indexer (local `http://127.0.0.1:43148`).
 | GET | `/health` | Liveness |
 | POST | `/upload` | Stream 2MB + sharp + SigV4 remote. Returns `uri` `/m/<id>.webp` (R2/S3 key `m/<id>.webp`). |
 | GET | `/m/:file` | Local WebP by filename (`<id>.webp`). CDN uses the same path as the object key. |
-| POST | `/launch/admit` | ALLOW / CHALLENGE / DENY. Partner header `x-partner-key`. No signature. JSON body **16KiB**. |
-| POST | `/launch/authorize` | Public. Admission → ALLOW receipt → isolated signer. CHALLENGE ≠ ALLOW. JSON body **16KiB**. |
+| POST | `/launch/admit` | ALLOW / CHALLENGE / DENY. Partner header `x-partner-key`. No signature. JSON body **16KiB** default / **64KiB** hard max. |
+| POST | `/launch/authorize` | Public. Admission → ALLOW receipt → isolated signer. CHALLENGE ≠ ALLOW. JSON body **16KiB** default / **64KiB** hard max. |
 
 ## Launch signer (isolated process)
 
