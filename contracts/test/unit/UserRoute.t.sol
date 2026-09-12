@@ -314,11 +314,13 @@ contract UserRouteTest is Base {
     ///         before the call. Only the input USDC is credited (Foundry deal ≡ eth_call state override).
     function test_nested_preview_without_intermediate_wallet_balances() public {
         address token = _instantZcat(1);
+        uint256 bobZec = zec.balanceOf(bob);
         vm.prank(bob);
-        zec.transfer(address(0xdead), zec.balanceOf(bob));
+        zec.transfer(address(0xdead), bobZec);
         assertEq(zec.balanceOf(bob), 0, "user has no intermediate ZEC");
         assertEq(zec.balanceOf(address(userQuoter)), 0, "quoter has no prefunded ZEC");
-        deal(address(usdc), address(userQuoter), 50e6);
+        // Input-only credit. eth_call stateOverride does the same for the indexer.
+        usdc.mint(address(userQuoter), 50e6);
         assertEq(zec.balanceOf(address(userQuoter)), 0, "still no intermediate on quoter");
 
         try userQuoter.previewBuy(token, 10e6, _hop(address(usdc), address(zec), zecUsdcKey)) {

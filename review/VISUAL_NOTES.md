@@ -1,13 +1,11 @@
-# Visual notes — current UI (2026-09-11)
+# Visual notes — current UI (2026-09-12)
 
-Recaptured at 1440 and 390 against live Anvil 5042002. No review-fixture FDV slider.
+Recaptured at 1440 and 390 against current UI (`CAPTURE=1`, `BONDING_TOKEN=0x1111…0004` Neon, `NEXT_PUBLIC_REVIEW_FIXTURES=1`). No review-fixture FDV slider.
 
 | Surface | Notes |
 | --- | --- |
-| Home | Neon bonding row from chain. Empty-state copy gone. |
+| Home | Choose-what-your-token-earns. Fixture board when indexer empty. |
 | Launch | Compact Instant form. No range / Starting FDV control. Protocol owns FDV. |
-| CORE | Genesis copy, vesting T0, burned via `burn()`. |
-| THE REACTOR | Offchain ranks / not a trustless oracle. Fail-closed with no $250k names. |
-| Bonding token | `/token/0xBf5A…` Neon ~1.6% bonded. No FDV knobs. |
-
-Stale `instant-*.png` / fixture `token-*.png` removed.
+| Bonding token | `/token/0x1111…0004` Neon bonding terminal. No FDV knobs. |
+| CORE | Genesis copy. Never Top-10. |
+| THE REACTOR | Offchain ranks / not a trustless oracle. |
