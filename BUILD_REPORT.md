@@ -1,8 +1,9 @@
 # BUILD REPORT — Protocol 0.3.3 external price consensus
 
-**Status:** Continue on existing REACTOR Origin repo. Parent `53330db` (protocol 0.3.2: #19 BIGINT + #20 media + #21 route-candidate integrity + #26 signer fail-closed + #27 event identity / tick atomicity, Factory V1).  
+**Status:** Continue on existing REACTOR Origin repo. Parent `788ba84` (protocol 0.3.2: #19 BIGINT + #20 media + #21 route-candidate integrity + #26 signer fail-closed + #27 event identity / tick atomicity + #28 SELL floors + #25 Keeper lease fencing, Factory V1).  
 **Not audited. Not mainnet.**  
-**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
+**Issue #11 stays open** until merge-train verification. Do not use Fixes/Closes.
 
 ## This HEAD
 
@@ -10,9 +11,9 @@
 | --- | --- |
 | Protocol release | **0.3.3** (`docs/version.json`) |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
-| Intent | Generalize external USD marks: configured provider registry, multi-source consensus, persist accept/reject, fail closed for launch + material Top-10. Addresses #11. Schema **v10** adds `external_price_marks.kind` after the #27/#23 train (main is v8; v9 reserved for #23 `current_supply`). Arc sanity reads `route_venues.last_price_quote_x18` (column-gated; no v11). Rebased onto `53330db` (#21). Land before the final #29 Top-10 rebase. |
+| Intent | Generalize external USD marks: configured provider registry, multi-source consensus, persist accept/reject, fail closed for launch + material Top-10. Addresses #11 (leave open). Schema **v10** is the next unused migration after main v8 (v9 reserved for #23 `current_supply`). Arc sanity reads `route_venues.last_price_quote_x18` (column-gated; no v11). Rebased onto `788ba84` (#25 + #28). Land before the final #29 Top-10 rebase. |
 | Foundry | Unchanged this pass (offchain pricing only). Last recorded **326 passed**, 1 skipped on 0.3.1 |
-| Indexer / lib | `pnpm --filter indexer test` includes `pricing.test.ts` + `price-marks.test.ts` (route_venues-only Arc mark + deviation reject) + `tick-atomic.test.ts` + `quote-integrity.test.ts` + 0.3.2 signer/media tests + real v8→v10 upgrade in `schema.test.ts` + `pnpm docs:check` |
+| Indexer / lib | `pnpm --filter indexer test` includes `pricing.test.ts` + `price-marks.test.ts` (route_venues-only Arc mark + deviation reject) + `tick-atomic.test.ts` + `quote-integrity.test.ts` + `quote-sell-floors.test.ts` + `keeper.lease.test.ts` + 0.3.2 signer/media tests + real v8→v10 upgrade in `schema.test.ts` + `pnpm docs:check` |
 | Review shots | **Not regenerated** this pass (no UI change) |
 | Mainnet | **Blocked** |
 
@@ -32,7 +33,7 @@
 
 # Prior — Issue #4 SELL floors on shared #21 preview
 
-**Status:** On main @ `d084c47` (#28). SELL floors consume the shared selected `PreviewedRoute` / `splitPreviewRoute`. No second candidate/preview implementation.  
+**Status:** On main @ `788ba84` (includes `d084c47` #28). SELL floors consume the shared selected `PreviewedRoute` / `splitPreviewRoute`. No second candidate/preview implementation.  
 **Not audited. Not mainnet.**  
 **Architecture / economics unchanged.**
 
@@ -42,7 +43,7 @@ Quote API SELL tickets take `minQuoteOut` from `assembleAtomicTicket.terminalMin
 
 # Prior — Issue #6 Keeper lease fencing
 
-**Status:** Keeper lease fencing rebased onto main @ `d084c47` (#28 SELL floors, after #21 route integrity and #27 atomic ingest). Dual-Postgres two-worker proof + CI kept. Issue **#6 stays open**.  
+**Status:** Keeper lease fencing on main @ `788ba84` (#25, after #28 SELL floors, #21 route integrity, and #27 atomic ingest). Dual-Postgres two-worker proof + CI kept. Issue **#6 stays open**.  
 **Not audited. Not mainnet.**  
 **Architecture / economics unchanged.**
 
