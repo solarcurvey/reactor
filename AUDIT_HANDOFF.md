@@ -196,6 +196,7 @@ There is no Ownable, admin, bootstrap, or first-caller-wins `bindFactory`.
 - Instant is not Uniswap InstantLaunchStrategy (ADR-001).
 - Local demo uses mock USDC-6, not Arc native gas USDC.
 - Keeper daemon submits `submitEpoch` on local Anvil 5042002 when the API is confident (Anvil #0 key). Other chains refuse broadcast unless `KEEPER_PRIVATE_KEY` is set. Watchdog reads heartbeat **and** on-chain `epochFinalized`.
+- Leadership lease TTL (~50s) is shorter than possible tick work. The leader renews `lease_until` and fences send on acquire-generation `ts`. A lost fence refuses broadcast (split-brain). Not an on-chain fence.
 
 ## Invariants (test-backed)
 

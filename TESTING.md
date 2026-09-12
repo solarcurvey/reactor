@@ -210,6 +210,7 @@ pnpm --filter indexer watchdog
 | 37 | R2/S3 object key equals public `/m/<id>.webp`; mock GET returns the object; PROD upload failure returns no StoredMedia | `media-r2.test.ts` |
 | 38 | Indexer event writes + cursor atomic; log identity `(chain_id, tx, log_index, event_kind)` (schema v8 journal) | `tick-atomic.test.ts` (SQLite + Postgres), `pg-smoke.ts` |
 | 39 | Selected route + atomic preview/minOuts/terminal from the same candidate; PreviewRoute is hops+1 (BUY append / SELL prepend) | `quote-integrity.test.ts`, `quote-select.ts`, `UserRoute.t.sol` `test_nested_previewSell_hops_plus_terminal` |
+| 40 | Keeper lease renew + fence: long tick cannot overlap; stale fence cannot send | `keeper.lease.test.ts` |
 
 ## Arc smoke
 

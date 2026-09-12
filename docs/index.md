@@ -49,7 +49,7 @@ See [Trust](/docs/trust) for the rest of the top 10.
 ## Trust, said plainly
 
 - Guardian can pause and quarantine. Guardian cannot steal LP or rewrite the 2/1/0.5 split.
-- Keeper maintains pots with simulated `minOut`. Keeper cannot configure. One leadership lease — atomic `leader_locks` only.
+- Keeper maintains pots with simulated `minOut`. Keeper cannot configure. One leadership lease — atomic `leader_locks` only. Live leaders renew; a lost fence refuses broadcast (no split-brain).
 - Launch Signer is isolated. Every launch, including USDC, needs a short-lived authorization that already passed admission. If the durable store is unavailable, the signer returns 503 and does not sign.
 - Indexer prices and charts are not onchain truth. Event rows and the ingest cursor commit together; a crash does not persist one without the other.
 - Quote tickets are **one `UserRouteQuoter` eth_call** per candidate. The selected path, `amountOut`, hop kinds, `minOut`s, and terminal official/bonding result are the **same** candidate. `PreviewRoute` is `plannedHops + 1`. Nested official 3.5% legs are listed separately. `minOut` is never 0 or 1. SELL uses two floors from that preview: `minQuoteOut` (first-leg quote) and `minOut` (final USDC).

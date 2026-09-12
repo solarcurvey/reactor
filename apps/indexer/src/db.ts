@@ -18,7 +18,14 @@ export interface Store {
   transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T>;
   close(): Promise<void>;
   tryAdvisoryLock(name: string, owner: string, ttlMs: number): Promise<boolean>;
+  /** Atomic acquire. Returns acquire-generation fence (`ts`) or null if another owner holds an unexpired lease. */
+  acquireLease(name: string, owner: string, ttlMs: number): Promise<number | null>;
+  /** Extend `lease_until` only. Fails if owner/fence mismatch or the lease already expired (do not steal). */
+  renewLease(name: string, owner: string, fence: number, ttlMs: number): Promise<boolean>;
+  hasLease(name: string, owner: string, fence: number): Promise<boolean>;
   releaseLock(name: string, owner: string): Promise<void>;
+  /** Release only this generation — never delete a newer owner's row. */
+  releaseLease(name: string, owner: string, fence: number): Promise<void>;
 }
 
 function q(sql: string, dialect: "sqlite" | "postgres"): string {
@@ -88,14 +95,17 @@ class SqliteStore implements Store {
     this.db.close();
   }
   async tryAdvisoryLock(name: string, owner: string, ttlMs: number) {
+    return (await this.acquireLease(name, owner, ttlMs)) !== null;
+  }
+  async acquireLease(name: string, owner: string, ttlMs: number) {
     const now = Date.now();
     return this.transaction(async (tx) => {
       const row = await tx.get<{ owner: string; ts: number; lease_until?: number }>(
         "SELECT owner, ts, lease_until FROM leader_locks WHERE name=?",
         name,
       );
-      const until = Number(row?.lease_until ?? (row ? Number(row.ts) + ttlMs : 0));
-      if (row && until > now && row.owner !== owner) return false;
+      const until = Number(row?.lease_until ?? 0);
+      if (row && until > now && row.owner !== owner) return null;
       await tx.run(
         "INSERT INTO leader_locks(name,owner,ts,lease_until) VALUES(?,?,?,?) ON CONFLICT(name) DO UPDATE SET owner=excluded.owner, ts=excluded.ts, lease_until=excluded.lease_until",
         name,
@@ -103,11 +113,34 @@ class SqliteStore implements Store {
         now,
         now + ttlMs,
       );
-      return true;
+      return now;
     });
+  }
+  async renewLease(name: string, owner: string, fence: number, ttlMs: number) {
+    const now = Date.now();
+    const r = await this.runChanges(
+      "UPDATE leader_locks SET lease_until=? WHERE name=? AND owner=? AND ts=? AND lease_until>?",
+      now + ttlMs,
+      name,
+      owner,
+      fence,
+      now,
+    );
+    return r.changes > 0;
+  }
+  async hasLease(name: string, owner: string, fence: number) {
+    const now = Date.now();
+    const row = await this.get<{ owner: string; ts: number; lease_until?: number }>(
+      "SELECT owner, ts, lease_until FROM leader_locks WHERE name=?",
+      name,
+    );
+    return Boolean(row && row.owner === owner && Number(row.ts) === fence && Number(row.lease_until ?? 0) > now);
   }
   async releaseLock(name: string, owner: string) {
     await this.run("DELETE FROM leader_locks WHERE name=? AND owner=?", name, owner);
+  }
+  async releaseLease(name: string, owner: string, fence: number) {
+    await this.run("DELETE FROM leader_locks WHERE name=? AND owner=? AND ts=?", name, owner, fence);
   }
 }
 
@@ -211,22 +244,60 @@ class PostgresStore implements Store {
     await this.pool.end();
   }
   async tryAdvisoryLock(name: string, owner: string, ttlMs: number) {
+    return (await this.acquireLease(name, owner, ttlMs)) !== null;
+  }
+  async acquireLease(name: string, owner: string, ttlMs: number) {
     const now = Date.now();
     const until = now + ttlMs;
-    const row = await this.get<{ owner: string }>(
+    const row = await this.get<{ owner: string; ts: number }>(
       `INSERT INTO leader_locks(name,owner,ts,lease_until) VALUES(?,?,?,?)
        ON CONFLICT(name) DO UPDATE SET owner=excluded.owner, ts=excluded.ts, lease_until=excluded.lease_until
        WHERE leader_locks.lease_until IS NULL OR leader_locks.lease_until <= excluded.ts OR leader_locks.owner = excluded.owner
-       RETURNING owner`,
+       RETURNING owner, ts`,
       name,
       owner,
       now,
       until,
     );
-    return row?.owner === owner;
+    if (row?.owner !== owner) return null;
+    return Number(row.ts);
+  }
+  async renewLease(name: string, owner: string, fence: number, ttlMs: number) {
+    const now = Date.now();
+    const row = await this.get<{ ts: number }>(
+      `UPDATE leader_locks SET lease_until=?
+       WHERE name=? AND owner=? AND ts=? AND lease_until>?
+       RETURNING ts`,
+      now + ttlMs,
+      name,
+      owner,
+      fence,
+      now,
+    );
+    return row !== undefined;
+  }
+  async hasLease(name: string, owner: string, fence: number) {
+    const now = Date.now();
+    const row = await this.get<{ owner: string; ts: number; lease_until?: number }>(
+      "SELECT owner, ts, lease_until FROM leader_locks WHERE name=?",
+      name,
+    );
+    return Boolean(row && row.owner === owner && Number(row.ts) === fence && Number(row.lease_until ?? 0) > now);
   }
   async releaseLock(name: string, owner: string) {
     await this.run("DELETE FROM leader_locks WHERE name=? AND owner=?", name, owner);
+    const client = this.lockClients.get(name);
+    if (!client) return;
+    const key = Number.parseInt(createHash("sha256").update(name).digest("hex").slice(0, 8), 16);
+    try {
+      await client.query("SELECT pg_advisory_unlock($1)", [key]);
+    } finally {
+      client.release();
+      this.lockClients.delete(name);
+    }
+  }
+  async releaseLease(name: string, owner: string, fence: number) {
+    await this.run("DELETE FROM leader_locks WHERE name=? AND owner=? AND ts=?", name, owner, fence);
     const client = this.lockClients.get(name);
     if (!client) return;
     const key = Number.parseInt(createHash("sha256").update(name).digest("hex").slice(0, 8), 16);
