@@ -37,7 +37,7 @@ curl -s 'http://127.0.0.1:43148/candles/0x…?interval=5m&limit=300&before=17100
 curl -s 'http://127.0.0.1:43148/swaps/0x…?limit=200&before_id=0'
 ```
 
-Gap-fill is bounded to `limit` (max 1000) buckets ending at `before` or now. `before` / `after` on candles; `before_id` on swaps.
+Gap-fill is bounded to `limit` (max 1000) buckets. `before` / `after` are exclusive on `t` (aligned `before` does not emit that bucket). Historical `before` does not extend to now. `before_id` on swaps.
 
 ## Valuation
 

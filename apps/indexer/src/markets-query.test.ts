@@ -108,6 +108,31 @@ assert(tokens(pricePage2.items).join() === byPrice.slice(2, 4).join(), "price pa
 const fullPrice = await listMarkets(store, { sort: "price", limit: 100 });
 assert(fullPrice.total === 5 && tokens(fullPrice.items).join() === byPrice.join(), "full price order");
 
+{
+  const page1 = await listMarkets(store, { sort: "price", limit: 2 });
+  const seen = tokens(page1.items);
+  const ahead = "0x00000000000000000000000000000000000000aa";
+  await upsertToken(store, { address: ahead, symbol: "NEW", quote: "0xusdc", ts: 999 });
+  await upsertMarket(store, { token: ahead, quote: "0xusdc", stage: "v4", ts: 999 });
+  await store.run(
+    "UPDATE markets SET volume_24h_usd6=?, price_usd6=?, updated_ts=? WHERE token=?",
+    "1",
+    "999",
+    999,
+    ahead,
+  );
+  const page2 = await listMarkets(store, {
+    sort: "price",
+    limit: 2,
+    cursorTs: page1.next_cursor!.cursor_ts,
+    cursorToken: page1.next_cursor!.cursor_token,
+  });
+  const page2Tokens = tokens(page2.items);
+  assert(page2Tokens.every((t) => !seen.includes(t)), "insert-ahead does not duplicate page 1");
+  assert(!page2Tokens.includes(ahead), "row inserted ahead of the cursor is omitted from later pages (not a frozen snapshot)");
+  assert(page2Tokens.join() === byPrice.slice(2, 4).join(), "page 2 stays deterministic on the original tail");
+}
+
 await store.close();
 rmSync(dir, { recursive: true, force: true });
 console.log("markets keyset tests ok");

@@ -90,7 +90,20 @@ export function applyTradeToCandle(prev: Ohlcv | undefined, ts: number, interval
 /** Hard cap matches `GET /candles` max `limit`. Never materialize a year of 1m buckets. */
 export const MAX_CANDLE_FILL_BUCKETS = 1_000;
 
-/** Last `limit` buckets ending at `before` (exclusive-ish) or `now`. Always ≤ max `limit`. */
+/**
+ * Last stored bucket with `t < before` — same exclusivity as SQL `t < before`.
+ * Aligned `before=300` on 60s candles yields 240, not 300.
+ */
+export function exclusiveBeforeBucket(before: number, intervalSec: number): number {
+  const b = bucketTs(before, intervalSec);
+  return before === b ? b - intervalSec : b;
+}
+
+/**
+ * Last `limit` buckets ending at the last bucket **strictly before** `before`,
+ * or the current `now` bucket when `before` is omitted. Always ≤ max `limit`.
+ * `after` is exclusive (`t > after`), matching SQL.
+ */
 export function boundedCandleWindow(opts: {
   intervalSec: number;
   limit: number;
@@ -100,8 +113,10 @@ export function boundedCandleWindow(opts: {
 }): { fromTs: number; toTs: number; maxBuckets: number } {
   const intervalSec = opts.intervalSec > 0 ? opts.intervalSec : 60;
   const maxBuckets = Math.min(MAX_CANDLE_FILL_BUCKETS, Math.max(1, Math.floor(Number(opts.limit) || 1)));
-  const rawEnd = opts.before != null && Number.isFinite(Number(opts.before)) ? Number(opts.before) : opts.nowTs;
-  const toTs = bucketTs(rawEnd, intervalSec);
+  const toTs =
+    opts.before != null && Number.isFinite(Number(opts.before))
+      ? exclusiveBeforeBucket(Number(opts.before), intervalSec)
+      : bucketTs(opts.nowTs, intervalSec);
   let fromTs = toTs - (maxBuckets - 1) * intervalSec;
   if (opts.after != null && Number.isFinite(Number(opts.after))) {
     fromTs = Math.max(fromTs, bucketTs(Number(opts.after), intervalSec) + intervalSec);

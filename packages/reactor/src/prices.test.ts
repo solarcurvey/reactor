@@ -7,6 +7,7 @@ import {
   fillContinuous,
   fillCandlesForRequest,
   boundedCandleWindow,
+  exclusiveBeforeBucket,
   CANDLE_INTERVALS,
   MAX_CANDLE_FILL_BUCKETS,
 } from "./prices.ts";
@@ -76,8 +77,14 @@ function assert(cond: unknown, msg: string) {
   const win = boundedCandleWindow({ intervalSec: 60, limit: 5, nowTs: now });
   assert(win.maxBuckets === 5 && win.toTs === end && win.fromTs === end - 4 * 60, "live window bucket-aligned");
   const before = boundedCandleWindow({ intervalSec: 300, limit: 10, nowTs: now, before: 1_000 });
-  assert(before.toTs === Math.floor(1_000 / 300) * 300, "before does not extend to now");
+  assert(before.toTs === Math.floor(1_000 / 300) * 300, "mid-bucket before keeps that bucket (t < 1000 includes 900)");
+  assert(before.toTs !== now && before.toTs < now, "historical before does not extend to now");
   assert(before.fromTs === before.toTs - 9 * 300, "before window size");
+  assert(exclusiveBeforeBucket(300, 60) === 240, "aligned before excludes the cursor bucket");
+  assert(exclusiveBeforeBucket(301, 60) === 300, "non-aligned before includes the open bucket");
+  const aligned = boundedCandleWindow({ intervalSec: 60, limit: 5, nowTs: now, before: 300 });
+  assert(aligned.toTs === 240 && aligned.fromTs === 0, "aligned before window ends on previous bucket");
+  assert(aligned.toTs < now, "aligned historical before never reaches now");
   const after = boundedCandleWindow({ intervalSec: 60, limit: 100, nowTs: now, after: end - 120 });
   assert(after.fromTs === end - 60, "after is exclusive of the cursor bucket");
   const capped = boundedCandleWindow({ intervalSec: 60, limit: 50_000, nowTs: now });
@@ -98,9 +105,29 @@ function assert(cond: unknown, msg: string) {
   const empty = fillCandlesForRequest([], 60, 300, now);
   assert(empty.length === 0, "no synthetic history without rows");
   const paged = fillCandlesForRequest(rows, 60, 3, now, 9_000, null);
-  const pageEnd = Math.floor(9_000 / 60) * 60;
-  assert(paged[paged.length - 1]!.t === pageEnd, "before pages historically");
-  assert(paged.every((c) => c.t <= 9_000), "before excludes live tip");
+  assert(paged[paged.length - 1]!.t === 8_940, "aligned before is exclusive (no t=9000)");
+  assert(paged.every((c) => c.t < 9_000), "before excludes the cursor and the live tip");
+  assert(paged.every((c) => c.t <= 8_940 && c.t < now), "historical page stays in the past");
+}
+{
+  const now = 10_000;
+  const seed = { o: "1", h: "1", l: "1", c: "1", v: "1", n: 1 };
+  const sparse = [{ t: 0, ...seed }];
+  const alignedFill = fillCandlesForRequest(sparse, 60, 5, now, 300, null);
+  assert(!alignedFill.some((c) => c.t === 300), "aligned before synthesizes no candle at exactly before");
+  assert(alignedFill.every((c) => c.t < 300), "every filled bucket is strictly before");
+  assert(alignedFill[alignedFill.length - 1]!.t === 240, "last synthetic is previous bucket");
+  assert(alignedFill.every((c) => c.t < now), "aligned before never fills to now");
+
+  const dense: typeof sparse = [];
+  for (let t = 0; t <= 9_960; t += 60) dense.push({ t, o: "1", h: "1", l: "1", c: String(t), v: "1", n: 1 });
+  const page1 = fillCandlesForRequest(dense, 60, 4, now);
+  const oldest = page1[0]!.t;
+  const page2 = fillCandlesForRequest(dense, 60, 4, now, oldest, null);
+  const seen = new Set(page1.map((c) => c.t));
+  assert(page2.length === 4, "second page still bounded");
+  assert(page2.every((c) => !seen.has(c.t)), "page N+1 has no synthetic overlap with page N");
+  assert(page2.every((c) => c.t < oldest), "page N+1 is strictly older than page N");
 }
 assert(CANDLE_INTERVALS["15m"] === 900, "15m");
 console.log("prices tests ok");
