@@ -26,6 +26,7 @@ Postgres millisecond timestamps, media key/URL alignment, and signer fail-closed
 ### Added / Changed
 
 - Schema **v6** promotes wall-clock millisecond / lease columns to `BIGINT`: `admission_hits.ts`, `issuance_bucket.updated_ms`, `leader_locks.ts`, `leader_locks.lease_until`, `keeper_operations.ts`, `alerts.ts`. Fresh Postgres DDL matches. Existing v5 databases `ALTER COLUMN … TYPE BIGINT` without data loss.
+- Schema **v7** keys append-only event rows by `(chain_id, tx, log_index)`. Schema **v8** adds shared `indexer_event_journal` and per-table uniqueness on `(chain_id, tx, log_index, event_kind)` plus emitting `address`. Ingest `tick()` commits those rows and the `indexer_state` cursor in one transaction. Postgres savepoints `ROLLBACK TO` + `RELEASE`. SQLite + Postgres regressions in `tick-atomic.test.ts`.
 - Real Postgres integration test (`pnpm --filter indexer test:pg`) inserts current `Date.now()` into admission, issuance bucket, leader lock, Keeper job, and alert paths; Keeper leadership and LaunchAuthorization issuance run against Postgres. CI job `postgres-ms-timestamps` runs that test on GitHub.
 - Backend docs record seconds-vs-milliseconds conventions. SQLite INTEGER is already 64-bit; the production bug is Postgres 32-bit INTEGER overflow (~1.8e12 ms vs max 2_147_483_647).
 
@@ -57,6 +58,7 @@ Honest leftovers on 0.3.0. Tokenomics **unchanged**. Factory **V1**.
 - `sharp` is an explicit required dependency (`pnpm.onlyBuiltDependencies`). Document `pnpm approve-builds`. Startup asserts the native pipeline.
 - Arc Public Testnet: no key in this environment — `deployments/arc-testnet-blocker.md` + `scripts/arc-testnet-checklist.md`. `claimed: false`.
 - Arc-compatible native gas metadata is USDC-18 (not ETH). `CoreToken` is the name; `TestCORE` remains a deprecated alias. `registerNative` stays fail-loud.
+- Indexer ingest: log-derived writes and `indexer_state` cursor (`block`, `block_hash`) commit in one transaction. Mid-tick crash rolls both back. Postgres statement savepoints `ROLLBACK TO` + `RELEASE`. Append-only rows use canonical `(chain_id, tx, log_index)` (not tx+amount / tx+kind). SSE after commit. SQLite + Postgres regressions in `tick-atomic.test.ts`.
 
 ### Tokenomics
 

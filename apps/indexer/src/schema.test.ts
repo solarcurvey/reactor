@@ -12,18 +12,42 @@ function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
 }
 
-assert(SCHEMA_VERSION === 6, "schema version 6 promotes millisecond columns");
+assert(SCHEMA_VERSION === 8, "schema version 8 adds journal + event_kind identity after v7 (chain,tx,log) and v6 BIGINT");
 assert(MS_TIMESTAMP_COLUMNS.length >= 6, "millisecond timestamp columns listed");
 
 const dir = mkdtempSync(join(tmpdir(), "reactor-prod-"));
 const store = await openStore({ sqlitePath: join(dir, "t.sqlite") });
 const migrated = await store.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
-assert(Number(migrated?.n) === 6, "sqlite migrates to v6");
+assert(Number(migrated?.n) === 8, "sqlite migrates to v8");
 
 for (const t of TABLES) {
   const row = await store.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", t);
   assert(row?.name === t, `missing table ${t}`);
 }
+
+for (const idx of [
+  "idx_claims_identity",
+  "idx_selfburn_identity",
+  "idx_flywheel_identity",
+  "idx_core_buybacks_identity",
+  "idx_reward_events_identity",
+  "idx_guardian_events_identity",
+]) {
+  const row = await store.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='index' AND name=?", idx);
+  assert(row?.name === idx, `missing identity index ${idx}`);
+}
+const claimCols = await store.all<{ name: string }>("PRAGMA table_info(claims)");
+assert(
+  claimCols.some((c) => c.name === "chain_id") &&
+    claimCols.some((c) => c.name === "log_index") &&
+    claimCols.some((c) => c.name === "event_kind"),
+  "claims has chain_id + log_index + event_kind",
+);
+const journalCols = await store.all<{ name: string }>("PRAGMA table_info(indexer_event_journal)");
+assert(
+  ["chain_id", "tx", "log_index", "event_kind", "address"].every((c) => journalCols.some((col) => col.name === c)),
+  "journal has canonical identity columns",
+);
 
 await upsertToken(store, { address: "0xabc", symbol: "CAT", quote: "0xzec", ts: 100 });
 await upsertMarket(store, { token: "0xabc", quote: "0xzec", stage: "bonding", ts: 100 });

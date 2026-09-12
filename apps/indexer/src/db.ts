@@ -123,32 +123,64 @@ class PostgresStore implements Store {
         release: () => void;
       }>;
     },
+    private inTx = false,
   ) {}
+  /** Statement savepoint so a caught UNIQUE (23505) does not abort the tick transaction. */
+  private async withSavepoint<T>(fn: () => Promise<T>): Promise<T> {
+    if (!this.inTx) return fn();
+    await this.pool.query("SAVEPOINT reactor_stmt");
+    try {
+      const out = await fn();
+      await this.pool.query("RELEASE SAVEPOINT reactor_stmt");
+      return out;
+    } catch (e) {
+      try {
+        await this.pool.query("ROLLBACK TO SAVEPOINT reactor_stmt");
+        await this.pool.query("RELEASE SAVEPOINT reactor_stmt");
+      } catch {
+        /* ignore */
+      }
+      throw e;
+    }
+  }
   async exec(sql: string) {
-    await this.pool.query(sql);
+    await this.withSavepoint(async () => {
+      await this.pool.query(sql);
+    });
   }
   async run(sql: string, ...params: unknown[]) {
-    await this.pool.query(q(sql, "postgres"), params);
+    await this.withSavepoint(async () => {
+      await this.pool.query(q(sql, "postgres"), params);
+    });
   }
   async runChanges(sql: string, ...params: unknown[]) {
-    const r = await this.pool.query(q(sql, "postgres"), params);
-    return { changes: Number(r.rowCount ?? r.rows.length ?? 0) };
+    return this.withSavepoint(async () => {
+      const r = await this.pool.query(q(sql, "postgres"), params);
+      return { changes: Number(r.rowCount ?? r.rows.length ?? 0) };
+    });
   }
   async get<T extends SqlRow>(sql: string, ...params: unknown[]) {
-    const r = await this.pool.query(q(sql, "postgres"), params);
-    return r.rows[0] as T | undefined;
+    return this.withSavepoint(async () => {
+      const r = await this.pool.query(q(sql, "postgres"), params);
+      return r.rows[0] as T | undefined;
+    });
   }
   async all<T extends SqlRow>(sql: string, ...params: unknown[]) {
-    const r = await this.pool.query(q(sql, "postgres"), params);
-    return r.rows as T[];
+    return this.withSavepoint(async () => {
+      const r = await this.pool.query(q(sql, "postgres"), params);
+      return r.rows as T[];
+    });
   }
   async transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
-    const scoped = new PostgresStore({
-      query: (t, p) => client.query(t, p),
-      end: async () => undefined,
-      connect: async () => client,
-    });
+    const scoped = new PostgresStore(
+      {
+        query: (t, p) => client.query(t, p),
+        end: async () => undefined,
+        connect: async () => client,
+      },
+      true,
+    );
     await client.query("BEGIN");
     try {
       const out = await fn(scoped);
@@ -208,7 +240,7 @@ class PostgresStore implements Store {
 }
 
 export async function openStore(opts?: { sqlitePath?: string; databaseUrl?: string }): Promise<Store> {
-  const url = opts?.databaseUrl ?? process.env.DATABASE_URL ?? "";
+  const url = opts?.databaseUrl ?? (opts?.sqlitePath != null ? "" : process.env.DATABASE_URL) ?? "";
   if (url.startsWith("postgres")) {
     const pg = await import("pg");
     const pool = new pg.default.Pool({ connectionString: url, max: 8 });
