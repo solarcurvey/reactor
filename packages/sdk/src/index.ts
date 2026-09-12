@@ -27,13 +27,25 @@ export class ReactorClient {
     return r.json();
   }
 
-  async markets(q?: { q?: string; stage?: string; quote?: string; limit?: number; offset?: string }) {
+  async markets(q?: {
+    q?: string;
+    stage?: string;
+    quote?: string;
+    sort?: "new" | "vol" | "price";
+    limit?: number;
+    offset?: string;
+    cursor_ts?: string;
+    cursor_token?: string;
+  }) {
     const u = new URL("/markets", this.opts.baseUrl);
     if (q?.q) u.searchParams.set("q", q.q);
     if (q?.stage) u.searchParams.set("stage", q.stage);
     if (q?.quote) u.searchParams.set("quote", q.quote);
+    if (q?.sort) u.searchParams.set("sort", q.sort);
     if (q?.limit) u.searchParams.set("limit", String(q.limit));
     if (q?.offset) u.searchParams.set("offset", q.offset);
+    if (q?.cursor_ts != null) u.searchParams.set("cursor_ts", q.cursor_ts);
+    if (q?.cursor_token) u.searchParams.set("cursor_token", q.cursor_token);
     const r = await fetch(u);
     return r.json();
   }

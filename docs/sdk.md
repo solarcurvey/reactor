@@ -28,6 +28,10 @@ if (out.decision === "CHALLENGE") {
 
 On ALLOW the body includes `launchConfigHash`. The signer recomputes it. A mismatch is a hard fail.
 
+## Markets board
+
+`ReactorClient.markets` calls `GET /markets`. Pass `sort` (`new` / `vol` / `price`) with `cursor_ts` + `cursor_token` from `next_cursor`. `cursor_ts` is that sort’s key, not always a timestamp.
+
 ## Quote tickets
 
 Helpers consume `POST /quote`:

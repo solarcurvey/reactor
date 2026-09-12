@@ -11,7 +11,7 @@ Indexer HTTP for the homepage board and trade tape.
 | `quote` | Quote token |
 | `sort` | `new` (default), `vol`, `price` — **NUMERIC** casts, not INTEGER |
 | `limit` | 1–100 (default 40) |
-| `cursor_ts` + `cursor_token` | Keyset page. `next_cursor` on the response |
+| `cursor_ts` + `cursor_token` | Keyset page. **`cursor_ts` is the sort key**, not always a timestamp: `new` → `updated_ts`, `vol` → `volume_24h_usd6`, `price` → `price_usd6`. Tie-break is `token` DESC. `next_cursor` repeats `{ cursor_ts, cursor_token }` for the last row using that same column. Not a frozen snapshot: a row inserted **ahead** of the cursor after page 1 will not appear on later pages; already-returned rows are not repeated; a row inserted **behind** the cursor may appear later. |
 | `offset` | Legacy only when no cursor |
 
 24h fields:
@@ -23,7 +23,7 @@ Indexer HTTP for the homepage board and trade tape.
 
 ## `GET /candles/:token`
 
-`interval` (`1m|5m|15m|1h|4h|1d`), `limit` (default 300, max 1000), `before`, `after` (keyset on `t`). Bounded. Gap-filled.
+`interval` (`1m|5m|15m|1h|4h|1d`), `limit` (default 300, max 1000), `before`, `after` (exclusive keyset on `t`, same as SQL `t < before` / `t > after`). Gap-fill is **bounded**: at most `limit` buckets (hard cap 1000). With `before`, the last filled bucket is the previous interval when `before` is bucket-aligned — fill will not synthesize a candle at exactly `before`. Historical `before` never extends to wall-clock now. Page N+1 (`before` = oldest `t` from page N) has no overlap. Missing buckets copy the last close (`n=0`, `v=0`).
 
 ## `GET /swaps/:token`
 
