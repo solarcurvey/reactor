@@ -1,6 +1,8 @@
 # Docs policy
 
-Documentation is **mandatory in the same run** as any behavior change: contracts, tokenomics, Factory, Guardian/Keeper, routing, admission, API, SDK, CORE, tickers, trust, UX.
+Documentation is **mandatory in the same run** as any behavior change: contracts, tokenomics, Factory, Guardian/Keeper, routing, admission, API, SDK, CORE, tickers, trust, UX, brand.
+
+Brand / visual identity lives in [Brand (proposal)](/docs/brand) until the founder locks one direction (Refs #55). Do not close #55 from a proposal PR. Do not claim the brand is finalized.
 
 Protocol semver: `docs/version.json`. Factory `FACTORY_VERSION` is a different immutable number.
 

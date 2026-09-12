@@ -44,4 +44,4 @@ Social feed, DMs, NFTs, governance, referrals, creator royalties, platform tradi
 
 ## Brand constraints (clean-room)
 
-Study public launchpad UX hierarchy only. No proprietary copy, assets, logos, or exact text. No Marvel / Iron Man / Stark branding. Do not name the product “Arc Reactor”. Original concentric-ring mark. Dark graphite, luminous energy core, cyan/blue-white glow, crisp white type.
+Study public launchpad UX hierarchy only. No proprietary copy, assets, logos, or exact text. No Marvel / Iron Man / Stark branding. Do not name the product “Arc Reactor”. Brand is **not locked** — founder picks A / B / C in [`docs/brand.md`](docs/brand.md) (Refs #55). Working default remains the original concentric-ring mark, dark graphite, luminous energy core, cyan/blue-white glow, crisp white type.

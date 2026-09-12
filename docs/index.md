@@ -14,7 +14,7 @@ This software is **not audited**. There is **no public mainnet**. Local and test
 | Creator | [Launch a token](/docs/creators) |
 | Builder | [API, SDK, events](/docs/builders) · [Read path](/docs/perf) · [UI QA](/docs/qa) |
 | Protocol | [Curve](/docs/curve) · [Fees](/docs/fees) · [Quoter](/docs/quoting) · [Trust](/docs/trust) |
-| Reference | [API](/docs/api) · [Arc](/docs/arc) · [FAQ](/docs/faq) · [CI](/docs/ci) · [Versioning](/docs/versioning) · [Repo publicization](/docs/publicization) |
+| Reference | [API](/docs/api) · [Arc](/docs/arc) · [FAQ](/docs/faq) · [CI](/docs/ci) · [Brand (proposal)](/docs/brand) · [Versioning](/docs/versioning) · [Repo publicization](/docs/publicization) |
 
 ## The machine
 
@@ -56,4 +56,4 @@ See [Trust](/docs/trust) for the rest of the top 10.
 - Arc finality is deterministic BFT — no eth-8 lag. Native gas is USDC-18; protocol USDC is 6 decimals.
 - Token names / tickers / descriptions / URLs / images are **untrusted** in the public UI. No raw HTML. [Browser security](/docs/web-security).
 
-Continue: [curve math](/docs/curve) · [nested fees](/docs/fees) · [Guardian](/docs/guardian) · [Keeper](/docs/keeper) · [tickers](/docs/tickers) · [admission](/docs/admission) · [browser security](/docs/web-security) · [repo publicization](/docs/publicization)
+Continue: [curve math](/docs/curve) · [nested fees](/docs/fees) · [Guardian](/docs/guardian) · [Keeper](/docs/keeper) · [tickers](/docs/tickers) · [admission](/docs/admission) · [browser security](/docs/web-security) · [brand (proposal)](/docs/brand) · [repo publicization](/docs/publicization)

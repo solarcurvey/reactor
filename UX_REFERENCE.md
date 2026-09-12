@@ -1,6 +1,6 @@
 # UX_REFERENCE
 
-Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy, assets, or code were taken.** REACTOR brand stays graphite + cyan core + concentric mark.
+Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy, assets, or code were taken.** Working UI default is graphite + cyan core + concentric mark (Direction A). **Not founder-locked.** Three directions: [`/docs/brand`](docs/brand.md) (Refs #55).
 
 ## Layout density
 

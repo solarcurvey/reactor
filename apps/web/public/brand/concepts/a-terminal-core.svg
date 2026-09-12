@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="REACTOR mark concept A  Terminal Core. Not founder-locked.">
+  <title>REACTOR concept A  Terminal Core</title>
+  <rect width="64" height="64" fill="#0b0d10"/>
+  <circle cx="32" cy="32" r="26" fill="none" stroke="#7ee8ff" stroke-opacity="0.28" stroke-width="1.2"/>
+  <circle cx="32" cy="32" r="18" fill="none" stroke="#7ee8ff" stroke-opacity="0.55" stroke-width="1.4"/>
+  <circle cx="32" cy="32" r="10" fill="none" stroke="#7ee8ff" stroke-opacity="0.9" stroke-width="1.6"/>
+  <circle cx="32" cy="32" r="3.2" fill="#e8fbff"/>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 64" role="img" aria-label="REACTOR wordmark concept (Direction A). Not founder-locked.">
+  <title>REACTOR wordmark concept  Terminal Core</title>
+  <rect width="360" height="64" fill="#0b0d10"/>
+  <g transform="translate(8,8)">
+    <circle cx="24" cy="24" r="20" fill="none" stroke="#7ee8ff" stroke-opacity="0.28" stroke-width="1.1"/>
+    <circle cx="24" cy="24" r="14" fill="none" stroke="#7ee8ff" stroke-opacity="0.55" stroke-width="1.2"/>
+    <circle cx="24" cy="24" r="8" fill="none" stroke="#7ee8ff" stroke-opacity="0.9" stroke-width="1.3"/>
+    <circle cx="24" cy="24" r="2.6" fill="#e8fbff"/>
+  </g>
+  <text x="72" y="30" fill="#f4f7fb" font-family="ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="600" letter-spacing="4.8">REACTOR</text>
+  <text x="72" y="48" fill="#a1a1aa" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9" letter-spacing="2.4">TOKEN LAUNCH ON ARC</text>
+</svg>
