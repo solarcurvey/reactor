@@ -10,7 +10,7 @@ User quotes are a **single `eth_call`** over the whole route (`UserRouteQuoter.p
 | Hookless external v4 | `EXTERNAL_V4_HOOKLESS` | No |
 | Instant bonding curve | `BONDING_CURVE` | Yes, on executed quote |
 
-Edge `kind` is kept through plan → preview → `POST /quote` hops. Nested official legs each appear in `feeLegs[]` (`reactorFeeCount`, `totalProtocolFeeBps`).
+Edge `kind` is kept through RouteGraph → planner (`Hop.kind`) → `UserRouteQuoter` preview (pool-key hooks vs official hook) → `POST /quote` hops. `feeLegs[]` are built from the **scored winner** (`selectAtomicQuotedRoute` / `pickBest`) plus that winner’s terminal official/bonding market — never an independently tracked max-`amountOut` preview. Nested official legs each appear in `feeLegs[]` (`reactorFeeCount`, `totalProtocolFeeBps` = sum, `aggregateProtocolImpactBps` = compound). Two 3.5% official hops → 700 bps listed, **688 bps / 6.88%** compound before slippage.
 
 ## Multi-candidate
 

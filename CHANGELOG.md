@@ -40,6 +40,7 @@ Postgres millisecond timestamps, media key/URL alignment, and signer fail-closed
 - Routed SELL `minQuoteOut` is the slipped first-leg quoteOut from the same selected `PreviewedRoute` / `splitPreviewRoute` terminal (6/8/18-dec quotes). Never launch-token `amountIn`. Preview failure returns no ticket.
 - `GET /markets` keyset (`cursor_ts` + `cursor_token`) uses the same column as `sort`: `new` → `updated_ts`, `vol` → `volume_24h_usd6`, `price` → `price_usd6`. `sort=price` no longer pages on `updated_ts`.
 - `GET /candles/:token` gap-fill materializes at most `limit` buckets (hard cap 1000). `before` / `after` stay exclusive on `t` (aligned `before` does not synthesize that bucket). A sparse 1m series does not allocate every minute from the first trade to now.
+- Nested user quotes disclose **every** official REACTOR fee hop of the **scored winner** plus its terminal market, not only a single terminal leg and not an independently tracked max-`amountOut` preview. Two official 3.5% legs compound to **688 bps / 6.88%**. Protocol tickets use `exemptOfficialLegs[]`. Refs #5 (issue stays open).
 
 ### Tokenomics
 

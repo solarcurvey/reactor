@@ -1,3 +1,11 @@
+# BUILD REPORT — Issue #5 nested fee-leg disclosure on main+#21+#28+#25+#22+#24
+
+**Status:** Rebased onto latest `main` (`b17e190` — #24 JSON body limits on #22 markets / #25 Keeper / #21+#28 quote pipeline). Duplicated pipeline commits dropped.  
+**Not audited. Not mainnet.**  
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 unchanged.**
+
+`feeLegs[]` come from `discloseSelectedRoute(selectAtomicQuotedRoute(scored), hops, { terminal market })`. No independent `bestPreview`. Compound 688 bps and `exemptOfficialLegs[]` kept. Regression: max raw output ≠ scored winner. Issue **#5 stays open**.
+
 # BUILD REPORT — Issue #13 public JSON body limits
 
 # BUILD REPORT — Issue #4 SELL floors on shared #21 preview (parent)

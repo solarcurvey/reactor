@@ -217,6 +217,8 @@ pnpm --filter indexer watchdog
 | 42 | Markets keyset cursor matches `sort` (`new`/`vol`/`price`); insert-ahead no dupes | `markets-query.test.ts` |
 | 43 | Candle gap-fill bounded; exclusive aligned `before` | `packages/reactor/src/prices.test.ts` |
 | 44 | Public JSON POSTs reject oversized / chunked bodies (413); env cannot raise past 64KiB hard max | `read-json-body.test.ts`, `limited-json.test.ts` |
+| 45 | Routed SELL `minQuoteOut` is first-leg quoteOut from `splitPreviewRoute` | `quote-sell-floors.test.ts`, `sell-floors.ts` |
+| 46 | Nested official fee legs from scored winner + compound 688 bps; maintenance `exemptOfficialLegs[]` | `quote.test.ts`, `quote-api.test.ts`, `quote-integrity.test.ts` |
 
 ## Arc smoke
 

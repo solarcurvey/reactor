@@ -1,7 +1,8 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { splitQuoteFee, applySlippage, REACTOR_FEE_BPS } from "../../../packages/reactor/src/quote.ts";
+import { splitQuoteFee, applySlippage, REACTOR_FEE_BPS, buildFeeDisclosure } from "../../../packages/reactor/src/quote.ts";
+import { VENUE } from "../../../packages/reactor/src/routes.ts";
 import { assertKeySeparation, saveJob } from "./keeper-jobs.ts";
 import { openStore } from "./db.ts";
 import { persistVenue, planFeeExemptRoute } from "./route-graph.ts";
@@ -67,7 +68,83 @@ console.log("quote/key tests ok");
     kinds.map((k) => k.kind).join(",") === "MAINTENANCE_SETTLEMENT,TOP10_BUY,SELFBURN,CORE_BUYBACK",
     `job kinds ${kinds.map((k) => k.kind)}`,
   );
+  await persistVenue(store, {
+    tokenIn: "0x0000000000000000000000000000000000000003",
+    tokenOut: zec,
+    adapter: proto,
+    kind: "protocol",
+    data: "0x04",
+    exists: true,
+    approved: true,
+  });
+  const nested = await planFeeExemptRoute(store, "0x0000000000000000000000000000000000000003", usdc, adapters);
+  assert(nested.hops.length === 2, `nested maintenance hops ${nested.hops.length}`);
+  const maint = buildFeeDisclosure(
+    nested.hops.map((h) => ({
+      tokenIn: h.tokenIn,
+      tokenOut: h.tokenOut,
+      amountIn: "100",
+      amountOut: "90",
+      kind: h.kind ?? "protocol",
+    })),
+    { feeExempt: true, quoteTokens: new Set([usdc, zec]) },
+  );
+  assert(maint.feeLegs.length === 0 && maint.reactorFeeCount === 0, "maintenance not user fee legs");
+  assert(maint.exemptOfficialLegs.length >= 1, "maintenance reports fee-exempt official edges");
+  assert(
+    maint.exemptOfficialLegs.every((f) => f.feeExempt && f.protocolFeeBps === 0),
+    "exempt official 0 bps",
+  );
   await store.close();
   rmSync(dir, { recursive: true, force: true });
   console.log("maintenance planner + SQL jobs ok");
+}
+
+{
+  const USDC = "0x0000000000000000000000000000000000000001";
+  const ZEC = "0x0000000000000000000000000000000000000002";
+  const ZCAT = "0x0000000000000000000000000000000000000003";
+  const CAT = "0x0000000000000000000000000000000000000004";
+  const q = new Set([USDC, ZEC, ZCAT]);
+  const buy = buildFeeDisclosure(
+    [
+      { tokenIn: USDC, tokenOut: ZEC, amountIn: "1000000", amountOut: "50", kind: VENUE.EXTERNAL_V4_HOOKLESS },
+      { tokenIn: ZEC, tokenOut: ZCAT, amountIn: "50", amountOut: "40", kind: VENUE.OFFICIAL_REACTOR_V4 },
+    ],
+    {
+      feeExempt: false,
+      quoteTokens: q,
+      side: "BUY",
+      finalMarket: {
+        tokenIn: ZCAT,
+        tokenOut: CAT,
+        amountIn: "40",
+        amountOut: "1",
+        kind: VENUE.OFFICIAL_REACTOR_V4,
+        official: true,
+      },
+    },
+  );
+  assert(buy.reactorFeeCount === 2 && buy.aggregateProtocolImpactBps === 688, "indexer buy nested 6.88%");
+  const sell = buildFeeDisclosure(
+    [
+      { tokenIn: ZCAT, tokenOut: ZEC, amountIn: "40", amountOut: "50", kind: VENUE.OFFICIAL_REACTOR_V4 },
+      { tokenIn: ZEC, tokenOut: USDC, amountIn: "50", amountOut: "960000", kind: VENUE.EXTERNAL_V4_HOOKLESS },
+    ],
+    {
+      feeExempt: false,
+      quoteTokens: q,
+      side: "SELL",
+      finalMarket: {
+        tokenIn: CAT,
+        tokenOut: ZCAT,
+        amountIn: "1",
+        amountOut: "40",
+        kind: VENUE.OFFICIAL_REACTOR_V4,
+        official: true,
+      },
+    },
+  );
+  assert(sell.reactorFeeCount === 2 && sell.aggregateProtocolImpactBps === 688, "indexer sell nested 6.88%");
+  console.log("nested buy/sell fee-leg disclosure ok");
 }

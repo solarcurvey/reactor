@@ -12,6 +12,7 @@ import {
   KIND_HASH,
   assembleAtomicTicket,
   decodePreviewRoute,
+  discloseSelectedRoute,
   encodePreviewRoute,
   hopsFromAtomicPreview,
   previewedRoute,
@@ -237,6 +238,87 @@ function assertAtomicWinner(
   const hops = hopsFromAtomicPreview(selected, 100n);
   assert(hops.length === 1 && hops[0]!.amountOut === "0", "empty hopOuts stay 0 (executor fallback)");
   assert(hops[0]!.kind === VENUE.EXTERNAL_V4_HOOKLESS, "empty kinds default hookless");
+}
+
+{
+  // Issue #5 / #3: max raw output ≠ scored winner. feeLegs/kinds/notionals
+  // must come from the pickBest winner, never the independently tracked max-out preview.
+  const CAT = "0x0000000000000000000000000000000000000004" as `0x${string}`;
+  const quotes = new Set([USDC.toLowerCase(), ZEC.toLowerCase(), ZCAT.toLowerCase()]);
+  const amountIn = 1_000_000n;
+
+  const fatOfficial: PlannedRoute = {
+    hops: [hop(USDC, ZEC, "0x21"), hop(ZEC, ZCAT, "0x22")],
+    path: [USDC, ZEC, ZCAT],
+    reason: "fat official intermediate",
+  };
+  const thinDirect: PlannedRoute = {
+    hops: [hop(USDC, ZCAT, "0x23")],
+    path: [USDC, ZCAT],
+    reason: "thin scored winner",
+  };
+  const fatOfficialPreview = quoterPreview(
+    10_000n,
+    [9_800n, 9_700n, 10_000n],
+    [KIND_HASH.EXTERNAL_V4_HOOKLESS, KIND_HASH.OFFICIAL_REACTOR_V4, KIND_HASH.OFFICIAL_REACTOR_V4],
+  );
+  const thinDirectPreview = quoterPreview(
+    9_900n,
+    [9_400n, 9_900n],
+    [KIND_HASH.EXTERNAL_V4_HOOKLESS, KIND_HASH.OFFICIAL_REACTOR_V4],
+  );
+  const fatScored = scored(fatOfficial, fatOfficialPreview, "BUY");
+  const thinScored = scored(thinDirect, thinDirectPreview, "BUY");
+  assert(fatOfficialPreview.amountOut > thinDirectPreview.amountOut, "fat has max raw output");
+  assert(thinScored.score > fatScored.score, "thin still wins pickBest");
+
+  const selected = selectAtomicQuotedRoute([fatScored, thinScored]);
+  assert(selected.path.join(",") === thinDirect.path.join(","), "winner path is thin");
+  const hops = hopsFromAtomicPreview(selected, amountIn);
+  const winnerFees = discloseSelectedRoute(selected, hops, {
+    feeExempt: false,
+    quoteTokens: quotes,
+    market: { token: CAT, quote: ZCAT },
+    amountIn,
+    bonding: false,
+  });
+  const loserFees = discloseSelectedRoute(fatScored, hopsFromAtomicPreview(fatScored, amountIn), {
+    feeExempt: false,
+    quoteTokens: quotes,
+    market: { token: CAT, quote: ZCAT },
+    amountIn,
+    bonding: false,
+  });
+
+  assert(winnerFees.feeLegs.length === 1, `winner feeLegs ${winnerFees.feeLegs.length}`);
+  assert(winnerFees.reactorFeeCount === 1 && winnerFees.aggregateProtocolImpactBps === 350, "winner one 3.5% terminal");
+  assert(
+    winnerFees.feeLegs[0]!.tokenIn.toLowerCase() === ZCAT.toLowerCase() &&
+      winnerFees.feeLegs[0]!.tokenOut.toLowerCase() === CAT.toLowerCase(),
+    "winner fee leg is ZCAT→CAT terminal",
+  );
+  assert(winnerFees.feeLegs[0]!.kind === VENUE.OFFICIAL_REACTOR_V4, "winner terminal kind");
+  assert(winnerFees.feeLegs[0]!.notionalQuote === "9400", `winner notional ${winnerFees.feeLegs[0]!.notionalQuote}`);
+  assert(
+    !winnerFees.feeLegs.some((f) => f.tokenIn.toLowerCase() === ZEC.toLowerCase()),
+    "winner must not disclose fat official ZEC→ZCAT",
+  );
+
+  assert(loserFees.feeLegs.length === 2, `loser feeLegs ${loserFees.feeLegs.length}`);
+  const loserZecZcat = loserFees.feeLegs.find(
+    (f) => f.tokenIn.toLowerCase() === ZEC.toLowerCase() && f.tokenOut.toLowerCase() === ZCAT.toLowerCase(),
+  );
+  const loserZcatCat = loserFees.feeLegs.find(
+    (f) => f.tokenIn.toLowerCase() === ZCAT.toLowerCase() && f.tokenOut.toLowerCase() === CAT.toLowerCase(),
+  );
+  assert(loserZecZcat, "loser would have disclosed official ZEC→ZCAT");
+  assert(loserZecZcat!.kind === VENUE.OFFICIAL_REACTOR_V4, "loser intermediate kind official");
+  assert(loserZecZcat!.notionalQuote === "9800", `loser ZEC→ZCAT notional ${loserZecZcat!.notionalQuote}`);
+  assert(loserZcatCat!.notionalQuote === "9700", `loser ZCAT→CAT notional ${loserZcatCat!.notionalQuote}`);
+  assert(winnerFees.feeLegs[0]!.notionalQuote !== loserZecZcat!.notionalQuote, "must not stamp loser intermediate notional");
+  assert(winnerFees.feeLegs[0]!.notionalQuote !== loserZcatCat!.notionalQuote, "must not stamp loser terminal notional");
+  assert(hops[0]!.kind === VENUE.EXTERNAL_V4_HOOKLESS, "winner routing kind is hookless");
+  assert(hops[0]!.amountOut === "9400", "winner routing out");
 }
 
 console.log("quote-integrity tests ok");
