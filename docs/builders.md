@@ -1,10 +1,10 @@
 # Build a terminal
 
-Integrate as a client, not a fork. Protocol **0.3.2**. Factory **V1**.
+Integrate as a client, not a fork. Protocol **0.3.3**. Factory **V1**.
 
 ## Integration order
 
-1. **Discover** — `GET /markets` (keyset + NUMERIC sorts). Pass `next_cursor.cursor_ts` + `cursor_token` with the **same** `sort`; `cursor_ts` is `updated_ts` / `volume_24h_usd6` / `price_usd6`. Keyset is not a frozen snapshot: a row inserted ahead of the cursor is omitted from later pages; already-returned rows are not repeated. Do not scrape factory logs in the UI process.
+1. **Discover** — `GET /markets` (keyset + NUMERIC sorts). Pass `next_cursor.cursor_ts` + `cursor_token` with the **same** `sort`; `cursor_ts` is `updated_ts` / `volume_24h_usd6` / `price_usd6`. Keyset is not a frozen snapshot: a row inserted ahead of the cursor is omitted from later pages; already-returned rows are not repeated. Do not scrape factory logs in the UI process. Top-10 is `GET /top10` (same snapshot the Keeper uses). Do not rank from RPC.
 2. **Quote** — `POST /quote`. Use the ticket. One `UserRouteQuoter` call per candidate; hops, `feeLegs[]`, and SELL `minQuoteOut` are bound to the `pickBest` winner. Render each `feeLegs[]` entry in that hop’s quote asset/decimals (or show only `aggregateProtocolImpactBps`). Do not invent hops. Do not add raw fee amounts across ZEC and ZCAT. Do not mix another candidate's preview onto the selected path. Do not set `minOut` to 0 or 1. Do not derive SELL `minQuoteOut` from tokenIn. JSON body is capped at **16KiB** default / **64KiB** hard max (413 if over, including chunked).
 3. **Launch** — `POST /launch/authorize` (admission + ALLOW receipt + isolated sign). `@reactor/sdk` `authorize` does this. Never call the isolated signer from a public host. Same JSON cap.
 4. **Media** — `POST /upload` (stream 2MB, sharp, SigV4 remote). Store the returned `publicUrl`. Object key is `m/<id>.webp` (matches `/m/<id>.webp`). No base64 onchain.
@@ -30,7 +30,7 @@ Fair hashes resolved sale params. Instant keeps `INSTANT_CURVE_V1`. Receipt `lau
 
 | Package | Version | Role |
 | --- | --- | --- |
-| `@reactor/core` | 0.3.2 | Constants, routes, valuation, admission helpers |
-| `@reactor/sdk` | 0.3.2 | `ReactorClient.authorize`, quote ticket helpers |
+| `@reactor/core` | 0.3.3 | Constants, routes, valuation, admission helpers |
+| `@reactor/sdk` | 0.3.3 | `ReactorClient.authorize`, quote ticket helpers |
 
 See [API](/docs/api), [SDK](/docs/sdk), [Examples](/docs/examples), [Quoting](/docs/quoting), [Events](/docs/events).

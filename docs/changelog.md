@@ -2,7 +2,7 @@
 
 # Changelog
 
-Protocol release **0.3.2** (`v0.3.2`). Factory **V1** is unchanged by this number.
+Protocol release **0.3.3** (`v0.3.3`). Factory **V1** is unchanged by this number.
 
 The canonical file is `CHANGELOG.md` at the repo root. Same content below.
 
@@ -13,6 +13,28 @@ Versioning: [Semantic Versioning](https://semver.org/) for the **protocol releas
 - Protocol source of truth: `docs/version.json` (`protocolVersion`)
 - Git tag: `vMAJOR.MINOR.PATCH` (see [Versioning](docs/versioning.md) and `CONTRIBUTING.md`)
 - Factory **V1 stays V1 forever**. A new fee split or curve is Factory V2, not a protocol patch.
+
+## [0.3.3] - 2026-09-12
+
+Official Top-10 ranking moves to the indexer ValuationService. Tokenomics **unchanged**. Factory **V1**.
+
+### Added / Changed
+
+- Schema **v10** persists official Top-10 candidates (`top10_candidate_epochs` / `top10_candidate_rows`) after main `#23` schema **v9** `tokens.current_supply`. Next unused version on latest main (`0b94d67`). `#30` consensus `kind` is **not** on this head.
+- `GET /top10` is the canonical epoch snapshot. Ranking reads persisted `COALESCE(NULLIF(current_supply,''), supply)` reconciled to onchain `totalSupply()` — not TokenCreated mint minus `SelfBurnExecuted` / `Top10Buy`.
+- Holder `ReactorToken.burn()` that writes `current_supply` changes rank/FDV. Protocol SelfBurn/Top10Buy rows are attribution only.
+- Web `/api/reactor/top10` and Keeper consume `{INDEXER_URL}/top10`. `discoverTop10` and the assumed hookless 0.30% quote/USDC fallback are deleted. No per-request Factory RPC fanout.
+- Issue **#10 stays open** — this head is not the merge-train close.
+
+### Tokenomics
+
+- No change. Different split = new Factory version, not an edit to V1.
+
+### Known limits (honest)
+
+- Not audited. No public mainnet.
+- Offchain ranks are trusted computation, not an onchain oracle.
+- `#30` (consensus `kind`) is still open and will need the next unused schema version after this lands (or this PR rebases if `#30` merges first).
 
 ## [Unreleased]
 

@@ -1,9 +1,9 @@
 {
-  "protocolVersion": "0.3.2",
+  "protocolVersion": "0.3.3",
   "factoryVersion": 1,
   "factoryVersionLabel": "V1",
-  "releaseTag": "v0.3.2",
+  "releaseTag": "v0.3.3",
   "releaseDate": "2026-09-12",
   "status": "pre-audit local/testnet — not mainnet",
-  "notes": "Postgres millisecond timestamps to BIGINT (schema v6). R2/S3 keys match public /m/<id>.webp. Pricing signer fail-closed when the durable store is unavailable. Factory V1 immutable. Not audited."
+  "notes": "Official Top-10 ranks are a persisted indexer ValuationService snapshot (schema v10) from tokens.current_supply (schema v9, #23). No Factory RPC walk. No TokenCreated-minus-SelfBurn math. Factory V1 immutable. Not audited."
 }

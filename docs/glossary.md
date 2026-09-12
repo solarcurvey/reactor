@@ -13,6 +13,7 @@
 | Issuance bucket | Durable cap on **signed** LaunchAuthorizations |
 | ValuationService | Single USD engine for signer, Top-10, `/markets` |
 | Burn-adjusted supply | Remaining onchain `totalSupply` after any `burn()`. Indexer `current_supply` (schema v9) tracks it via token-level burns (same tick transaction as the cursor) + bounded `totalSupply()` reconcile — not a live ≡ and not a protocol-event sum |
+| `GET /top10` | Canonical persisted Top-10 snapshot (schema v10). Ranks from `current_supply`. Web and Keeper read only |
 | `fdv_usd6` | USD-6 market cap / FDV = mark × burn-adjusted remaining supply. Not initial 1B × price |
 | `usdPegOne` | Explicit $1 flag. EURC / “stable” is not $1 |
 | UserRouteQuoter | Whole-route `eth_call` preview; always reverts `PreviewRoute` |
@@ -21,7 +22,7 @@
 | Keeper | Designated maintenance. One atomic lease (renew + fence) |
 | CORE | Protocol token (`CoreToken`). Never Top-10 |
 | Factory V1 | Immutable on-chain factory label. Not protocol semver |
-| Protocol 0.3.2 | This software + docs release |
+| Protocol 0.3.3 | This software + docs release |
 | Millisecond columns | `Date.now()` wall clock: admission hits, issuance `updated_ms`, leader lease, Keeper jobs, alerts. Postgres `BIGINT` (schema v6) |
 | Unix-seconds columns | `Date.now()/1000` or `block.timestamp`: trades, ticker lock, receipt expiry |
 | Arc gas USDC | Native 18-decimal gas unit |

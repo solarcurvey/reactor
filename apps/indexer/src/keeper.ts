@@ -32,7 +32,8 @@ import { planFeeExemptRoute, syncOfficialFactoryVenues } from "./route-graph.ts"
  */
 
 const RPC = process.env.NEXT_PUBLIC_RPC_URL ?? deployment.rpc;
-const API = process.env.REACTOR_TOP10_URL ?? "http://127.0.0.1:43147/api/reactor/top10";
+const INDEXER_BASE = (process.env.INDEXER_URL ?? "http://127.0.0.1:43148").replace(/\/$/, "");
+const API = process.env.REACTOR_TOP10_URL ?? `${INDEXER_BASE}/top10`;
 const HEARTBEAT = process.env.KEEPER_HEARTBEAT ?? new URL("../data/keeper-heartbeat.json", import.meta.url).pathname;
 const STATE = process.env.KEEPER_STATE ?? new URL("../data/keeper-state.json", import.meta.url).pathname;
 const OWNER = `${hostname()}:${process.pid}`;

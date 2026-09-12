@@ -197,6 +197,28 @@ try {
       backfill.rows[0]?.supply === "1000000000000000000000000000",
     "v9 backfills current_supply from a real post-#27 tokens row",
   );
+  const top10 = await admin.query<{ exists: boolean }>(
+    "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='top10_candidate_epochs') AS exists",
+  );
+  assert(top10.rows[0]?.exists, "v10 adds top10_candidate_epochs onto a real post-#27 DB");
+
+  // --- Real post-#23 (v9) DB: current_supply present, no Top-10 tables ---
+  await resetPublic(admin);
+  const bootV9 = await openStore({ databaseUrl: url });
+  assert((await applyMigrations(bootV9)) === SCHEMA_VERSION, "boot applies current schema before v9 pin");
+  await bootV9.exec("DROP TABLE IF EXISTS top10_candidate_rows");
+  await bootV9.exec("DROP TABLE IF EXISTS top10_candidate_epochs");
+  await bootV9.run("DELETE FROM schema_migrations WHERE id >= 10");
+  const pinnedV9 = await bootV9.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
+  assert(Number(pinnedV9?.n) === 9, `pinned post-#23 schema is ${pinnedV9?.n}, expected 9`);
+  await bootV9.close();
+  const storeV9 = await openStore({ databaseUrl: url });
+  assert((await applyMigrations(storeV9)) === SCHEMA_VERSION, `v9 DB migrated to ${SCHEMA_VERSION}`);
+  await storeV9.close();
+  const v9top10 = await admin.query<{ exists: boolean }>(
+    "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='top10_candidate_epochs') AS exists",
+  );
+  assert(v9top10.rows[0]?.exists, "v10 adds top10_candidate_epochs onto a real post-#23 v9 DB");
 
   // --- Fresh schema + live Date.now() paths ---
   await resetPublic(admin);

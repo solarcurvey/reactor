@@ -1,6 +1,29 @@
-# BUILD REPORT — burn-adjusted USD FDV (issue #8)
+# BUILD REPORT — Top-10 ValuationService snapshot (issue #10)
 
-**Status:** Rebased onto latest `main` (`26cf6aa` — #32 BUILD_REPORT cleanup after #31/#24/#22/#25/#28/#21/#27). Main schema remains **v8**; `tokens.current_supply` is **v9**. #32/#31/#24/#22 did not consume a schema version.  
+**Status:** Rebased onto latest `main` (`0b94d67` — #23 `current_supply` schema v9 after #32/#31/#24/#22). `#30` consensus `kind` is **not** on main; this head does not invent it. Top-10 snapshot tables are **v10** (next unused).  
+**Not audited. Not mainnet.**  
+**Architecture / economics / 3.5% / curve / Keeper routing / Factory V1 constants: unchanged.** Issue **#10 stays open**.
+
+## Amendment — persisted Top-10 ranks from `current_supply`
+
+`GET /top10` ranks graduated markets from persisted `tokens.current_supply` (reconciled to `totalSupply()`), 12m VWAP, and ValuationService ancestry. Not TokenCreated mint minus SelfBurn/Top10Buy. Holder `burn()` that writes `current_supply` changes rank/FDV (`top10-rank.test.ts`). Web and Keeper only read the snapshot. `discoverTop10` deleted. No assumed 0.30% hookless pool. Schema train: v9 `current_supply` (#23, on main) → v10 `top10_candidate_*` (this PR). `#30` remains open and must take the next unused id if this lands first.
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) |
+| Factory | **V1** — **unchanged** |
+| Intent | Canonical indexer Top-10 snapshot. Rank from persisted `current_supply`. Keep #10 open. |
+| Indexer / lib | `top10-rank.test.ts` + `packages/reactor/src/top10.test.ts` + `schema.test.ts` v8→v10 and v9→v10 + `pg-ms-timestamps.test.ts` + `marketdata.test.ts` + `pnpm --filter indexer test` + `pnpm docs:check` |
+| Foundry | Not re-run this pass (contracts unchanged). Last recorded **326 passed**, 1 skipped on 0.3.1 |
+| Mainnet | **Blocked** |
+
+---
+
+# Prior — burn-adjusted USD FDV (issue #8)
+
+**Status:** Squash-merged to `main` @ `0b94d67`. Schema **v9** `tokens.current_supply` after `26cf6aa` (#32).  
 **Not audited. Not mainnet.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 

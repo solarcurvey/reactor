@@ -17,13 +17,13 @@ The Keeper is **not** an owner. It cannot configure quotes, adapters, fees, Guar
 
 ## Top-10
 
-REACTOR API computes ranks and weights offchain about every five minutes.
+The indexer ValuationService writes one persisted snapshot (`GET /top10`) from graduated markets, persisted `current_supply`, and 12m VWAP. Web and Keeper only read that payload. They do not walk Factory `allTokens` or invent a 0.30% hookless pool.
 
 Eligibility (API, not the contract):
 
 - Graduated REACTOR token
 - Not CORE
-- Operational mark ≳ $250k
+- Operational mark ≳ $250k from persisted `current_supply` (not TokenCreated − SelfBurn/Top10Buy)
 - Nested quote USD resolved offchain
 - If a mark is unreliable: **skip that token or pause the epoch — never guess**
 

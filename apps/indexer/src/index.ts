@@ -11,6 +11,7 @@ import { abortIncoming, BodyTooLargeError, readJsonBody } from "./read-json-body
 import { getState, reconcileCurrentSupplies, rollMarketAggregations, setState } from "./ingest.ts";
 import { loadValuationService } from "./valuation-store.ts";
 import { populateExternalPriceMarks } from "./price-marks.ts";
+import { coreAddressesFromDeployment, failClosedTop10, readTop10Epoch, refreshTop10Epoch } from "./top10-rank.ts";
 import { buildQuote } from "./quote-service.ts";
 import { fillCandlesForRequest, CANDLE_INTERVALS } from "../../../packages/reactor/src/prices.ts";
 import { listMarkets } from "./markets-query.ts";
@@ -231,6 +232,9 @@ async function tick(store: Store) {
   );
   await setState(store, "supply_reconcile_cursor", rec.nextCursor);
   await rollMarketAggregations(store);
+  await refreshTop10Epoch(store, { coreAddresses: coreAddressesFromDeployment(addrs) }).catch((e) =>
+    raiseAlert(store, "P1", "top10_rank", String(e)),
+  );
 }
 
 async function refreshQuotes(store: Store) {
@@ -345,6 +349,18 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     const token = url.searchParams.get("token") ?? addrs.USDC;
     const svc = await valuationNodes(store);
     json(res, 200, { ...svc.quoteUsd6(token), usd6: svc.quoteUsd6(token).usd6.toString(), request_id: rid }, rid);
+    return;
+  }
+  if (url.pathname === "/top10") {
+    try {
+      const persisted = await readTop10Epoch(store);
+      const payload =
+        persisted ??
+        (await refreshTop10Epoch(store, { coreAddresses: coreAddressesFromDeployment(addrs) }));
+      json(res, 200, { ...payload, request_id: rid }, rid);
+    } catch (e) {
+      json(res, 200, { ...failClosedTop10(e instanceof Error ? e.message : "top10 failed — epoch paused"), request_id: rid }, rid);
+    }
     return;
   }
   if (url.pathname === "/quote" && req.method === "POST") {

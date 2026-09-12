@@ -12,13 +12,13 @@ function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
 }
 
-assert(SCHEMA_VERSION === 9, "schema version 9 adds current_supply after v8 journal identity");
+assert(SCHEMA_VERSION === 10, "schema version 10 adds Top-10 snapshot tables after v9 current_supply");
 assert(MS_TIMESTAMP_COLUMNS.length >= 6, "millisecond timestamp columns listed");
 
 const dir = mkdtempSync(join(tmpdir(), "reactor-prod-"));
 const store = await openStore({ sqlitePath: join(dir, "t.sqlite") });
 const migrated = await store.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
-assert(Number(migrated?.n) === 9, "sqlite migrates to v9");
+assert(Number(migrated?.n) === SCHEMA_VERSION, `sqlite migrates to v${SCHEMA_VERSION}`);
 
 for (const t of TABLES) {
   const row = await store.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", t);
@@ -49,7 +49,12 @@ assert(
   "journal has canonical identity columns",
 );
 const tokenCols = await store.all<{ name: string }>("PRAGMA table_info(tokens)");
-assert(tokenCols.some((c) => c.name === "current_supply"), "tokens.current_supply on fresh v9");
+assert(tokenCols.some((c) => c.name === "current_supply"), "tokens.current_supply on fresh schema");
+const freshTop10 = await store.get<{ name: string }>(
+  "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+  "top10_candidate_epochs",
+);
+assert(freshTop10?.name === "top10_candidate_epochs", "fresh schema includes Top-10 snapshot tables");
 
 await upsertToken(store, { address: "0xabc", symbol: "CAT", quote: "0xzec", supply: (10n ** 27n).toString(), ts: 100 });
 const seeded = await store.get<{ supply: string; current_supply: string }>(
@@ -137,7 +142,7 @@ await store.close();
   const preCols = await v8.all<{ name: string }>("PRAGMA table_info(tokens)");
   assert(!preCols.some((c) => c.name === "current_supply"), "pinned v8 tokens has no current_supply");
   const ver = await applyMigrations(v8);
-  assert(ver === 9, `v8 DB migrated to ${ver}, expected 9`);
+  assert(ver === SCHEMA_VERSION, `v8 DB migrated to ${ver}, expected ${SCHEMA_VERSION}`);
   const cols = await v8.all<{ name: string }>("PRAGMA table_info(tokens)");
   assert(cols.some((c) => c.name === "current_supply"), "v9 adds current_supply onto a real post-#27 tokens table");
   const backfilled = await v8.get<{ current_supply: string; supply: string }>(
@@ -145,8 +150,31 @@ await store.close();
     "0xdead",
   );
   assert(backfilled?.current_supply === backfilled?.supply && backfilled?.supply === (10n ** 27n).toString(), "v9 backfills current_supply from supply");
+  const top10 = await v8.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", "top10_candidate_epochs");
+  assert(top10?.name === "top10_candidate_epochs", "v10 adds Top-10 candidate tables onto a real post-#27 DB");
   await v8.close();
   rmSync(v8dir, { recursive: true, force: true });
+}
+
+{
+  // Real post-#23 DB: v9 current_supply, then strip only v10 Top-10 tables.
+  const v9dir = mkdtempSync(join(tmpdir(), "reactor-v9-"));
+  const v9 = await openStore({ sqlitePath: join(v9dir, "v9.sqlite") });
+  await v9.exec("DROP TABLE IF EXISTS top10_candidate_rows");
+  await v9.exec("DROP TABLE IF EXISTS top10_candidate_epochs");
+  await v9.run("DELETE FROM schema_migrations WHERE id >= 10");
+  const pinned = await v9.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
+  assert(Number(pinned?.n) === 9, `pinned post-#23 schema is ${pinned?.n}, expected 9`);
+  const pre = await v9.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", "top10_candidate_epochs");
+  assert(!pre, "pinned v9 has no Top-10 snapshot tables");
+  const supply = await v9.all<{ name: string }>("PRAGMA table_info(tokens)");
+  assert(supply.some((c) => c.name === "current_supply"), "pinned v9 keeps current_supply");
+  const ver = await applyMigrations(v9);
+  assert(ver === SCHEMA_VERSION, `v9 DB migrated to ${ver}, expected ${SCHEMA_VERSION}`);
+  const top10 = await v9.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", "top10_candidate_epochs");
+  assert(top10?.name === "top10_candidate_epochs", "v10 adds Top-10 tables onto a real post-#23 v9 DB");
+  await v9.close();
+  rmSync(v9dir, { recursive: true, force: true });
 }
 
 rmSync(dir, { recursive: true, force: true });
