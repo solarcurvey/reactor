@@ -18,6 +18,8 @@ Indexer HTTP for the homepage board and trade tape.
 
 - `price_quote_x18` — **latest trade by `ts`**, not `MAX(price)`
 - `price_usd6` / `fdv_usd6` / `volume_24h_usd6` — ValuationService
+- `fdv_usd6` — USD-6 **market cap / FDV** = mark × `tokens.current_supply`. That column **tracks** remaining onchain `totalSupply()` after `burn()`; it is **not** claimed identical at every instant. Do not use `tokens.supply` (TokenCreated mint).
+- `current_supply` writers: token-level `Transfer` to zero and `Burned` via canonical `(chain_id, tx, log_index, event_kind)` (same-tx Transfer+Burned are two logs; `totalSupply()` reconcile corrects double count), plus a bounded reconcile that **also runs when the indexer is at head**. CORE, recently burned, and newly created tokens are prioritized. Protocol `SelfBurnExecuted` / `Top10Buy` / `COREBurned` are attribution only. `rollOneMarket` reads `current_supply`; it does not write it.
 - `volume_24h_quote` — NUMERIC sum of notionals
 - Incremental: new trades add; `rolled` marks expire out of the 24h window; `rollOneMarket` corrects
 

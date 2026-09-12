@@ -107,6 +107,10 @@ assert(tokens(pricePage2.items).join() === byPrice.slice(2, 4).join(), "price pa
 
 const fullPrice = await listMarkets(store, { sort: "price", limit: 100 });
 assert(fullPrice.total === 5 && tokens(fullPrice.items).join() === byPrice.join(), "full price order");
+assert(
+  fullPrice.items.every((i) => i.current_supply != null && String(i.current_supply) !== ""),
+  "listMarkets projects tokens.current_supply for burn-adjusted FDV",
+);
 
 {
   const page1 = await listMarkets(store, { sort: "price", limit: 2 });

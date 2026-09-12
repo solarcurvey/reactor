@@ -1,6 +1,29 @@
-# BUILD REPORT — Issue #5 nested fee-leg disclosure on main+#24+#22+#25+#21+#28
+# BUILD REPORT — burn-adjusted USD FDV (issue #8)
 
-**Status:** Squash-merged to `main` @ `07ac5d0` (parent `b17e190` — #24 JSON body limits on #22 markets keyset / candle bounds on #25 Keeper fencing + #21+#28 quote pipeline). Leftover rebase conflict markers from #31 head `92f035c` removed here. Accepted `discloseSelectedRoute` + per-denom UI kept. No `bestPreview`.  
+**Status:** Rebased onto latest `main` (`26cf6aa` — #32 BUILD_REPORT cleanup after #31/#24/#22/#25/#28/#21/#27). Main schema remains **v8**; `tokens.current_supply` is **v9**. #32/#31/#24/#22 did not consume a schema version.  
+**Not audited. Not mainnet.**  
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## Amendment — `tokens.current_supply` schema v9
+
+`GET /markets` `fdv_usd6` uses `tokens.current_supply` (**schema v9**, next free after main/`#27` v8 journal identity; #32/#31/#24/#22/#25/#28/#21 did not consume a schema version). `/markets` SELECT lives in `listMarkets` (`markets-query.ts`) after #22. Column **tracks** remaining `totalSupply()` — not TokenCreated `tokens.supply`, not a protocol-event sum, not claimed ≡. Public `burn()` is `Transfer` to zero and/or `Burned` via canonical `(chain_id, tx, log_index, event_kind)`. Those token-level burn writes share the `persistTickBatch` transaction with `indexer_state` (no post-cursor `persistTokenBurnLogs` window). Protocol SelfBurn/Top10/COREBurned are attribution only. Bounded `totalSupply()` reconcile runs every tick including at head (corrects missed / same-tx Transfer+Burned; it does not restore skipped journal rows). Migration tests start from a real post-#27 v8 DB (full journal identity, then strip only `current_supply`). Architecture and tokenomics unchanged. No mainnet. Leave #8 open.
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.2** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Burn-adjusted `/markets` FDV (`Addresses #8`). Schema v9 after main v8. Canonical burn identity in the same `persistTickBatch` transaction as the cursor. Bounded `totalSupply()` reconcile. |
+| Indexer / lib | `ingest.valuation.test.ts` + `schema.test.ts` + `markets-query.test.ts` (#22) + `read-json-body.test.ts` (#24) + `quote.test.ts` (#31) + `quote-integrity.test.ts` + `quote-sell-floors.test.ts` + `keeper.lease.test.ts` + `tick-atomic.test.ts` (SQLite + Postgres burn+cursor) + `pg-ms-timestamps.test.ts` v8→v9 + `pg-smoke.ts` + `pnpm --filter indexer test` + `pnpm docs:check` |
+| Foundry | Not re-run this pass. Last recorded **326 passed**, 1 skipped on 0.3.1 |
+| Mainnet | **Blocked** |
+
+---
+
+# Prior — Issue #5 nested fee-leg disclosure on main+#24+#22+#25+#21+#28
+
+**Status:** Squash-merged to `main` @ `07ac5d0` (parent `b17e190` — #24 JSON body limits on #22 markets keyset / candle bounds on #25 Keeper fencing + #21+#28 quote pipeline). Leftover rebase conflict markers from #31 head `92f035c` removed in #32 (`26cf6aa`). Accepted `discloseSelectedRoute` + per-denom UI kept. No `bestPreview`.
 **Not audited. Not mainnet.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 unchanged.**
 
@@ -8,7 +31,7 @@
 
 Trade ticket (`trade-panel.tsx` + `fee-legs.ts`) formats each official `feeLegs[]` entry with that hop’s quote asset and decimals (ZEC-8 vs ZCAT-18). Combined split is emitted only when every official leg shares one quote token + decimals. Otherwise the aggregate is `aggregateProtocolImpactBps` only. Regression: `fee-legs.test.ts`. Issue **#5 stays open**.
 
-# BUILD REPORT — Issue #13 public JSON body limits
+# Prior — Issue #13 public JSON body limits
 
 # BUILD REPORT — Issue #4 SELL floors on shared #21 preview (parent)
 
@@ -18,7 +41,7 @@ Trade ticket (`trade-panel.tsx` + `fee-legs.ts`) formats each official `feeLegs[
 
 Quote API SELL tickets take `minQuoteOut` from `assembleAtomicTicket.terminalMinOut` (first-leg quoteOut) and `minFinalOut` from `minOut` (final USDC). Routed sells without a selected `PreviewedRoute` fail closed. Direct bonding/graduated sells wrap the first-leg quoteOut through the same `splitPreviewRoute`. Evidence: `quote-integrity.test.ts` (#3) + `quote-sell-floors.test.ts` (#4) together. Issue #4 stays open pending re-audit.
 
-# BUILD REPORT — Issue #3 route candidate integrity
+# Prior — Issue #3 route candidate integrity
 
 # BUILD REPORT — Protocol 0.3.2
 
@@ -58,7 +81,7 @@ Issue #6: a ~50s `leader_locks` TTL is shorter than possible tick work (`waitFor
 | Docs | `docs/keeper.md` Operations, `KEEPER_MODEL.md`, `THREAT_MODEL.md` |
 | Protocol / Factory | **0.3.2 / V1** (from #19). This PR does not bump semver. No mainnet. |
 
-## This HEAD
+## Prior HEAD (#25 / #21)
 
 | Item | Value |
 | --- | --- |

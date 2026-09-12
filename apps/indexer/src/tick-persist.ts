@@ -7,6 +7,7 @@
  */
 import type { Store } from "./db.ts";
 import {
+  applyTokenLevelBurn,
   curvePriceX18,
   recordTrade,
   setState,
@@ -313,7 +314,7 @@ async function persistOneLog(
       sse.publish({ type: "rewards", data: { token, account: args.account, amount: args.amount, tx } });
     }
   }
-  if (name === "SelfBurnAccrued" || name === "SelfBurnExecuted") {
+  if (name === "SelfBurnAccrued" || name === "SelfBurnExecuted" || name === "Top10Buy") {
     const addr = emitting || token.toLowerCase();
     const burned = await journalEvent(store, { chainId, tx, logIndex, eventKind: name, address: addr, block, ts });
     const burnRow = await insertLogOnce(
@@ -383,4 +384,43 @@ async function persistOneLog(
     );
     if (bought || buyRow) sse.publish({ type: "core", data: { name, tx } });
   }
+}
+
+const ZERO = "0x0000000000000000000000000000000000000000";
+
+/** Token-level `Burned` / `Transfer` to zero after TokenCreated upserts. Canonical identity. */
+export async function persistTokenBurnLogs(
+  store: Store,
+  input: { logs: TickLog[]; timestamps: Map<number, number>; chainId: number },
+): Promise<{ events: TickSseEvent[]; burned: string[] }> {
+  const sse = new CollectingSse();
+  const burned = new Set<string>();
+  await store.transaction(async (tx) => {
+    for (const log of input.logs) {
+      const name = log.eventName ?? "";
+      const args = (log.args ?? {}) as Record<string, unknown>;
+      const tokenAddr = normalizeEventAddress(log.address);
+      const to = String(args.to ?? "").toLowerCase();
+      const isBurn = name === "Burned" || (name === "Transfer" && to === ZERO);
+      if (!isBurn || !tokenAddr) continue;
+      const block = Number(log.blockNumber);
+      const ts = input.timestamps.get(block) ?? 0;
+      const applied = await applyTokenLevelBurn(tx, {
+        token: tokenAddr,
+        burned: String(args.amount ?? "0"),
+        account: String(args.account ?? args.from ?? ""),
+        block,
+        tx: log.transactionHash,
+        ts,
+        chainId: input.chainId,
+        logIndex: Number(log.logIndex ?? 0),
+        eventKind: name,
+      });
+      if (applied) {
+        burned.add(tokenAddr);
+        sse.publish({ type: "burn", data: { token: tokenAddr, name, tx: log.transactionHash } });
+      }
+    }
+  });
+  return { events: sse.events, burned: [...burned] };
 }

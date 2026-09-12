@@ -5,7 +5,7 @@ export type MarketSort = "new" | "vol" | "price";
 export type MarketCursor = { cursor_ts: string; cursor_token: string };
 
 const MARKET_SELECT = `SELECT m.token,m.quote,m.pool_id,m.stage,m.market_live,m.fair_id,m.bonding_bps,m.real_quote,m.grad_target,m.price_quote_x18,m.price_usd6,m.fdv_usd6,m.volume_24h_quote,m.volume_24h_usd6,m.trades_24h,m.lifetime_rewards,m.image,m.description,m.updated_ts,
-              t.symbol,t.name,t.creator,t.ticker,t.factory_version,t.rewards_mode,t.supply,
+              t.symbol,t.name,t.decimals,t.creator,t.ticker,t.factory_version,t.rewards_mode,t.supply,t.current_supply,
               q.symbol as quote_symbol, q.decimals as quote_decimals
        FROM markets m
        LEFT JOIN tokens t ON t.address=m.token
