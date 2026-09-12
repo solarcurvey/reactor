@@ -84,7 +84,10 @@ function assert(cond: unknown, msg: string) {
   assert(exclusiveBeforeBucket(301, 60) === 300, "non-aligned before includes the open bucket");
   const aligned = boundedCandleWindow({ intervalSec: 60, limit: 5, nowTs: now, before: 300 });
   assert(aligned.toTs === 240 && aligned.fromTs === 0, "aligned before window ends on previous bucket");
+  assert(aligned.toTs < 300, "toTs is never bucketTs(aligned before)=300");
   assert(aligned.toTs < now, "aligned historical before never reaches now");
+  const midWin = boundedCandleWindow({ intervalSec: 60, limit: 5, nowTs: now, before: 301 });
+  assert(midWin.toTs === 300 && midWin.toTs < 301, "non-aligned before: last bucket still strictly < before");
   const after = boundedCandleWindow({ intervalSec: 60, limit: 100, nowTs: now, after: end - 120 });
   assert(after.fromTs === end - 60, "after is exclusive of the cursor bucket");
   const capped = boundedCandleWindow({ intervalSec: 60, limit: 50_000, nowTs: now });

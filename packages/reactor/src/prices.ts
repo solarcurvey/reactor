@@ -113,10 +113,12 @@ export function boundedCandleWindow(opts: {
 }): { fromTs: number; toTs: number; maxBuckets: number } {
   const intervalSec = opts.intervalSec > 0 ? opts.intervalSec : 60;
   const maxBuckets = Math.min(MAX_CANDLE_FILL_BUCKETS, Math.max(1, Math.floor(Number(opts.limit) || 1)));
-  const toTs =
-    opts.before != null && Number.isFinite(Number(opts.before))
-      ? exclusiveBeforeBucket(Number(opts.before), intervalSec)
-      : bucketTs(opts.nowTs, intervalSec);
+  const rawBefore = opts.before != null && Number.isFinite(Number(opts.before)) ? Number(opts.before) : null;
+  // Never `bucketTs(before)`: that equals `before` when aligned and fillContinuous is inclusive.
+  const toTs = rawBefore != null ? exclusiveBeforeBucket(rawBefore, intervalSec) : bucketTs(opts.nowTs, intervalSec);
+  if (rawBefore != null && toTs >= rawBefore) {
+    throw new Error(`candle window toTs=${toTs} must be < exclusive before=${rawBefore}`);
+  }
   let fromTs = toTs - (maxBuckets - 1) * intervalSec;
   if (opts.after != null && Number.isFinite(Number(opts.after))) {
     fromTs = Math.max(fromTs, bucketTs(Number(opts.after), intervalSec) + intervalSec);
