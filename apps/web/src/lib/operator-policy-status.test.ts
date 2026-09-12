@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { AddressInfo } from "node:net";
 import {
   IGNORED_CLIENT_AUTHORITY,
+  OPERATOR_POLICY_CHALLENGE_PATH,
   fetchIndexerPolicyStatus,
   pickForwardHeaders,
   productionLike,
@@ -111,9 +112,33 @@ async function main() {
 
 {
   const indexer = await listen((req, res) => {
+    assert(req.url === OPERATOR_POLICY_CHALLENGE_PATH || req.url?.startsWith(`${OPERATOR_POLICY_CHALLENGE_PATH}?`), `must hit ${OPERATOR_POLICY_CHALLENGE_PATH}, got ${req.url}`);
     assert(!req.headers["x-sanctions-clear"], "indexer must not see clear flag");
     assert(!req.headers["cf-ipcountry"], "indexer must not see browser country");
     assert(!req.headers["x-forwarded-for"], "indexer must not see forwarded IP from BFF");
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ token: "t", message: "REACTOR operator-policy v1\n..." }));
+  });
+  try {
+    const incoming = new Headers({
+      "x-reactor-wallet-proof": "proof",
+      "x-sanctions-clear": "1",
+      "cf-ipcountry": "IR",
+      "x-forwarded-for": "2001:db8::1",
+    });
+    const view = await fetchIndexerPolicyStatus({
+      indexer: indexer.url,
+      headers: pickForwardHeaders(incoming),
+    });
+    assert("present" in view, "official #68 challenge is present, not a invented status GET");
+  } finally {
+    await indexer.close();
+  }
+}
+
+{
+  const indexer = await listen((req, res) => {
+    assert(req.url === OPERATOR_POLICY_CHALLENGE_PATH, `must hit challenge, got ${req.url}`);
     res.setHeader("content-type", "application/json");
     res.end(
       JSON.stringify({
@@ -129,17 +154,11 @@ async function main() {
     );
   });
   try {
-    const incoming = new Headers({
-      "x-reactor-wallet-proof": "proof",
-      "x-sanctions-clear": "1",
-      "cf-ipcountry": "IR",
-      "x-forwarded-for": "2001:db8::1",
-    });
     const view = await fetchIndexerPolicyStatus({
       indexer: indexer.url,
-      headers: pickForwardHeaders(incoming),
+      headers: new Headers(),
     });
-    assert("ok" in view && view.kind === "wallet", "indexer wallet mapped");
+    assert("ok" in view && view.kind === "wallet", "forward-compat decision body still sanitized");
     if ("ok" in view) {
       const json = JSON.stringify(view);
       assert(!json.includes("2001:db8"), "IPv6 stripped");
@@ -151,6 +170,23 @@ async function main() {
   } finally {
     await indexer.close();
   }
+}
+
+{
+  const req = new Request("http://127.0.0.1/api/operator-policy");
+  const prod = await resolveOperatorPolicyStatus({
+    req,
+    env: { REACTOR_ENV: "PROD", NODE_ENV: "production" },
+    fetchImpl: async (url) => {
+      assert(String(url).endsWith(OPERATOR_POLICY_CHALLENGE_PATH), `PROD probes challenge, got ${url}`);
+      return new Response(JSON.stringify({ token: "t", message: "REACTOR operator-policy v1" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    },
+  });
+  assert(prod.kind === "unavailable", "PROD fail-closes: #68 has challenge, no public decision GET");
+  assert(!prod.writesAllowed, "PROD writes disabled until a documented decision read");
 }
 
 {

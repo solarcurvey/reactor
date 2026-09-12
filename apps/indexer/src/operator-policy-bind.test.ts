@@ -162,9 +162,11 @@ async function main() {
       assert(noProofBody.reason === "UNAVAILABLE_WALLET_MISSING", String(noProofBody.reason));
       assert(noProofBody.ranDownstream === false, "no proof no downstream");
 
-      const status = await fetch(`${server.url}/operator-policy/status`).then((r) => r.json());
-      assert(status.reason === "ALLOW", "geo-only status allow");
-      assert(!JSON.stringify(status).includes("203.0.113"), "status no IP");
+      const challengeOk = await fetch(`${server.url}/operator-policy/challenge`);
+      const issued = (await challengeOk.json()) as { token?: string; message?: string };
+      assert(challengeOk.ok && issued.token && issued.message, "official #62 challenge path");
+      const invented = await fetch(`${server.url}/operator-policy/status`);
+      assert(invented.status === 404, "do not invent a parallel status GET");
     } finally {
       await server.close();
     }

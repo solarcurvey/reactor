@@ -1,9 +1,10 @@
 /**
- * #65 status + write gate bound to the #62 / PR #68 recovered-wallet model.
+ * #65 write-gate bind for the #62 / PR #68 recovered-wallet model.
  *
- * Public reads: GET /operator-policy/challenge, GET /operator-policy/status.
- * Status is minimized (no IP / SDN / list metadata). Subject is the recovered
- * EIP-191 signer of a server challenge — never x-reactor-wallet / body.wallet.
+ * Public read: GET /operator-policy/challenge only. #68 does not expose a
+ * public status GET — do not add a parallel `/operator-policy/status`.
+ * Subject is the recovered EIP-191 signer of a server challenge — never
+ * x-reactor-wallet / body.wallet.
  *
  * If official `operator-policy.ts` from PR #68 is present, challenge/recover/gate
  * delegate to it. Otherwise this module is the compatible bind.

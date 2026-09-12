@@ -1,13 +1,15 @@
 /**
  * Next BFF resolver for GET /api/operator-policy (issue #65).
  *
- * Proxies indexer `GET /operator-policy/status` (this branch; #62 recovered-wallet
- * model). Subject is the EIP-191 signer of `GET /operator-policy/challenge`.
- * Claimed `x-reactor-wallet` / body.wallet is never forwarded or trusted.
+ * Calls the real #62 / PR #68 indexer endpoint: `GET /operator-policy/challenge`.
+ * Draft #68 is not on `main` and does not expose a public decision GET — do not
+ * invent a parallel `/operator-policy/status`. Write gates remain authoritative.
  *
- * Proof is optional on status (geo-only pre-wallet UX). Writes still require
- * a recovered proof at the indexer gate. If an older indexer 404s the status
- * path, LOCAL stubs allow and production-like environments fail closed.
+ * Subject is the EIP-191 signer of that challenge. Claimed `x-reactor-wallet` /
+ * body.wallet is never forwarded or trusted.
+ *
+ * LOCAL UX fixtures demo deny/unavailable. Production-like fail-closes when the
+ * challenge path is missing or when #68 has not published a public decision body.
  */
 import {
   allowStubView,
@@ -19,7 +21,8 @@ import {
   type PublicOperatorPolicyView,
 } from "./operator-policy";
 
-export const OPERATOR_POLICY_STATUS_PATH = "/operator-policy/status";
+/** Official #62 / #68 public operator-policy path. Not a decision GET. */
+export const OPERATOR_POLICY_CHALLENGE_PATH = "/operator-policy/challenge";
 
 /** Headers the BFF may forward to the indexer. Nothing else. */
 export const FORWARDED_POLICY_HEADERS = ["x-reactor-wallet-proof", "x-request-id"] as const;
@@ -76,15 +79,26 @@ export function pickForwardHeaders(incoming: Headers, env: NodeJS.ProcessEnv = p
   return out;
 }
 
+function isChallengeBody(json: unknown): boolean {
+  if (!json || typeof json !== "object") return false;
+  const rec = json as Record<string, unknown>;
+  return typeof rec.token === "string" && typeof rec.message === "string";
+}
+
+/**
+ * Probe the official #62/#68 challenge path. A challenge body means the gate is
+ * present; a sanitized public decision is only used if #68 later returns one
+ * (forward-compat). A mismatched `/status` path is never called.
+ */
 export async function fetchIndexerPolicyStatus(input: {
   indexer: string;
   headers: Headers;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
-}): Promise<PublicOperatorPolicyView | { missing: true } | { failed: true }> {
+}): Promise<PublicOperatorPolicyView | { missing: true } | { failed: true } | { present: true }> {
   const fetchImpl = input.fetchImpl ?? fetch;
   try {
-    const res = await fetchImpl(`${input.indexer}${OPERATOR_POLICY_STATUS_PATH}`, {
+    const res = await fetchImpl(`${input.indexer}${OPERATOR_POLICY_CHALLENGE_PATH}`, {
       method: "GET",
       headers: input.headers,
       signal: AbortSignal.timeout(input.timeoutMs ?? 4_000),
@@ -94,6 +108,7 @@ export async function fetchIndexerPolicyStatus(input: {
     const view = sanitizePublicPolicyView(json, "indexer");
     if (view) return view;
     if (!res.ok) return { failed: true };
+    if (isChallengeBody(json)) return { present: true };
     return { failed: true };
   } catch {
     return { missing: true };
@@ -119,5 +134,9 @@ export async function resolveOperatorPolicyStatus(input: {
   });
   if ("ok" in fromIndexer) return fromIndexer;
   if ("failed" in fromIndexer) return unavailableStubView();
+  // Challenge present (#68 contract) but no public decision GET yet.
+  if ("present" in fromIndexer) {
+    return productionLike(env) ? unavailableStubView() : allowStubView();
+  }
   return productionLike(env) ? unavailableStubView() : allowStubView();
 }
