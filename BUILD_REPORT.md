@@ -105,6 +105,37 @@
 
 # Prior — merged #33 Top-10 ValuationService
 
+# BUILD REPORT — Keeper lease unit tests (CI flake after #47)
+
+**Status:** Restore green `docs-sync` / `constants-version-deployments` on main `d0142a47` (#47). `pnpm --filter indexer test` failed in `keeper.lease.test.ts` with `renewed leader still holds after work > TTL`. The dedicated two-worker Postgres job on the same SHA was green.  
+**Not audited. Not mainnet.**  
+**Economics / 3.5% / curve / Keeper routing / Factory V1 constants: unchanged.** Production lease SQL, fence, and default `Date.now()` + `setInterval` renew are unchanged.
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — notes only |
+| Factory | **V1** — unchanged |
+| Intent | Make Keeper lease TTL / renew / steal proofs deterministic via an injected clock. CI load after #47 could delay `setInterval` past a 400ms test TTL so a follower stole mid-tick. |
+| Foundry | Unchanged this pass. |
+| Indexer / lib | `keeper.lease.test.ts` + `keeper.lease.pg.test.ts` drive `lease-clock.fake.ts`. Added a no-renew regression (work > TTL loses the fence). `pnpm --filter indexer test` must stay green. |
+| Review shots | **Not regenerated** (no UI) |
+| Mainnet | **Blocked** |
+
+## Closed this run
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| docs-sync `pnpm --filter indexer test` flake | **Yes** | Injected clock + scheduler; long-tick AC no longer waits on wall clock |
+| Silent skip of the renew AC | **No** | Same assertion; plus explicit no-renew takeover case |
+| Production lease semantics | **Unchanged** | `wallLeaseRenewScheduler` is still `setInterval`; Store still writes `leaseNow()` which defaults to `Date.now()` |
+| Broader Keeper / re-audit | **Left open** | Offchain test harness only. Push for re-audit; do not close unrelated issues. |
+
+---
+
+# Prior — Top-10 ValuationService rebase onto post-#30 main
+
 # BUILD REPORT — Top-10 ValuationService rebase onto post-#30 main
 
 **Status:** Same PR **#33** / same branch `cursor/top10-valuation-service-5a26`, rebased onto latest `origin/main` `80c3c20` (#30 consensus **v10** after #23 `current_supply` **v9**). Issue **#10 stays open** until merge + post-merge verify.  

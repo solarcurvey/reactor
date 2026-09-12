@@ -1,5 +1,8 @@
 import type { Store } from "./db.ts";
 import type { Hex } from "viem";
+import { wallLeaseRenewScheduler, type LeaseRenewScheduler } from "./lease-clock.ts";
+
+export type { LeaseRenewScheduler } from "./lease-clock.ts";
 
 export const KEEPER_LOCK_NAME = "reactor-keeper";
 /** Default leadership TTL. Shorter than some ticks (receipt wait is 60s) — must be renewed, not relied on as a work budget. */
@@ -99,20 +102,19 @@ export async function withLeaderLock<T>(
   store: Store,
   owner: string,
   fn: (lease: LeaderLease) => Promise<T>,
-  opts?: { ttlMs?: number; renewEveryMs?: number; name?: string },
+  opts?: { ttlMs?: number; renewEveryMs?: number; name?: string; scheduler?: LeaseRenewScheduler },
 ): Promise<T | undefined> {
   const { ttlMs, renewEveryMs } = resolveLeaseIntervals(opts?.ttlMs, opts?.renewEveryMs);
   const lease = await acquireLeaderLease(store, owner, ttlMs, opts?.name ?? KEEPER_LOCK_NAME);
   if (!lease) return undefined;
-  let renewTimer: ReturnType<typeof setInterval> | undefined;
+  const scheduler = opts?.scheduler ?? wallLeaseRenewScheduler();
+  let renewHandle: { stop(): void } | undefined;
   try {
     await renewLeaderLease(store, lease);
-    renewTimer = setInterval(() => {
-      void renewLeaderLease(store, lease);
-    }, renewEveryMs);
+    renewHandle = scheduler.start(renewEveryMs, () => renewLeaderLease(store, lease));
     return await fn(lease);
   } finally {
-    if (renewTimer) clearInterval(renewTimer);
+    renewHandle?.stop();
     await store.releaseLease(lease.name, lease.owner, lease.fence);
   }
 }

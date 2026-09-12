@@ -6,6 +6,8 @@
 
 **Documentation mandate:** any change to contracts, tokenomics, Factory, Guardian/Keeper, routing, launch admission, API, SDK, CORE, tickers, backend trust, or user-facing behavior must update the matching docs in the same commit. See `CONTRIBUTING.md` and `/docs/policy`. CI (`pnpm docs:check`) fails on drifted fees, 1B supply, 5% Dev Buy, 24h ticker lock, Factory labels, protocol version, or deployment tables. Never invent mainnet addresses.
 
+**This amendment (CI lease flake after #47):** indexer `leader_locks` unit / `test:pg-lease` TTL cases inject `leaseNow()` + a renew scheduler (`apps/indexer/src/lease-clock.ts`). Production still uses `Date.now()` + `setInterval`. Acquire / renew / fence SQL is unchanged. Architecture and tokenomics unchanged. Re-audit the offchain test harness if the prior Keeper lease review is in scope; do not treat this as a protocol change.
+
 **This pass (final Grok security/ops patch):** public `buyPrefunded` deleted; router-only `buyRouted` with this-call custody; production Safe ≠ deployer; RoutePlanner discovers proven venues; sell `minQuoteOut` ≠ `minFinalOut`; fee preview on official-market quote notional; Keeper executes frozen onchain epoch targets; lastGoodFdvQuote accepts 3 historical samples. Architecture and tokenomics unchanged.
 
 ## Codex first task (attack, do not build)

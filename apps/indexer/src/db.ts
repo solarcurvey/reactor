@@ -3,6 +3,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { applyMigrations } from "./migrations.ts";
+import { leaseNow } from "./lease-clock.ts";
 
 export type SqlRow = Record<string, unknown>;
 
@@ -98,7 +99,7 @@ class SqliteStore implements Store {
     return (await this.acquireLease(name, owner, ttlMs)) !== null;
   }
   async acquireLease(name: string, owner: string, ttlMs: number) {
-    const now = Date.now();
+    const now = leaseNow();
     return this.transaction(async (tx) => {
       const row = await tx.get<{ owner: string; ts: number; lease_until?: number }>(
         "SELECT owner, ts, lease_until FROM leader_locks WHERE name=?",
@@ -118,7 +119,7 @@ class SqliteStore implements Store {
     });
   }
   async renewLease(name: string, owner: string, fence: number, ttlMs: number) {
-    const now = Date.now();
+    const now = leaseNow();
     const r = await this.runChanges(
       "UPDATE leader_locks SET lease_until=? WHERE name=? AND owner=? AND ts=? AND lease_until>?",
       now + ttlMs,
@@ -130,7 +131,7 @@ class SqliteStore implements Store {
     return r.changes > 0;
   }
   async hasLease(name: string, owner: string, fence: number) {
-    const now = Date.now();
+    const now = leaseNow();
     const row = await this.get<{ owner: string; ts: number; lease_until?: number }>(
       "SELECT owner, ts, lease_until FROM leader_locks WHERE name=?",
       name,
@@ -248,7 +249,7 @@ class PostgresStore implements Store {
     return (await this.acquireLease(name, owner, ttlMs)) !== null;
   }
   async acquireLease(name: string, owner: string, ttlMs: number) {
-    const now = Date.now();
+    const now = leaseNow();
     const until = now + ttlMs;
     const row = await this.get<{ owner: string; ts: number }>(
       `INSERT INTO leader_locks(name,owner,ts,lease_until) VALUES(?,?,?,?)
@@ -267,7 +268,7 @@ class PostgresStore implements Store {
     return Number(row.ts);
   }
   async renewLease(name: string, owner: string, fence: number, ttlMs: number) {
-    const now = Date.now();
+    const now = leaseNow();
     const row = await this.get<{ ts: number }>(
       `UPDATE leader_locks SET lease_until=?
        WHERE name=? AND owner=? AND ts=? AND lease_until>?
@@ -281,7 +282,7 @@ class PostgresStore implements Store {
     return row !== undefined;
   }
   async hasLease(name: string, owner: string, fence: number) {
-    const now = Date.now();
+    const now = leaseNow();
     const row = await this.get<{ owner: string; ts: number; lease_until?: number }>(
       "SELECT owner, ts, lease_until FROM leader_locks WHERE name=?",
       name,
