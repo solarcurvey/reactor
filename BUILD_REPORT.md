@@ -12,6 +12,7 @@
 | Factory | **V1** — **unchanged** |
 | Intent | Keep selected route and atomic preview/`minOut`s from the same candidate (`Fixes #3`). Rebased onto #27 without changing that accepted behavior. |
 | Indexer / lib | `quote-integrity.test.ts` + `tick-atomic.test.ts` + `pnpm --filter indexer test` |
+| Foundry | `UserRoute.t.sol` previewBuy/previewSell decode `hopOuts.length == hops.length + 1` |
 | Mainnet | **Blocked** |
 
 ## Closed this run

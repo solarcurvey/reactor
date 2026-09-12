@@ -311,7 +311,7 @@ contract UserRouteTest is Base {
         } catch (bytes memory err) {
             (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) = _decodePreviewRoute(err);
             assertGt(amountOut, 1, "preview amountOut dust");
-            assertEq(hopOuts.length, 1, "0 hops → 1 terminal slot");
+            assertEq(hopOuts.length, 1, "0 hops -> 1 terminal slot");
             assertEq(kinds.length, 1);
             assertEq(kinds[0], userQuoter.KIND_OFFICIAL());
             assertEq(hopOuts[0], amountOut);
@@ -353,9 +353,11 @@ contract UserRouteTest is Base {
     function test_nested_previewSell_hops_plus_terminal() public {
         address token = _instantZcat(1);
         uint256 bought = _buy(alice, token, address(zec), 5e8);
+        // Sell a slice so CurveMath.sellOut stays under realQuote after the 3.5% buy fee.
+        uint256 sellAmt = bought / 2;
         vm.prank(alice);
-        ReactorToken(token).transfer(address(userQuoter), bought);
-        try userQuoter.previewSell(token, bought, _hop(address(zec), address(usdc), zecUsdcKey)) {
+        ReactorToken(token).transfer(address(userQuoter), sellAmt);
+        try userQuoter.previewSell(token, sellAmt, _hop(address(zec), address(usdc), zecUsdcKey)) {
             revert("must revert PreviewRoute");
         } catch (bytes memory err) {
             (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) = _decodePreviewRoute(err);
