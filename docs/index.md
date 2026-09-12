@@ -14,7 +14,7 @@ This software is **not audited**. There is **no public mainnet**. Local and test
 | Creator | [Launch a token](/docs/creators) |
 | Builder | [API, SDK, events](/docs/builders) |
 | Protocol | [Curve](/docs/curve) · [Fees](/docs/fees) · [Quoter](/docs/quoting) · [Trust](/docs/trust) |
-| Reference | [API](/docs/api) · [Arc](/docs/arc) · [FAQ](/docs/faq) · [Versioning](/docs/versioning) · [Repo publicization](/docs/publicization) |
+| Reference | [API](/docs/api) · [Arc](/docs/arc) · [FAQ](/docs/faq) · [CI](/docs/ci) · [Versioning](/docs/versioning) · [Repo publicization](/docs/publicization) |
 
 ## The machine
 

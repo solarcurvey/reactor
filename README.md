@@ -70,8 +70,11 @@ In-app docs: [`/docs`](http://127.0.0.1:43147/docs) (sidebar, search, TOC). Sour
 ```bash
 pnpm docs:check   # fail on fee / supply / Dev Buy / ticker lock / factory / version / deployment drift
 pnpm docs:gen     # regenerate versioning + deployments + changelog pages from config
+pnpm test:ci-cost # CI workflow inventory (no duplicate feature-branch push+PR)
 pnpm safe:genesis # Safe Transaction Builder JSON from deployments/local.json (deployer ≠ Safe)
 ```
+
+GitHub Actions is three-tier (fast PR / full merge-candidate / main). See [`/docs/ci`](docs/ci.md).
 
 **Production (`REACTOR_ENV=PROD` or `NODE_ENV=production`):** the indexer and isolated signer refuse to start if `TURNSTILE_SECRET` / site key are missing, if `SIGNER_INLINE` is on, or if the Anvil `#0` signer fallback would be used. `LOCAL` may keep those bypasses.
 

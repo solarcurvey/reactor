@@ -48,7 +48,7 @@ A protocol `0.1.1` / `0.2.0` bump does not rewrite Factory V1. A different 3.5% 
 
 ## CI drift
 
-`pnpm docs:check` (also run from `pnpm test:lib` and `.github/workflows/docs-sync.yml`) **must fail** when generated constants, deployment tables, or version labels have drifted from code/config:
+`pnpm docs:check` (also run from `pnpm test:lib` and `.github/workflows/ci.yml` job `constants-version-deployments`) **must fail** when generated constants, deployment tables, or version labels have drifted from code/config:
 
 - Fee bps vs 3.5% / 2% holders / 1% / 0.5% copy
 - Default supply (1B) and Dev Buy cap (5%)
@@ -61,7 +61,7 @@ A protocol `0.1.1` / `0.2.0` bump does not rewrite Factory V1. A different 3.5% 
 
 Do not “fix” a red check by editing generated markdown. Edit `docs/version.json` / `deployments/registry.json` / the Solidity source and regenerate.
 
-Public-fork Actions hardening (Refs #72): every workflow has `permissions: contents: read`; every `actions/checkout` sets `persist-credentials: false`; no `pull_request_target`. Compatible with #69 three-tier CI when those three files fold into `ci.yml`. `pnpm test:lib` runs `scripts/ci-public-harden.test.ts`. Operator checklist: [`docs/publicization.md`](docs/publicization.md). **Do not publicize without founder instruction. Do not flip visibility from an agent. Do not run another history rewrite unless the founder authorizes it.** Residual pre-rewrite objects on GitHub `refs/pull/*` are an accepted residual; Support purge/GC is not a #72 AC.
+Public-fork Actions hardening (Refs #72): every workflow has `permissions: contents: read`; every `actions/checkout` sets `persist-credentials: false`; no `pull_request_target`. The #69 fold keeps those rules on `.github/workflows/ci.yml`. `pnpm test:lib` runs `scripts/ci-public-harden.test.ts` and `scripts/ci-cost.test.ts`. Operator checklist: [`docs/publicization.md`](docs/publicization.md). **Do not publicize without founder instruction. Do not flip visibility from an agent. Do not run another history rewrite unless the founder authorizes it.** Residual pre-rewrite objects on GitHub `refs/pull/*` are an accepted residual; Support purge/GC is not a #72 AC.
 
 ## Engineering rules
 
@@ -69,6 +69,9 @@ See `AGENTS.md`. Security > cleverness. Do not change tokenomics to make a test 
 
 ```bash
 pnpm docs:check          # version + constants + deployments
-pnpm test:lib            # indexer + web unit + docs:check + public-fork CI harden
+pnpm test:lib            # indexer + web unit + docs:check + CI-cost + public-fork harden
+pnpm test:ci-cost        # workflow inventory / no duplicate push+PR / fail-safe paths
 cd contracts && forge test
 ```
+
+GitHub Actions is three-tier (Refs #69): fast PR (`test:lib`), full merge-candidate (`ready_for_review`, label `ci-full`, or `workflow_dispatch`), main post-merge once. Do not add a feature-branch `push` + `pull_request` pair. Operator + before/after inventory: [`/docs/ci`](docs/ci.md).

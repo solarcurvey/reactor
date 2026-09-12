@@ -21,7 +21,7 @@ pnpm --filter indexer test
 # includes packages/reactor/src/untrusted-metadata.test.ts (malicious metadata + CSP lock)
 # keeper.lease.test.ts TTL / renew / steal cases inject lease-clock.fake.ts (not wall-clock setInterval)
 # tick-atomic.test.ts: SQLite always; Postgres when DATABASE_URL or compose :54329 is up (REQUIRE_PG=1 to fail if missing)
-# two Keeper workers on real Postgres (CI job keeper-lease-pg; docker compose postgres :54329)
+# two Keeper workers on real Postgres (CI job postgres-ms-timestamps / test:pg-lease; docker compose postgres :54329)
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg-lease
 npx --yes tsx apps/web/src/lib/top10.test.ts
 npx --yes tsx apps/web/src/lib/marketdata.test.ts
@@ -31,20 +31,23 @@ npx --yes tsx apps/web/src/lib/tx-guard.test.ts
 npx --yes tsx apps/web/src/lib/secret-sentinel.test.ts
 npx --yes tsx packages/reactor/src/untrusted-metadata.test.ts
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
+pnpm test:ci-cost               # #69: no duplicate push+PR, concurrency, fail-safe paths
 npx --yes tsx scripts/ci-public-harden.test.ts  # #72: permissions / persist-credentials / no pull_request_target
-# CI: workflow + job contents:read; actions/checkout persist-credentials:false. Compatible with #69 ci.yml fold.
+# CI: .github/workflows/ci.yml contents:read; actions/checkout persist-credentials:false.
 pnpm --filter web test          # Playwright smoke + interactive + live-toasts (dev server)
 pnpm test:live-toasts           # #38 gate: identity unit + Playwright dismiss / multi-log / reconnect / safe-area / reduced-motion
-# CI: .github/workflows/live-toasts.yml job live-toasts-ui (required visible check). #38 stays open until post-merge verify.
+# CI full/main: .github/workflows/ci.yml job live-toasts-ui. Fast PR: identity unit via test:lib. #38 stays open until post-merge verify.
 pnpm test:web-security          # production next build/start: live headers, bundle sentinel, XSS corpus
-# CI: .github/workflows/docs-sync.yml job web-production-security
+# CI full/main: .github/workflows/ci.yml job web-production-security
 # Real Postgres (docker compose postgres on :54329, or local 5432)
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
-# CI: .github/workflows/docs-sync.yml job postgres-ms-timestamps (includes test:pg-lease)
+# CI full/main: .github/workflows/ci.yml job postgres-ms-timestamps (includes test:pg-lease)
 ```
 
-`pnpm docs:check` (and `.github/workflows/docs-sync.yml`) **must fail** when generated constants, `docs/version.json`, Factory labels, or deployment tables have drifted from Solidity/config. Do not edit generated `docs/versioning.md` / `docs/deployments.md` / `docs/changelog.md` by hand — run `pnpm docs:gen`.
+`pnpm docs:check` (and `.github/workflows/ci.yml` job `constants-version-deployments`) **must fail** when generated constants, `docs/version.json`, Factory labels, or deployment tables have drifted from Solidity/config. Do not edit generated `docs/versioning.md` / `docs/deployments.md` / `docs/changelog.md` by hand — run `pnpm docs:gen`.
+
+Three-tier GitHub Actions (Refs #69): fast PR / full merge-candidate / main post-merge. Operator inventory: [`/docs/ci`](docs/ci.md). Do not add a feature-branch `push` + `pull_request` pair.
 
 Public-fork hardening (Refs #72) is `scripts/ci-public-harden.test.ts` inside `pnpm test:lib`. It does not skip Foundry, `docs:check`, `test:web-security`, or `live-toasts-ui`. Personal-mailbox trailers were remapped 2026-09-12. AC1 is advertised refs only; residual dangling SHAs are accepted. Do not publicize without founder instruction — see `/docs/publicization`.
 
@@ -231,7 +234,7 @@ pnpm --filter indexer watchdog
 | 38 | Indexer event writes + cursor atomic; log identity `(chain_id, tx, log_index, event_kind)` (schema v8 journal); token burns in the same tick transaction | `tick-atomic.test.ts` (SQLite + Postgres), `pg-smoke.ts` |
 | 39 | Selected route + atomic preview/minOuts/terminal from the same candidate; PreviewRoute is hops+1 (BUY append / SELL prepend) | `quote-integrity.test.ts`, `quote-select.ts`, `UserRoute.t.sol` `test_nested_previewSell_hops_plus_terminal` |
 | 40 | Keeper lease renew + fence: long tick cannot overlap; stale fence cannot send. TTL cases use an injected clock (`lease-clock.fake.ts`) so CI load cannot miss a `setInterval` renew | `keeper.lease.test.ts` |
-| 41 | Two Postgres workers: one winner, renew vs overlap, expiry/crash takeover, stale fence cannot send. AC1 is real `Date.now()` BIGINT; renew/expiry ACs inject the same clock | `keeper.lease.pg.test.ts` (`test:pg-lease`, CI `keeper-lease-pg`) |
+| 41 | Two Postgres workers: one winner, renew vs overlap, expiry/crash takeover, stale fence cannot send. AC1 is real `Date.now()` BIGINT; renew/expiry ACs inject the same clock | `keeper.lease.pg.test.ts` (`test:pg-lease`, CI `postgres-ms-timestamps` on full/main) |
 | 42 | Markets keyset cursor matches `sort` (`new`/`vol`/`price`); insert-ahead no dupes | `markets-query.test.ts` |
 | 43 | Candle gap-fill bounded; exclusive aligned `before` | `packages/reactor/src/prices.test.ts` |
 | 44 | Public JSON POSTs reject oversized / chunked bodies (413); env cannot raise past 64KiB hard max | `read-json-body.test.ts`, `limited-json.test.ts` |
