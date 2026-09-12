@@ -80,8 +80,25 @@ await persistVenue(store, {
 });
 const planned = await planFeeExemptRoute(store, quote, token, new Set([proto]));
 assert(planned.hops.length === 1, "shared planner");
-await saveJob(store, "settle:pg-smoke", { status: "done", ts: Date.now(), note: planned.reason }, "MAINTENANCE_SETTLEMENT");
-const job = await store.get<{ kind: string }>("SELECT kind FROM keeper_operations WHERE id=?", "settle:pg-smoke");
+const jobNow = Date.now();
+await saveJob(store, "settle:pg-smoke", { status: "done", ts: jobNow, note: planned.reason }, "MAINTENANCE_SETTLEMENT");
+const job = await store.get<{ kind: string; ts: string | number }>("SELECT kind, ts FROM keeper_operations WHERE id=?", "settle:pg-smoke");
 assert(job?.kind === "MAINTENANCE_SETTLEMENT", "job kind");
+assert(Number(job?.ts) === jobNow, "keeper_operations.ts is Date.now() ms");
+for (const [table, column] of [
+  ["admission_hits", "ts"],
+  ["issuance_bucket", "updated_ms"],
+  ["leader_locks", "ts"],
+  ["leader_locks", "lease_until"],
+  ["keeper_operations", "ts"],
+  ["alerts", "ts"],
+] as const) {
+  const col = await store.get<{ data_type: string }>(
+    "SELECT data_type FROM information_schema.columns WHERE table_schema='public' AND table_name=? AND column_name=?",
+    table,
+    column,
+  );
+  assert(col?.data_type === "bigint", `${table}.${column} bigint`);
+}
 await store.close();
 console.log("postgres smoke ok");

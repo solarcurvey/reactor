@@ -7,7 +7,7 @@ Token launchpad for **Arc**. Official REACTOR pools are Uniswap v4 markets with 
 
 > This repository is **not audited**. Do not deploy to Arc Mainnet (chain 5042).
 
-Protocol release **0.3.1** (`v0.3.1`). Factory **V1** (`FACTORY_VERSION = 1`, immutable). Source of truth: `docs/version.json`. Changelog: `CHANGELOG.md`. Docs policy: `CONTRIBUTING.md`.
+Protocol release **0.3.2** (`v0.3.2`). Factory **V1** (`FACTORY_VERSION = 1`, immutable). Source of truth: `docs/version.json`. Changelog: `CHANGELOG.md`. Docs policy: `CONTRIBUTING.md`.
 
 ## Quick start (local Arc-compatible demo)
 
@@ -27,9 +27,10 @@ cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0
 # Apps
 pnpm install
 REACTOR_ENV=LOCAL pnpm --filter indexer dev   # http://127.0.0.1:43148  Postgres if DATABASE_URL, else SQLite
-# optional Postgres smoke (docker compose postgres on :54329)
+# optional Postgres smoke + millisecond BIGINT test (docker compose postgres on :54329)
 # docker compose up -d postgres
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
+# DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg
 REACTOR_ENV=LOCAL pnpm --filter indexer signer   # isolated pricing signer :43149
 pnpm --filter web dev                 # http://127.0.0.1:43147
 # optional — local Anvil only (KEEPER_MODE=LOCAL|DRY_RUN|ARC_TESTNET; mainnet disabled)

@@ -22,6 +22,10 @@ npx --yes tsx apps/web/src/lib/top10.test.ts
 npx --yes tsx apps/web/src/lib/marketdata.test.ts
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
 pnpm --filter web test          # Playwright smoke + interactive
+# Real Postgres (docker compose postgres on :54329, or local 5432)
+# DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg
+# DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
+# CI: .github/workflows/docs-sync.yml job postgres-ms-timestamps
 ```
 
 `pnpm docs:check` (and `.github/workflows/docs-sync.yml`) **must fail** when generated constants, `docs/version.json`, Factory labels, or deployment tables have drifted from Solidity/config. Do not edit generated `docs/versioning.md` / `docs/deployments.md` / `docs/changelog.md` by hand — run `pnpm docs:gen`.
@@ -198,6 +202,7 @@ pnpm --filter indexer watchdog
 | 33 | Production hard gates (Turnstile + no Anvil/inline signer) | `prod-gates.test.ts` |
 | 34 | Safe Builder JSON from local artifacts; deployer ≠ Safe | `scripts/safe-genesis-builder.test.ts` |
 | 35 | sharp required (not optional) | `sharp-check.test.ts` |
+| 36 | Postgres millisecond columns are BIGINT; Date.now() persists; v5 migrates | `pg-ms-timestamps.test.ts` (`pnpm --filter indexer test:pg`) |
 
 ## Arc smoke
 

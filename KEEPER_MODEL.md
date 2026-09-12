@@ -58,6 +58,8 @@ Guardrails:
 
 Daemon: `apps/indexer/src/keeper.ts` — SelfBurn, Flywheel settle, CORE settle, epoch publish, Top-10 exec, CORE burn, optional graduate assist. Simulate → minOut → submit → receipt → reconcile. Idempotent job IDs. Modes `DRY_RUN` / `LOCAL` / `ARC_TESTNET`. Mainnet 5042 disabled. Ambiguous RPC does not double-exec. `apps/indexer/src/watchdog.ts` is an independent fail-closed process.
 
+Leadership is one `leader_locks` row. `ts` and `lease_until` are wall-clock **milliseconds** (`Date.now()` + TTL), `BIGINT` on Postgres. Job `keeper_operations.ts` is the same unit. Do not store unix seconds in those columns.
+
 Fee exemption is only via the sealed executor contracts (SelfBurn, Flywheel, Buyback) calling `protocolSwap` / `buyExempt`. The Keeper EOA is never allowlisted.
 
 ## Trust — operational risk

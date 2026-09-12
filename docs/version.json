@@ -1,9 +1,9 @@
 {
-  "protocolVersion": "0.3.1",
+  "protocolVersion": "0.3.2",
   "factoryVersion": 1,
   "factoryVersionLabel": "V1",
-  "releaseTag": "v0.3.1",
+  "releaseTag": "v0.3.2",
   "releaseDate": "2026-09-12",
   "status": "pre-audit local/testnet — not mainnet",
-  "notes": "Honest leftovers: Safe Builder JSON from artifacts, UserRouteQuoter state-override nested quotes, production hard gates, funding-parent heuristic, sharp required, Arc testnet blocker. Factory V1 immutable. Not audited."
+  "notes": "Postgres millisecond timestamp columns promoted to BIGINT (schema v6). Factory V1 immutable. Not audited."
 }

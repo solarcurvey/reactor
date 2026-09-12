@@ -4,7 +4,7 @@
 2. Launch Signer prices non-$1 quotes. Not an onchain oracle. Admission + receipt required.
 3. Indexer charts, 24h USD, and candles can lag or be wrong. Onchain truth wins.
 4. Guardian can pause, quarantine, rotate signer, permanently lock tickers. Cannot steal locked LP or change 2/1/0.5.
-5. Designated Keeper runs maintenance. One lease. Simulated minOut. Cannot configure.
+5. Designated Keeper runs maintenance. One lease (`leader_locks.lease_until` in **milliseconds**, `BIGINT`). Simulated minOut. Cannot configure.
 6. Cloudflare Turnstile + issuance bucket are offchain. A bypassed LOCAL env is not production.
 7. Funding-cluster is a heuristic (network + optional first funder). Not KYC, not chain analysis.
 8. Arc Testnet PoolManager is not deployed. Local demo uses official v4-core under BUSL (non-production).

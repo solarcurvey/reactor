@@ -1,6 +1,6 @@
 # SDK
 
-`@reactor/sdk` **0.3.0** — thin client for the public indexer. Factory version is a different number (**V1**).
+`@reactor/sdk` **0.3.2** — thin client for the public indexer. Factory version is a different number (**V1**).
 
 ## Authorize a launch
 
