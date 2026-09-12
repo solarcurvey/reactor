@@ -30,4 +30,4 @@
 
 **Where is the Safe JSON?** `deployments/safe-genesis-builder.json`. Deployer ≠ Guardian. Fill env and regenerate.
 
-**Is this repository public?** Not unless the founder flips visibility. Do not publicize without that instruction. The operator checklist is [Repo publicization](/docs/publicization) (Refs #72). Personal-mailbox trailers were remapped to GitHub noreply; agents must not flip visibility.
+**Is this repository public?** Not unless the founder flips visibility. Do not publicize without that instruction. The operator checklist is [Repo publicization](/docs/publicization) (Refs #72). Personal-mailbox trailers were remapped to GitHub noreply on advertised refs; residual GitHub dangling objects are accepted. Agents must not flip visibility.

@@ -12,6 +12,6 @@
 10. Public JSON POSTs are stream-capped at 16KiB default / 64KiB hard max (Content-Length and chunked). Upload is 2MB. Limits stop unbounded buffering; they are not a DoS proof.
 11. **Token metadata is untrusted in the browser.** Names, tickers, descriptions, social URLs, and images are never rendered as HTML. URL schemes are allowlisted (`https:` / loopback `http:`). Images are first-party `/m/<id>.webp` or `/icons/…` only. Production CSP is a per-request nonce (`script-src` has no `'unsafe-inline'`). Wallet writes ignore metadata and indexer calldata; the official chain is required. Secrets are not `NEXT_PUBLIC_*`. See [Browser security](/docs/web-security). Admission DENYs `javascript:` / `data:` / HTML names before sign. The UI still sanitizes on read.
 12. This repo is **not audited**. Do not deploy to Arc Mainnet (5042).
-13. **Repository visibility is an operator decision.** The tree may stay private. Public-fork Actions must not receive repository secrets or a writable `GITHUB_TOKEN`. Do not publicize without founder instruction. See [Repo publicization](/docs/publicization).
+13. **Repository visibility is an operator decision.** The tree may stay private. Public-fork Actions must not receive repository secrets or a writable `GITHUB_TOKEN`. Do not publicize without founder instruction. Residual pre-rewrite dangling SHAs are accepted; Support purge/GC is not a #72 AC. See [Repo publicization](/docs/publicization).
 
 See `THREAT_MODEL.md`, `AUDIT_HANDOFF.md`.

@@ -1,4 +1,29 @@
-# BUILD REPORT — History rewrite to noreply + prune (Refs #72)
+# BUILD REPORT — Founder residual decision for #72 (advertised-ref AC1)
+
+**Status:** Docs follow-up on `origin/main` `0bd9b82` (#76). Issue **#72 stays open**. Do not `Fixes #72`.  
+**Not audited. Not mainnet.**  
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
+**Visibility was NOT changed.**
+
+Founder (Davis): Support purge/GC of pre-rewrite dangling SHAs is **not required**. Residual old-SHA exposure is accepted.
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Move Support purge/GC under accepted residuals / non-blocking. AC1 is email scrubbed from **advertised** refs only. |
+| Advertised-ref check | `main` `0bd9b82`, tag `v0.3.1`, 17 open PR tips (incl. this branch): no personal gmail/hotmail/icloud in tip author/committer/message or advertised history |
+| Secret scan | Last post-rewrite gitleaks/trufflehog: **0 live credentials**. Not re-run this pass (tools absent). GitHub secret-scanning API 403. |
+| Workflows | Unchanged vs #74: `contents: read` + `persist-credentials: false`. No `pull_request_target`. |
+| Docs | `/docs/publicization`, `AUDIT_HANDOFF.md`, `THREAT_MODEL.md`, changelog |
+| Mainnet | **Blocked** |
+| Close #72 | **No** |
+
+---
+
+# Prior — History rewrite to noreply + prune (Refs #72)
 
 **Status:** Follow-up to merged **#74**. Issue **#72 stays open** until founder AC verify (visibility flip is still a founder gate). Do not `Fixes #72`.  
 **Not audited. Not mainnet.**  
@@ -24,7 +49,7 @@
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
-| Personal email removed from reachable heads/tags | **Yes** | `git log --all --format='%ae %ce %B' \| grep -i gmail` empty on heads+tags |
+| Personal email removed from advertised refs (AC1) | **Yes** | `git log --all --format='%ae %ce %B' \| grep -i gmail` empty on `main` + open PR heads + tags. Residual `refs/pull/*` dangling objects accepted. |
 | Merged/superseded Cursor branches pruned | **Yes** | 10 leftovers + merged #74 head deleted. 16 open-PR heads remain. |
 | Full-history secret scan | **Yes** | gitleaks 8.24.3 (32 fixture hits) + trufflehog 3.88.29 (11 unverified, 0 verified). **0 live credentials.** |
 | Real credential rotated | **Yes (none found)** | Nothing to rotate. |

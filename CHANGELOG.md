@@ -39,6 +39,7 @@ Public launchpad treats token metadata as untrusted (#41). Top-10 ranks move to 
 
 - Public-fork GitHub Actions hardening (Refs #72 / #74): workflow + job `contents: read`, `actions/checkout` `persist-credentials: false`, no `pull_request_target`, no workflow secrets. Compatible with #69 three-tier CI / concurrency. Operator checklist `/docs/publicization`. Visibility was **not** changed. Tokenomics unchanged.
 - Founder-authorized git history rewrite (Refs #72): personal-mailbox `Co-authored-by` trailers remapped to GitHub noreply via `git filter-repo`. Pre-rewrite `main` `c159561` → rewritten `a560650`; #74 squash-merged at `6b32837`. Open PR heads force-updated; merged/superseded `cursor/*` leftovers deleted. Visibility still private.
+- Founder decision (Refs #72): Support purge/GC of pre-rewrite dangling SHAs is **not required**. AC1 is email scrubbed from **advertised** refs (`main`, active PR heads, intentional tags). Residual GitHub dangling objects are accepted / non-blocking. Visibility still a founder gate.
 
 ### Security
 

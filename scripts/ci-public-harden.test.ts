@@ -102,6 +102,10 @@ assert.match(publicization, /filter-repo/);
 assert.match(publicization, /persist-credentials:\s*`?false`?/);
 assert.match(publicization, /#69/);
 assert.match(publicization, /#15|#17|#18/);
+assert.match(publicization, /accepted residuals \/ non-blocking/i);
+assert.match(publicization, /\*\*AC1\.\*\*.*advertised/s);
+assert.match(publicization, /not required/);
 assert.doesNotMatch(publicization, /@gmail\.com/, "do not persist the personal mailbox in in-tree docs");
+assert.doesNotMatch(publicization, /contact GitHub Support/i, "do not instruct operators to contact Support for #72");
 
 console.log(`ci-public-harden ok (${files.length} workflow files)`);
