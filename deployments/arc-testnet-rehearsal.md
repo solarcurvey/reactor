@@ -6,7 +6,7 @@
 | --- | --- |
 | Issue | [#16](https://github.com/solarcurvey/reactor/issues/16) |
 | Deployer (public address only) | `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E` |
-| Funding | ~10 native USDC-18 from box throwaway (Circle GraphQL still `RECAPTCHA_ERROR` from this VM) |
+| Funding | ~10 native USDC-18 from box throwaway [`0x788ce4a4…`](https://testnet.arcscan.app/tx/0x788ce4a45faacc534568a54e252255c25796eaf7d9137cb63f0d4eaf2457f2a8) (Circle GraphQL still `RECAPTCHA_ERROR` from this VM) |
 | Verified chain | **5042002** via `https://rpc.testnet.arc.network` |
 | Factory | [`0xB48D1B397834eBcccb8961041d827487097e0535`](https://testnet.arcscan.app/address/0xB48D1B397834eBcccb8961041d827487097e0535) |
 | Factory create | [`0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67`](https://testnet.arcscan.app/tx/0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67) |

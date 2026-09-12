@@ -9,7 +9,7 @@
 | Protocol release | **0.3.4** (`docs/version.json`) — **unchanged this PR** |
 | Factory | **V1** — **unchanged** |
 | Intent | Full Arc Public Testnet deploy + Instant/Fair smoke (`Addresses #16`). |
-| Deployer | `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E` (`cast wallet new`, PK never committed; funded ~10 native USDC from box throwaway) |
+| Deployer | `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E` (`cast wallet new`, PK never committed; funded ~10 native USDC in [`0x788ce4a4…`](https://testnet.arcscan.app/tx/0x788ce4a45faacc534568a54e252255c25796eaf7d9137cb63f0d4eaf2457f2a8)) |
 | Chain 5042002 | **Verified** live `eth_chainId` `0x4cef52` on `https://rpc.testnet.arc.network` |
 | Factory | `0xB48D1B397834eBcccb8961041d827487097e0535` — [create tx](https://testnet.arcscan.app/tx/0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67) |
 | Instant RHRSI | `0x62A7aDF0deb2c1918603e9834dD9ACe07CDA2f87` launch [`0xde5fb884…`](https://testnet.arcscan.app/tx/0xde5fb884a0495f15715963a710d3e1efd3f93237c22978ee351e15d726c77f6f) buy [`0xf50b7715…`](https://testnet.arcscan.app/tx/0xf50b7715ed981d379c9c37cf6badb227e047e15b2e932cd194088a8fa73886b3) sell [`0x71d6f3ec…`](https://testnet.arcscan.app/tx/0x71d6f3ecbfd4c3a7de02d2fb5f477d6c22a40bec12115ea951c99731565e25cd) |
