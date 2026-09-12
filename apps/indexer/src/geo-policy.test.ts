@@ -144,6 +144,18 @@ assert(productionHardGatesApply(prodEnv), "prod env");
 }
 
 {
+  const d = evaluateRequestGeo(signed({ country: "UA", regionName: "Donetsk" }), prodEnv, NOW);
+  assert(d.decision !== "DENY", "bare Donetsk oblast alias is not blanket DENY");
+  assert(d.decision === "UNKNOWN" && d.reason === "UNKNOWN_REGION_METADATA_UNAVAILABLE", "bare Donetsk is oblast-level");
+}
+
+{
+  const d = evaluateRequestGeo(signed({ country: "UA", regionName: "Donetska" }), prodEnv, NOW);
+  assert(d.decision !== "DENY", "Donetska oblast alias is not blanket DENY");
+  assert(d.decision === "UNKNOWN", "Donetska insufficient");
+}
+
+{
   const d = evaluateRequestGeo(signed({ country: "UA", region: "UA-DPR" }), prodEnv, NOW);
   assert(d.decision === "DENY" && d.reason === "DENY_COMPREHENSIVE_REGION", "precise UA-DPR covered-region code");
   assert(d.matched?.code === "UA-DPR", "DPR code match");

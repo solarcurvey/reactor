@@ -145,6 +145,12 @@ for (const iso of ["CU", "IR", "KP"]) {
 }
 
 {
+  const d = evaluateGeoPolicy(createFixtureClaim({ country: "UA", regionName: "Donetsk" }), prodLike);
+  assert(d.decision !== "DENY", "bare Donetsk alias is not comprehensive DENY");
+  assert(d.decision === "UNKNOWN" && d.reason === "UNKNOWN_REGION_METADATA_UNAVAILABLE", "bare Donetsk oblast-level");
+}
+
+{
   const d = evaluateGeoPolicy(createFixtureClaim({ country: "UA", regionName: "Luhansk Oblast" }), prodLike);
   assert(d.decision === "UNKNOWN" && d.reason === "UNKNOWN_REGION_METADATA_UNAVAILABLE", "Luhansk Oblast name insufficient");
 }
