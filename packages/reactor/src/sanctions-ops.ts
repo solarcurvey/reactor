@@ -585,8 +585,10 @@ export class SanctionsOps {
 
   gateProtectedWrite(input: {
     action: CoarsePolicyAction;
-    wallet?: string;
+    /** EIP-191 recovered subject from #62. Never a browser-claimed wallet. */
+    recoveredWallet?: string | null;
     headers?: Record<string, string | string[] | undefined>;
+    body?: Record<string, unknown>;
     requestId?: string;
     blockedWallets?: Set<string>;
   }): {
@@ -596,9 +598,14 @@ export class SanctionsOps {
     body?: Record<string, unknown>;
     audit: SanctionsAuditRecord;
     ranDownstream: boolean;
+    ignored: string[];
   } {
     const health = this.health();
-    const wallet = normalizeEvmAddress(input.wallet);
+    const { subject: wallet, ignored } = resolveGatedSubject({
+      recoveredWallet: input.recoveredWallet,
+      headers: input.headers,
+      body: input.body,
+    });
     let decision: OperatorPolicyDecision;
     if (!this.operatedWritesEnabled) {
       const audit = this.auditDecision({
@@ -624,6 +631,7 @@ export class SanctionsOps {
         },
         audit,
         ranDownstream: false,
+        ignored,
       };
     }
 
@@ -659,7 +667,7 @@ export class SanctionsOps {
       health,
     });
     if (decision.decision === "allow") {
-      return { ok: true, status: 200, decision, audit, ranDownstream: true };
+      return { ok: true, status: 200, decision, audit, ranDownstream: true, ignored };
     }
     return {
       ok: false,
@@ -673,6 +681,7 @@ export class SanctionsOps {
       }),
       audit,
       ranDownstream: false,
+      ignored,
     };
   }
 
@@ -703,6 +712,47 @@ export class SanctionsOps {
 
 function hashActor(actor: string): string {
   return `op:${createHash("sha256").update(actor.trim().toLowerCase()).digest("hex").slice(0, 12)}`;
+}
+
+/** Browser-claimable fields. Never the screened / audited subject (#62 recovered proof). */
+export const CLAIMED_WALLET_BODY_KEYS = ["wallet", "creator", "recipient", "account"] as const;
+export const CLAIMED_WALLET_HEADERS = ["x-reactor-wallet"] as const;
+
+function headerValue(headers: Record<string, string | string[] | undefined>, name: string): string {
+  const v = headers[name] ?? headers[name.toLowerCase()];
+  if (Array.isArray(v)) return String(v[0] ?? "").trim();
+  return v == null ? "" : String(v).trim();
+}
+
+export function claimedWalletSignals(
+  headers: Record<string, string | string[] | undefined> = {},
+  body?: Record<string, unknown>,
+): string[] {
+  const ignored: string[] = [];
+  for (const name of CLAIMED_WALLET_HEADERS) {
+    if (headerValue(headers, name)) ignored.push(name);
+  }
+  if (body) {
+    for (const key of CLAIMED_WALLET_BODY_KEYS) {
+      if (body[key] !== undefined) ignored.push(`body.${key}`);
+    }
+  }
+  return ignored;
+}
+
+/**
+ * Canonical subject is the #62 recovered signer only.
+ * Claimed body/header wallets are recorded as ignored and never become identity.
+ */
+export function resolveGatedSubject(input: {
+  recoveredWallet?: string | null;
+  headers?: Record<string, string | string[] | undefined>;
+  body?: Record<string, unknown>;
+}): { subject?: string; ignored: string[] } {
+  return {
+    subject: normalizeEvmAddress(input.recoveredWallet ?? undefined),
+    ignored: claimedWalletSignals(input.headers, input.body),
+  };
 }
 
 export function fixtureRefreshPayload(nowIso: string, n = 8, byteLength = 10_000): RefreshPayload {

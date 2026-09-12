@@ -18,10 +18,12 @@ import {
   type SanctionsAlert,
   type SanctionsHealth,
 } from "../../../packages/reactor/src/sanctions-ops.ts";
-import { OPERATOR_POLICY_ID } from "../../../packages/reactor/src/sanctions-policy.ts";
+import type { CoarsePolicyAction } from "../../../packages/reactor/src/sanctions-audit.ts";
+import { OPERATOR_POLICY_ID, type OperatorPolicyDecision } from "../../../packages/reactor/src/sanctions-policy.ts";
 import { raiseAlert } from "./alerts.ts";
 import type { Store } from "./db.ts";
 import { logLine } from "./obs.ts";
+import { isLocalEnv, productionHardGatesApply } from "./prod-gates.ts";
 
 export const SANCTIONS_OPS_PROTECTED = [
   { method: "POST", pathname: "/quote", action: "quote" },
@@ -32,23 +34,135 @@ export const SANCTIONS_OPS_PROTECTED = [
 
 export type HeaderMap = Record<string, string | string[] | undefined>;
 
-function header(headers: HeaderMap, name: string): string {
-  const v = headers[name] ?? headers[name.toLowerCase()];
-  if (Array.isArray(v)) return String(v[0] ?? "").trim();
-  return v == null ? "" : String(v).trim();
-}
-
 function resolveInject(env: NodeJS.ProcessEnv): FailureInject {
   const raw = (env.SANCTIONS_INJECT ?? "none").toLowerCase();
   if (raw === "stale" || raw === "refresh_fail" || raw === "policy_fail" || raw === "partial_refresh") return raw;
   return "none";
 }
 
+/**
+ * Fixture refresh is LOCAL / explicit test only.
+ * PROD, PRODUCTION, STAGING, TESTNET (and NODE_ENV=production) must use the
+ * official #61 source or report unavailable/stale. `SANCTIONS_FIXTURE=1` cannot
+ * override a production-like env.
+ */
+export function allowFixtureSanctionsRefresh(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (productionHardGatesApply(env)) return false;
+  return isLocalEnv(env) || env.SANCTIONS_FIXTURE === "1";
+}
+
 function defaultFetcher(env: NodeJS.ProcessEnv): (() => Promise<RefreshPayload>) | undefined {
-  if ((env.REACTOR_ENV ?? "").toUpperCase() === "PROD" && env.SANCTIONS_FIXTURE !== "1") {
-    return undefined;
-  }
+  if (!allowFixtureSanctionsRefresh(env)) return undefined;
   return async () => fixtureRefreshPayload(new Date().toISOString());
+}
+
+type OfficialPolicyPlugin = {
+  recoverSubjectWallet?: (input: {
+    headers: HeaderMap;
+    body?: Record<string, unknown>;
+    env?: NodeJS.ProcessEnv;
+  }) => Promise<{ address?: string; reason?: string }>;
+  gateProtectedWrite?: (input: {
+    headers: HeaderMap;
+    body?: Record<string, unknown>;
+    env?: NodeJS.ProcessEnv;
+    surface: string;
+  }) => Promise<
+    | { ok: true; wallet: string; decision: OperatorPolicyDecision; ignored: string[] }
+    | { ok: false; status: 403 | 503; body: Record<string, unknown>; decision: OperatorPolicyDecision; ranDownstream: false }
+  >;
+};
+
+async function loadOperatorPolicyPlugin(): Promise<OfficialPolicyPlugin | null> {
+  const dir = dirname(fileURLToPath(import.meta.url));
+  const path = join(dir, "operator-policy.ts");
+  if (!existsSync(path)) return null;
+  try {
+    return (await import(path)) as OfficialPolicyPlugin;
+  } catch {
+    return null;
+  }
+}
+
+/** Canonical subject is #62 recovered EIP-191 proof. Claimed wallets are ignored. */
+export async function recoverOfficialSubject(input: {
+  headers: HeaderMap;
+  body?: Record<string, unknown>;
+  env?: NodeJS.ProcessEnv;
+}): Promise<{ address?: string; reason?: string; source: "operator-policy" | "none" }> {
+  const plugin = await loadOperatorPolicyPlugin();
+  if (typeof plugin?.recoverSubjectWallet !== "function") {
+    return { source: "none", reason: "wallet_missing" };
+  }
+  const recovered = await plugin.recoverSubjectWallet({
+    headers: input.headers,
+    body: input.body,
+    env: input.env,
+  });
+  return { ...recovered, source: "operator-policy" };
+}
+
+function opsOwnedFailClosed(reason: string): boolean {
+  return (
+    reason === "UNAVAILABLE_DATASET_STALE" ||
+    reason === "UNAVAILABLE_DATASET_MISSING" ||
+    reason === "OPERATED_WRITES_DISABLED" ||
+    reason === "UNAVAILABLE_ADDRESS_SCREEN"
+  );
+}
+
+/**
+ * HTTP gate for #64 freshness/audit. Identity and allow/deny come from #62
+ * when `operator-policy.ts` is present. Browser-claimed wallets never gate.
+ */
+export async function applySanctionsOpsGate(input: {
+  ops: SanctionsOps;
+  action: CoarsePolicyAction;
+  headers: HeaderMap;
+  body?: Record<string, unknown>;
+  requestId?: string;
+  env?: NodeJS.ProcessEnv;
+}): Promise<ReturnType<SanctionsOps["gateProtectedWrite"]>> {
+  const plugin = await loadOperatorPolicyPlugin();
+  const recovered = typeof plugin?.recoverSubjectWallet === "function"
+    ? await plugin.recoverSubjectWallet({ headers: input.headers, body: input.body, env: input.env })
+    : { address: undefined, reason: "wallet_missing" };
+
+  let official: Awaited<ReturnType<NonNullable<OfficialPolicyPlugin["gateProtectedWrite"]>>> | null = null;
+  if (typeof plugin?.gateProtectedWrite === "function") {
+    official = await plugin.gateProtectedWrite({
+      headers: input.headers,
+      body: input.body,
+      env: input.env,
+      surface: input.action,
+    });
+  }
+
+  const subject = official && official.ok ? official.wallet : recovered.address;
+  const opsGate = input.ops.gateProtectedWrite({
+    action: input.action,
+    recoveredWallet: subject,
+    headers: input.headers,
+    body: input.body,
+    requestId: input.requestId,
+  });
+
+  const opsReason = !opsGate.ok && "reason" in opsGate.decision ? opsGate.decision.reason : "";
+  if (!opsGate.ok && (opsOwnedFailClosed(opsReason) || !official || official.ok)) {
+    return opsGate;
+  }
+  if (official && !official.ok) {
+    return {
+      ok: false,
+      status: official.status,
+      decision: official.decision,
+      body: official.body,
+      audit: opsGate.audit,
+      ranDownstream: false,
+      ignored: opsGate.ignored,
+    };
+  }
+  return opsGate;
 }
 
 async function tryOfficialFetcher(): Promise<(() => Promise<RefreshPayload>) | undefined> {
@@ -82,15 +196,6 @@ async function tryOfficialFetcher(): Promise<(() => Promise<RefreshPayload>) | u
     }
   } catch {
     /* official #61 plugin optional */
-  }
-  return undefined;
-}
-
-export function extractWallet(input: { headers: HeaderMap; body?: Record<string, unknown> }): string | undefined {
-  const body = input.body ?? {};
-  const candidates = [body.wallet, body.creator, body.recipient, body.account, header(input.headers, "x-reactor-wallet")];
-  for (const c of candidates) {
-    if (typeof c === "string" && /^0x[a-fA-F0-9]{40}$/.test(c.trim())) return c.trim().toLowerCase();
   }
   return undefined;
 }

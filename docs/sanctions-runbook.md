@@ -9,14 +9,14 @@ Exact versions on `GET /health` → `sanctions`, `GET /sanctions/health`, and `/
 1. Read `sanctions.refresh.lastError`, `consecutiveFailures`, and `dataset.versionId` (this is last-known-good).
 2. Confirm `current.json` was **not** replaced (pointer version matches the last success).
 3. `POST /ops/sanctions/refresh` with the ops token. A 422 keeps last-known-good.
-4. If official HTTPS is down, do **not** load an unofficial file. Wait or restore from a known-good `versions/<id>` already on disk.
+4. If official HTTPS is down, do **not** load an unofficial file and do **not** enable fixtures in STAGING/TESTNET/PROD. Wait or restore from a known-good `versions/<id>` already on disk.
 5. After three consecutive failures the indexer pages `sanctions_refresh_failed`.
 6. Protected writes stay fail-closed if the snapshot is also past the 7-day SLA.
 
 ## Suspected false positive
 
 1. Collect the user-visible reason code and `ref {request_id}`. The audit line has `addr:` + hash, not the raw wallet.
-2. Re-screen against the **active** dataset version shown in health. Do not trust a client “clear” flag.
+2. Re-screen against the **active** dataset version shown in health. Do not trust a client “clear” flag or a claimed `body.wallet` / `x-reactor-wallet` — only the #62 recovered proof is identity.
 3. Open `POST /ops/sanctions/review` with `kind=operator_explicit`, operator id, and a written reason.
 4. A user complaint (`kind=user_complaint`) is rejected (`NO_AUTOMATED_OVERRIDE`). Nothing is delisted.
 5. If Treasury later removes the address, wait for the next official refresh. Do not hand-edit the list.

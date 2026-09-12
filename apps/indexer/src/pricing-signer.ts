@@ -16,7 +16,7 @@ import {
 import type { Store } from "./db.ts";
 import { assertProductionHardGates } from "./prod-gates.ts";
 import { bindRecoveredIdentity, gateProtectedWrite, tryBindOfficialPolicyPlugins } from "./operator-policy.ts";
-import { createSanctionsOps } from "./sanctions-ops.ts";
+import { applySanctionsOpsGate, createSanctionsOps } from "./sanctions-ops.ts";
 import type { SanctionsOps } from "../../../packages/reactor/src/sanctions-ops.ts";
 
 const PORT = Number(process.env.PRICING_SIGNER_PORT ?? 43149);
@@ -83,10 +83,11 @@ const server = createServer(async (req, res) => {
       return;
     }
     bindRecoveredIdentity(body as unknown as Record<string, unknown>, gate.wallet);
-    const freshness = (await sanctionsOps()).gateProtectedWrite({
+    const freshness = await applySanctionsOpsGate({
+      ops: await sanctionsOps(),
       action: "launch.sign",
-      wallet: gate.wallet,
       headers: req.headers,
+      body: body as unknown as Record<string, unknown>,
       requestId: rid,
     });
     if (!freshness.ok) {

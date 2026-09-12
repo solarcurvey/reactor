@@ -13,8 +13,10 @@ import {
   assessDatasetFreshness,
   completenessError,
   fixtureRefreshPayload,
+  resolveGatedSubject,
   reviewOverride,
 } from "./sanctions-ops.ts";
+import { hashWallet } from "./sanctions-audit.ts";
 import { OPERATOR_POLICY_ID } from "./sanctions-policy.ts";
 
 function assert(cond: unknown, msg: string): asserts cond {
@@ -22,6 +24,7 @@ function assert(cond: unknown, msg: string): asserts cond {
 }
 
 const WALLET = "0x1111111111111111111111111111111111111111";
+const LISTED = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const t0 = Date.parse("2026-09-12T00:00:00.000Z");
 
 {
@@ -127,23 +130,23 @@ const t0 = Date.parse("2026-09-12T00:00:00.000Z");
   });
   const first = await ops.refresh();
   assert(first.ok, "seed dataset");
-  const allow = ops.gateProtectedWrite({ action: "quote", wallet: WALLET });
+  const allow = ops.gateProtectedWrite({ action: "quote", recoveredWallet: WALLET });
   assert(allow.ok && allow.decision.decision === "allow", "fresh dataset allows protected write");
   assert(allow.ranDownstream, "fresh allow may continue");
 
   now = t0 + SANCTIONS_DATASET_SLA_MS + 1;
-  const stale = ops.gateProtectedWrite({ action: "quote", wallet: WALLET });
+  const stale = ops.gateProtectedWrite({ action: "quote", recoveredWallet: WALLET });
   assert(!stale.ok, "stale dataset fails protected write");
   assert(stale.status === 503, `stale is 503, got ${stale.status}`);
   assert("reason" in stale.decision && stale.decision.reason === "UNAVAILABLE_DATASET_STALE", `stale reason ${"reason" in stale.decision ? stale.decision.reason : ""}`);
   assert(stale.ranDownstream === false, "stale must not reach signer/upload");
   assert(stale.body?.reason === "UNAVAILABLE_DATASET_STALE", "public body uses #62 reason");
 
-  const admit = ops.gateProtectedWrite({ action: "launch.admit", wallet: WALLET });
+  const admit = ops.gateProtectedWrite({ action: "launch.admit", recoveredWallet: WALLET });
   assert(!admit.ok && "reason" in admit.decision && admit.decision.reason === "UNAVAILABLE_DATASET_STALE", "admit fails closed when stale");
-  const auth = ops.gateProtectedWrite({ action: "launch.authorize", wallet: WALLET });
+  const auth = ops.gateProtectedWrite({ action: "launch.authorize", recoveredWallet: WALLET });
   assert(!auth.ok && "reason" in auth.decision && auth.decision.reason === "UNAVAILABLE_DATASET_STALE", "authorize fails closed when stale");
-  const upload = ops.gateProtectedWrite({ action: "upload", wallet: WALLET });
+  const upload = ops.gateProtectedWrite({ action: "upload", recoveredWallet: WALLET });
   assert(!upload.ok && "reason" in upload.decision && upload.decision.reason === "UNAVAILABLE_DATASET_STALE", "upload fails closed when stale");
 
   rmSync(dir, { recursive: true, force: true });
@@ -207,7 +210,7 @@ const t0 = Date.parse("2026-09-12T00:00:00.000Z");
   raised.length = 0;
   await ops.emitHealthAlerts();
   assert(raised.includes(ALERT_POLICY_FAILED), "policy-service failure alerts");
-  const denied = ops.gateProtectedWrite({ action: "quote", wallet: WALLET });
+  const denied = ops.gateProtectedWrite({ action: "quote", recoveredWallet: WALLET });
   assert(!denied.ok, "policy inject fails closed");
   assert(denied.ranDownstream === false, "policy inject does not continue");
 
@@ -232,10 +235,10 @@ const t0 = Date.parse("2026-09-12T00:00:00.000Z");
   });
   await ops.refresh();
   ops.setOperatedWritesEnabled(false, "oncall@reactor");
-  const gated = ops.gateProtectedWrite({ action: "launch.authorize", wallet: WALLET });
+  const gated = ops.gateProtectedWrite({ action: "launch.authorize", recoveredWallet: WALLET });
   assert(!gated.ok && "reason" in gated.decision && gated.decision.reason === "OPERATED_WRITES_DISABLED", "emergency disable");
   assert(gated.ranDownstream === false, "disabled writes do not continue");
-  const review = ops.requestOverride({ kind: "user_complaint", wallet: WALLET, reason: "i am not listed" });
+  const review = ops.requestOverride({ kind: "user_complaint", recoveredWallet: WALLET, reason: "i am not listed" });
   assert(!review.ok, "complaint still rejected after disable");
   rmSync(dir, { recursive: true, force: true });
 }
@@ -257,6 +260,50 @@ const t0 = Date.parse("2026-09-12T00:00:00.000Z");
   assert(start.refresh && !start.refresh.ok, "startup refresh failure is surfaced");
   assert(ops.registry.active()?.version.id === goodId, "startup failure keeps last-known-good");
   assert(start.health.degraded, "startup failure degrades status");
+  rmSync(dir, { recursive: true, force: true });
+}
+
+{
+  const dir = mkdtempSync(join(tmpdir(), "sanctions-spoof-"));
+  const ops = new SanctionsOps({
+    dataDir: dir,
+    now: () => t0,
+    fetchOfficialList: async () => fixtureRefreshPayload(new Date(t0).toISOString()),
+  });
+  const seeded = await ops.refresh();
+  assert(seeded.ok, "spoof seed");
+
+  const resolved = resolveGatedSubject({
+    recoveredWallet: WALLET,
+    headers: { "x-reactor-wallet": LISTED },
+    body: { wallet: LISTED, creator: LISTED, recipient: LISTED, account: LISTED },
+  });
+  assert(resolved.subject === WALLET.toLowerCase(), "resolved subject is recovered only");
+  assert(resolved.ignored.includes("body.wallet"), "body.wallet ignored");
+  assert(resolved.ignored.includes("body.creator"), "body.creator ignored");
+  assert(resolved.ignored.includes("x-reactor-wallet"), "header wallet ignored");
+
+  const spoofed = ops.gateProtectedWrite({
+    action: "quote",
+    recoveredWallet: WALLET,
+    headers: { "x-reactor-wallet": LISTED },
+    body: { wallet: LISTED, creator: LISTED, recipient: LISTED, account: LISTED },
+  });
+  assert(spoofed.ok && spoofed.decision.decision === "allow", "claimed listed wallet cannot override recovered clear");
+  assert(spoofed.audit.subject === hashWallet(WALLET), "logged subject is recovered hash");
+  assert(spoofed.ignored.includes("body.wallet") && spoofed.ignored.includes("x-reactor-wallet"), "claimed signals recorded");
+
+  const claimedOnly = ops.gateProtectedWrite({
+    action: "quote",
+    headers: { "x-reactor-wallet": LISTED },
+    body: { wallet: LISTED, creator: LISTED },
+  });
+  assert(!claimedOnly.ok, "no recovered identity fails closed");
+  assert("reason" in claimedOnly.decision && claimedOnly.decision.reason === "UNAVAILABLE_WALLET_MISSING", `claimed-only reason ${"reason" in claimedOnly.decision ? claimedOnly.decision.reason : ""}`);
+  assert(claimedOnly.decision.reason !== "DENY_ADDRESS_BLOCKED", "claimed listed wallet is not the gated subject");
+  assert(claimedOnly.audit.subject === null, "claimed-only audit has no wallet subject");
+  assert(claimedOnly.audit.reason !== "DENY_ADDRESS_BLOCKED", "audit decision is not address-blocked");
+
   rmSync(dir, { recursive: true, force: true });
 }
 

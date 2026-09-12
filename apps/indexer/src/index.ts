@@ -44,8 +44,8 @@ import {
 } from "./operator-policy.ts";
 import {
   SANCTIONS_REFRESH_INTERVAL_MS,
+  applySanctionsOpsGate,
   createSanctionsOps,
-  extractWallet,
   handleSanctionsOpsRequest,
   isProtectedWritePath,
   protectedAction,
@@ -152,19 +152,20 @@ function opsOk(req: IncomingMessage): boolean {
   return hdr === token || hdr === `Bearer ${token}`;
 }
 
-function gateWrite(
+async function gateWrite(
   req: IncomingMessage,
   body: Record<string, unknown> | undefined,
   rid: string,
   pathname: string,
-): { status: 403 | 503; body: Record<string, unknown> } | null {
+): Promise<{ status: 403 | 503; body: Record<string, unknown> } | null> {
   if (!isProtectedWritePath(req.method ?? "", pathname)) return null;
   const action = protectedAction(pathname);
   if (!action) return null;
-  const gate = sanctionsOps.gateProtectedWrite({
+  const gate = await applySanctionsOpsGate({
+    ops: sanctionsOps,
     action,
-    wallet: extractWallet({ headers: req.headers, body }),
     headers: req.headers,
+    body,
     requestId: rid,
   });
   if (gate.ok) return null;
@@ -520,7 +521,7 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       return;
     }
     bindRecoveredIdentity(body, gate.wallet);
-    const freshness = gateWrite(req, body, rid, url.pathname);
+    const freshness = await gateWrite(req, body, rid, url.pathname);
     if (freshness) {
       json(res, freshness.status, freshness.body, rid);
       return;
@@ -549,7 +550,7 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       json(res, 429, { error: "rate limited", request_id: rid }, rid);
       return;
     }
-    const gated = gateWrite(req, undefined, rid, url.pathname);
+    const gated = await gateWrite(req, undefined, rid, url.pathname);
     if (gated) {
       json(res, gated.status, gated.body, rid);
       return;
@@ -683,7 +684,7 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       return;
     }
     bindRecoveredIdentity(body, gate.wallet);
-    const freshness = gateWrite(req, body, rid, url.pathname);
+    const freshness = await gateWrite(req, body, rid, url.pathname);
     if (freshness) {
       json(res, freshness.status, freshness.body, rid);
       return;
@@ -708,7 +709,7 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       return;
     }
     bindRecoveredIdentity(body, gate.wallet);
-    const freshness = gateWrite(req, body, rid, url.pathname);
+    const freshness = await gateWrite(req, body, rid, url.pathname);
     if (freshness) {
       json(res, freshness.status, freshness.body, rid);
       return;

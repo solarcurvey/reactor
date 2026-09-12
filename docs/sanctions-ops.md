@@ -10,13 +10,19 @@ The official-list dataset (`ofac-official-list-v1`) is **current** only while `n
 
 Protected writes (`POST /quote`, `/upload`, `/launch/admit`, `/launch/authorize`, isolated launch signer) fail closed on stale or unknown required policy. Reason codes match #62 (`UNAVAILABLE_DATASET_STALE`, `UNAVAILABLE_DATASET_MISSING`, …).
 
+## Identity (consumed from #62)
+
+#64 owns freshness, health, alerts, and the minimized audit line. It does **not** invent a wallet from the browser.
+
+The gated and logged subject is the **#62 recovered EIP-191 signer** (`recoverSubjectWallet` / shared `gateProtectedWrite` when `apps/indexer/src/operator-policy.ts` is present). `body.wallet`, `body.creator`, `body.recipient`, `body.account`, and `x-reactor-wallet` are recorded as ignored client signals and never become the screened address. Without a recovered proof the write fails closed (`UNAVAILABLE_WALLET_MISSING`) — a spoofed listed wallet is **not** `DENY_ADDRESS_BLOCKED`.
+
 ## Persist + refresh
 
 Active version, content hash, retrieved time, official source metadata, and last successful refresh are persisted under `SANCTIONS_DATA_DIR` (`current.json`, `refresh-state.json`, `versions/<id>/`).
 
 Refresh runs at **process start** and on a **6 hour** schedule (`SANCTIONS_REFRESH_INTERVAL_MS`). A bad, partial, or gutted replacement does **not** swing `current.json`. Last-known-good stays active; health is **degraded**. Completeness floor: keep ≥85% of prior addresses; each source body must stay ≥50% of prior bytes. `allowCatastrophicShrink` is an explicit operator exception, not a complaint path.
 
-When the official `#61` module is present, refresh binds to it. LOCAL may use fixtures. Production without an official fetcher fail-closes (missing dataset).
+When the official `#61` module is present, refresh binds to it. **Fixture fallback is LOCAL / explicit test only** (`REACTOR_ENV=LOCAL` or `SANCTIONS_FIXTURE=1` outside production-like envs). `PROD`, `PRODUCTION`, `STAGING`, and `TESTNET` (and `NODE_ENV=production`) require the official source; a missing or broken plugin reports unavailable/stale. `SANCTIONS_FIXTURE=1` cannot override those hard-gated envs.
 
 ## Health
 
@@ -36,7 +42,7 @@ Every protected write / authorization attempt emits `kind=sanctions_policy_decis
 - timestamp
 - coarse action (`quote`, `launch.admit`, `launch.authorize`, `launch.sign`, `upload`)
 - allow / deny / unavailable reason code
-- wallet **hash** (`addr:` + first 16 hex of SHA-256 of the lowercase address)
+- wallet **hash** of the recovered subject only (`addr:` + first 16 hex of SHA-256 of the lowercase address)
 - dataset version id + content hash
 - geo-policy version + operator policy version (`reactor-operator-policy-v1`)
 
