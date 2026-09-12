@@ -1,7 +1,7 @@
 {
   "kind": "production",
   "policyId": "us-comprehensive-sanctions",
-  "revision": 1,
+  "revision": 2,
   "schemaVersion": 1,
   "effectiveDate": "2026-09-12",
   "source": {
@@ -10,7 +10,18 @@
     "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information",
     "retrieved": "2026-09-12"
   },
-  "disclaimer": "Operational snapshot of jurisdictions and regions under comprehensive U.S. sanctions programs as of the effective date. Not a legal opinion. Not a claim that REACTOR is OFAC-compliant. Sectoral, list-based, and secondary programs are out of scope for this revision.",
+  "disclaimer": "Operational snapshot of jurisdictions and regions under comprehensive U.S. sanctions programs as of the effective date. Not a legal opinion. Not a claim that REACTOR is OFAC-compliant. Sectoral, list-based, and secondary programs are out of scope for this revision. Targeted Syrian persons/addresses are not a geo deny (issues #61 / #62).",
+  "programNotes": [
+    {
+      "iso2": "SY",
+      "name": "Syria",
+      "status": "not_comprehensive",
+      "effectiveDate": "2025-07-01",
+      "citation": "E.O. 14312 (2025-06-30); 31 CFR part 542 removed from the CFR (90 FR 41505, effective 2025-08-26)",
+      "url": "https://ofac.treasury.gov/faqs/1220",
+      "note": "OFAC's comprehensive Syria Sanctions Program ended effective 2025-07-01 (E.O. 14312 revoked the six Syria program E.O.s). OFAC FAQ 1220; final rule removed 31 CFR part 542 on 2025-08-26. Remaining Syria restrictions are list-based/targeted (including E.O. 13894). Do not blanket-deny SY. Still-designated persons/addresses belong in #61 exact-list + #62 enforcement."
+    }
+  ],
   "jurisdictions": [
     {
       "iso2": "CU",
@@ -32,13 +43,6 @@
       "program": "North Korea Sanctions Regulations",
       "citation": "31 CFR part 510",
       "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/north-korea-sanctions"
-    },
-    {
-      "iso2": "SY",
-      "name": "Syria",
-      "program": "Syrian Sanctions Regulations",
-      "citation": "31 CFR part 542",
-      "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/syria-sanctions"
     }
   ],
   "regions": [

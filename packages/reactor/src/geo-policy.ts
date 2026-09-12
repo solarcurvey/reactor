@@ -70,6 +70,16 @@ export type GeoDeniedRegion = {
   url?: string;
 };
 
+export type GeoProgramStatusNote = {
+  iso2: string;
+  name: string;
+  status: "not_comprehensive";
+  effectiveDate: string;
+  citation: string;
+  url: string;
+  note: string;
+};
+
 export type GeoDenyPolicy = {
   kind: GeoPolicyKind;
   policyId: string;
@@ -78,6 +88,8 @@ export type GeoDenyPolicy = {
   effectiveDate: string;
   source: GeoPolicySourceRef;
   disclaimer: string;
+  /** Jurisdictions that are not comprehensively embargoed; listed so they are not re-added as geo-denies. */
+  programNotes?: GeoProgramStatusNote[];
   jurisdictions: GeoDeniedJurisdiction[];
   regions: GeoDeniedRegion[];
 };

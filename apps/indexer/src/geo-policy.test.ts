@@ -79,11 +79,16 @@ assert(productionHardGatesApply(prodEnv), "prod env");
 
 {
   const p = resolveActiveGeoPolicy(prodEnv);
-  assert(p.kind === "production" && p.revision === 1, "PROD loads v1");
+  assert(p.kind === "production" && p.revision === 2, "PROD loads revision 2");
   assert(p.effectiveDate === "2026-09-12", "PROD effective date");
   assert(p.source.url.includes("ofac.treasury.gov"), "PROD source url");
   assert(p.disclaimer.toLowerCase().includes("not a legal opinion"), "disclaimer");
   assert(!p.disclaimer.toLowerCase().includes("we are ofac compliant"), "no compliance claim");
+  assert(!p.jurisdictions.some((j) => j.iso2 === "SY"), "SY not in comprehensive deny set");
+  assert(
+    p.programNotes?.some((n) => n.iso2 === "SY" && n.status === "not_comprehensive" && n.effectiveDate === "2025-07-01"),
+    "SY program status recorded",
+  );
 }
 
 {
@@ -100,6 +105,13 @@ assert(productionHardGatesApply(prodEnv), "prod env");
 {
   const d = evaluateRequestGeo(signed({ country: "US" }), prodEnv, NOW);
   assert(d.decision === "ALLOW", "PROD signed US");
+}
+
+{
+  const d = evaluateRequestGeo(signed({ country: "SY" }), prodEnv, NOW);
+  assert(d.decision === "ALLOW" && d.reason === "ALLOW_JURISDICTION_NOT_LISTED", "clear SY geo is not blanket-denied");
+  assert(d.matched === undefined, "SY has no deny match");
+  assert(d.country === "SY", "SY country preserved");
 }
 
 {
@@ -192,7 +204,12 @@ assert(productionHardGatesApply(prodEnv), "prod env");
 
 {
   assert(PRODUCTION_GEO_POLICY_V1.source.retrieved === "2026-09-12", "retrieved date");
-  assert(PRODUCTION_GEO_POLICY_V1.jurisdictions.length === 4, "four comprehensive countries");
+  assert(PRODUCTION_GEO_POLICY_V1.revision === 2, "revision 2 after Syria program end");
+  assert(PRODUCTION_GEO_POLICY_V1.jurisdictions.length === 3, "three comprehensive countries");
+  assert(
+    PRODUCTION_GEO_POLICY_V1.jurisdictions.map((j) => j.iso2).sort().join(",") === "CU,IR,KP",
+    "deny set is CU IR KP only",
+  );
   assert(PRODUCTION_GEO_POLICY_V1.regions.length === 4, "four regions");
 }
 

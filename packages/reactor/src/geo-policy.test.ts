@@ -15,7 +15,7 @@ function assert(cond: unknown, msg: string): asserts cond {
 const prodLike: GeoDenyPolicy = {
   kind: "production",
   policyId: "us-comprehensive-sanctions",
-  revision: 1,
+  revision: 2,
   schemaVersion: 1,
   effectiveDate: "2026-09-12",
   source: {
@@ -24,12 +24,22 @@ const prodLike: GeoDenyPolicy = {
     url: "https://ofac.treasury.gov/sanctions-programs-and-country-information",
     retrieved: "2026-09-12",
   },
-  disclaimer: "Test double of revision 1. Not a legal opinion.",
+  disclaimer: "Test double of revision 2. Not a legal opinion.",
+  programNotes: [
+    {
+      iso2: "SY",
+      name: "Syria",
+      status: "not_comprehensive",
+      effectiveDate: "2025-07-01",
+      citation: "E.O. 14312; 31 CFR part 542 removed",
+      url: "https://ofac.treasury.gov/faqs/1220",
+      note: "List-based/targeted only. Not a geo deny.",
+    },
+  ],
   jurisdictions: [
     { iso2: "CU", name: "Cuba" },
     { iso2: "IR", name: "Iran" },
     { iso2: "KP", name: "North Korea" },
-    { iso2: "SY", name: "Syria" },
   ],
   regions: [
     { country: "UA", iso3166_2: "UA-43", name: "Crimea", aliases: ["Krym"] },
@@ -60,11 +70,18 @@ assert(normalizeIso3166_2("UA", "ua-14") === "UA-14", "region case");
   assert(d.country === "US", "US country");
 }
 
-for (const iso of ["CU", "IR", "KP", "SY"]) {
+for (const iso of ["CU", "IR", "KP"]) {
   const d = evaluateGeoPolicy(createFixtureClaim({ country: iso }), prodLike);
   assert(d.decision === "DENY" && d.reason === "DENY_COMPREHENSIVE_JURISDICTION", `${iso} deny`);
   assert(d.matched?.code === iso, `${iso} match`);
-  assert(d.policyRevision === 1 && d.policyEffectiveDate === "2026-09-12", `${iso} revision`);
+  assert(d.policyRevision === 2 && d.policyEffectiveDate === "2026-09-12", `${iso} revision`);
+}
+
+{
+  const d = evaluateGeoPolicy(createFixtureClaim({ country: "SY" }), prodLike);
+  assert(d.decision === "ALLOW" && d.reason === "ALLOW_JURISDICTION_NOT_LISTED", "SY not blanket-denied");
+  assert(d.matched === undefined, "SY has no jurisdiction match");
+  assert(prodLike.programNotes?.some((n) => n.iso2 === "SY" && n.status === "not_comprehensive"), "SY program note");
 }
 
 {

@@ -38,6 +38,13 @@ export function assertGeoPolicyShape(policy: GeoDenyPolicy): void {
       throw new Error(`GEO_POLICY: bad region ${r.iso3166_2}`);
     }
   }
+  const denied = new Set(policy.jurisdictions.map((j) => j.iso2));
+  for (const note of policy.programNotes ?? []) {
+    if (!/^[A-Z]{2}$/.test(note.iso2)) throw new Error(`GEO_POLICY: bad programNote ${note.iso2}`);
+    if (denied.has(note.iso2)) {
+      throw new Error(`GEO_POLICY: ${note.iso2} cannot be both denied and not_comprehensive`);
+    }
+  }
 }
 
 assertGeoPolicyShape(PRODUCTION_GEO_POLICY_V1);

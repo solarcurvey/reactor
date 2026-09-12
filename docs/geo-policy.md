@@ -45,12 +45,13 @@ There is **no** bundled GeoIP database. The indexer does not map IP → country 
 
 ## Versioned deny policy
 
-Production revisions live in `apps/indexer/config/geo-policy-us-comprehensive.v1.json` (`kind: "production"`). Each revision records `revision`, `effectiveDate`, and a `source` (publisher / title / URL / retrieved). Revision **1** (effective 2026-09-12) maps comprehensive U.S. programs only:
+Production revisions live in `apps/indexer/config/geo-policy-us-comprehensive.v1.json` (`kind: "production"`). Each revision records `revision`, `effectiveDate`, and a `source` (publisher / title / URL / retrieved). Revision **2** (effective 2026-09-12) maps comprehensive U.S. programs only:
 
-- Jurisdictions: `CU`, `IR`, `KP`, `SY` (31 CFR 515 / 560 / 510 / 542).
+- Jurisdictions: `CU`, `IR`, `KP` (31 CFR 515 / 560 / 510).
 - Regions: Crimea `UA-43`, Sevastopol `UA-40` (E.O. 13685); Donetsk `UA-14`, Luhansk `UA-09` (E.O. 14065).
+- **Syria (`SY`) is not a blanket geo deny.** OFAC ended the comprehensive Syria Sanctions Program effective **2025-07-01** (E.O. 14312; [FAQ 1220](https://ofac.treasury.gov/faqs/1220)). 31 CFR part 542 was removed from the CFR (90 FR 41505, effective 2025-08-26). Remaining Syria restrictions are **list-based / targeted** (including E.O. 13894). Still-designated persons and addresses belong in issue **#61** + enforcement **#62**, not this file.
 
-Russia, Belarus, Venezuela, and other **sectoral / list-based** programs are **not** in revision 1. A different split of this list is a new revision of this file, not a UI `if (country === …)` branch.
+Russia, Belarus, Venezuela, and other **sectoral / list-based** programs are **not** in this revision. `programNotes` records jurisdictions that must not be re-added as country-wide denials. A different split of this list is a new revision of this file, not a UI `if (country === …)` branch.
 
 ## Region metadata
 
