@@ -1,10 +1,6 @@
-# BUILD REPORT — Issue #5 nested fee-leg disclosure on main+#21+#28+#25+#22+#24
+# BUILD REPORT — Issue #5 nested fee-leg disclosure on main+#24+#22+#25+#21+#28
 
-<<<<<<< HEAD
-**Status:** Rebased onto latest `main` (`b17e190` — #24 JSON body limits on #22 markets / #25 Keeper / #21+#28 quote pipeline). Duplicated pipeline commits dropped.  
-=======
-**Status:** Rebased onto latest `main` (`59478f2` — #22 markets keyset / candle bounds on #25 Keeper fencing + #21+#28 quote pipeline). Duplicated pipeline commits dropped. Accepted `discloseSelectedRoute` + per-denom UI kept. No `bestPreview`.  
->>>>>>> be4def1 (Note #31 rebase onto main after #22 markets and #25 Keeper fencing.)
+**Status:** Squash-merged to `main` @ `07ac5d0` (parent `b17e190` — #24 JSON body limits on #22 markets keyset / candle bounds on #25 Keeper fencing + #21+#28 quote pipeline). Leftover rebase conflict markers from #31 head `92f035c` removed here. Accepted `discloseSelectedRoute` + per-denom UI kept. No `bestPreview`.  
 **Not audited. Not mainnet.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 unchanged.**
 
@@ -68,8 +64,8 @@ Issue #6: a ~50s `leader_locks` TTL is shorter than possible tick work (`waitFor
 | --- | --- |
 | Protocol release | **0.3.2** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
-| Intent | P1 public JSON body limits (issue #13): 16KiB default / 64KiB hard max; 413/400. Parent includes #22 markets keyset, #25 lease fencing, #28 SELL floors, #21 route integrity, #27 atomic indexer. |
-| Indexer / lib | `read-json-body.test.ts` + `markets-query.test.ts` (#22) + `keeper.lease.test.ts` + `test:pg-lease`; `quote-sell-floors.test.ts` (#28) + `quote-integrity.test.ts` (#21) + `tick-atomic.test.ts` (#27); `pnpm --filter indexer test` |
+| Intent | Issue #5 nested `feeLegs[]` from scored winner + terminal, squash-merged as #31 (`07ac5d0`). Parent includes #24 JSON body limits, #22 markets keyset, #25 lease fencing, #28 SELL floors, #21 route integrity, #27 atomic indexer. |
+| Indexer / lib | `quote.test.ts` + `quote-api.test.ts` + `quote-integrity.test.ts` (#5/#3); `read-json-body.test.ts` (#24) + `markets-query.test.ts` (#22) + `keeper.lease.test.ts` + `test:pg-lease`; `quote-sell-floors.test.ts` (#28) + `tick-atomic.test.ts` (#27); `pnpm --filter indexer test` |
 | Foundry | `UserRoute.t.sol` previewBuy/previewSell decode `hopOuts.length == hops.length + 1` (from #21 on main; not re-run this pass) |
 | Mainnet | **Blocked** |
 
