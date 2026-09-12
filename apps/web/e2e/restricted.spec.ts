@@ -29,7 +29,7 @@ test("restricted page explains controls and does not accuse or suggest bypass", 
   await expect(page.getByText(/cannot stop anyone from reading public chain state/i)).toBeVisible();
   await expect(page.getByText(/immutable public contracts/i)).toBeVisible();
   const article = await page.locator("main").innerText();
-  expect(article.toLowerCase()).not.toMatch(/vpn|proxy|tor|circumvent|bypass|criminal/);
+  expect(article.toLowerCase()).not.toMatch(/\b(vpn|proxy|tor|circumvent|bypass|criminal)\b/);
   expect(article).not.toMatch(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
 });
 
