@@ -11,7 +11,7 @@
 | Factory | **V1** — unchanged |
 | Intent | Machine-checkable page request/RPC budgets on a 4k-market seed; abort obsolete search/filter/token/account/route loads; SSE patches without board refetch storms; explicit no-refetch-on-focus for expensive reads. Frozen economics unchanged. |
 | Foundry | Unchanged this pass (offchain read-path only). |
-| Indexer / lib | `page-budget.test.ts` in `pnpm test:lib` (also `test:ci-cost` + `ci-public-harden` from #73). 4,000 seeded markets, inventory loaders, abort, SSE, focus policy. Plus `rpc-batch.test.ts`, `page-reads.test.ts`, `markets-query.test.ts`, `indexed.test.ts`. |
+| Indexer / lib | `page-budget.test.ts` in `pnpm test:lib` (also `test:ci-cost` + `ci-public-harden` from #73). 4,000 seeded markets, inventory loaders, abort, SSE, focus policy. Plus `rpc-batch.test.ts`, `page-reads.test.ts`, `markets-query.test.ts`, `indexed.test.ts`. `BatchClient` method signatures accept viem `PublicClient` so `next build` (`web-production-security`) typechecks. |
 | Review shots | **Not regenerated** (no chrome/tokenomics change) |
 | Mainnet | **Blocked** |
 
