@@ -194,6 +194,10 @@ for (const [table, column] of [
   });
   const claimN = await store.get<{ n: string }>("SELECT COUNT(*)::text AS n FROM claims WHERE tx=?", claimTx);
   assert(Number(claimN?.n ?? 0) === 2, "pg two same-kind claims at different log indexes; replay idempotent");
+  const rewardN = await store.get<{ n: string }>("SELECT COUNT(*)::text AS n FROM reward_events WHERE tx=?", claimTx);
+  assert(Number(rewardN?.n ?? 0) === 2, "pg reward_events share claim identity");
+  const journalN = await store.get<{ n: string }>("SELECT COUNT(*)::text AS n FROM indexer_event_journal WHERE tx=?", claimTx);
+  assert(Number(journalN?.n ?? 0) === 2, "pg journal two RewardClaimed identities");
 }
 await store.close();
 console.log("postgres smoke ok");

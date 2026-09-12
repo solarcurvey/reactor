@@ -13,7 +13,7 @@ Indexer watches Factory, InstantLaunchModule, hook, curve, vaults, PoolManager, 
 
 ## Idempotence
 
-Append-only event rows (trades, claims, selfburn, flywheel, core buybacks, reward/guardian events) are keyed by **canonical log identity** `(chain_id, tx, log_index)` — not `(tx, token, amount)` or `(tx, quote, kind)`. Two same-kind events in one transaction at different log indexes both persist. Replay of those exact logs is `ON CONFLICT DO NOTHING`. Different `chain_id` values do not collide.
+Append-only event rows (trades, claims, selfburn, flywheel, core buybacks, reward/guardian events) are keyed by **canonical log identity** `(chain_id, tx, log_index, event_kind)` plus emitting `address` on the shared `indexer_event_journal` — not `(chain_id, tx, log_index)` alone, and not `(tx, token, amount)` or `(tx, quote, kind)`. Side tables carry the same unique tuple (real `logIndex` + `chainId` + Solidity event name). Two same-kind events in one transaction at different log indexes both persist. Two different kinds at the same log index both persist. Replay of those exact logs is `ON CONFLICT DO NOTHING`. Different `chain_id` values do not collide.
 
 Inserts treat **only** unique-constraint violations as duplicates:
 

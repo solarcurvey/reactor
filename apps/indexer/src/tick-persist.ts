@@ -16,12 +16,13 @@ import {
   type SsePublisher,
 } from "./ingest.ts";
 import { persistVenue, poolKeyBytes } from "./route-graph.ts";
-import { isUniqueViolation } from "./unique.ts";
+import { EVENT_IDENTITY_CONFLICT, insertLogOnce, journalEvent, normalizeEventAddress } from "./event-identity.ts";
 import { priceQuoteX18FromSqrt } from "../../../packages/reactor/src/prices.ts";
 
 export type TickLog = {
   eventName?: string;
   args?: Record<string, unknown>;
+  address?: string;
   blockNumber: bigint;
   transactionHash: string;
   logIndex?: number | bigint | null;
@@ -92,6 +93,7 @@ async function persistOneLog(
   const tx = log.transactionHash;
   const logIndex = Number(log.logIndex ?? 0);
   const chainId = ctx.chainId;
+  const emitting = normalizeEventAddress(log.address ?? token);
   const factory = ctx.factory;
   const hook = ctx.hook;
   const tokenByPool = ctx.tokenByPool;
@@ -227,6 +229,8 @@ async function persistOneLog(
       tx,
       logIndex,
       chainId,
+      eventKind: name,
+      address: emitting,
       token,
       quote: q,
       side: name === "CurveBuy" ? "buy" : "sell",
@@ -258,6 +262,8 @@ async function persistOneLog(
       tx,
       logIndex,
       chainId,
+      eventKind: name,
+      address: emitting || tok,
       token: tok,
       quote: q,
       side: "swap",
@@ -274,11 +280,12 @@ async function persistOneLog(
     });
   }
   if (name === "RewardClaimed") {
-    if (
+    const addr = emitting || token.toLowerCase();
+    if (await journalEvent(store, { chainId, tx, logIndex, eventKind: name, address: addr, block, ts })) {
       await insertLogOnce(
         store,
-        `INSERT INTO claims(token,account,amount,block,tx,ts,chain_id,log_index) VALUES(?,?,?,?,?,?,?,?)
-         ON CONFLICT(chain_id, tx, log_index) DO NOTHING`,
+        `INSERT INTO claims(token,account,amount,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?)
+         ${EVENT_IDENTITY_CONFLICT}`,
         token.toLowerCase(),
         String(args.account ?? ""),
         String(args.amount ?? "0"),
@@ -287,17 +294,31 @@ async function persistOneLog(
         ts,
         chainId,
         logIndex,
-      )
-    ) {
+        name,
+      );
+      await insertLogOnce(
+        store,
+        `INSERT INTO reward_events(token,amount,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?)
+         ${EVENT_IDENTITY_CONFLICT}`,
+        token.toLowerCase(),
+        String(args.amount ?? "0"),
+        block,
+        tx,
+        ts,
+        chainId,
+        logIndex,
+        name,
+      );
       sse.publish({ type: "rewards", data: { token, account: args.account, amount: args.amount, tx } });
     }
   }
   if (name === "SelfBurnAccrued" || name === "SelfBurnExecuted") {
-    if (
+    const addr = emitting || token.toLowerCase();
+    if (await journalEvent(store, { chainId, tx, logIndex, eventKind: name, address: addr, block, ts })) {
       await insertLogOnce(
         store,
-        `INSERT INTO selfburn(token,quote,amount,burned,kind,block,tx,ts,chain_id,log_index) VALUES(?,?,?,?,?,?,?,?,?,?)
-         ON CONFLICT(chain_id, tx, log_index) DO NOTHING`,
+        `INSERT INTO selfburn(token,quote,amount,burned,kind,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+         ${EVENT_IDENTITY_CONFLICT}`,
         token.toLowerCase(),
         String(args.quote ?? ""),
         String(args.amount ?? args.quoteIn ?? "0"),
@@ -308,26 +329,30 @@ async function persistOneLog(
         ts,
         chainId,
         logIndex,
-      )
-    ) {
+        name,
+      );
       sse.publish({ type: "burn", data: { token, name, tx } });
     }
   }
   if (name === "FlywheelAccrued" || name === "QuoteSettled") {
-    await insertLogOnce(
-      store,
-      `INSERT INTO flywheel(quote,amount,usdc_in,kind,block,tx,ts,chain_id,log_index) VALUES(?,?,?,?,?,?,?,?,?)
-       ON CONFLICT(chain_id, tx, log_index) DO NOTHING`,
-      String(args.quote ?? "").toLowerCase(),
-      String(args.amount ?? "0"),
-      String(args.usdcIn ?? "0"),
-      name,
-      block,
-      tx,
-      ts,
-      chainId,
-      logIndex,
-    );
+    const quote = String(args.quote ?? "").toLowerCase();
+    if (await journalEvent(store, { chainId, tx, logIndex, eventKind: name, address: emitting || quote, block, ts })) {
+      await insertLogOnce(
+        store,
+        `INSERT INTO flywheel(quote,amount,usdc_in,kind,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+         ${EVENT_IDENTITY_CONFLICT}`,
+        quote,
+        String(args.amount ?? "0"),
+        String(args.usdcIn ?? "0"),
+        name,
+        block,
+        tx,
+        ts,
+        chainId,
+        logIndex,
+        name,
+      );
+    }
   }
   if (name === "EpochSubmitted") {
     await store.run(
@@ -341,12 +366,13 @@ async function persistOneLog(
     sse.publish({ type: "top10", data: { epochId: args.epochId, pot: args.pot } });
   }
   if (name === "BuybackExecuted" || name === "COREBurned") {
-    if (
+    const quote = String(args.quote ?? "").toLowerCase();
+    if (await journalEvent(store, { chainId, tx, logIndex, eventKind: name, address: emitting || quote, block, ts })) {
       await insertLogOnce(
         store,
-        `INSERT INTO core_buybacks(quote,quote_in,core_out,block,tx,ts,chain_id,log_index) VALUES(?,?,?,?,?,?,?,?)
-         ON CONFLICT(chain_id, tx, log_index) DO NOTHING`,
-        String(args.quote ?? "").toLowerCase(),
+        `INSERT INTO core_buybacks(quote,quote_in,core_out,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?)
+         ${EVENT_IDENTITY_CONFLICT}`,
+        quote,
         String(args.quoteIn ?? "0"),
         String(args.coreOut ?? args.amount ?? "0"),
         block,
@@ -354,19 +380,9 @@ async function persistOneLog(
         ts,
         chainId,
         logIndex,
-      )
-    ) {
+        name,
+      );
       sse.publish({ type: "core", data: { name, tx } });
     }
-  }
-}
-
-async function insertLogOnce(store: Store, sql: string, ...params: unknown[]): Promise<boolean> {
-  try {
-    const r = await store.runChanges(sql, ...params);
-    return r.changes > 0;
-  } catch (e) {
-    if (isUniqueViolation(e)) return false;
-    throw e;
   }
 }

@@ -1,5 +1,6 @@
 import type { Store } from "./db.ts";
 import { applyTradeToCandle, CANDLE_INTERVALS, priceQuoteX18 } from "../../../packages/reactor/src/prices.ts";
+import { journalEvent } from "./event-identity.ts";
 import { isUniqueViolation } from "./unique.ts";
 import { loadValuationService } from "./valuation-store.ts";
 
@@ -120,6 +121,8 @@ export async function recordTrade(
     tx: string;
     logIndex?: number;
     chainId?: number;
+    eventKind?: string;
+    address?: string;
     token: string;
     quote: string;
     side: string;
@@ -140,6 +143,22 @@ export async function recordTrade(
   const token = t.token.toLowerCase();
   const logIndex = t.logIndex ?? 0;
   const chainId = t.chainId ?? 0;
+  const eventKind =
+    t.eventKind ??
+    (t.source === "v4" ? "SwapFeeAccrued" : t.side === "buy" ? "CurveBuy" : t.side === "sell" ? "CurveSell" : "Trade");
+  if (
+    !(await journalEvent(store, {
+      chainId,
+      tx: t.tx,
+      logIndex,
+      eventKind,
+      address: t.address ?? token,
+      block: t.block,
+      ts: t.ts,
+    }))
+  ) {
+    return;
+  }
   try {
     const inserted = await store.runChanges(
       `INSERT INTO trades(chain_id,block,tx,log_index,token,quote,side,source,amount_in,amount_out,notional_quote,price_quote_x18,sqrt_price,holders_fee,flywheel_fee,core_fee,ts)

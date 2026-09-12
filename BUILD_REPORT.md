@@ -10,7 +10,7 @@
 | --- | --- |
 | Protocol release | **0.3.2** (`docs/version.json`) — not bumped this rebase (indexer durability on top of #19/#20/#26) |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
-| Intent | P1 indexer: event writes + cursor advance are one transaction; append-only `(chain_id, tx, log_index)` (issue #7; leave open until merged+verified) |
+| Intent | P1 indexer: event writes + cursor advance are one transaction; append-only `(chain_id, tx, log_index, event_kind)` + address journal (issue #7; leave open until merged+verified) |
 | Foundry | Not re-run this pass. Last recorded **326 passed**, 1 skipped on 0.3.1 |
 | Indexer / lib | `tick-atomic.test.ts` SQLite + Postgres; `pnpm --filter indexer test` (includes `pricing-signer-store.test.ts` + `media-r2.test.ts`); `pnpm docs:check` |
 | Review shots | **Not regenerated** this pass (no UI change) |
@@ -24,7 +24,7 @@
 | Crash after some events / before cursor | **Yes** | Injected crash on `indexer_state` or mid-batch write rolls both back. SQLite + Postgres in `tick-atomic.test.ts`; Postgres also in `pg-smoke.ts`. |
 | Reorg rewind `block` then `block_hash` split | **Yes** | `rewindIndexerCursor` is one transaction. Crash on the second write leaves the previous pair. |
 | Postgres UNIQUE inside the tick transaction | **Yes** | Statement `SAVEPOINT` so caught `23505` does not abort the batch. Replay of the same logs stays idempotent. After `ROLLBACK TO SAVEPOINT`, the savepoint is `RELEASE`d. Prefer `ON CONFLICT DO NOTHING` on log identity. |
-| Append-only event identity too coarse | **Yes** | Schema **v7** (v6 remains BIGINT ms columns from #19): claims / selfburn / flywheel / core_buybacks / reward_events / guardian_events unique on `(chain_id, tx, log_index)`. Inserts pass real `logIndex` + `chainId`. Two identical same-kind logs in one tx both persist; replay does not duplicate; other `chain_id` does not collide. |
+| Append-only event identity too coarse | **Yes** | Schema **v8** (v6 remains BIGINT ms from #19; v7 was `(chain_id, tx, log_index)`): shared `indexer_event_journal` PK `(chain_id, tx, log_index, event_kind)` plus `address`; side tables unique on the same tuple. Inserts pass real `logIndex` + `chainId` + Solidity event name. Two identical same-kind logs in one tx both persist; two kinds at the same log index both persist; replay does not duplicate; other `chain_id` does not collide. |
 
 Honesty: 0.3.0 docs already said “Store work uses real transactions.” That was true for admission/locks, **not** for ingest cursor vs events. This pass makes that sentence true for `tick()`.
 

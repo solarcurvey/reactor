@@ -26,7 +26,7 @@ Postgres millisecond timestamps, media key/URL alignment, and signer fail-closed
 ### Added / Changed
 
 - Schema **v6** promotes wall-clock millisecond / lease columns to `BIGINT`: `admission_hits.ts`, `issuance_bucket.updated_ms`, `leader_locks.ts`, `leader_locks.lease_until`, `keeper_operations.ts`, `alerts.ts`. Fresh Postgres DDL matches. Existing v5 databases `ALTER COLUMN … TYPE BIGINT` without data loss.
-- Schema **v7** keys append-only event rows by canonical `(chain_id, tx, log_index)`. Ingest `tick()` commits those rows and the `indexer_state` cursor in one transaction. Postgres savepoints `ROLLBACK TO` + `RELEASE`. SQLite + Postgres regressions in `tick-atomic.test.ts`.
+- Schema **v7** keys append-only event rows by `(chain_id, tx, log_index)`. Schema **v8** adds shared `indexer_event_journal` and per-table uniqueness on `(chain_id, tx, log_index, event_kind)` plus emitting `address`. Ingest `tick()` commits those rows and the `indexer_state` cursor in one transaction. Postgres savepoints `ROLLBACK TO` + `RELEASE`. SQLite + Postgres regressions in `tick-atomic.test.ts`.
 - Real Postgres integration test (`pnpm --filter indexer test:pg`) inserts current `Date.now()` into admission, issuance bucket, leader lock, Keeper job, and alert paths; Keeper leadership and LaunchAuthorization issuance run against Postgres. CI job `postgres-ms-timestamps` runs that test on GitHub.
 - Backend docs record seconds-vs-milliseconds conventions. SQLite INTEGER is already 64-bit; the production bug is Postgres 32-bit INTEGER overflow (~1.8e12 ms vs max 2_147_483_647).
 

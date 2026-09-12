@@ -126,6 +126,7 @@ async function tick(store: Store) {
     logs: logs.map((log) => ({
       eventName: log.eventName,
       args: (log.args ?? {}) as Record<string, unknown>,
+      address: log.address,
       blockNumber: log.blockNumber,
       transactionHash: log.transactionHash,
       logIndex: log.logIndex,

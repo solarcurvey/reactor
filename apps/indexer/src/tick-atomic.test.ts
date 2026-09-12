@@ -229,10 +229,12 @@ async function runIdentitySuite(store: Store, label: string) {
     ctx: persistCtx,
   });
   assert((await countWhere(store, "SELECT COUNT(*) as n FROM claims WHERE token=? AND tx=?", token, tx)) === 2, `${label}: two identical claims at different log indexes`);
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM reward_events WHERE token=? AND tx=?", token, tx)) === 2, `${label}: two identical reward_events at different log indexes`);
   assert((await countWhere(store, "SELECT COUNT(*) as n FROM selfburn WHERE token=? AND tx=?", token, tx)) === 2, `${label}: two identical selfburn at different log indexes`);
   assert((await countWhere(store, "SELECT COUNT(*) as n FROM flywheel WHERE quote=? AND tx=?", quote, tx)) === 2, `${label}: two identical flywheel at different log indexes`);
   assert((await countWhere(store, "SELECT COUNT(*) as n FROM core_buybacks WHERE quote=? AND tx=?", quote, tx)) === 2, `${label}: two identical buybacks at different log indexes`);
   assert((await countWhere(store, "SELECT COUNT(*) as n FROM trades WHERE token=? AND tx=?", token, tx)) === 2, `${label}: two identical trades at different log indexes`);
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM indexer_event_journal WHERE tx=?", tx)) === 10, `${label}: journal has one row per append-only log`);
 
   await persistTickBatch(store, {
     logs,
@@ -242,10 +244,12 @@ async function runIdentitySuite(store: Store, label: string) {
     ctx: persistCtx,
   });
   assert((await countWhere(store, "SELECT COUNT(*) as n FROM claims WHERE token=? AND tx=?", token, tx)) === 2, `${label}: replay does not duplicate claims`);
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM reward_events WHERE token=? AND tx=?", token, tx)) === 2, `${label}: replay does not duplicate reward_events`);
   assert((await countWhere(store, "SELECT COUNT(*) as n FROM selfburn WHERE token=? AND tx=?", token, tx)) === 2, `${label}: replay does not duplicate selfburn`);
   assert((await countWhere(store, "SELECT COUNT(*) as n FROM flywheel WHERE quote=? AND tx=?", quote, tx)) === 2, `${label}: replay does not duplicate flywheel`);
   assert((await countWhere(store, "SELECT COUNT(*) as n FROM core_buybacks WHERE quote=? AND tx=?", quote, tx)) === 2, `${label}: replay does not duplicate buybacks`);
   assert((await countWhere(store, "SELECT COUNT(*) as n FROM trades WHERE token=? AND tx=?", token, tx)) === 2, `${label}: replay does not duplicate trades`);
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM indexer_event_journal WHERE tx=?", tx)) === 10, `${label}: replay does not duplicate journal`);
 
   const otherChain = { ...persistCtx, chainId: 1, tokenByPool: new Map() };
   await persistTickBatch(store, {
@@ -257,13 +261,34 @@ async function runIdentitySuite(store: Store, label: string) {
   });
   assert((await countWhere(store, "SELECT COUNT(*) as n FROM claims WHERE tx=?", tx)) === 4, `${label}: same tx+log on another chain does not collide`);
   assert((await countWhere(store, "SELECT COUNT(*) as n FROM trades WHERE tx=?", tx)) === 4, `${label}: trades are chain-scoped`);
-  const kinds = await store.all<{ chain_id: number | string; log_index: number | string }>(
-    "SELECT chain_id, log_index FROM claims WHERE tx=? ORDER BY chain_id, log_index",
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM indexer_event_journal WHERE tx=?", tx)) === 20, `${label}: journal is chain-scoped`);
+  const kinds = await store.all<{ chain_id: number | string; log_index: number | string; event_kind: string }>(
+    "SELECT chain_id, log_index, event_kind FROM claims WHERE tx=? ORDER BY chain_id, log_index",
     tx,
   );
   assert(kinds.length === 4, `${label}: four claim identities`);
-  const keys = new Set(kinds.map((r) => `${r.chain_id}:${r.log_index}`));
-  assert(keys.size === 4, `${label}: claim identities are (chain_id, log_index)`);
+  const keys = new Set(kinds.map((r) => `${r.chain_id}:${r.log_index}:${r.event_kind}`));
+  assert(keys.size === 4, `${label}: claim identities are (chain_id, log_index, event_kind)`);
+  assert(kinds.every((r) => r.event_kind === "RewardClaimed"), `${label}: claim event_kind stored`);
+
+  const mixedTx = txh();
+  const mixedLogs: TickLog[] = [
+    log("RewardClaimed", { token, account, amount: "1" }, { transactionHash: mixedTx, logIndex: 99 }),
+    log("SelfBurnAccrued", { token, quote, amount: "1" }, { transactionHash: mixedTx, logIndex: 99 }),
+  ];
+  await persistTickBatch(store, {
+    logs: mixedLogs,
+    timestamps,
+    cursorBlock: String(50_000_000 + (Date.now() % 1_000_000)),
+    cursorHash: `0x${randomBytes(8).toString("hex")}`,
+    ctx: persistCtx,
+  });
+  assert(
+    (await countWhere(store, "SELECT COUNT(*) as n FROM indexer_event_journal WHERE tx=? AND log_index=99", mixedTx)) === 2,
+    `${label}: two event_kinds at the same log_index both persist`,
+  );
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM claims WHERE tx=?", mixedTx)) === 1, `${label}: mixed-kind claim side row`);
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM selfburn WHERE tx=?", mixedTx)) === 1, `${label}: mixed-kind selfburn side row`);
 
   console.log(`tick log identity ok (${label})`);
 }
