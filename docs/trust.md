@@ -1,20 +1,14 @@
-# Trust assumptions (top 10)
+# Trust assumptions
 
-> Protocol **0.2.0**. Not audited. Not trustless. Not mainnet.
+1. **Top-10 ranks are an offchain API.** Contracts check structure only.
+2. Launch Signer prices non-$1 quotes. Not an onchain oracle. Admission + receipt required.
+3. Indexer charts, 24h USD, and candles can lag or be wrong. Onchain truth wins.
+4. Guardian can pause, quarantine, rotate signer, permanently lock tickers. Cannot steal locked LP or change 2/1/0.5.
+5. Designated Keeper runs maintenance. One lease. Simulated minOut. Cannot configure.
+6. Cloudflare Turnstile + issuance bucket are offchain. A bypassed LOCAL env is not production.
+7. Funding-cluster is a heuristic (network + optional first funder). Not KYC, not chain analysis.
+8. Arc Testnet PoolManager is not deployed. Local demo uses official v4-core under BUSL (non-production).
+9. R2/S3 and ZEC HTTP are fail-closed in PROD. Missing config disables those paths.
+10. This repo is **not audited**. Do not deploy to Arc Mainnet (5042).
 
-These are the assumptions a hostile reader should price. Ranked by blast radius.
-
-| # | Assumption | If it fails |
-| --- | --- | --- |
-| 1 | **Top-10 ranks are an offchain API.** Contracts check structure only. | Wrong names receive the 1% pot. |
-| 2 | **Launch Signer + admission.** No signature unless `LaunchAdmissionService` returned ALLOW. Isolated process. | Spam launches / stolen tickers / signed junk identity. |
-| 3 | **Guardian is the only security authority.** Pause, quarantine, signer rotate, factory deprecate. | A compromised Guardian Safe can halt launches and rotate signer. Cannot rewrite 3.5% or withdraw LP. |
-| 4 | **Designated Keeper.** One lease. Simulated `minOut`. No permissionless keepers. | Stalled pots or a bad hop if the lease holder is malicious *and* simulation is fooled. |
-| 5 | **ValuationService is canonical.** Nested multiply + ancestry. No parent-only USD. No silent static ZEC in prod. | Bad marks pause material Top-10 / launch pricing. Trading continues. |
-| 6 | **RouteGraph stores proven pools only.** Quote simulates those edges. Never fabricates 0.30% hookless. | A missing venue is unavailable — not a dust `minOut`. |
-| 7 | **Indexer is not chain.** UPSERT + uniqueness on `(chain, tx, logIndex)`. Arc finality is a confirmation depth, not Ethereum L1 finality. | Reorgs rewind ~8 blocks (`ARC_FINALITY_CONFIRMATIONS`). |
-| 8 | **Uniswap v4-core BUSL.** Official PoolManager is not on Arc Testnet as of last probe. | Legal + availability. No production claim. |
-| 9 | **Media / R2.** Prod fail-closed. Local disk is not a CDN. | Missing image, not a silent “uploaded”. |
-| 10 | **No audit, no formal verification, no mainnet Guardian rehearsal.** | Hostile capital will try to steal or lock assets. |
-
-See `THREAT_MODEL.md`, `AUDIT_HANDOFF.md`, [Guardian](/docs/guardian), [Keeper](/docs/keeper).
+See `THREAT_MODEL.md`, `AUDIT_HANDOFF.md`.

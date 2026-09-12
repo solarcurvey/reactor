@@ -1,9 +1,9 @@
 {
-  "protocolVersion": "0.2.0",
+  "protocolVersion": "0.3.0",
   "factoryVersion": 1,
   "factoryVersionLabel": "V1",
-  "releaseTag": "v0.2.0",
+  "releaseTag": "v0.3.0",
   "releaseDate": "2026-09-12",
   "status": "pre-audit local/testnet — not mainnet",
-  "notes": "P0 admission gate, full EIP-712 launch identity, InstantLaunchModule EIP-170 split, RouteGraph-exact quotes, durable anti-spam. Factory V1 is immutable and is not this number."
+  "notes": "Admission integrity (real Turnstile, ELEVATED/ATTACK ALLOW after challenge, signed-auth token-bucket, launchConfigHash, atomic receipts), UserRouteQuoter whole-route preview, indexer 24h/USD/keyset, ValuationService, SigV4 media, Arc BFT finality. Factory V1 immutable."
 }

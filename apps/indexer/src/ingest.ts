@@ -1,6 +1,8 @@
 import type { Store } from "./db.ts";
 import type { SseHub } from "./sse.ts";
 import { applyTradeToCandle, CANDLE_INTERVALS, priceQuoteX18 } from "../../../packages/reactor/src/prices.ts";
+import { isUniqueViolation } from "./unique.ts";
+import { loadValuationService } from "./valuation-store.ts";
 
 const INTERVALS = Object.values(CANDLE_INTERVALS);
 
@@ -159,8 +161,9 @@ export async function recordTrade(
       t.core ?? "0",
       t.ts,
     );
-  } catch {
-    return;
+  } catch (e) {
+    if (isUniqueViolation(e)) return;
+    throw e;
   }
 
   if (t.priceQuoteX18 && t.priceQuoteX18 !== "0") {
@@ -192,6 +195,8 @@ export async function recordTrade(
       t.ts,
       token,
     );
+    await applyIncrementalTrade(store, token, t.notionalQuote, "0", t.ts);
+    await expireOldWindow(store, token, t.ts);
     await rollOneMarket(store, token, t.ts);
   }
   sse?.publish({
@@ -247,12 +252,23 @@ export async function upsertOfficialPool(
   );
 }
 
+function numericSum(sqlDialect: "sqlite" | "postgres"): string {
+  return sqlDialect === "postgres"
+    ? "COALESCE(SUM(CAST(notional_quote AS NUMERIC)),0)"
+    : "COALESCE(SUM(CAST(notional_quote AS NUMERIC)),0)";
+}
+
 async function rollOneMarket(store: Store, token: string, nowTs: number) {
   const since = nowTs - 86_400;
-  const agg = await store.get<{ n: number; vol: string; last: string }>(
-    `SELECT COUNT(*) as n, COALESCE(SUM(CAST(notional_quote AS INTEGER)),0) as vol,
-            MAX(price_quote_x18) as last
+  const agg = await store.get<{ n: number; vol: string }>(
+    `SELECT COUNT(*) as n, ${numericSum(store.dialect)} as vol
      FROM trades WHERE token=? AND ts>=?`,
+    token,
+    since,
+  );
+  const last = await store.get<{ price_quote_x18: string }>(
+    `SELECT price_quote_x18 FROM trades WHERE token=? AND ts>=? AND price_quote_x18 IS NOT NULL AND price_quote_x18 != '0'
+     ORDER BY ts DESC, id DESC LIMIT 1`,
     token,
     since,
   );
@@ -261,24 +277,94 @@ async function rollOneMarket(store: Store, token: string, nowTs: number) {
     token,
   );
   const tok = await store.get<{ supply: string }>("SELECT supply FROM tokens WHERE address=?", token);
-  const price = mkt?.price_quote_x18 && mkt.price_quote_x18 !== "0" ? mkt.price_quote_x18 : agg?.last ?? "0";
+  const qdec = await store.get<{ decimals: number }>("SELECT decimals FROM quote_assets WHERE token=?", mkt?.quote ?? "");
+  const price = last?.price_quote_x18 && last.price_quote_x18 !== "0"
+    ? last.price_quote_x18
+    : mkt?.price_quote_x18 && mkt.price_quote_x18 !== "0"
+      ? mkt.price_quote_x18
+      : "0";
   let fdv = "0";
+  let priceUsd6 = "0";
+  let volUsd6 = "0";
   try {
+    const svc = await loadValuationService(store);
+    const quote = mkt?.quote ?? "";
+    const tokenUsd = svc.tokenUsd6(BigInt(price || "0"), quote);
+    if (tokenUsd.ok) priceUsd6 = tokenUsd.usd6.toString();
+    const quoteUsd = svc.quoteUsd6(quote);
+    const dec = Number(qdec?.decimals ?? 6);
+    if (quoteUsd.ok) {
+      const vol = BigInt(String(agg?.vol ?? "0").split(".")[0] ?? "0");
+      volUsd6 = ((vol * quoteUsd.usd6) / 10n ** BigInt(dec)).toString();
+    }
     const supply = BigInt(tok?.supply || "0");
     const px = BigInt(price || "0");
-    fdv = supply > 0n && px > 0n ? ((supply * px) / 10n ** 18n).toString() : "0";
+    fdv = supply > 0n && tokenUsd.ok ? ((supply * tokenUsd.usd6) / 10n ** 18n).toString() : "0";
+    void px;
   } catch {
     fdv = "0";
   }
   await store.run(
-    `UPDATE markets SET volume_24h_quote=?, trades_24h=?, fdv_usd6=?, price_usd6=?, updated_ts=? WHERE token=?`,
+    `UPDATE markets SET volume_24h_quote=?, volume_24h_usd6=?, trades_24h=?, fdv_usd6=?, price_usd6=?, price_quote_x18=?, updated_ts=? WHERE token=?`,
     String(agg?.vol ?? "0"),
+    volUsd6,
     Number(agg?.n ?? 0),
     fdv,
+    priceUsd6,
     price,
     nowTs,
     token,
   );
+}
+
+export async function applyIncrementalTrade(
+  store: Store,
+  token: string,
+  notionalQuote: string,
+  notionalUsd6: string,
+  ts: number,
+) {
+  await store.run(
+    `UPDATE markets SET
+      volume_24h_quote = CAST(CAST(COALESCE(volume_24h_quote,'0') AS NUMERIC) + CAST(? AS NUMERIC) AS TEXT),
+      volume_24h_usd6 = CAST(CAST(COALESCE(volume_24h_usd6,'0') AS NUMERIC) + CAST(? AS NUMERIC) AS TEXT),
+      trades_24h = COALESCE(trades_24h,0) + 1,
+      updated_ts = ?
+     WHERE token=?`,
+    notionalQuote,
+    notionalUsd6,
+    ts,
+    token,
+  );
+  await store.run("UPDATE trades SET rolled=1 WHERE token=? AND ts=? AND COALESCE(rolled,0)=0", token, ts);
+}
+
+export async function expireOldWindow(store: Store, token: string, nowTs: number) {
+  const since = nowTs - 86_400;
+  const old = await store.all<{ notional_quote: string; notional_usd6: string }>(
+    "SELECT notional_quote, COALESCE(notional_usd6,'0') as notional_usd6 FROM trades WHERE token=? AND ts<? AND rolled=1",
+    token,
+    since,
+  );
+  if (!old.length) return;
+  let q = 0n;
+  let u = 0n;
+  for (const r of old) {
+    q += BigInt(String(r.notional_quote || "0").split(".")[0] ?? "0");
+    u += BigInt(String(r.notional_usd6 || "0").split(".")[0] ?? "0");
+  }
+  await store.run(
+    `UPDATE markets SET
+      volume_24h_quote = CAST(MAX(0, CAST(COALESCE(volume_24h_quote,'0') AS NUMERIC) - CAST(? AS NUMERIC)) AS TEXT),
+      volume_24h_usd6 = CAST(MAX(0, CAST(COALESCE(volume_24h_usd6,'0') AS NUMERIC) - CAST(? AS NUMERIC)) AS TEXT),
+      trades_24h = MAX(0, COALESCE(trades_24h,0) - ?)
+     WHERE token=?`,
+    q.toString(),
+    u.toString(),
+    old.length,
+    token,
+  );
+  await store.run("UPDATE trades SET rolled=2 WHERE token=? AND ts<? AND rolled=1", token, since);
 }
 
 export async function rollMarketAggregations(store: Store) {

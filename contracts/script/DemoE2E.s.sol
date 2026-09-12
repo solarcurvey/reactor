@@ -108,7 +108,7 @@ contract DemoE2E is Script {
             fp.name,
             LaunchAuthorization.hashMetadata(fp.image, fp.description, fp.website, fp.twitter, fp.telegram),
             0,
-            LaunchAuthorization.FAIR_V1
+            LaunchAuthorization.fairCurveConfig(fp.supply, fp.decimals, fp.duration, fp.auctionBps, fp.minRaise)
         );
         (address fcat, uint256 fairId) = factory.createFairLaunch(fp, fa, fs);
         zec.approve(factoryAddr, 1_000e8);
@@ -149,9 +149,9 @@ contract DemoE2E is Script {
             creator: creator,
             quote: quote,
             quoteDecimals: dec,
-            mode: curveConfig == LaunchAuthorization.FAIR_V1
-                ? LaunchAuthorization.MODE_FAIR
-                : LaunchAuthorization.MODE_REWARDS,
+            mode: curveConfig == LaunchAuthorization.INSTANT_CURVE_V1
+                ? LaunchAuthorization.MODE_REWARDS
+                : LaunchAuthorization.MODE_FAIR,
             ticker: ticker,
             name: name,
             metadataHash: metadataHash,

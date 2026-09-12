@@ -7,21 +7,23 @@ import { randomBytes } from "node:crypto";
 import { createPublicClient, http, parseAbi } from "viem";
 import { defineChain } from "viem";
 import deployment from "./deployment.json" with { type: "json" };
-import { valueQuoteUsd6, type QuoteNode } from "../../../packages/reactor/src/valuation.ts";
-import { fuseExternalUsd6 } from "../../../packages/reactor/src/valuation.ts";
+import { ValuationService, fuseExternalUsd6, type QuoteNode } from "../../../packages/reactor/src/valuation.ts";
 import { normalizeTicker } from "../../../packages/reactor/src/ticker.ts";
 import {
   INSTANT_CURVE_V1,
-  FAIR_V1,
   LAUNCH_AUTH_TYPES,
   MODE_FAIR,
   MODE_REWARDS,
   MODE_STANDARD,
   hashMetadata,
   authMode,
+  fairCurveConfig,
+  launchConfigHash,
+  resolveFairParams,
 } from "../../../packages/reactor/src/launch-auth.ts";
-import { consumeReceipt, verifyReceipt } from "./admission.ts";
+import { consumeIssuanceToken, consumeReceipt, verifyReceipt } from "./admission.ts";
 import type { Store } from "./db.ts";
+import { loadValuationService } from "./valuation-store.ts";
 
 const LOCAL = (process.env.REACTOR_ENV ?? "").toUpperCase() === "LOCAL";
 const ANVIL0 = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -65,6 +67,12 @@ export type SignRequest = {
   telegram?: string;
   receipt?: string;
   factory?: string;
+  factoryVersion?: number;
+  supply?: string | number;
+  decimals?: number;
+  duration?: number;
+  auctionBps?: number;
+  minRaise?: string | number;
 };
 
 export function assertInternalOrReceipt(opts: {
@@ -97,6 +105,8 @@ export async function signAuthorized(
   if (store && rec.id) {
     const consumed = await consumeReceipt(store, String(rec.id));
     if (!consumed) throw new Error("ADMISSION_RECEIPT_CONSUMED");
+    const bucket = await consumeIssuanceToken(store);
+    if (!bucket.ok) throw new Error("LAUNCH_ISSUANCE_THROTTLED");
   }
 
   const key = resolveSignerKey();
@@ -125,31 +135,35 @@ export async function signAuthorized(
   const now = Math.floor(Date.now() / 1000);
 
   const prod = (process.env.REACTOR_ENV ?? "").toUpperCase() === "PROD";
-  const ticks: { usd6: bigint; ts: number; name: string }[] = [];
-  if (quote.toLowerCase() === (addrs.ZEC ?? "").toLowerCase()) {
-    if (prod && !process.env.ZEC_HTTP_URL) {
-      throw new Error("cannot price quote — static ZEC forbidden in prod");
-    }
-    if (!prod) {
+  if (quote.toLowerCase() === (addrs.ZEC ?? "").toLowerCase() && prod && !process.env.ZEC_HTTP_URL) {
+    throw new Error("cannot price quote — static ZEC forbidden in prod");
+  }
+  let svc: ValuationService;
+  if (store) {
+    svc = await loadValuationService(store);
+  } else {
+    const ticks: { usd6: bigint; ts: number; name: string }[] = [];
+    if (quote.toLowerCase() === (addrs.ZEC ?? "").toLowerCase() && !prod) {
       ticks.push({ usd6: BigInt(process.env.ZEC_USD6 ?? 50_000_000), ts: now, name: "local-static" });
     }
+    const fused = fuseExternalUsd6(ticks, now);
+    const nodes = new Map<string, QuoteNode>([
+      [(addrs.USDC ?? "").toLowerCase(), { token: addrs.USDC, symbol: "USDC", decimals: 6, usdPegOne: true }],
+      [
+        quote.toLowerCase(),
+        {
+          token: quote,
+          symbol: "Q",
+          decimals: quoteDecimals,
+          usdPegOne: Boolean(peg),
+          externalUsd6: fused.usd6,
+          externalOk: fused.ok || Boolean(peg),
+        },
+      ],
+    ]);
+    svc = new ValuationService(nodes);
   }
-  const fused = fuseExternalUsd6(ticks, now);
-  const nodes = new Map<string, QuoteNode>([
-    [(addrs.USDC ?? "").toLowerCase(), { token: addrs.USDC, symbol: "USDC", decimals: 6, usdPegOne: true }],
-    [
-      quote.toLowerCase(),
-      {
-        token: quote,
-        symbol: "Q",
-        decimals: quoteDecimals,
-        usdPegOne: Boolean(peg),
-        externalUsd6: fused.usd6,
-        externalOk: fused.ok || Boolean(peg),
-      },
-    ],
-  ]);
-  const valued = valueQuoteUsd6(quote, nodes);
+  const valued = svc.quoteUsd6(quote);
   if (!valued.ok || valued.usd6 === 0n) {
     throw new Error("cannot price quote — valuation unavailable, launch disabled");
   }
@@ -161,7 +175,16 @@ export async function signAuthorized(
     args: [quote, valued.usd6],
   });
   const path = body.mode === "fair" ? "fair" : body.mode === "standard" ? "standard" : "rewards";
-  const curveConfig = path === "fair" ? FAIR_V1 : INSTANT_CURVE_V1;
+  const fair = resolveFairParams({
+    supply: body.supply,
+    decimals: body.decimals,
+    duration: body.duration,
+    auctionBps: body.auctionBps,
+    minRaise: body.minRaise,
+  });
+  const curveConfig = path === "fair"
+    ? fairCurveConfig(fair.supply, fair.decimals, fair.duration, fair.auctionBps, fair.minRaise)
+    : INSTANT_CURVE_V1;
   const mode = authMode(path);
   const name = String(body.name ?? rec.name ?? ticker);
   const metadataHash = hashMetadata(
@@ -171,10 +194,24 @@ export async function signAuthorized(
     String(body.twitter ?? ""),
     String(body.telegram ?? ""),
   );
+  const factory = (addrs.ReactorFactory ?? body.factory) as `0x${string}`;
+  const expectedHash = launchConfigHash({
+    creator: creator.toLowerCase(),
+    ticker,
+    name,
+    metadataHash,
+    quote: quote.toLowerCase(),
+    mode,
+    factory: factory.toLowerCase(),
+    factoryVersion: Number(body.factoryVersion ?? rec.factoryVersion ?? 1),
+    curveConfig,
+  });
+  if (rec.launchConfigHash && String(rec.launchConfigHash).toLowerCase() !== expectedHash.toLowerCase()) {
+    throw new Error("receipt launchConfigHash mismatch");
+  }
   const account = privateKeyToAccount(key);
   const deadline = BigInt(now + 5 * 60);
   const authId = (`0x${randomBytes(32).toString("hex")}`) as `0x${string}`;
-  const factory = (addrs.ReactorFactory ?? body.factory) as `0x${string}`;
   const signature = await account.signTypedData({
     domain: { name: "REACTOR", version: "1", chainId: deployment.chainId, verifyingContract: registry },
     types: LAUNCH_AUTH_TYPES,

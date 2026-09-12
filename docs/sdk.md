@@ -1,13 +1,39 @@
 # SDK
 
-```ts
-import { ReactorClient, normalizeTicker } from "@reactor/sdk";
+`@reactor/sdk` **0.3.0** — thin client for the public indexer. Factory version is a different number (**V1**).
 
-const client = new ReactorClient({ baseUrl: "http://127.0.0.1:43148" });
-const t = await client.ticker("moon");
-const board = await client.markets({ q: "zec", limit: 40 });
+## Authorize a launch
+
+`ReactorClient.authorize` posts `POST /launch/authorize`. It does **not** talk to the isolated signer.
+
+```ts
+import { ReactorClient } from "@reactor/sdk";
+
+const client = new ReactorClient({ indexer: "http://127.0.0.1:43148" });
+const out = await client.authorize({
+  ticker: "CAT",
+  name: "Cat",
+  quote: "0x…",
+  factory: "0x…",
+  factoryVersion: 1,
+  wallet: "0x…",
+  mode: "rewards",
+  turnstile: realWidgetToken, // from Cloudflare Turnstile, not a stub
+});
+if (out.decision === "CHALLENGE") {
+  // render widget, collect token, retry — CHALLENGE ≠ ALLOW
+}
+// out.auth + out.signature → InstantLaunchModule / Factory
 ```
 
-`normalizeTicker` matches `Ticker.sol`. Do not ship a different alphabet.
+On ALLOW the body includes `launchConfigHash`. The signer recomputes it. A mismatch is a hard fail.
 
-Launch Signer and Keeper keys never belong in a terminal. Next.js only proxies `/api/launch-pricing` and fails closed if the signer is down.
+## Quote tickets
+
+Helpers consume `POST /quote`:
+
+- Use returned `tx.to` / `tx.data` / `amountOut`.
+- Apply slippage locally. Refuse `minOut` ≤ 1.
+- Preserve hop `kind` and `feeLegs[]` in the UI.
+
+`@reactor/core` exports `planCandidates`, `applyMinOuts`, `ValuationService`, `evaluateAdmission`, `fairCurveConfig`, `launchConfigHash`.

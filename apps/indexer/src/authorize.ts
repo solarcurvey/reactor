@@ -35,6 +35,12 @@ export async function authorizeLaunch(store: Store, input: AdmitInput & SignRequ
     twitter: input.twitter,
     telegram: input.telegram,
     factory: input.factory,
+    factoryVersion: input.factoryVersion,
+    supply: input.supply,
+    decimals: input.decimals,
+    duration: input.duration,
+    auctionBps: input.auctionBps,
+    minRaise: input.minRaise,
     receipt: admitted.receipt,
   };
 

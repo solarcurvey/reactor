@@ -460,10 +460,9 @@ contract ReactorFactory {
     }
 
     function _registerNativeQuote(address token) internal {
-        try registry.registerNative(
+        registry.registerNative(
             token, ReactorToken(token).symbol(), ReactorToken(token).name(), ReactorToken(token).decimals()
-        ) {}
-            catch {}
+        );
     }
 
     function isGraduatedReactor(address token) public view returns (bool) {

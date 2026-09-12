@@ -5,6 +5,7 @@ import {Base} from "../Base.sol";
 import {ReactorFactory} from "../../src/ReactorFactory.sol";
 import {ReactorToken} from "../../src/ReactorToken.sol";
 import {UserRouteExecutor} from "../../src/UserRouteExecutor.sol";
+import {UserRouteQuoter} from "../../src/UserRouteQuoter.sol";
 
 contract UserRouteTest is Base {
     function test_userBuySellUsdcOfficialLeg() public {
@@ -265,5 +266,47 @@ contract UserRouteTest is Base {
         vm.expectRevert();
         userRouter.buy(token, 50e6, _emptyHops(), minOut, block.timestamp + 60);
         vm.stopPrank();
+    }
+
+    /// @notice §BM 31 — one preview call; always reverts PreviewRoute; amountOut > 1
+    function test_31_quoter_whole_route_preview() public {
+        (address token,) = _instant(
+            ReactorFactory.InstantParams({
+                name: "QR",
+                symbol: "QR",
+                decimals: 18,
+                supply: 0,
+                quote: address(usdc),
+                fdvQuoteRaw: 0,
+                devBuyQuote: 0,
+                image: "",
+                description: "",
+                website: "",
+                twitter: "",
+                telegram: ""
+            })
+        );
+        _fillAndGraduate(alice, token);
+        usdc.mint(address(userQuoter), 50e6);
+        try userQuoter.previewBuy(token, 10e6, _emptyHops()) {
+            revert("must revert PreviewRoute");
+        } catch (bytes memory err) {
+            require(err.length >= 4, "short");
+            bytes4 sel;
+            assembly {
+                sel := mload(add(err, 32))
+            }
+            assertEq(sel, UserRouteQuoter.PreviewRoute.selector);
+            bytes memory payload = new bytes(err.length - 4);
+            for (uint256 i; i < payload.length; i++) {
+                payload[i] = err[i + 4];
+            }
+            (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) =
+                abi.decode(payload, (uint256, uint256[], bytes32[]));
+            assertGt(amountOut, 1, "preview amountOut dust");
+            assertEq(kinds.length, 1);
+            assertEq(kinds[0], userQuoter.KIND_OFFICIAL());
+            assertEq(hopOuts[0], amountOut);
+        }
     }
 }
