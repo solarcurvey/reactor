@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-12  
 **Issue:** [#17](https://github.com/solarcurvey/reactor/issues/17) (stays open until merge + post-merge verify)  
-**PR:** draft **#42**. Rebased onto `origin/main` **`300b7e5`** (#73 after #77/#76/#74).  
+**PR:** draft **#42**. Rebased onto `origin/main` **`300b7e5`** (#73 after #77/#76/#74). Proven exact-head: **`ded908d`** / run [`34725992605`](https://github.com/solarcurvey/reactor/actions/runs/34725992605).  
 **Scope:** Keep the #69 / #73 single-workflow three-tier `ci.yml` (PR-only feature branches, concurrency cancel, main SHA isolation, path classifier, #72/#74 `contents: read` + `persist-credentials: false`, no `pull_request_target`). Land leftover #17 gates on that file: `docs:links` + Playwright smoke + interactive. Do not restore `docs-sync.yml` / `keeper-lease-pg.yml` / `live-toasts.yml`. Frozen economics / architecture / Factory V1. Protocol version stays **0.3.3**. Visibility not flipped.  
 **Not audited. Not mainnet.**
 
@@ -35,12 +35,13 @@
 | #73 cost controls not weakened | Single workflow. No feature-branch `push`. `scripts/ci-cost.test.ts` still forbids a bare `push:`. |
 | Frozen economics / arch | No contract / tokenomics edits |
 | Docs same run | `docs/ci.md`, `TESTING.md`, `CONTRIBUTING.md`, `AUDIT_HANDOFF.md`, this report |
+| Exact-head `ci-ok` | **`ded908d`** / [`34725992605`](https://github.com/solarcurvey/reactor/actions/runs/34725992605): Attack 15 files, CREATE2 `test_hookBits` PASS, Factory runtime **23286**, `docs-links`, `web`, Postgres, production security, live-toasts. #17 stays open until merge + post-merge verify. |
 
 ## Billing vs real CI
 
 Empty-step FAILURE is the account spending-limit / payment block — not a Solidity / docs / size-guard regression. Do not weaken gates to “fix” it.
 
-After billing recovered, `ci-full` on **`606e569`** / **`759cc75`** ran the real full tier. Sibling jobs (`docs-links`, `web`, `web-production-security`, `live-toasts-ui`, `postgres-ms-timestamps`, `constants-version-deployments`) **succeeded**. `solidity + size-guard` failed **before any test**: first a `binaries.soliditylang.org` reset ([`34725661667`](https://github.com/solarcurvey/reactor/actions/runs/34725661667)), then the `svm install` prefetch on `759cc75` ([`34725829776`](https://github.com/solarcurvey/reactor/actions/runs/34725829776)) — Foundry 1.8 has no `svm` CLI, so Attack / CREATE2 / `size:guard` were skipped. That is not an assertion failure. `setup-foundry` now `curl`s `solc 0.8.26` from official mirrors into `~/.svm`. Exact-head `ci-ok` is still required. Do not treat `759cc75` or historical `6140ce0` as the closer.
+After billing recovered, `ci-full` on **`606e569`** / **`759cc75`** failed `solidity + size-guard` **before any test** (CDN reset, then missing `svm` CLI). **`ded908d`** installed solc via official mirrors. Exact-head full matrix green: [`34725992605`](https://github.com/solarcurvey/reactor/actions/runs/34725992605). Do not treat `6140ce0` or `759cc75` as the closer. Close #17 only after merge + post-merge verify on `main`.
 
 ## What this is not
 
