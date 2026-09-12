@@ -145,6 +145,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       const q = (await res.json()) as {
         ok?: boolean;
         reason?: string;
+        error?: string;
         amountOut?: string;
         minOut?: string;
         minQuoteOut?: string;
@@ -155,7 +156,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         tx?: { to: string; data: `0x${string}`; functionName: string };
       };
       if (!res.ok || !q.ok || !q.amountOut) {
-        throw new Error(q.reason ?? "Quote API unavailable");
+        throw new Error(q.error ?? q.reason ?? "Quote API unavailable");
       }
       setQuotedOut(BigInt(q.amountOut));
       setQuotedAt(Date.now());

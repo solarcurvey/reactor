@@ -376,7 +376,9 @@ try {
     }
   }
   assert(signerSrc.includes("gateProtectedWrite"), "isolated signer gated");
-  assert(signerSrc.indexOf("gateProtectedWrite") < signerSrc.indexOf("signAuthorized"), "signer gated before output");
+  const signerGate = signerSrc.indexOf("const gate = await gateProtectedWrite");
+  const signerOut = signerSrc.indexOf("const out = await signAuthorized");
+  assert(signerGate >= 0 && signerOut > signerGate, "signer gated before output");
 }
 
 console.log("operator-policy http matrix ok");

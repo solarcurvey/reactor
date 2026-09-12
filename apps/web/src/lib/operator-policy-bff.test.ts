@@ -5,8 +5,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { AddressInfo } from "node:net";
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import {
   bindOperatorPolicyProviders,
   gateProtectedWrite,
@@ -46,6 +45,7 @@ function listen(handler: (req: IncomingMessage, res: ServerResponse) => Promise<
   });
 }
 
+async function main() {
 process.env.REACTOR_ENV = "LOCAL";
 resetOperatorPolicyState();
 setFixtureBlockedWallets([BLOCKED]);
@@ -159,10 +159,12 @@ try {
 }
 
 {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const route = readFileSync(join(here, "../app/api/launch-pricing/route.ts"), "utf8");
+  const route = readFileSync(join(process.cwd(), "apps/web/src/app/api/launch-pricing/route.ts"), "utf8");
   assert(route.includes("proxyLaunchAuthorize"), "Next route uses shared proxy");
   assert(!route.includes("sanctionsClear"), "Next route does not honor client flags");
 }
 
 console.log("operator-policy Next BFF ok");
+}
+
+void main();
