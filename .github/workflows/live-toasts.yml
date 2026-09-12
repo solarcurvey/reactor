@@ -1,0 +1,32 @@
+name: live-toasts-ui
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  live-toasts-ui:
+    name: live-toasts-ui
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Canonical identity + reconnect session
+        run: pnpm exec tsx apps/web/src/lib/live-toasts.test.ts
+      - name: Install Playwright Chromium
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Browser regressions (dismiss / multi-log / reconnect / safe-area / reduced-motion)
+        working-directory: apps/web
+        env:
+          CI: true
+          NEXT_PUBLIC_REVIEW_FIXTURES: "1"
+        run: pnpm exec playwright test e2e/live-toasts.spec.ts --reporter=line

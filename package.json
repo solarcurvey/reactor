@@ -8,6 +8,7 @@
     "indexer": "pnpm --filter indexer dev",
     "demo": "pnpm --filter indexer demo",
     "test:web": "pnpm --filter web test",
+    "test:live-toasts": "tsx apps/web/src/lib/live-toasts.test.ts && pnpm --filter web exec playwright test e2e/live-toasts.spec.ts",
     "docs:gen": "tsx scripts/sync-docs.ts generate",
     "docs:check": "tsx scripts/sync-docs.ts check",
     "size:guard": "tsx scripts/size-guard.ts",

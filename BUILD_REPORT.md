@@ -28,7 +28,7 @@
 | Visible CI/release gate | **Yes** | `.github/workflows/live-toasts.yml` job `live-toasts-ui` |
 | Docs | **Yes** | `/docs/events`, `/docs/traders`, `/docs/core`, `/docs/top-10`, `/docs/api`, `UX_REFERENCE.md` |
 | Tokenomics / Factory | **Unchanged** | No contract edits |
-| Close #38 | **No** | Stays open until post-merge verify. Do not `Fixes #38`. |
+| Close #38 | **No** | Stays open until `live-toasts-ui` is green on main and post-merge verify. Do not `Fixes #38`. |
 
 ---
 

@@ -26,6 +26,8 @@ npx --yes tsx apps/web/src/lib/marketdata.test.ts
 npx --yes tsx apps/web/src/lib/live-toasts.test.ts
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
 pnpm --filter web test          # Playwright smoke + interactive + live-toasts
+pnpm test:live-toasts           # #38 gate: identity unit + Playwright dismiss / multi-log / reconnect / safe-area / reduced-motion
+# CI: .github/workflows/live-toasts.yml job live-toasts-ui (required visible check). #38 stays open until post-merge verify.
 # Real Postgres (docker compose postgres on :54329, or local 5432)
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
