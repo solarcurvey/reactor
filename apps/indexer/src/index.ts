@@ -7,6 +7,7 @@ import { rpcFromEnv } from "./rpc.ts";
 import { SseHub } from "./sse.ts";
 import { ObjectStore, publicMediaUrl } from "./media.ts";
 import { RateLimit, SECURITY_HEADERS, logLine, requestId } from "./obs.ts";
+import { abortIncoming, BodyTooLargeError, readJsonBody } from "./read-json-body.ts";
 import { getState, rollMarketAggregations } from "./ingest.ts";
 import { loadValuationService } from "./valuation-store.ts";
 import { populateExternalPriceMarks } from "./price-marks.ts";
@@ -83,8 +84,27 @@ function json(res: ServerResponse, code: number, body: unknown, rid?: string) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "content-type,x-request-id,authorization,x-ops-token");
   res.setHeader("Content-Type", "application/json");
+  if (code === 413 || code === 429) res.setHeader("Connection", "close");
   if (rid) res.setHeader("x-request-id", rid);
   res.end(JSON.stringify(body));
+}
+
+async function readPublicJson(
+  req: IncomingMessage,
+  res: ServerResponse,
+  rid: string,
+): Promise<Record<string, unknown> | undefined> {
+  try {
+    return await readJsonBody(req);
+  } catch (e) {
+    if (e instanceof BodyTooLargeError) {
+      json(res, 413, { error: e.message, request_id: rid }, rid);
+      abortIncoming(req);
+      return;
+    }
+    json(res, 400, { error: "invalid json", request_id: rid }, rid);
+    return;
+  }
 }
 
 function opsOk(req: IncomingMessage): boolean {
@@ -270,7 +290,8 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       json(res, 429, { error: "rate limited", request_id: rid }, rid);
       return;
     }
-    const body = await readBody(req);
+    const body = await readPublicJson(req, res, rid);
+    if (!body) return;
     const q = await buildQuote(
       {
         store,
@@ -437,7 +458,8 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
         return;
       }
     }
-    const body = await readBody(req);
+    const body = await readPublicJson(req, res, rid);
+    if (!body) return;
     const out = await admit(store, {
       ...body,
       ip: String(req.socket.remoteAddress ?? ""),
@@ -450,7 +472,8 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     return;
   }
   if (url.pathname === "/launch/authorize" && req.method === "POST") {
-    const body = await readBody(req);
+    const body = await readPublicJson(req, res, rid);
+    if (!body) return;
     try {
       const out = await authorizeLaunch(store, {
         ...body,
@@ -503,21 +526,6 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     return;
   }
   json(res, 404, { error: "not found", request_id: rid }, rid);
-}
-
-function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    req.on("data", (c) => chunks.push(c as Buffer));
-    req.on("end", () => {
-      try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"));
-      } catch (e) {
-        reject(e);
-      }
-    });
-    req.on("error", reject);
-  });
 }
 
 async function loop(store: Store) {

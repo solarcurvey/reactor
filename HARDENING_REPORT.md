@@ -172,6 +172,15 @@ Local Anvil redeploy (hardening bytecode; **not** Arc Testnet):
 
 Always re-read `factory.hook()` after bytecode changes.
 
+## P1 API body limits (this amendment)
+
+| Item | Status | Proof |
+| --- | --- | --- |
+| Public JSON POSTs unbounded buffer | **FIXED** | Stream 16KiB default / 64KiB hard max on `/quote`, `/launch/admit`, `/launch/authorize`. Content-Length **and** chunked. Env cannot raise past hard max. 413 + destroy. `read-json-body.test.ts` |
+| Next BFF `/api/launch-pricing` | **FIXED** | Same 16KiB default / 64KiB hard max before proxy. `limited-json.test.ts` |
+| Isolated signer unbounded parse | **FIXED** | Same reader (not a public API) |
+| Upload 2MB | Unchanged | Already streamed |
+
 ## Remaining risks / mainnet blockers
 
 - Uniswap v4-core BUSL, non-production until June 2027; **no official v4 PoolManager on Arc Testnet** at last probe.

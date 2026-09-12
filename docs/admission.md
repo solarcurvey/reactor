@@ -2,7 +2,7 @@
 
 > Protocol **0.3.2**. CHALLENGE ≠ ALLOW. A solved challenge can ALLOW under limits.
 
-`POST /launch/authorize` is the public path. Direct isolated-signer calls without an ALLOW receipt fail.
+`POST /launch/authorize` is the public path. Direct isolated-signer calls without an ALLOW receipt fail. Public JSON POSTs (`/launch/authorize`, `/launch/admit`) are stream-capped at **16KiB** default / **64KiB** hard max (Content-Length and chunked); oversize is **413**.
 
 ## Flow
 

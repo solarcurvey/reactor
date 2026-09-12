@@ -64,6 +64,13 @@ Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, 
 11. **Keeper split-brain** — a tick can outlive the ~50s lease (receipt wait 60s; large discovery). Without renew, a standby can acquire and both broadcast. Control: interval renew + pre-send renew of the same fence; lost lease refuses send. Residual: process pause after renew, then send. Not an on-chain fence (architecture frozen).
 12. **Indexer crash window** — ingest used to write events then advance the cursor after the loop. A crash left events without a cursor (replay skipped derived rows on UNIQUE) or, if the hash RPC failed after writes, the same partial state. `persistTickBatch` now commits events + cursor together. Residual: post-commit 24h roll / external marks / SSE can still lag; the indexer is still not onchain truth.
 
+## API / indexer controls
+
+- Public JSON POSTs (`/quote`, `/launch/admit`, `/launch/authorize`) reject bodies over the JSON cap with **413** (default **16KiB**, hard max **64KiB**). `JSON_BODY_LIMIT_BYTES` cannot raise the cap past the hard max. Enforcement is on the stream: declared `Content-Length` and chunked bodies with no length. The request is destroyed at the first overflowing byte so the process cannot buffer an unbounded JSON POST.
+- `POST /upload` already stream-caps at 2MB.
+- The public Next BFF `/api/launch-pricing` applies the same 16KiB default / 64KiB hard max before proxying.
+- Rate limits (quote / upload / pricing) are separate. Body caps + RPM are not a complete L7 DoS proof.
+
 ## Explicit non-goals
 
 We do not prevent external pools, creator dumping after a paid buy, or social-engineering of the registry admin.

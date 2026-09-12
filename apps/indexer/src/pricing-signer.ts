@@ -5,6 +5,7 @@
 import { createServer } from "node:http";
 import { privateKeyToAccount } from "viem/accounts";
 import { SECURITY_HEADERS, logLine, requestId, RateLimit } from "./obs.ts";
+import { abortIncoming, BodyTooLargeError, readJsonBody } from "./read-json-body.ts";
 import {
   openSignerStore,
   resolveSignerKey,
@@ -58,10 +59,8 @@ const server = createServer(async (req, res) => {
     res.end(JSON.stringify({ error: "rate limited", request_id: rid }));
     return;
   }
-  const chunks: Buffer[] = [];
-  for await (const c of req) chunks.push(c as Buffer);
   try {
-    const body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") as SignRequest;
+    const body = (await readJsonBody(req)) as SignRequest;
     const store = await durableStore();
     const out = await signAuthorized(store, body, {
       receipt: body.receipt ?? String(req.headers["x-admission-receipt"] ?? ""),
@@ -70,8 +69,15 @@ const server = createServer(async (req, res) => {
     });
     res.end(JSON.stringify({ ...out, request_id: rid }));
   } catch (e) {
+    if (e instanceof BodyTooLargeError) {
+      res.statusCode = 413;
+      res.setHeader("Connection", "close");
+      res.end(JSON.stringify({ error: e.message, request_id: rid }));
+      abortIncoming(req);
+      return;
+    }
     const msg = e instanceof Error ? e.message : "sign failed";
-    res.statusCode = signerHttpStatus(e);
+    res.statusCode = e instanceof SyntaxError ? 400 : signerHttpStatus(e);
     res.end(JSON.stringify({ error: msg, needsAuth: true, request_id: rid }));
   }
 });
