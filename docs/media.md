@@ -19,3 +19,17 @@ When `MEDIA_CDN_BASE` is set, `publicUrl` is `MEDIA_CDN_BASE` + `uri` (no extra 
 `mediaObjectKey(id)` and `mediaPublicUri(id)` are the single source of truth. `assertMediaKeyMatchesPublicUri` refuses a remote key that would 404 behind the returned URL. The mock SigV4 fixture stores the PUT body under that key and a subsequent GET of `m/<id>.webp` must return the same bytes and `image/webp`. A PROD remote PUT failure throws and returns no `StoredMedia` (no dead public URL).
 
 No base64 onchain. The launch form posts the file and stores the returned URL.
+
+## Browser rendering (untrusted)
+
+The public UI does **not** load arbitrary creator `https://` images. `sanitizeMediaUrl` allows:
+
+- `/m/<hex>.webp` (relative)
+- `/icons/<file>.{svg,webp,png,jpg,gif}` (first-party review/static)
+- Absolute URLs whose **origin** is the indexer or `MEDIA_CDN_BASE` / `NEXT_PUBLIC_MEDIA_CDN_BASE` and whose path is `/m/<id>.webp`
+
+Rejected: `javascript:`, `data:` (including SVG), `blob:`, `file:`, protocol-relative `//`, credentials in the URL, path travel, foreign CDNs. Failed images render ticker initials. `referrerPolicy=no-referrer`.
+
+`GET /m/<id>.webp` is `image/webp` + `X-Content-Type-Options: nosniff` + `Content-Security-Policy: default-src 'none'; sandbox`.
+
+See [Browser security](/docs/web-security).

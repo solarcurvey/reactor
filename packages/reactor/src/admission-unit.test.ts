@@ -123,6 +123,39 @@ const table: Case[] = [
     signals: { ticker: "", turnstileOk: true },
     expect: "DENY",
   },
+  {
+    name: "javascript image DENY",
+    level: "NORMAL",
+    signals: {
+      ticker: "CAT",
+      turnstileOk: true,
+      metadata: { name: "Cat", image: "javascript:alert(1)" },
+      quote: "0x0000000000000000000000000000000000000001",
+    },
+    expect: "DENY",
+  },
+  {
+    name: "HTML name DENY",
+    level: "NORMAL",
+    signals: {
+      ticker: "CAT",
+      turnstileOk: true,
+      metadata: { name: "<script>alert(1)</script>" },
+      quote: "0x0000000000000000000000000000000000000001",
+    },
+    expect: "DENY",
+  },
+  {
+    name: "data: SVG website DENY",
+    level: "NORMAL",
+    signals: {
+      ticker: "CAT",
+      turnstileOk: true,
+      metadata: { name: "Cat", website: "data:text/html,<script>alert(1)</script>" },
+      quote: "0x0000000000000000000000000000000000000001",
+    },
+    expect: "DENY",
+  },
 ];
 
 for (const row of table) {

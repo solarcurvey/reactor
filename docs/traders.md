@@ -27,6 +27,8 @@ The ticket applies your slippage to each previewed amount **separately**, from t
 
 USDC → nested quote → official/bonding goes through `UserRouteExecutor`. Bonding markets use `curve.buy` / `curve.sell` on the last leg (the executor-only `buyRouted` path is not a user quote).
 
+Names, tickers, descriptions, and images on the board are **untrusted creator strings**. The UI strips HTML and will not follow `javascript:` / arbitrary image hosts. A token name cannot change the wallet `to` / recipient — Confirm is disabled on the wrong chain. See [Browser security](/docs/web-security).
+
 ## Board, charts, tape
 
 | Surface | Source |

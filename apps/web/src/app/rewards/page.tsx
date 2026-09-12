@@ -7,6 +7,7 @@ import { useLaunchTokens } from "@/lib/hooks";
 import { token as tokenC } from "@/lib/contracts";
 import { formatUnitsSafe } from "@/lib/utils";
 import Link from "next/link";
+import { tokenPath } from "@/lib/untrusted-metadata";
 
 export default function RewardsPage() {
   const { address, isConnected } = useAccount();
@@ -94,7 +95,7 @@ export default function RewardsPage() {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <Button asChild variant="outline" size="sm">
-                      <Link href={`/token/${r.token}`}>Open</Link>
+                      <Link href={tokenPath(r.token)}>Open</Link>
                     </Button>
                   </td>
                 </tr>

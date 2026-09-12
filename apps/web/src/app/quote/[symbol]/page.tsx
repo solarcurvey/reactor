@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { useLaunchTokens, useQuotes } from "@/lib/hooks";
 import { formatUnitsSafe } from "@/lib/utils";
+import { tokenPath } from "@/lib/untrusted-metadata";
 
 /**
  * Quote-ecosystem metrics (no double-count):
@@ -51,7 +52,7 @@ export default function QuotePage() {
 
       <div className="mt-6 space-y-2">
         {markets.map((t) => (
-          <Link key={t.token} href={`/token/${t.token}`}>
+          <Link key={t.token} href={tokenPath(t.token)}>
             <Card className="flex items-center justify-between p-3 hover:border-cyan-300/30">
               <div>
                 <div className="font-medium text-white">

@@ -38,6 +38,7 @@ export function feeSplit(notional: bigint) {
 
 export function explorerTx(hash: string) {
   const base = process.env.NEXT_PUBLIC_EXPLORER_URL ?? "https://testnet.arcscan.app";
+  if (!/^0x[a-fA-F0-9]{64}$/.test(hash)) return base;
   return `${base}/tx/${hash}`;
 }
 
@@ -58,5 +59,6 @@ export function priceFromSqrtX96(
 
 export function explorerAddress(addr: string) {
   const base = process.env.NEXT_PUBLIC_EXPLORER_URL ?? "https://testnet.arcscan.app";
+  if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) return base;
   return `${base}/address/${addr}`;
 }

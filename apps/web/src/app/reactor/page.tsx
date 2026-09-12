@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useReactorEvents } from "@/lib/hooks";
 import { FIXTURE_RANKS, REVIEW_FIXTURES } from "@/lib/review-fixtures";
 import { shortAddress } from "@/lib/utils";
+import { sanitizeDisplayText, sanitizeTicker } from "@/lib/untrusted-metadata";
+import { UntrustedText } from "@/components/untrusted-text";
 
 type ApiRank = {
   rank: number;
@@ -106,7 +108,9 @@ export default function ReactorPage() {
             {ranks.map((r) => (
               <tr key={r.token} className="border-t border-white/6">
                 <td className="px-3 py-2 tabular-nums text-cyan-100">#{r.rank}</td>
-                <td className="px-3 py-2 font-medium text-white">${r.symbol}</td>
+                <td className="px-3 py-2 font-medium text-white">
+                  <UntrustedText field="ticker">${sanitizeTicker(r.symbol) || "TKN"}</UntrustedText>
+                </td>
                 <td className="px-3 py-2 text-zinc-400">{r.quote}</td>
                 <td className="px-3 py-2 font-mono text-zinc-200">{r.mcap}</td>
                 <td className="px-3 py-2 text-zinc-400">{r.weight}</td>
@@ -136,8 +140,10 @@ export default function ReactorPage() {
           {events.slice(0, 12).map((e, i) => (
             <li key={`${e.tx}-${i}`} className="flex justify-between gap-3">
               <span>
-                {e.name}
-                {e.token ? ` · ${shortAddress(e.token)}` : ""}
+                <UntrustedText field="activity">
+                  {sanitizeDisplayText(e.name, 48)}
+                  {e.token ? ` · ${shortAddress(e.token)}` : ""}
+                </UntrustedText>
               </span>
               <span className="text-zinc-600">#{e.block}</span>
             </li>

@@ -3,24 +3,27 @@ import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import type { LaunchToken } from "@/lib/hooks";
 import { formatUnitsSafe } from "@/lib/utils";
+import { launchPath } from "@/lib/untrusted-metadata";
+import { SafeTokenImage } from "./safe-media";
+import { UntrustedText } from "./untrusted-text";
 
 export function TokenCard({ t }: { t: LaunchToken }) {
   return (
-    <Link href={t.mode === 1 && !t.marketLive ? `/fair/${t.fairId}` : `/token/${t.token}`}>
+    <Link href={launchPath(t)}>
       <Card className="group p-4 transition hover:border-cyan-300/30 hover:bg-white/[0.04]">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-full border border-white/10 bg-zinc-900 text-xs text-cyan-100">
-              {t.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={t.image} alt="" className="h-full w-full object-cover" />
-              ) : (
-                t.symbol.slice(0, 2)
-              )}
+              <SafeTokenImage src={t.image} className="h-full w-full object-cover" />
+              {!t.image ? t.symbol.slice(0, 2) : null}
             </div>
             <div>
-              <div className="font-medium text-white">{t.name}</div>
-              <div className="font-mono text-xs text-zinc-400">${t.symbol}</div>
+              <UntrustedText field="name" className="font-medium text-white">
+                {t.name}
+              </UntrustedText>
+              <UntrustedText field="ticker" className="block font-mono text-xs text-zinc-400">
+                ${t.symbol}
+              </UntrustedText>
             </div>
           </div>
           {t.marketLive ? (
@@ -37,7 +40,9 @@ export function TokenCard({ t }: { t: LaunchToken }) {
             2% of official volume → holders in {t.quoteSymbol ?? "quote"}
           </span>
         </div>
-        <p className="mt-3 line-clamp-2 text-sm text-zinc-400">{t.description || "No description."}</p>
+        <UntrustedText as="p" field="description" clamp className="mt-3 text-sm text-zinc-400">
+          {t.description || "No description."}
+        </UntrustedText>
         <div className="mt-4 flex justify-between text-[11px] uppercase tracking-wider text-zinc-500">
           <span>TEST ASSET quote</span>
           <span>
