@@ -17,7 +17,8 @@ Base URL: indexer (local `http://127.0.0.1:43148`).
 | GET | `/valuation` | One ValuationService (nested multiply + ancestry) |
 | GET | `/stream` | SSE |
 | GET | `/health` | Liveness |
-| POST | `/upload` | Stream 2MB + sharp + SigV4 remote |
+| POST | `/upload` | Stream 2MB + sharp + SigV4 remote. Returns `uri` `/m/<id>.webp` (R2/S3 key `m/<id>.webp`). |
+| GET | `/m/:file` | Local WebP by filename (`<id>.webp`). CDN uses the same path as the object key. |
 | POST | `/launch/admit` | ALLOW / CHALLENGE / DENY. Partner header `x-partner-key`. No signature. |
 | POST | `/launch/authorize` | Public. Admission → ALLOW receipt → isolated signer. CHALLENGE ≠ ALLOW. |
 
