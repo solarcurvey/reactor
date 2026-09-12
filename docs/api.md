@@ -15,6 +15,7 @@ Base URL: indexer (local `http://127.0.0.1:43148`).
 | GET | `/swaps/:token` | Bounded `limit`, `before_id` |
 | GET | `/quote-assets` | Registered quotes |
 | GET | `/valuation` | One ValuationService (nested multiply + ancestry). Consumes accepted consensus only. |
+| GET | `/top10` | Canonical epoch candidates from ValuationService + persisted `current_supply`. No per-request Factory RPC. |
 | GET | `/pricing/health` | Per-asset consensus, accepted/rejected observations, Arc sanity from the verified `route_venues` executable mark (not a synthetic `markets` row). 503 in PROD when an important mark fails. |
 | GET | `/stream` | SSE |
 | GET | `/health` | Liveness |

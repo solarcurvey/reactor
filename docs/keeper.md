@@ -27,7 +27,7 @@ If renew fails (expiry without renewal, or another owner stole after expiry) the
 
 Each job takes a **20% chunk** + cooldown. The Keeper supplies `minOut` from a **whole-route, fee-exempt** preview (`planFeeExemptRoute` + ProtocolV4Adapter). That path never shares `UserRouteQuoter`. Official edges are listed on the ticket as `exemptOfficialLegs[]` (0 user fee). Successful quotes refuse `minOut` 0 or 1.
 
-Top-10 jobs execute the **frozen onchain epoch**, not the latest API snapshot.
+Top-10 jobs execute the **frozen onchain epoch**, not a later API refresh. The daemon reads the same indexer `GET /top10` snapshot the public route proxies.
 
 `submitOnce` — if the RPC is ambiguous (timeout after broadcast), do not resubmit.
 

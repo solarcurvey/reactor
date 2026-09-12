@@ -31,6 +31,10 @@ Indexer HTTP for the homepage board and trade tape.
 
 Bounded `limit` (default 200, max 500), `before_id` keyset.
 
+## `GET /top10`
+
+Canonical Top-10 epoch candidates. Ranked from graduated markets, persisted `current_supply`, 12m VWAP, and ValuationService ancestry. Not a Factory RPC. Web `/api/reactor/top10` proxies this payload.
+
 ## Events
 
 Inserts treat **only** Postgres `23505` / SQLite `UNIQUE constraint failed` as duplicates. Other errors abort the tick. Append-only rows use `(chain_id, tx, log_index, event_kind)` (shared journal + per-table) so two identical same-kind logs in one transaction both persist.

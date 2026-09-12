@@ -39,10 +39,13 @@ External quote USD marks are a configured provider registry with multi-source co
 
 ## [Unreleased]
 
-API availability hardening on main (#24). Tokenomics **unchanged**. Factory **V1**. No mainnet.
+Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33). Tokenomics **unchanged**. Factory **V1**. No mainnet.
 
 ### Added / Changed
 
+- Schema **v11** persists official Top-10 candidates (`top10_candidate_epochs` / `top10_candidate_rows`) after merged #23 **v9** `tokens.current_supply` and #30 **v10** `external_price_marks.kind`. Ranking reads persisted `current_supply` (not minted − SelfBurn/Top10Buy), 12m VWAP, and ValuationService consensus ancestry.
+- Indexer `GET /top10` is the official snapshot. Web `/api/reactor/top10`, Keeper, and watchdog consume that path. `discoverTop10` Factory RPC walk and the assumed hookless 0.30% quote/USDC fallback are removed.
+- Material stale or degraded quote USD pauses the epoch. Never guess a mark. CORE stays excluded. Contracts still check structure only.
 - Public JSON POSTs (`/quote`, `/launch/admit`, `/launch/authorize`) stream-cap request bodies at **16KiB** default / **64KiB** hard max (`JSON_BODY_LIMIT_BYTES`). Env cannot raise the cap past 64KiB. The cap applies to `Content-Length` and to chunked `Transfer-Encoding`. Oversize is **413**; the socket is destroyed so the process never buffers an unbounded JSON body.
 - The public Next BFF `POST /api/launch-pricing` applies the same cap before proxying. The isolated signer uses the same reader as defense in depth.
 - Regression tests cover Content-Length oversize, chunked oversize, slow chunked writes, and an absurd `JSON_BODY_LIMIT_BYTES` that still clamps to 64KiB.
