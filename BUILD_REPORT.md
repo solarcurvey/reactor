@@ -1,11 +1,51 @@
-# BUILD REPORT — Repo publicization inventory + public-fork CI harden (Refs #72)
+# BUILD REPORT — History rewrite to noreply + prune (Refs #72)
 
-**Status:** PR for issue **#72**. Issue **#72 stays open** until founder AC verify (email rewrite decision, optional branch prune, re-scan before visibility). Do not `Fixes #72`.  
+**Status:** Follow-up to merged **#74**. Issue **#72 stays open** until founder AC verify (visibility flip is still a founder gate). Do not `Fixes #72`.  
 **Not audited. Not mainnet.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
-**Visibility was NOT changed. History was NOT rewritten.**
+**Visibility was NOT changed. History WAS rewritten (founder-authorized).**
 
 ## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Remap personal-mailbox `Co-authored-by` trailers to GitHub noreply; force-update `main` + open PR heads; prune leftover `cursor/*`; re-scan; land #74 hardening on rewritten `main`. |
+| Pre-rewrite `main` | `c15956196418baca76280b9c6d98c11f3cbb24c9` |
+| Post-rewrite `main` | `a56065016731ac9af93b3aaec0bd896a94cc3397` then #74 squash `6b328373650722df480e744da26dbb6f4cfb7386` |
+| Tag `v0.3.1` | `e398fd4` → `d60d3158d7b2401bd71ff38fc10b9c598c07be35` |
+| Workflows | Unchanged vs #74: `contents: read` + `persist-credentials: false`. No `pull_request_target`. Compatible with #69 / PR #73. |
+| Invariant test | `scripts/ci-public-harden.test.ts` inside `pnpm test:lib` |
+| Docs | `/docs/publicization` rewrite notes + SHA map |
+| Mainnet | **Blocked** |
+
+## Closed this run (#72 ACs — issue stays open)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Personal email removed from reachable heads/tags | **Yes** | `git log --all --format='%ae %ce %B' \| grep -i gmail` empty on heads+tags |
+| Merged/superseded Cursor branches pruned | **Yes** | 10 leftovers + merged #74 head deleted. 16 open-PR heads remain. |
+| Full-history secret scan | **Yes** | gitleaks 8.24.3 (32 fixture hits) + trufflehog 3.88.29 (11 unverified, 0 verified). **0 live credentials.** |
+| Real credential rotated | **Yes (none found)** | Nothing to rotate. |
+| Public-fork Actions harden | **Yes** | #74 merged onto rewritten `main`. |
+| #69 cost controls compatible | **Yes** | Additive permissions only. PR #73 force-updated to rewritten history. |
+| Final audit/scan notes | **Yes** | `/docs/publicization` |
+| Visibility flip | **Not done** | FOUNDER DECISION GATE. |
+| Close #72 | **No** | Stays open. |
+
+---
+
+# Prior — Repo publicization inventory + public-fork CI harden (Refs #72 / #74)
+
+# BUILD REPORT — Repo publicization inventory + public-fork CI harden (Refs #72)
+
+**Status:** Merged **#74** onto rewritten `main`. Issue **#72 stays open**.  
+**Not audited. Not mainnet.**  
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
+**Visibility was NOT changed. History rewrite landed in a later pass.**
+
+## That HEAD
 
 | Item | Value |
 | --- | --- |
@@ -17,18 +57,6 @@
 | Docs | `/docs/publicization` + nav, policy, trust, FAQ, glossary, CONTRIBUTING, TESTING, THREAT_MODEL, AUDIT_HANDOFF |
 | Mainnet | **Blocked** |
 | #69 | Open PR #73. Hardening is additive and must survive the `ci.yml` fold. |
-
-## Closed this run (#72 ACs that can land in a PR — issue stays open)
-
-| Item | Closed? | Evidence |
-| --- | --- | --- |
-| Reachable-ref inventory + prune recommendations | **Yes (docs)** | `/docs/publicization` — 25 `cursor/*` heads. Only `cursor/keeper-lease-ci-flake-fb1f` is merge-empty and not an open-PR head. **Not deleted** (conservative). |
-| Full-history secret scan | **Yes** | gitleaks 8.24.3 + trufflehog 3.88.29 over `--all`. 0 live credentials. Fixtures classified. `.gitleaks.toml` allowlist. |
-| Commit-author email inventory | **Yes** | 55 `main` commits carry a personal Gmail `Co-authored-by` trailer. No Author/Committer personal mailbox. Rewrite **not** executed. |
-| Public-fork Actions harden | **Yes** | Least-privilege permissions, `persist-credentials: false`, no `pull_request_target`, no secrets. Compatible with #69. |
-| Operator checklist | **Yes** | `/docs/publicization` — email gate, prune list, re-scan, Actions, “do not publicize without founder instruction”. |
-| Visibility / history rewrite | **Not done (by design)** | FOUNDER DECISION GATE for Davis. |
-| Close #72 | **No** | Stays open. |
 
 ---
 

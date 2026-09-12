@@ -86,8 +86,8 @@ Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, 
 ## Repository / GitHub Actions (not custody)
 
 - Workflows are test-only today: `permissions: contents: read`, `actions/checkout` `persist-credentials: false`, no `pull_request_target`, no `${{ secrets.* }}`. Fork PR code must not receive repository secrets or a writable token. Compatible with #69 concurrency / staging when workflows fold into `ci.yml`.
-- Residual: making the repository public publishes git history (including `Co-authored-by` personal-mailbox trailers until a founder-approved rewrite) and every open draft PR. Operator checklist: `docs/publicization.md`. Agents must not flip visibility or rewrite history.
-- Full-history gitleaks / trufflehog on 2026-09-12 found **no live credentials** (Ethereum addresses, Anvil `#0`, dummy JWT/DSN/URL fixtures only). Re-scan immediately before any visibility change.
+- Residual: making the repository public publishes git history and every open draft PR. Personal-mailbox `Co-authored-by` trailers were remapped to GitHub noreply on 2026-09-12 (founder-authorized rewrite). GitHub `refs/pull/*` for closed PRs may still cache pre-rewrite objects; they are not advertised as heads. Operator checklist: `docs/publicization.md`. Agents must not flip visibility.
+- Full-history gitleaks / trufflehog after the 2026-09-12 rewrite found **no live credentials** (Ethereum addresses, Anvil `#0`, dummy JWT/DSN/URL fixtures only). Re-scan immediately before any visibility change.
 
 ## Explicit non-goals
 

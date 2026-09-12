@@ -95,8 +95,9 @@ for (const name of files) {
 
 assert.match(publicization, /do not publicize without founder instruction/i);
 assert.match(publicization, /FOUNDER DECISION GATE/i);
-assert.match(publicization, /history was NOT rewritten/i);
-assert.match(publicization, /visibility was NOT changed/i);
+assert.match(publicization, /history rewrite \/ force-push/i);
+assert.match(publicization, /\*\*Done\.\*\*/);
+assert.match(publicization, /visibility was \*\*NOT\*\* changed/i);
 assert.match(publicization, /filter-repo/);
 assert.match(publicization, /persist-credentials:\s*`?false`?/);
 assert.match(publicization, /#69/);

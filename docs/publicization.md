@@ -4,77 +4,97 @@
 
 Refs **#72**. Coordinate with **#69** (CI cost / concurrency / staging). Do not weaken **#15 / #17 / #18** release gates.
 
-Inventory snapshot: **2026-09-12**, `origin/main` `c159561`. Reachable refs were fetched the same day. Re-audit immediately before any visibility change — this page goes stale.
+Inventory snapshot: **2026-09-12** after the founder-authorized history rewrite. Re-audit immediately before any visibility change — this page goes stale.
 
-## Hard constraints (already followed for this pass)
+## Hard constraints (this pass)
 
 | Constraint | Status |
 | --- | --- |
-| Repository visibility | **NOT changed.** Keep private until the founder explicitly flips Settings → visibility. |
-| History rewrite / force-push | **NOT executed.** Personal-email remap is a **FOUNDER DECISION GATE** below. |
+| Repository visibility | **NOT changed.** Keep private until the founder explicitly flips Settings → visibility. **FOUNDER DECISION GATE.** |
+| History rewrite / force-push | **Done.** Personal-mailbox `Co-authored-by` trailers remapped with `git filter-repo --replace-text` + `--replace-message`. `origin/main` and every then-open PR head were force-updated. |
 | Arc Mainnet (5042) | Not deployed. Still blocked. |
 | Frozen V1 economics / architecture | Unchanged. |
-| Issue #72 | **Stays open** until acceptance is verified. Do not `Fixes #72`. |
+| Issue #72 | **Stays open** until founder AC verify. Do not `Fixes #72`. |
 
 ## Operator checklist (in order)
 
-1. **Email rewrite decision (FOUNDER DECISION GATE).** Accept the current `Co-authored-by` personal-mailbox exposure, or authorize a `git filter-repo` noreply remap and a coordinated force-update of `main` plus every open PR head. See [Email exposure](#email-exposure). **Do not rewrite from an agent.**
-2. **Branch prune.** Delete only refs listed as [safe to delete](#safe-to-delete). Leave every open-PR head and every branch that is not merge-empty vs `main`.
-3. **Secret-scan clean.** Re-run gitleaks + trufflehog over `--all` reachable refs, including open PR heads. Classify fixtures vs live credentials. Rotate anything live **before** visibility changes. See [Secret scan](#secret-scan).
+1. **Email rewrite.** **Done** (founder-authorized). Verify with the commands below. Do not run another rewrite unless the founder authorizes a new remap.
+2. **Branch prune.** **Done** for merged/superseded `cursor/*` leftovers. Keep only `main` + active open-PR heads + intentional tags. See [Branch inventory](#branch-inventory).
+3. **Secret-scan clean.** Re-run gitleaks + trufflehog over `--all` reachable **heads and tags** after every rewrite. Classify fixtures vs live credentials. Rotate anything live **before** visibility changes. See [Secret scan](#secret-scan).
 4. **Actions harden.** Confirm every workflow still has `permissions: contents: read`, every `actions/checkout` has `persist-credentials: false`, and there is no `pull_request_target` + untrusted checkout. Compatible with #69 staging / cancellation. See [Actions hardening](#actions-hardening).
 5. **Re-audit immediately before visibility change.** Repeat steps 2–4 on the exact SHA you would publicize. Open drafts become world-readable. See [Open drafts](#open-drafts).
 6. **Do not publicize without founder instruction.** A green CI run is not permission to flip visibility.
 
-## Email exposure
+## History rewrite (done 2026-09-12)
 
-Author / committer emails on reachable refs (204 commits, 2026-09-12):
+Founder (Davis Ramsey / solarcurvey) authorized a noreply remap and a coordinated force-update of `main` + open PR heads. Visibility was **not** flipped.
 
-| Email | Role | Commits (author / committer / trailer) |
-| --- | --- | --- |
-| `cursoragent@cursor.com` | Cursor Agent author + committer | 185 / 185 / 11 |
-| `122492451+solarcurvey@users.noreply.github.com` | GitHub noreply author | 18 / 0 / 176 (`Co-authored-by`) |
-| `noreply@github.com` | GitHub committer on squash merges | 0 / 18 / 0 |
-| `noreply@cursor.com` | Initial commit | 1 / 1 / 0 |
-| Personal Gmail mailbox | **`Co-authored-by` trailer only** — not Author/Committer | **55 commits on `main`** (55 / 55 all-refs) |
+Mapping (personal mailbox is **not** written in this page):
 
-The personal mailbox is **not** written in this in-tree page (it would survive a later rewrite). The exact address is on the #72 pull request body for Davis.
-
-No Author/Committer field uses a personal mailbox. The exposure is **commit-message `Co-authored-by` trailers** on 55 `main` commits. Publicizing without a rewrite publishes that mailbox to every clone.
-
-### Proposed rewrite (DO NOT EXECUTE without founder OK)
-
-History rewrite of personal emails is a **FOUNDER DECISION GATE**. Exact replace-text lines (personal mailbox → `122492451+solarcurvey@users.noreply.github.com`) are on the #72 pull request body so they are not baked into this page.
-
-```bash
-# Fresh clone. Install git-filter-repo. Do not run against a shared working tree.
-git clone --mirror git@github.com:solarcurvey/reactor.git reactor-rewrite
-cd reactor-rewrite
-
-# 1) Remap Author/Committer if any personal mailbox appears later.
-# 2) Rewrite Co-authored-by trailers (the current exposure) with --replace-text
-#    using the mapping from the #72 PR body.
-
-# Verify: no personal mailbox remains in author, committer, or message trailers.
-git log --all --format='%ae %ce %B' | grep -Ei 'gmail|hotmail|icloud' && echo FAIL || echo clean
-
-# Then coordinated force-update of main AND every open PR head, plus tags.
-# Every open PR must be rebased onto the rewritten main. Communicate downtime.
+```
+<personal-gmail> ==> 122492451+solarcurvey@users.noreply.github.com
+<personal-local-part> ==> solarcurvey
 ```
 
-Acceptance alternative: **keep the trailers**, document the mailbox as public, and skip the rewrite. That is also a founder decision.
+```bash
+# What was run (fresh fetch of heads + tags only — not refs/pull/*):
+git filter-repo \
+  --replace-text replacements.txt \
+  --replace-message replacements.txt \
+  --replace-refs delete-no-add
+# Then a follow-up --replace-message to restore the space in
+# `Co-authored-by: solarcurvey <122492451+solarcurvey@users.noreply.github.com>`
 
-This PR **does not** rewrite history, force-push `main`, or update open PR heads.
+# Verify on a clone that has only heads + tags:
+git log --all --format='%ae %ce %B' | grep -Ei 'gmail|hotmail|icloud' && echo FAIL || echo clean
+```
+
+`--replace-text` alone rewrites **blobs**, not commit messages. The trailer exposure required `--replace-message`.
+
+### SHA map
+
+| Ref | Pre-rewrite | Post-rewrite |
+| --- | --- | --- |
+| `origin/main` | `c15956196418baca76280b9c6d98c11f3cbb24c9` | `a56065016731ac9af93b3aaec0bd896a94cc3397` (filter-repo tip), then `6b328373650722df480e744da26dbb6f4cfb7386` (squash-merge #74 hardening) |
+| `refs/tags/v0.3.1` | `e398fd445cc877a8423719a3c711202268fe005e` | `d60d3158d7b2401bd71ff38fc10b9c598c07be35` |
+
+`main` after this docs commit will move again (ordinary fast-forward). The filter-repo mapping above is the history rewrite itself.
+
+### Verification (post-rewrite, heads + tags only)
+
+```bash
+git fetch origin --prune '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*'
+git log --all --format='%ae %ce %B' | grep -Ei 'gmail|hotmail|icloud' && echo FAIL || echo clean
+# Expect: clean
+```
+
+Author / committer / trailer emails on reachable heads+tags after rewrite:
+
+| Email | Role |
+| --- | --- |
+| `cursoragent@cursor.com` | Cursor Agent author + committer (plus 11 `Co-authored-by` trailers) |
+| `122492451+solarcurvey@users.noreply.github.com` | GitHub noreply author; remapped `Co-authored-by` trailers (55) |
+| `solarcurvey@users.noreply.github.com` | Existing `Co-authored-by` trailers that already used the username form |
+| `noreply@github.com` | GitHub committer on squash merges |
+| `noreply@cursor.com` | Initial commit |
+
+No personal mailbox remains in `%ae`, `%ce`, or `%B` on those refs.
+
+### GitHub leftover (not a branch)
+
+`git clone` / default fetches do **not** get `refs/pull/*`. GitHub still stores pre-rewrite SHAs on closed/merged pull refs (`refs/pull/<n>/head`). Those objects are **not** reachable from current heads or tags. Agents cannot rewrite GitHub’s pull-ref namespace. Treat that as residual cache, not an advertised branch.
 
 ## Branch inventory
 
-26 `origin` heads on 2026-09-12 (25 `cursor/*` + `main`). None of the `cursor/*` tips are ancestors of `main` (squash merges). Classification uses `git merge-tree --write-tree origin/main <branch>`: **merge-empty** means the tree equals `main` (safe). **Conflict** / remaining files means leave the ref.
+After prune: **`main` + 16 open-PR `cursor/*` heads + tag `v0.3.1`.** No leftover merged/superseded `cursor/*` heads.
 
-### Open PR heads — do not delete
+### Active open PR heads — keep
 
 | Branch | PR | State |
 | --- | --- | --- |
 | `cursor/ci-cost-cut-7753` | #73 | Open (ready) — #69 CI cost |
 | `cursor/fix-live-toasts-import-e635` | #58 | Open |
+| `cursor/restricted-access-ux-f91b` | #75 | Draft — Refs #65 |
 | `cursor/sanctions-ops-freshness-8fcc` | #70 | Draft |
 | `cursor/sanctions-operator-policy-gate-3e7f` | #68 | Draft |
 | `cursor/trusted-geo-policy-1252` | #67 | Draft |
@@ -89,45 +109,34 @@ This PR **does not** rewrite history, force-push `main`, or update open PR heads
 | `cursor/e2e-release-gate-05a7` | #44 | Draft |
 | `cursor/full-github-ci-418f` | #42 | Draft — #17 full CI |
 
-### Safe to delete
+#74 (`cursor/public-repo-ci-harden-5b18`) was squash-merged onto the rewritten `main` and the head ref was deleted.
 
-Only one remote branch is merge-empty vs `main` **and** is not an open-PR head:
+### Deleted this pass (merged / superseded / unsanitized leftovers)
+
+These remote heads were deleted so old objects are not advertised. Unique squash leftovers that were never on `main` are gone with the branch.
 
 | Branch | Why |
 | --- | --- |
-| `cursor/keeper-lease-ci-flake-fb1f` | Merged #59. Closed no-op #71. `merge-tree` equals `main`. |
-
-This pass **does not delete** that ref (conservative). Founder/operator may delete it from the GitHub UI after confirming no unrecovered notes live only on that tip.
-
-### Leave (merged PR, not merge-empty — squash leftover or extra commits)
-
-| Branch | Merged PR | Note |
-| --- | --- | --- |
-| `cursor/harden-untrusted-metadata-csp-6228` | #47 | merge-tree conflict |
-| `cursor/live-buyback-burn-toasts-b686` | #43 | merge-tree conflict |
-| `cursor/atomic-indexer-tick-7954` | #27 | merge-tree conflict |
-| `cursor/burn-adjusted-supply-fdv-001a` | #23 | merge-tree conflict |
-| `cursor/fix-build-report-rebase-markers-6f94` | #32 | merge-tree conflict |
-| `cursor/media-key-url-alignment-de1c` | #20 | merge-tree conflict |
-| `cursor/postgres-bigint-timestamps-2188` | #19 | merge-tree conflict |
-| `cursor/pricing-signer-fail-closed-b308` | #26 | merge-tree conflict |
-
-### Leave (closed / superseded, still has unique commits)
-
-| Branch | Closed PR | Note |
-| --- | --- | --- |
-| `cursor/top10-current-supply-rank-03c4` | #34 | Superseded by merged #33. merge-tree conflict. |
-
-When unsure, leave the ref.
+| `cursor/keeper-lease-ci-flake-fb1f` | Merged #59. Closed no-op #71. merge-empty vs `main`. |
+| `cursor/harden-untrusted-metadata-csp-6228` | Merged #47 leftover |
+| `cursor/live-buyback-burn-toasts-b686` | Merged #43 leftover |
+| `cursor/atomic-indexer-tick-7954` | Merged #27 leftover |
+| `cursor/burn-adjusted-supply-fdv-001a` | Merged #23 leftover |
+| `cursor/fix-build-report-rebase-markers-6f94` | Merged #32 leftover |
+| `cursor/media-key-url-alignment-de1c` | Merged #20 leftover |
+| `cursor/postgres-bigint-timestamps-2188` | Merged #19 leftover |
+| `cursor/pricing-signer-fail-closed-b308` | Merged #26 leftover |
+| `cursor/top10-current-supply-rank-03c4` | Closed #34, superseded by #33 |
+| `cursor/public-repo-ci-harden-5b18` | Merged #74 onto rewritten `main` |
 
 ## Secret scan
 
-Full-history / all-ref scan on 2026-09-12 after `git fetch origin --prune` (200 commits / all `cursor/*` tips including open PR heads).
+Full-history / all-ref scan on **2026-09-12 after the rewrite + prune** (187 commits; current heads + `v0.3.1` only).
 
 | Tool | Result |
 | --- | --- |
 | gitleaks 8.24.3 (`--log-opts=--all`) | 32 hits — **0 live credentials** |
-| trufflehog 3.88.29 (`git file://`, verified+unverified) | 9 unverified, **0 verified** |
+| trufflehog 3.88.29 (`git file://`, verified+unverified) | 11 unverified, **0 verified** |
 
 ### Classification
 
@@ -139,7 +148,7 @@ Full-history / all-ref scan on 2026-09-12 after `git fetch origin --prune` (200 
 | Dummy URL userinfo | `https://user:hunter2@…`, `https://user:pass@evil.example` in redaction / untrusted-metadata tests. | No |
 | Placeholder DSN | `postgres://user:pass@host:5432` in `.env.example` / docs. | No |
 | AWS example key | `AKIAIOSFODNN7EXAMPLE` on observability branches (AWS documentation example). | No |
-| PEM / GitHub PAT / `sk_live` / Slack | Not found on any reachable ref. | — |
+| PEM / GitHub PAT / `sk_live` / Slack | Not found on any reachable head/tag. | — |
 
 **No live credential was found. Nothing to rotate from this scan.** If a later scan finds a live secret: rotate immediately, do not commit it, do not leave it in a PR.
 
@@ -147,7 +156,7 @@ Full-history / all-ref scan on 2026-09-12 after `git fetch origin --prune` (200 
 
 ## Actions hardening
 
-In-repo, additive, compatible with #69:
+On rewritten `main` (via merged #74):
 
 - Workflow-level **and** job-level `permissions: { contents: read }` unless a future job proves it needs more (it does not today).
 - Every `actions/checkout` sets `persist-credentials: false` (test-only workflows never push).
@@ -163,19 +172,30 @@ GitHub Settings (operator, not this PR): before publicizing, set “Approval for
 
 Publicizing the repository makes these **open draft PRs** world-readable (titles, diffs, discussion):
 
-#70 sanctions freshness, #68 sanctions operator policy, #67 trusted geo/IP, #66 OFAC dataset, #54 AutomationGateway, #52 Arc testnet rehearsal, #50 RPC waterfalls, #49 UI QA, #48 handbook docs, #46 observability, #45 discovery UX, #44 E2E release gate, #42 full GitHub CI.
+#75 restricted-access UX, #70 sanctions freshness, #68 sanctions operator policy, #67 trusted geo/IP, #66 OFAC dataset, #54 AutomationGateway, #52 Arc testnet rehearsal, #50 RPC waterfalls, #49 UI QA, #48 handbook docs, #46 observability, #45 discovery UX, #44 E2E release gate, #42 full GitHub CI.
 
 Also open (not draft): #73 CI cost (#69), #58 live-toasts import.
 
 Close, convert, or redact before visibility changes if any draft is not ready for a public audience.
 
+## Remaining #72 ACs (founder)
+
+- [x] Founder personal email removed from reachable **heads and tags** (verify command above)
+- [x] Merged/superseded Cursor branches pruned; active list intentional
+- [x] Full-history/all-ref secret scan clean after fixture classification
+- [x] Any real credential rotated (none found)
+- [x] Public-fork Actions least privilege + no dangerous `pull_request_target`
+- [x] #69 cost controls still compatible
+- [x] Final audit/scan notes on exact refs after rewrite (this page)
+- [ ] **Visibility flip** — still a **FOUNDER DECISION GATE**. Agents must not publicize.
+- [ ] Optional: GitHub support / time for `refs/pull/*` GC of pre-rewrite objects (not advertised as branches)
+
 ## What this pass did not do
 
-- Visibility was NOT changed.
-- History was NOT rewritten.
-- Did **not** force-update `main` / open PR heads.
-- Did **not** delete remote branches.
+- Visibility was **NOT** changed.
 - Did **not** close #72.
 - Did **not** deploy Arc Mainnet or change frozen V1 economics.
+- Did **not** invent a LICENSE.
+- Did **not** rewrite GitHub `refs/pull/*` metadata.
 
 See `CONTRIBUTING.md`, `TESTING.md`, `THREAT_MODEL.md`. Protocol identity stays in `docs/version.json`.
