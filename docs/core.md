@@ -8,4 +8,6 @@
 - Real `burn()`, no dead-address
 - `registerNative` on the quote registry is **not** silent — Factory forwards failures so a graduated token is actually registered
 
+Live UI: a bottom-right toast appears when the indexer has committed `BuybackExecuted` / `COREBurned` (SSE `core`, `confirmed`, `id >` first-session `hello.head`). Dedupe is `(chainId, tx, logIndex, eventKind)`. This is not an onchain oracle and not a Top-10 event — CORE never ranks.
+
 See `CORE_GENESIS.md` and `CORE_LIQUIDITY_DESIGN.md`.

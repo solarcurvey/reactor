@@ -7,5 +7,5 @@ Recaptured at 1440 and 390 against current UI (`CAPTURE=1`, `BONDING_TOKEN=0x111
 | Home | Choose-what-your-token-earns. Fixture board when indexer empty. |
 | Launch | Compact Instant form. No range / Starting FDV control. Protocol owns FDV. |
 | Bonding token | `/token/0x1111…0004` Neon bonding terminal. No FDV knobs. |
-| CORE | Genesis copy. Never Top-10. |
-| THE REACTOR | Offchain ranks / not a trustless oracle. |
+| CORE | Genesis copy. Never Top-10. Confirmed buy+burn toast is bottom-right, not this page. |
+| THE REACTOR | Offchain ranks / not a trustless oracle. Confirmed `Top10Buy` toast is bottom-right. |

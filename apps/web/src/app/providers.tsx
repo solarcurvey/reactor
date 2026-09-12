@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { injected } from "wagmi/connectors";
+import { LiveToasts } from "@/components/live-toasts";
 import { arcLocal } from "@/lib/chain";
 
 const config = createConfig({
@@ -19,7 +20,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(() => new QueryClient());
   return (
     <WagmiProvider config={config}>
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      <QueryClientProvider client={client}>
+        {children}
+        <LiveToasts />
+      </QueryClientProvider>
     </WagmiProvider>
   );
 }
