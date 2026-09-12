@@ -63,9 +63,9 @@ Addresses land in `deployments/local.json` after the demo script.
 | Chain ID | 5042002 (verified) | 5042002 |
 | RPC | https://rpc.testnet.arc.io (live) | local anvil |
 | USDC | `0x3600…0000` 6 decimals | Mock USDC-6 |
-| v4 PoolManager | **not deployed** | Official v4-core, BUSL non-production |
+| v4 PoolManager | official v4-core BUSL from #16 rehearsal (`docs/deployments.md`) — not a Circle-provided manager | Official v4-core, BUSL non-production |
 
-We **do not claim Arc Testnet success** unless transactions appear on [testnet.arcscan.app](https://testnet.arcscan.app).
+#16 rehearsal addresses and explorer hashes are in [`docs/deployments.md`](docs/deployments.md). Instant/Fair quote on that dump is Mock USDC-6, not canonical `0x3600…0000`.
 
 In-app handbook: [`/docs`](http://127.0.0.1:43147/docs) (sidebar search, TOC, prev/next). Source: `docs/`. `llms.txt` at `/llms.txt`.
 
@@ -86,7 +86,7 @@ GitHub Actions is three-tier (fast PR / full merge-candidate / main). Docs-only 
 
 **Media:** `sharp` is required. On a fresh host, `pnpm approve-builds` (allow `sharp`) if the install asks.
 
-**Arc Public Testnet:** this repo does not claim a Factory deploy without an explorer hash. `pnpm arc:rehearsal` records live RPC + faucet evidence (`deployments/arc-testnet-rehearsal.md`). If `ARC_TESTNET_PK` is unset or the Circle faucet reCAPTCHA blocks the VM, see `deployments/arc-testnet-blocker.md` and `scripts/arc-testnet-runbook.md`. Keep issue #16 open until Instant + BUY/SELL explorer hashes exist.
+**Arc Public Testnet:** #16 rehearsal recorded Factory + Instant/Fair smoke on [testnet.arcscan.app](https://testnet.arcscan.app). See `docs/deployments.md` and `deployments/arc-testnet-smoke.json`. Circle faucet automation still hits `RECAPTCHA_ERROR`; this run was funded from a box throwaway. Keep issue #16 open until human AC. No mainnet (5042).
 
 ## Protocol notes
 

@@ -9,14 +9,18 @@
 | Protocol release | **0.3.4** (`docs/version.json`) — **unchanged this PR** |
 | Factory | **V1** — **unchanged** |
 | Intent | Full Arc Public Testnet deploy + Instant/Fair smoke (`Addresses #16`). |
-| Waiting deployer | `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E` (`cast wallet new`, PK never committed) |
+| Deployer | `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E` (`cast wallet new`, PK never committed; funded ~10 native USDC from box throwaway) |
 | Chain 5042002 | **Verified** live `eth_chainId` `0x4cef52` on `https://rpc.testnet.arc.network` |
-| Native gas | **10 USDC-18** funded — deploy in progress |
-| Factory claimed | pending explorer-backed addresses |
+| Factory | `0xB48D1B397834eBcccb8961041d827487097e0535` — [create tx](https://testnet.arcscan.app/tx/0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67) |
+| Instant RHRSI | `0x62A7aDF0deb2c1918603e9834dD9ACe07CDA2f87` launch [`0xde5fb884…`](https://testnet.arcscan.app/tx/0xde5fb884a0495f15715963a710d3e1efd3f93237c22978ee351e15d726c77f6f) buy [`0xf50b7715…`](https://testnet.arcscan.app/tx/0xf50b7715ed981d379c9c37cf6badb227e047e15b2e932cd194088a8fa73886b3) sell [`0x71d6f3ec…`](https://testnet.arcscan.app/tx/0x71d6f3ecbfd4c3a7de02d2fb5f477d6c22a40bec12115ea951c99731565e25cd) |
+| Fair RHRFA | `0x077322bE71C871F7134a9bb97e8f85A3991497c6` create [`0xb1a993e9…`](https://testnet.arcscan.app/tx/0xb1a993e9ce3c4261e1b2c6ee5b6cc92ca2fced4c9029b6960eabcbb979f0f46f) bid [`0xf2d8b9a3…`](https://testnet.arcscan.app/tx/0xf2d8b9a3f2407f037196506d4081c33f8787bcc62d1cff541f9f0c20bef362cb) finalize [`0xe839d3d2…`](https://testnet.arcscan.app/tx/0xe839d3d2230bb20448117149e61fed7c92ebe4307fcebeb886b8e65ca49d24c5) claim [`0x78f3f4ad…`](https://testnet.arcscan.app/tx/0x78f3f4adefe400cb452b022d15f2c0fcf99e44ca16abae29c553d83bb1e42ffb) |
+| Quote | Mock USDC-6 `0x44CBe037ABFA8696E4466cA9D278Dbbe44B932dC` (labeled). Canonical `0x3600…0000` is not the Instant/Fair quote. |
+| PoolManager | Official v4-core BUSL `0xC320E526477A9A9c8919A0A8200eAB38fE55033f` — rehearsal deploy, not a Circle-provided manager |
+| Addresses | `deployments/arc-testnet.json` → `docs/deployments.md` |
 | Workflows | Inherited merged **#46** / **#75** / **#44** / **#70** / **#79** / **#68** / **#67** / **#66** / **#49** / **#42** / **#50** / **#73** `.github/workflows/ci.yml` (three-tier + page-budget + `web-qa` + `e2e-release-gate` + `obs-ui` + `docs:links` + sanctions/geo/operator-policy/restricted-access fixtures). Prefer main for CI. Do not rewrite decide-tier. Actions billing empty-step failures are not AC failures. |
 | Mainnet | **Blocked** |
 
-Keep **#16 open** until Instant + Fair explorer AC are human-confirmed.
+Keep **#16 open** until Instant + Fair explorer AC are human-confirmed. Production Next/indexer/Turnstile authorize path was **not** the smoke signer (Guardian EOA signed LaunchAuthorization directly).
 
 ---
 

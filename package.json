@@ -21,6 +21,7 @@
     "arc:rehearsal": "tsx scripts/arc-testnet-rehearsal.ts",
     "arc:wallet-harness": "tsx scripts/arc-testnet-wallet-harness.ts",
     "arc:prod-web": "tsx scripts/arc-testnet-prod-web.ts",
+    "arc:smoke": "tsx scripts/arc-testnet-smoke.ts",
     "safe:genesis": "tsx scripts/safe-genesis-builder.ts",
     "test:ci-cost": "tsx scripts/ci-cost.test.ts",
     "test:page-budget": "tsx apps/web/src/lib/page-budget.test.ts",

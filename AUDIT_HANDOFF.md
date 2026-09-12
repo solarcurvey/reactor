@@ -1,6 +1,6 @@
 # AUDIT HANDOFF — REACTOR V1
 
-**This software has not been audited.** Treat every contract as hostile-unreviewed. Do not deploy to Arc Mainnet (5042). No production claim. No Arc Public Testnet claim. Live #16 rehearsal (`deployments/arc-testnet-rehearsal.md`) verified chain `5042002` and recorded a Circle faucet `RECAPTCHA_ERROR`; Factory remains unclaimed.
+**This software has not been audited.** Treat every contract as hostile-unreviewed. Do not deploy to Arc Mainnet (5042). No production / Safe-genesis claim. #16 rehearsal recorded Factory `0xB48D1B397834eBcccb8961041d827487097e0535` on Arc Public Testnet (`5042002`) with Blockscout-confirmed Instant + Fair smoke (`deployments/arc-testnet.json`, `docs/deployments.md`). Guardian is the disposable deployer EOA, not a Safe. Instant/Fair quote is Mock USDC-6, not canonical `0x3600…0000`. Keep #16 open for human AC.
 
 **Protocol release:** `0.3.4` (`v0.3.4`, `docs/version.json`). **Factory version:** V1 (`FACTORY_VERSION = 1`) — immutable, not the protocol semver.
 

@@ -1,0 +1,59 @@
+{
+  "at": "2026-09-12T20:17:53.983Z",
+  "claimedArcTestnet": true,
+  "chainId": 5042002,
+  "rpc": "https://rpc.testnet.arc.network",
+  "deployer": "0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E",
+  "explorer": "https://testnet.arcscan.app",
+  "steps": [
+    {
+      "step": "instant_launch",
+      "tx": "0xde5fb884a0495f15715963a710d3e1efd3f93237c22978ee351e15d726c77f6f",
+      "explorer": "https://testnet.arcscan.app/tx/0xde5fb884a0495f15715963a710d3e1efd3f93237c22978ee351e15d726c77f6f",
+      "status": "success",
+      "token": "0x62A7aDF0deb2c1918603e9834dD9ACe07CDA2f87"
+    },
+    {
+      "step": "instant_buy",
+      "tx": "0xf50b7715ed981d379c9c37cf6badb227e047e15b2e932cd194088a8fa73886b3",
+      "explorer": "https://testnet.arcscan.app/tx/0xf50b7715ed981d379c9c37cf6badb227e047e15b2e932cd194088a8fa73886b3",
+      "status": "success",
+      "tokensOut": "1926534833992917094512289"
+    },
+    {
+      "step": "instant_sell",
+      "tx": "0x71d6f3ecbfd4c3a7de02d2fb5f477d6c22a40bec12115ea951c99731565e25cd",
+      "explorer": "https://testnet.arcscan.app/tx/0x71d6f3ecbfd4c3a7de02d2fb5f477d6c22a40bec12115ea951c99731565e25cd",
+      "status": "success"
+    },
+    {
+      "step": "fair_create",
+      "tx": "0xb1a993e9ce3c4261e1b2c6ee5b6cc92ca2fced4c9029b6960eabcbb979f0f46f",
+      "explorer": "https://testnet.arcscan.app/tx/0xb1a993e9ce3c4261e1b2c6ee5b6cc92ca2fced4c9029b6960eabcbb979f0f46f",
+      "status": "success",
+      "token": "0x077322bE71C871F7134a9bb97e8f85A3991497c6",
+      "fairId": "1"
+    },
+    {
+      "step": "fair_bid",
+      "tx": "0xf2d8b9a3f2407f037196506d4081c33f8787bcc62d1cff541f9f0c20bef362cb",
+      "explorer": "https://testnet.arcscan.app/tx/0xf2d8b9a3f2407f037196506d4081c33f8787bcc62d1cff541f9f0c20bef362cb",
+      "status": "success",
+      "fairId": "1"
+    },
+    {
+      "step": "fair_finalize",
+      "tx": "0xe839d3d2230bb20448117149e61fed7c92ebe4307fcebeb886b8e65ca49d24c5",
+      "explorer": "https://testnet.arcscan.app/tx/0xe839d3d2230bb20448117149e61fed7c92ebe4307fcebeb886b8e65ca49d24c5",
+      "status": "success"
+    },
+    {
+      "step": "fair_claim",
+      "tx": "0x78f3f4adefe400cb452b022d15f2c0fcf99e44ca16abae29c553d83bb1e42ffb",
+      "explorer": "https://testnet.arcscan.app/tx/0x78f3f4adefe400cb452b022d15f2c0fcf99e44ca16abae29c553d83bb1e42ffb",
+      "status": "success"
+    }
+  ],
+  "note": "Mock USDC-6 from Deploy.s.sol is the protocol quote (labeled). Canonical 0x3600\u2026 is not the Instant/Fair quote in this rehearsal. PoolManager is official v4-core BUSL non-production.",
+  "explorerConfirmed": true
+}

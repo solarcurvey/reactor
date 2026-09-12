@@ -48,7 +48,7 @@ Protocol quote USDC is the 6-decimal ERC-20 `0x360000000000000000000000000000000
 
 ## 3. Deploy dependency stack + Factory
 
-PoolManager is **not** on Arc Public Testnet. `script/Deploy.s.sol` deploys official v4-core (BUSL, **non-production**) plus Guardian / modules / Factory V1.
+Circle/Uniswap have not published a canonical Arc Public Testnet PoolManager. `script/Deploy.s.sol` deploys official v4-core (BUSL, **non-production**) plus Guardian / modules / Factory V1. #16 rehearsal did that; Instant/Fair quote is the script's Mock USDC-6.
 
 ```bash
 cd contracts && forge build --sizes && cd ..
@@ -62,7 +62,7 @@ forge script script/Deploy.s.sol:Deploy \
   --private-key "$ARC_TESTNET_PK"
 ```
 
-Copy the broadcast addresses into **`deployments/arc-testnet.json`** (do not overwrite `deployments/local.json` without labeling). Point `deployments/registry.json` `arc-public-testnet.addressFile` at that file. Set `sourceCommit` to the git SHA. `claimed` stays **false** until [testnet.arcscan.app](https://testnet.arcscan.app) shows the create receipts. Then `pnpm docs:gen`.
+Copy the broadcast addresses into **`deployments/arc-testnet.json`** (do not overwrite `deployments/local.json` without labeling). Point `deployments/registry.json` `arc-public-testnet.addressFile` at that file. Set `sourceCommit` to the git SHA. `claimed: true` only after [testnet.arcscan.app](https://testnet.arcscan.app) shows the create receipts. Then `pnpm docs:gen`. #16 rehearsal already recorded this (`docs/deployments.md`). Then Instant + Fair: `pnpm arc:smoke`.
 
 Production-shaped Guardian = Safe ≠ deployer: `SAFE_GENESIS=true` + `pnpm safe:genesis`. See `scripts/arc-testnet-checklist.md`.
 
@@ -99,4 +99,4 @@ Issue **#35** has no harness in this tree; this script is the production-shaped 
 2. Created code matches `forge build` runtime
 3. A human recorded the explorer URL in `deployments/registry.json`
 
-Until then: **claimed false**. Issue #16 stays open. Addresses #16 in the PR; do not close the issue from a faucet-blocked run.
+#16 rehearsal: Factory create + Instant/Fair smoke txs have Blockscout `result=success`. Keep #16 open for human AC. Addresses #16 in the PR; do not close the issue from this agent.

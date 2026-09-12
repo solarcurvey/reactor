@@ -72,6 +72,6 @@
 
 **Where is the sanctions runbook?** [Sanctions runbook](/docs/sanctions-runbook), linked from [Incident response](/docs/incident-response).
 
-**Is REACTOR live on Arc Public Testnet?** Not claimed. `pnpm arc:rehearsal` records live RPC/chain evidence. Circle faucet drips require a human reCAPTCHA (`RECAPTCHA_ERROR` from this VM). See `deployments/arc-testnet-rehearsal.md`. Do not treat empty deployment cells as addresses.
+**Is REACTOR live on Arc Public Testnet?** #16 rehearsal recorded Factory `0xB48D1B397834eBcccb8961041d827487097e0535` and Instant + Fair smoke on [testnet.arcscan.app](https://testnet.arcscan.app). Addresses: `docs/deployments.md`. Quote for that smoke is Mock USDC-6, not canonical `0x3600…0000`. Guardian is a disposable EOA, not a Safe. Not audited. No mainnet. Keep #16 open for human AC.
 
 See [Troubleshooting](/docs/troubleshooting), [Glossary](/docs/glossary), [Trust](/docs/trust), [Observability](/docs/observability), [CI and cost](/docs/ci).

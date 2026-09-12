@@ -30,7 +30,7 @@ Indexer default `ARC_FINALITY_CONFIRMATIONS=0`. The Ethereum-style 8-block lag i
 - `claimed` stays **false** until an explorer hash is confirmed on [testnet.arcscan.app](https://testnet.arcscan.app).
 - Without a key, the JSON lists an honest blocker checklist (Circle faucet → key → re-run → explorer). Same content: `deployments/arc-testnet-blocker.md` and `scripts/arc-testnet-checklist.md`. **claimed stays false.**
 
-PoolManager is **not** deployed on Arc Public Testnet as of this release. Local Anvil 5042002 ships official v4-core (BUSL, non-production).
+Circle / Uniswap have **not** published a canonical Arc Public Testnet `PoolManager`. The #16 rehearsal deployed official v4-core (BUSL, non-production) via `Deploy.s.sol` — labeled in `docs/deployments.md`. Local Anvil 5042002 ships the same official v4-core.
 
 ## Multicall3
 
@@ -40,13 +40,15 @@ Chainlink CRE lists a separate **Arc Testnet** (EIP-155 **1883**) for TypeScript
 
 ## Issue #16 rehearsal
 
-`pnpm arc:rehearsal` probes live RPCs (`rpc.testnet.arc.io`, `rpc.testnet.arc.network`, plus Arc-doc alternates), verifies `eth_chainId = 5042002`, attempts the Circle faucet, and writes `deployments/arc-testnet-rehearsal.json` + `.md`. **claimed stays false** without an explorer hash.
+`pnpm arc:rehearsal` probes live RPCs (`rpc.testnet.arc.io`, `rpc.testnet.arc.network`, plus Arc-doc alternates), verifies `eth_chainId = 5042002`, attempts the Circle faucet, and writes `deployments/arc-testnet-rehearsal.json` + `.md`.
 
-`pnpm arc:wallet-harness` is the production Instant + BUY/SELL path (same ABIs as the Next app: `POST /launch/authorize` → `launchStandard` → `POST /quote` → `UserRouteExecutor`). It exits nonzero when Factory has no code on 5042002.
+`forge script script/Deploy.s.sol:Deploy` on `https://rpc.testnet.arc.network` wrote `deployments/arc-testnet.json`. Factory `0xB48D1B397834eBcccb8961041d827487097e0535` create tx is [on explorer](https://testnet.arcscan.app/tx/0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67). Instant + Fair smoke: `pnpm arc:smoke` → `deployments/arc-testnet-smoke.json`. Instant/Fair quote is **Mock USDC-6** from that dump, not canonical `0x3600…0000`. Guardian is the disposable deployer EOA (not Safe).
 
-`pnpm arc:prod-web` writes `deployments/arc-testnet.env.example`. It refuses to mark the production build claimed unless `deployments/arc-testnet.json` has an explorer `verificationUrl`.
+`pnpm arc:wallet-harness` is the production Instant + BUY/SELL path (same ABIs as the Next app: `POST /launch/authorize` → `launchStandard` → `POST /quote` → `UserRouteExecutor`). Direct Factory smoke does **not** replace that path.
 
-Circle faucet automation receives GraphQL `RECAPTCHA_ERROR` (`ReCAPTCHA verification failed`). Fund the waiting address by hand, then re-run. Runbook: `scripts/arc-testnet-runbook.md`. Keep [#16](https://github.com/solarcurvey/reactor/issues/16) open until AC is met.
+`pnpm arc:prod-web` writes `deployments/arc-testnet.env.example`.
+
+Circle faucet automation still receives GraphQL `RECAPTCHA_ERROR`. This rehearsal was funded from a box throwaway wallet. Runbook: `scripts/arc-testnet-runbook.md`. Keep [#16](https://github.com/solarcurvey/reactor/issues/16) open until human AC is met.
 
 ## Mainnet blockers (honest)
 

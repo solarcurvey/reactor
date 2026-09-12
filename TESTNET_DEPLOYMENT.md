@@ -17,7 +17,7 @@ Source: [docs.arc.io/arc/references/rpc-endpoints](https://docs.arc.io/arc/refer
 | Permit2 | `0x000000000022D473030F116dDEE9F6B43aC78BA3` |
 | CREATE2 (Arachnid) | `0x4e59b44847b379578588920cA78FbF26c0B4956C` |
 | CCA factory v2.1.0 | `0x000000001F26a0044BaA66024e7b6599c61963F8` (code **present**) |
-| Uniswap v4 PoolManager | **Not deployed** (probed + not on Uniswap deployments page) |
+| Uniswap v4 PoolManager | No Circle/Uniswap canonical address. #16 rehearsal deployed official v4-core BUSL — see `docs/deployments.md` |
 | Mainnet | Chain 5042, scheduled ~2026-09-16 — **do not deploy** |
 
 Gas: minimum `maxFeePerGas` 20 gwei. Base fee paid to beneficiary (no ETH-style burn).
@@ -26,9 +26,9 @@ Gas: minimum `maxFeePerGas` 20 gwei. Base fee paid to beneficiary (no ETH-style 
 
 Buyback **testnet** safety constants are in `ReactorConstants` (300 bps impact, 20% chunk, 10% reserve, 1500 bps ref deviation, 5 min cooldown). See `ECONOMICS.md`.
 
-This environment does **not** automatically have a dedicated funded Arc Testnet key. If no key + faucet funds exist, **do not fabricate explorer evidence**. Checklist: `scripts/arc-testnet-checklist.md`. Blocker file: `deployments/arc-testnet-blocker.md`. Full #16 rehearsal: `pnpm arc:rehearsal` + `scripts/arc-testnet-runbook.md`. Evidence: `deployments/arc-testnet-rehearsal.md`.
+#16 rehearsal (2026-09-12) recorded Factory + Instant/Fair smoke on explorer. Addresses: `deployments/arc-testnet.json` → `docs/deployments.md`. Instant/Fair quote is Mock USDC-6 from `Deploy.s.sol`, not canonical `0x3600…0000`. Guardian is the disposable deployer EOA. Keep #16 open for human AC.
 
-**Circle faucet (2026-09-12 VM):** `POST https://faucet.circle.com/api/graphql` mutation `RequestToken` (`blockchain: ARC`, `token: USDC`) returns HTTP 200 with `extensions.code = RECAPTCHA_ERROR` / `ReCAPTCHA verification failed`. `POST https://api.circle.com/v1/faucet/drips` returns HTTP 401 without a Circle API key. Arc docs list no other faucet. A disposable `cast wallet new` address waits for a human reCAPTCHA drip.
+**Circle faucet (2026-09-12 VM):** `POST https://faucet.circle.com/api/graphql` mutation `RequestToken` (`blockchain: ARC`, `token: USDC`) returns HTTP 200 with `extensions.code = RECAPTCHA_ERROR`. `POST https://api.circle.com/v1/faucet/drips` returns HTTP 401 without a Circle API key. This rehearsal was funded from a box throwaway wallet onto `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E`.
 
 ## Deploy REACTOR (local / funded testnet)
 

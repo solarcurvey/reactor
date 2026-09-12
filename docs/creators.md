@@ -58,7 +58,7 @@ REACTOR-operated admit / authorize / upload also follow the hosted access decisi
 
 Non-$1 quotes also need a short-lived signed `LaunchPricingAuthorization` for `virtualQuote0`. Only `usdPegOne` assets (Guardian flag; initially canonical USDC) may use unsigned Instant geometry. **EURC is not $1.** Category.Stablecoins is not $1. See [Admission](/docs/admission) and [Valuation](/docs/valuation).
 
-Production testnet rehearsal (`REACTOR_ENV=PROD` against chain 5042002) uses the same authorize path. `pnpm arc:wallet-harness` will not Instant-launch until Factory code exists on Arc Public Testnet. Faucet / deploy blockers: `deployments/arc-testnet-rehearsal.md`.
+Production testnet rehearsal (`REACTOR_ENV=PROD` against chain 5042002) uses the same authorize path. Factory code exists on 5042002 (`docs/deployments.md`). `pnpm arc:wallet-harness` is the Turnstile / indexer authorize path; `pnpm arc:smoke` is Guardian-signed Factory Instant + Fair. Keep #16 open for human AC.
 
 ## Instant vs Fair binding
 
