@@ -10,6 +10,27 @@ const TARGET = 512;
 
 export type StoredMedia = { id: string; uri: string; contentType: string; bytes: number };
 
+/** Public path returned by `put()` and served at `GET /m/<id>.webp`. */
+export function mediaPublicUri(id: string): string {
+  return `/m/${id}.webp`;
+}
+
+/**
+ * R2/S3 object key for a content id. Equal to the public URI without the leading slash
+ * so `MEDIA_CDN_BASE + uri` resolves to the uploaded object (`m/<id>.webp`, not bare `<id>`).
+ */
+export function mediaObjectKey(id: string): string {
+  return mediaPublicUri(id).slice(1);
+}
+
+/** Fail closed if a remote key would not be the path of the returned public URI. */
+export function assertMediaKeyMatchesPublicUri(key: string, uri: string): void {
+  const expected = uri.startsWith("/") ? uri.slice(1) : uri;
+  if (!uri.startsWith("/m/") || !uri.endsWith(".webp") || key !== expected) {
+    throw new Error(`media object key ${key} does not match public uri ${uri}`);
+  }
+}
+
 function magic(buf: Buffer): "jpeg" | "png" | "webp" | "gif" | null {
   if (buf.length < 12) return null;
   if (buf[0] === 0xff && buf[1] === 0xd8) return "jpeg";
@@ -61,11 +82,14 @@ export class ObjectStore {
     const out = await sharp(buf).rotate().resize(TARGET, TARGET, { fit: "cover" }).webp({ quality: 82 }).toBuffer();
     const type = "image/webp";
     const id = createHash("sha256").update(out).digest("hex").slice(0, 20);
+    const uri = mediaPublicUri(id);
+    const key = mediaObjectKey(id);
+    assertMediaKeyMatchesPublicUri(key, uri);
     const path = join(this.root, `${id}.webp`);
     if (!existsSync(path)) writeFileSync(path, out);
-    await this.maybeRemote(id, out, type);
+    await this.maybeRemote(key, out, type);
     void contentType;
-    return { id, uri: `/m/${id}.webp`, contentType: type, bytes: out.length };
+    return { id, uri, contentType: type, bytes: out.length };
   }
 
   get(name: string): { buf: Buffer; type: string } | null {
@@ -76,7 +100,7 @@ export class ObjectStore {
     return { buf: readFileSync(path), type };
   }
 
-  private async maybeRemote(id: string, buf: Buffer, type: string) {
+  private async maybeRemote(key: string, buf: Buffer, type: string) {
     const endpoint = process.env.R2_ENDPOINT ?? process.env.S3_ENDPOINT;
     const bucket = process.env.R2_BUCKET ?? process.env.S3_BUCKET;
     const prod = (process.env.REACTOR_ENV ?? "").toUpperCase() === "PROD";
@@ -93,7 +117,7 @@ export class ObjectStore {
     const put = await s3PutSigV4({
       endpoint,
       bucket,
-      key: id,
+      key,
       body: buf,
       contentType: type,
       accessKey: keyId,
