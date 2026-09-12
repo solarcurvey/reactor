@@ -339,7 +339,7 @@ async function persistOneLog(
     if (await journalEvent(store, { chainId, tx, logIndex, eventKind: name, address: emitting || quote, block, ts })) {
       await insertLogOnce(
         store,
-        `INSERT INTO flywheel(quote,amount,usdc_in,kind,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+        `INSERT INTO flywheel(quote,amount,usdc_in,kind,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?,?)
          ${EVENT_IDENTITY_CONFLICT}`,
         quote,
         String(args.amount ?? "0"),
