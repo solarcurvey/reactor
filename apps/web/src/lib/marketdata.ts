@@ -5,6 +5,23 @@ import { officialPoolKey, poolId } from "./pool";
 import { rankTop10, TOP10_FLOOR_USDC, type RankCandidate } from "./top10";
 import { INDEXER_URL } from "./chain";
 
+/** Mirror of `@reactor/core` consumeIndexerValuation — keep web free of that package graph. */
+export function consumeIndexerValuation(
+  response: { ok?: boolean; usd6?: string } | null,
+  reachable: boolean,
+): { usd6: bigint; ok: boolean } | "offline" {
+  if (!reachable || response == null) return "offline";
+  if (response.ok && response.usd6) {
+    try {
+      const usd6 = BigInt(response.usd6);
+      if (usd6 > 0n) return { usd6, ok: true };
+    } catch {
+      return { usd6: 0n, ok: false };
+    }
+  }
+  return { usd6: 0n, ok: false };
+}
+
 /** 12 minutes — middle of the frozen 10–15m VWAP/TWAP window. */
 export const MARK_WINDOW_SEC = 12 * 60;
 export const MIN_VWAP_SAMPLES = 3;
@@ -233,14 +250,14 @@ async function quoteToUsd6(
     const res = await fetch(`${INDEXER_URL}/valuation?token=${quote}`);
     if (res.ok) {
       const body = (await res.json()) as { ok?: boolean; usd6?: string };
-      if (body.ok && body.usd6 && BigInt(body.usd6) > 0n) {
-        const v = { usd6: BigInt(body.usd6), ok: true };
-        cache.set(q, v);
-        return v;
+      const consumed = consumeIndexerValuation(body, true);
+      if (consumed !== "offline") {
+        cache.set(q, consumed);
+        return consumed;
       }
     }
   } catch {
-    /* fall through to on-chain */
+    /* indexer unreachable — LOCAL/offline fallbacks only */
   }
   if (q === addresses.USDC.toLowerCase()) {
     const v = { usd6: 1_000_000n, ok: true };

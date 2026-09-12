@@ -73,6 +73,18 @@ const nodes = new Map([
   assert(!dev.ok, "spot manip rejected");
   const arc = fuseExternalUsd6([{ usd6: 50_000_000n, ts: 100, name: "a" }], 110, 120, 150, 10_000_000n, 400);
   assert(!arc.ok && arc.reason === "arc sanity", "arc band");
+  const opts = fuseExternalUsd6(
+    [
+      { usd6: 50_000_000n, ts: 100, name: "a" },
+      { usd6: 50_040_000n, ts: 100, name: "b" },
+      { usd6: 80_000_000n, ts: 100, name: "outlier" },
+    ],
+    110,
+    { minSources: 2, maxAgeSec: 120, maxDevBps: 150 },
+  );
+  assert(opts.ok && opts.rejected.some((r) => r.name === "outlier"), "drop outlier among 3");
+  const short = fuseExternalUsd6([{ usd6: 50_000_000n, ts: 100, name: "only" }], 110, { minSources: 2 });
+  assert(!short.ok && short.reason.includes("insufficient"), "minSources fail-closed");
 }
 {
   const svc = new ValuationService(nodes);

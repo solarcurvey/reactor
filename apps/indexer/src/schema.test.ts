@@ -1,29 +1,37 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { openStore } from "./db.ts";
 import { consumeIssuanceToken } from "./admission.ts";
 import { raiseAlert } from "./alerts.ts";
 import { saveJob } from "./keeper-jobs.ts";
 import { recordTrade, upsertMarket, upsertToken } from "./ingest.ts";
-import { applyMigrations, MS_TIMESTAMP_COLUMNS, SCHEMA_VERSION, TABLES } from "./schema.ts";
+import { applyMigrations, migrationApplied, MS_TIMESTAMP_COLUMNS, SCHEMA_VERSION, TABLES } from "./schema.ts";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
 }
 
-assert(SCHEMA_VERSION === 9, "schema version 9 adds current_supply after v8 journal identity");
+assert(SCHEMA_VERSION === 10, "schema version 10 adds mark kind after #23 v9 current_supply");
 assert(MS_TIMESTAMP_COLUMNS.length >= 6, "millisecond timestamp columns listed");
 
 const dir = mkdtempSync(join(tmpdir(), "reactor-prod-"));
 const store = await openStore({ sqlitePath: join(dir, "t.sqlite") });
 const migrated = await store.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
-assert(Number(migrated?.n) === 9, "sqlite migrates to v9");
+assert(Number(migrated?.n) === 10, "sqlite migrates to v10");
 
 for (const t of TABLES) {
   const row = await store.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", t);
   assert(row?.name === t, `missing table ${t}`);
 }
+const markCols = await store.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
+assert(markCols.some((c) => c.name === "kind"), "v10 external_price_marks.kind");
+const venueCols = await store.all<{ name: string }>("PRAGMA table_info(route_venues)");
+assert(
+  venueCols.some((c) => c.name === "last_price_quote_x18"),
+  "route_venues.last_price_quote_x18 is column-gated (not a new schema_migrations id)",
+);
 
 for (const idx of [
   "idx_claims_identity",
@@ -49,7 +57,7 @@ assert(
   "journal has canonical identity columns",
 );
 const tokenCols = await store.all<{ name: string }>("PRAGMA table_info(tokens)");
-assert(tokenCols.some((c) => c.name === "current_supply"), "tokens.current_supply on fresh v9");
+assert(tokenCols.some((c) => c.name === "current_supply"), "tokens.current_supply on fresh v10 (from #23 v9)");
 
 await upsertToken(store, { address: "0xabc", symbol: "CAT", quote: "0xzec", supply: (10n ** 27n).toString(), ts: 100 });
 const seeded = await store.get<{ supply: string; current_supply: string }>(
@@ -137,7 +145,7 @@ await store.close();
   const preCols = await v8.all<{ name: string }>("PRAGMA table_info(tokens)");
   assert(!preCols.some((c) => c.name === "current_supply"), "pinned v8 tokens has no current_supply");
   const ver = await applyMigrations(v8);
-  assert(ver === 9, `v8 DB migrated to ${ver}, expected 9`);
+  assert(ver === 10, `v8 DB migrated to ${ver}, expected 10 (v9 current_supply + v10 kind)`);
   const cols = await v8.all<{ name: string }>("PRAGMA table_info(tokens)");
   assert(cols.some((c) => c.name === "current_supply"), "v9 adds current_supply onto a real post-#27 tokens table");
   const backfilled = await v8.get<{ current_supply: string; supply: string }>(
@@ -145,9 +153,94 @@ await store.close();
     "0xdead",
   );
   assert(backfilled?.current_supply === backfilled?.supply && backfilled?.supply === (10n ** 27n).toString(), "v9 backfills current_supply from supply");
+  assert(await migrationApplied(v8, 9) && (await migrationApplied(v8, 10)), "v8 upgrade writes v9 then v10");
   await v8.close();
   rmSync(v8dir, { recursive: true, force: true });
 }
 
 rmSync(dir, { recursive: true, force: true });
+
+// Preceding schema after #23 is v9 (current_supply, no kind). Prove unique v10 kind.
+{
+  const upgradeDir = mkdtempSync(join(tmpdir(), "reactor-v9-"));
+  const upgradePath = join(upgradeDir, "v9.sqlite");
+  const upgraded = await openStore({ sqlitePath: upgradePath });
+  assert((await applyMigrations(upgraded)) === 10, "fresh install reaches v10");
+  await upgraded.exec("ALTER TABLE external_price_marks DROP COLUMN kind");
+  await upgraded.run("DELETE FROM schema_migrations WHERE id >= 10");
+  await upgraded.run(
+    "INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason) VALUES(?,?,?,?,?,?,?)",
+    "0xzec",
+    "ZEC",
+    "fused",
+    "42000000",
+    1_700_000_100,
+    1,
+    "",
+  );
+  await upgraded.run(
+    "INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason) VALUES(?,?,?,?,?,?,?)",
+    "0xzec",
+    "ZEC",
+    "coingecko",
+    "41900000",
+    1_700_000_100,
+    1,
+    "",
+  );
+  const pinned = await upgraded.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
+  assert(Number(pinned?.n) === 9, `pinned post-#23 schema is ${pinned?.n}, expected 9`);
+  assert(await migrationApplied(upgraded, 9), "pinned v9 has current_supply row");
+  assert(!(await migrationApplied(upgraded, 10)), "pinned v9 has no v10 row");
+  const preCols = await upgraded.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
+  assert(!preCols.some((c) => c.name === "kind"), "pinned v9 production marks have no kind");
+  const tokenCols = await upgraded.all<{ name: string }>("PRAGMA table_info(tokens)");
+  assert(tokenCols.some((c) => c.name === "current_supply"), "pinned v9 tokens keeps current_supply");
+
+  assert((await applyMigrations(upgraded)) === 10, "real v9 upgrades to v10");
+  assert(await migrationApplied(upgraded, 9), "v9 current_supply row remains");
+  assert(await migrationApplied(upgraded, 10), "schema_migrations records v10");
+  const cols = await upgraded.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
+  assert(cols.some((c) => c.name === "kind"), "v10 adds external_price_marks.kind");
+  const fused = await upgraded.get<{ kind: string }>("SELECT kind FROM external_price_marks WHERE source=?", "fused");
+  const obs = await upgraded.get<{ kind: string }>("SELECT kind FROM external_price_marks WHERE source=?", "coingecko");
+  assert(fused?.kind === "consensus", "legacy fused/consensus/fail/missing backfill to kind=consensus");
+  assert(obs?.kind === "observation", "provider rows default to kind=observation");
+  await upgraded.close();
+  rmSync(upgradeDir, { recursive: true, force: true });
+}
+
+// Already-at-v10 DB missing the venue mark column: add the column, do not invent v11.
+{
+  const colDir = mkdtempSync(join(tmpdir(), "reactor-v10-venue-"));
+  const colPath = join(colDir, "v10.sqlite");
+  const seed = new DatabaseSync(colPath);
+  seed.exec(`
+    CREATE TABLE schema_migrations (id INTEGER PRIMARY KEY, applied_ts INTEGER NOT NULL);
+    CREATE TABLE route_venues (
+      id TEXT PRIMARY KEY, token_in TEXT, token_out TEXT, adapter TEXT, kind TEXT, data TEXT, pool_id TEXT,
+      exists_onchain INTEGER, approved INTEGER, reliability_bps INTEGER
+    );
+    CREATE TABLE external_price_marks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT, kind TEXT DEFAULT 'observation'
+    );
+  `);
+  const insertMig = seed.prepare("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)");
+  for (const id of [1, 2, 3, 4, 5, 6, 7, 8, 10]) insertMig.run(id, 1_700_000_000);
+  const before = seed.prepare("PRAGMA table_info(route_venues)").all() as Array<{ name: string }>;
+  assert(!before.some((c) => c.name === "last_price_quote_x18"), "pre-column v10 venue table");
+  seed.close();
+
+  const patched = await openStore({ sqlitePath: colPath });
+  assert((await applyMigrations(patched)) === 10, "column check does not bump past v10");
+  assert(await migrationApplied(patched, 9), "existence apply fills #23 v9 if missing");
+  const extra = await patched.get<{ n: number }>("SELECT COUNT(*) as n FROM schema_migrations WHERE id>10");
+  assert(Number(extra?.n) === 0, "did not invent v11");
+  const cols = await patched.all<{ name: string }>("PRAGMA table_info(route_venues)");
+  assert(cols.some((c) => c.name === "last_price_quote_x18"), "column-gated last_price_quote_x18");
+  await patched.close();
+  rmSync(colDir, { recursive: true, force: true });
+}
+
 console.log("schema/store tests ok");

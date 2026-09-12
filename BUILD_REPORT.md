@@ -1,3 +1,37 @@
+# BUILD REPORT — Protocol 0.3.3 external price consensus
+
+**Status:** Continue on existing REACTOR Origin repo. Parent `0b94d67` (#23 `current_supply` **v9** on `26cf6aa` / #32 after #31). Schema **v10** is `external_price_marks.kind`. Same PR #30.  
+**Not audited. Not mainnet.**  
+**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) |
+| Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
+| Intent | Generalize external USD marks: configured provider registry, multi-source consensus, persist accept/reject, fail closed for launch + material Top-10. Addresses #11. Schema **v10** adds `external_price_marks.kind` after merged #23 **v9** `current_supply`. Arc sanity reads `route_venues.last_price_quote_x18` (column-gated; no v11). Rebased onto post-#23 main `0b94d67`. |
+| Foundry | Unchanged this pass (offchain pricing only). Last recorded **326 passed**, 1 skipped on 0.3.1 |
+| Indexer / lib | `pnpm --filter indexer test` includes `pricing.test.ts` + `price-marks.test.ts` + `ingest.valuation.test.ts` + `quote.test.ts` + `markets-query.test.ts` + real v8→v10 and v9→v10 upgrades in `schema.test.ts` + `pnpm docs:check` |
+| Review shots | **Not regenerated** this pass (no UI change) |
+| Mainnet | **Blocked** |
+
+## Closed this run (#11 / PR #30)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Hardcoded ZEC/WBTC price-marks branches | **Yes** | `price-registry.ts` + `config/price-providers.json`. Tests in `pricing.test.ts`, `price-marks.test.ts` |
+| Single HTTP source / silent static PROD fallback | **Yes** | Important assets `minSources=2`. Static skipped in PROD. Persist `ok=0` |
+| Consensus without persisted rejects | **Yes** | Schema **v10** `kind=observation\|consensus` on `external_price_marks` after #23 **v9** `current_supply`. Watchdog `/pricing/health`. Real v8→v10 and v9→v10 upgrades in `schema.test.ts` |
+| Arc sanity skipped in production (synthetic `markets` row in the regression) | **Yes** | `loadVerifiedVenueUsd6` reads the verified `route_venues` mark. Test seeds hookless quote↔USDC only (no `markets` row) and proves `arcUsd6` is obtained and >400 bps HTTP consensus is rejected. |
+| ValuationService vs a second pricer | **Yes** | Store loads latest consensus only. Ranker `consumeIndexerValuation` fail-closes when reachable |
+| Guardian quote with no providers | **Yes** | Scheduled as unconfigured; launch disabled until `/pricing/health` is ok |
+| Docs / version | **Yes** | 0.3.3 patch on top of 0.3.2. `pnpm docs:check` |
+
+---
+
+# Prior — merged #23 burn-adjusted USD FDV on main
+
 # BUILD REPORT — burn-adjusted USD FDV (issue #8)
 
 **Status:** Rebased onto latest `main` (`26cf6aa` — #32 BUILD_REPORT cleanup after #31/#24/#22/#25/#28/#21/#27). Main schema remains **v8**; `tokens.current_supply` is **v9**. #32/#31/#24/#22 did not consume a schema version.  

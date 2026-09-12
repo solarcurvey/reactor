@@ -45,4 +45,4 @@ Gap-fill is bounded to `limit` (max 1000) buckets. `before` / `after` are exclus
 curl -s 'http://127.0.0.1:43148/valuation?token=0x…'
 ```
 
-One ValuationService. EURC is not $1 unless `usdPegOne`. PROD refuses a static ZEC mark.
+One ValuationService. EURC is not $1 unless `usdPegOne`. PROD refuses a static mark. `/pricing/health` lists per-asset consensus and rejected observations.

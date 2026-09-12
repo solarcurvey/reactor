@@ -1,6 +1,6 @@
 # SDK
 
-`@reactor/sdk` **0.3.2** — thin client for the public indexer. Factory version is a different number (**V1**).
+`@reactor/sdk` **0.3.3** — thin client for the public indexer. Factory version is a different number (**V1**).
 
 ## Authorize a launch
 
@@ -41,4 +41,4 @@ Helpers consume `POST /quote`:
 - On SELL, `minQuoteOut` is the first official/bonding quote floor from the same selected preview; `minOut` is the final USDC floor. Do not treat `amountIn` as `minQuoteOut`.
 - Preserve hop `kind`, `feeLegs[]`, and `aggregateProtocolImpactBps` in the UI. Those fields belong to the scored winner, not a higher-raw-output loser. Do not recompute official 3.5% from a single notional. Render each charged fee leg in **that hop’s quote asset and decimals**. Do not sum `holders` / `flywheel` / `core` across different quote tokens. When denoms differ, the only combined figure is `aggregateProtocolImpactBps`. Protocol tickets expose `exemptOfficialLegs[]`.
 
-`@reactor/core` exports `planCandidates`, `applyMinOuts`, `ValuationService`, `evaluateAdmission`, `fairCurveConfig`, `launchConfigHash`.
+`@reactor/core` exports `planCandidates`, `applyMinOuts`, `ValuationService`, `consensusUsd6`, `launchBlockedByValuation`, `evaluateAdmission`, `fairCurveConfig`, `launchConfigHash`. External USD is a configured provider registry + consensus — not a separate ZEC pricer.
