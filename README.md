@@ -7,7 +7,7 @@ Token launchpad for **Arc**. Official REACTOR pools are Uniswap v4 markets with 
 
 > This repository is **not audited**. Do not deploy to Arc Mainnet (chain 5042).
 
-Protocol release **0.1.0** (`v0.1.0`). Factory **V1** (`FACTORY_VERSION = 1`, immutable). Source of truth: `docs/version.json`. Changelog: `CHANGELOG.md`. Docs policy: `CONTRIBUTING.md`.
+Protocol release **0.2.0** (`v0.2.0`). Factory **V1** (`FACTORY_VERSION = 1`, immutable). Source of truth: `docs/version.json`. Changelog: `CHANGELOG.md`. Docs policy: `CONTRIBUTING.md`.
 
 ## Quick start (local Arc-compatible demo)
 
@@ -20,9 +20,9 @@ forge test
 
 # Chain + protocol
 cd ..
-anvil --chain-id 5042002 --port 8545 --disable-code-size-limit --gas-limit 100000000
-# new terminal — Factory bytecode is >24kb; both flags are required locally
-cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0.1:8545 --broadcast --disable-code-size-limit
+anvil --chain-id 5042002 --port 8545 --gas-limit 100000000
+# new terminal — Factory V1 runtime is under EIP-170 (InstantLaunchModule split)
+cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0.1:8545 --broadcast
 
 # Apps
 pnpm install

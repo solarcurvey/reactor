@@ -45,6 +45,7 @@ import {UserRouteExecutor} from "../src/UserRouteExecutor.sol";
 import {CoreVesting} from "../src/CoreVesting.sol";
 import {CoreLiquidityVault} from "../src/CoreLiquidityVault.sol";
 import {CoreBuybackExecutor} from "../src/CoreBuybackExecutor.sol";
+import {InstantLaunchModule} from "../src/InstantLaunchModule.sol";
 
 contract Base is Test {
     using StateLibrary for PoolManager;
@@ -63,6 +64,7 @@ contract Base is Test {
     FlywheelVault public flywheel;
     ReactorFactory public factory;
     InstantCurve public curve;
+    InstantLaunchModule public launchMod;
     SelfBurnVault public selfBurn;
     ReactorGuardian public auth;
     UniswapV4Adapter public v4Adapter;
@@ -175,11 +177,26 @@ contract Base is Test {
         flywheel = new FlywheelVault(auth, address(hook), address(usdc), address(core), pm, address(router));
         hook.bindFlywheel(IFeeSink(address(flywheel)));
 
-        factory = new ReactorFactory(pm, hook, router, vault, registry, address(core), auth, tickers);
+        factory = new ReactorFactory(hook, router, vault, registry, address(core), auth, tickers);
         launchDomain = factory.authDomain();
+        launchMod = new InstantLaunchModule(
+            address(factory),
+            auth,
+            tickers,
+            registry,
+            IPoolManager(address(pm)),
+            hook,
+            vault,
+            address(core),
+            address(factory.fairVault()),
+            factory.authDomain()
+        );
+        factory.bindLaunchModule(address(launchMod));
         auth.authorizeFactory(address(factory), 1);
         hook.bindFactory(address(factory));
+        hook.bindLaunchModule(address(launchMod));
         vault.bindFactory(address(factory));
+        vault.bindLaunchModule(address(launchMod));
         registry.bindFactory(address(factory));
         flywheel.bind(factory);
         buyback.bindFactory(address(factory));
@@ -362,15 +379,78 @@ contract Base is Test {
     {
         string memory ticker = Ticker.normalize(symbol);
         uint8 dec = _quoteDecimals(quote);
+        uint8 mode = curveConfig == LaunchAuthorization.FAIR_V1
+            ? LaunchAuthorization.MODE_FAIR
+            : LaunchAuthorization.MODE_REWARDS;
         a = LaunchAuthorization.Auth({
             factory: address(factory),
+            factoryVersion: 1,
             creator: creator,
             quote: quote,
             quoteDecimals: dec,
+            mode: mode,
+            ticker: ticker,
+            name: ticker,
+            metadataHash: LaunchAuthorization.hashMetadata("", "", "", "", ""),
             virtualQuote0: vq0,
             curveConfig: curveConfig,
-            tickerHash: Ticker.hashCanonical(ticker),
             authId: keccak256(abi.encode(quote, ticker, creator, block.timestamp, gasleft(), address(this))),
+            deadline: block.timestamp + 15 minutes
+        });
+        bytes32 d = LaunchAuthorization.digest(launchDomain, a);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, d);
+        sig = abi.encodePacked(r, s, v);
+    }
+
+    function _launchAuthIdentity(
+        address creator,
+        ReactorFactory.InstantParams memory p,
+        uint256 vq0,
+        bytes32 curveConfig,
+        uint8 mode
+    ) internal view returns (LaunchAuthorization.Auth memory a, bytes memory sig) {
+        string memory ticker = Ticker.normalize(p.symbol);
+        uint8 dec = _quoteDecimals(p.quote);
+        a = LaunchAuthorization.Auth({
+            factory: address(factory),
+            factoryVersion: 1,
+            creator: creator,
+            quote: p.quote,
+            quoteDecimals: dec,
+            mode: mode,
+            ticker: ticker,
+            name: p.name,
+            metadataHash: LaunchAuthorization.hashMetadata(p.image, p.description, p.website, p.twitter, p.telegram),
+            virtualQuote0: vq0,
+            curveConfig: curveConfig,
+            authId: keccak256(abi.encode(p.quote, ticker, creator, p.name, block.timestamp, gasleft(), address(this))),
+            deadline: block.timestamp + 15 minutes
+        });
+        bytes32 d = LaunchAuthorization.digest(launchDomain, a);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, d);
+        sig = abi.encodePacked(r, s, v);
+    }
+
+    function _launchAuthFair(address creator, ReactorFactory.FairParams memory p)
+        internal
+        view
+        returns (LaunchAuthorization.Auth memory a, bytes memory sig)
+    {
+        string memory ticker = Ticker.normalize(p.symbol);
+        uint8 dec = _quoteDecimals(p.quote);
+        a = LaunchAuthorization.Auth({
+            factory: address(factory),
+            factoryVersion: 1,
+            creator: creator,
+            quote: p.quote,
+            quoteDecimals: dec,
+            mode: LaunchAuthorization.MODE_FAIR,
+            ticker: ticker,
+            name: p.name,
+            metadataHash: LaunchAuthorization.hashMetadata(p.image, p.description, p.website, p.twitter, p.telegram),
+            virtualQuote0: 0,
+            curveConfig: LaunchAuthorization.FAIR_V1,
+            authId: keccak256(abi.encode(p.quote, ticker, creator, p.name, block.timestamp, gasleft(), address(this))),
             deadline: block.timestamp + 15 minutes
         });
         bytes32 d = LaunchAuthorization.digest(launchDomain, a);
@@ -404,7 +484,7 @@ contract Base is Test {
     function _instant(ReactorFactory.InstantParams memory p) internal returns (address token, PoolId poolId) {
         address creator = _activeCreator();
         (LaunchAuthorization.Auth memory a, bytes memory sig) =
-            _launchAuthFor(creator, p.symbol, p.quote, _vq0(p.quote), LaunchAuthorization.INSTANT_CURVE_V1);
+            _launchAuthIdentity(creator, p, _vq0(p.quote), LaunchAuthorization.INSTANT_CURVE_V1, LaunchAuthorization.MODE_REWARDS);
         _maybePrank(creator);
         return factory.instantLaunch(p, a, sig);
     }
@@ -412,7 +492,7 @@ contract Base is Test {
     function _standard(ReactorFactory.InstantParams memory p) internal returns (address token, PoolId poolId) {
         address creator = _activeCreator();
         (LaunchAuthorization.Auth memory a, bytes memory sig) =
-            _launchAuthFor(creator, p.symbol, p.quote, _vq0(p.quote), LaunchAuthorization.INSTANT_CURVE_V1);
+            _launchAuthIdentity(creator, p, _vq0(p.quote), LaunchAuthorization.INSTANT_CURVE_V1, LaunchAuthorization.MODE_STANDARD);
         _maybePrank(creator);
         return factory.launchStandard(p, a, sig);
     }
@@ -422,16 +502,20 @@ contract Base is Test {
         returns (address token, PoolId poolId, uint256 tokensOut)
     {
         address creator = _activeCreator();
-        (LaunchAuthorization.Auth memory a, bytes memory sig) =
-            _launchAuthFor(creator, p.symbol, p.quote, _vq0(p.quote), LaunchAuthorization.INSTANT_CURVE_V1);
+        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuthIdentity(
+            creator,
+            p,
+            _vq0(p.quote),
+            LaunchAuthorization.INSTANT_CURVE_V1,
+            rewards ? LaunchAuthorization.MODE_REWARDS : LaunchAuthorization.MODE_STANDARD
+        );
         _maybePrank(creator);
         return factory.launchAndBuy(p, rewards, minOut, a, sig);
     }
 
     function _fair(ReactorFactory.FairParams memory p) internal returns (address token, uint256 fairId) {
         address creator = _activeCreator();
-        (LaunchAuthorization.Auth memory a, bytes memory sig) =
-            _launchAuthFor(creator, p.symbol, p.quote, 0, LaunchAuthorization.FAIR_V1);
+        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuthFair(creator, p);
         _maybePrank(creator);
         return factory.createFairLaunch(p, a, sig);
     }
@@ -457,8 +541,13 @@ contract Base is Test {
 
     function _instantPriced(ReactorFactory.InstantParams memory p, bool rewards) internal returns (address token) {
         address creator = _activeCreator();
-        (LaunchAuthorization.Auth memory a, bytes memory sig) =
-            _launchAuthFor(creator, p.symbol, p.quote, _vq0(p.quote), LaunchAuthorization.INSTANT_CURVE_V1);
+        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuthIdentity(
+            creator,
+            p,
+            _vq0(p.quote),
+            LaunchAuthorization.INSTANT_CURVE_V1,
+            rewards ? LaunchAuthorization.MODE_REWARDS : LaunchAuthorization.MODE_STANDARD
+        );
         _maybePrank(creator);
         if (rewards) (token,) = factory.instantLaunch(p, a, sig);
         else (token,) = factory.launchStandard(p, a, sig);

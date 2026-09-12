@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {Base} from "../Base.sol";
 import {ReactorFactory} from "../../src/ReactorFactory.sol";
+import {InstantLaunchModule} from "../../src/InstantLaunchModule.sol";
 import {LaunchAuthorization} from "../../src/libraries/LaunchAuthorization.sol";
 import {Ticker} from "../../src/libraries/Ticker.sol";
 
@@ -85,9 +86,24 @@ contract LaunchAuthorizationTest is Base {
         assertEq(factory.tokenFactoryVersion(token), 1);
     }
 
+    function test_95_name_and_metadata_bound() public {
+        ReactorFactory.InstantParams memory p = _p("ID1", address(usdc));
+        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuth("ID1", address(usdc));
+        a.name = "Other";
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, LaunchAuthorization.digest(factory.authDomain(), a));
+        vm.expectRevert(LaunchAuthorization.WrongName.selector);
+        factory.instantLaunch(p, a, abi.encodePacked(r, s, v));
+        (LaunchAuthorization.Auth memory b, bytes memory sb) = _launchAuth("ID1", address(usdc));
+        b.metadataHash = keccak256("nope");
+        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(pricingPk, LaunchAuthorization.digest(factory.authDomain(), b));
+        vm.expectRevert(LaunchAuthorization.WrongMetadata.selector);
+        factory.instantLaunch(p, b, abi.encodePacked(r2, s2, v2));
+        sb;
+    }
+
     function test_95_inactive_factory_cannot_launch() public {
         auth.deprecateFactory(address(factory));
-        vm.expectRevert(ReactorFactory.FactoryInactive.selector);
+        vm.expectRevert(InstantLaunchModule.FactoryInactive.selector);
         _instant(_p("XX", address(usdc)));
         auth.authorizeFactory(address(factory), 1);
     }

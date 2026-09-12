@@ -15,8 +15,9 @@ Normalize tickers with `normalizeTicker` — same rules as `Ticker.sol`.
 | --- | --- | --- |
 | GET | `/markets` | SQL pagination, `q`, `stage`, `quote`, `sort`, `limit`, `offset` |
 | GET | `/ticker/:ticker` | Lock / reserved / token |
-| POST | `/launch/admit` | ALLOW / CHALLENGE / DENY |
-| POST | `/quote` | Proven RouteGraph only |
+| POST | `/launch/admit` | ALLOW / CHALLENGE / DENY (no signature) |
+| POST | `/launch/authorize` | Admission then isolated sign. CHALLENGE ≠ ALLOW |
+| POST | `/quote` | Exact RouteGraph edges; never invented 0.30% |
 | GET | `/candles/:token` | Continuous OHLCV |
 | GET | `/stream` | SSE |
 | GET | `/health` | Lag + dialect |
@@ -29,6 +30,8 @@ Index both `OfficialPoolCreated` forms (factory: token/poolId/mode; hook: poolId
 
 ## Deployments and versions
 
-Protocol release is semver in `docs/version.json` (now **0.1.0**). Factory **V1** is immutable and is not that number. See [versioning](/docs/versioning) and [deployments](/docs/deployments).
+Protocol release is semver in `docs/version.json` (now **0.2.0**). Factory **V1** is immutable and is not that number. See [versioning](/docs/versioning) and [deployments](/docs/deployments).
+
+Factory V1 deploys as two contracts: `ReactorFactory` + `InstantLaunchModule` (no proxy). Both must stay under EIP-170. See `pnpm size:guard` and `BUILD_REPORT.md`.
 
 Production accepts **verified** Arc v4 addresses only — do not hardcode a PoolManager until it is verified on that chain. Mainnet (5042) is disabled. Never invent mainnet addresses.

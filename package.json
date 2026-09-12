@@ -1,6 +1,6 @@
 {
   "name": "reactor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "packageManager": "pnpm@10.14.0",
   "scripts": {
@@ -10,6 +10,8 @@
     "test:web": "pnpm --filter web test",
     "docs:gen": "tsx scripts/sync-docs.ts generate",
     "docs:check": "tsx scripts/sync-docs.ts check",
+    "size:guard": "tsx scripts/size-guard.ts",
+    "arc:factory-attempt": "tsx scripts/arc-factory-deploy.ts",
     "test:lib": "pnpm --filter indexer test && tsx apps/web/src/lib/top10.test.ts && tsx apps/web/src/lib/marketdata.test.ts && tsx scripts/sync-docs.ts check",
     "signer": "pnpm --filter indexer signer"
   },

@@ -91,7 +91,7 @@ class PostgresStore implements Store {
     await this.pool.end();
   }
   async tryAdvisoryLock(name: string, owner: string, ttlMs: number) {
-    // Lease table works across pool checkouts. Advisory lock uses a pinned client.
+    // Single leadership authority: lease table only. Not mixed with pg_advisory_lock.
     const now = Date.now();
     const row = await this.get<{ owner: string; ts: number; lease_until?: number }>(
       "SELECT owner, ts, lease_until FROM leader_locks WHERE name=?",
@@ -106,19 +106,6 @@ class PostgresStore implements Store {
       now,
       now + ttlMs,
     );
-    if (this.lockClients.has(name)) return true;
-    try {
-      const client = await this.pool.connect();
-      const key = Number.parseInt(createHash("sha256").update(name).digest("hex").slice(0, 8), 16);
-      const r = await client.query("SELECT pg_try_advisory_lock($1) AS ok", [key]);
-      if (!Boolean((r.rows[0] as { ok: boolean })?.ok)) {
-        client.release();
-        return true; // lease table already granted
-      }
-      this.lockClients.set(name, client);
-    } catch {
-      /* lease table is enough */
-    }
     return true;
   }
   async releaseLock(name: string, owner: string) {

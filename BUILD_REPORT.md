@@ -1,47 +1,81 @@
-# BUILD REPORT — Protocol versioning, docs policy, CI drift
+# BUILD REPORT — Protocol 0.2.0 P0 correctness + Arc deployability
 
-**Status:** Continue on existing REACTOR Origin repo. Parent `b43ebc3`. Local Anvil 5042002 only.  
-**Not audited. Not mainnet. Arc Public Testnet not claimed.**  
+**Status:** Continue on existing REACTOR Origin repo. Parent `d3081d1`. Local Anvil 5042002 + Arc Public Testnet probe only.  
+**Not audited. Not mainnet. Arc Public Testnet Factory create not claimed.**  
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
 ## This HEAD
 
 | Item | Value |
 | --- | --- |
-| Branch | `cursor/docs-versioning-ci-ead6` |
-| Parent | `b43ebc3` |
-| Protocol release | **0.1.0** (`docs/version.json`, tag `v0.1.0`) |
+| Branch | `cursor/p0-admission-arc-docs-9bf9` |
+| Parent | `d3081d1` |
+| Protocol release | **0.2.0** (`docs/version.json`) |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
-| Intent | Davis docs/versioning/CI: mandatory docs, semver, changelog+tag, generated deployment tables, drift CI |
-| Solidity / tokenomics | **None** |
+| Intent | P0 admission, full EIP-712 identity, Factory EIP-170 split, RouteGraph quotes, indexer/keeper, docs + UI |
 | Mainnet | **Blocked** |
 
-## What landed
+## EIP-170 sizes (`forge build --sizes`, optimizer 200, via_IR)
 
-1. **Docs are mandatory** for contracts, tokenomics, Factory, Guardian/Keeper, routing, admission, API, SDK, CORE, tickers, backend trust, and user-facing changes — `CONTRIBUTING.md`, `/docs/policy`, `AGENTS.md`, `AUDIT_HANDOFF.md`.
-2. **Protocol semver** source of truth: `docs/version.json`. Root `package.json` version must match. Factory V1 is a different, frozen number.
-3. **Generated** `/docs/versioning`, `/docs/deployments`, `/docs/changelog` via `pnpm docs:gen` from version + `deployments/registry.json` + `CHANGELOG.md` + `deployments/local.json`.
-4. **CI** (`pnpm docs:check`, `pnpm test:lib`, `.github/workflows/docs-sync.yml`) fails on drifted fees, 1B supply, 5% Dev Buy, 24h ticker lock, Factory labels, protocol version, stale generated pages, drifted deployment.json copies, or a fabricated mainnet (5042) address.
-5. **CHANGELOG.md** baseline for current HEAD as **0.1.0**. Tagging convention: annotated `vMAJOR.MINOR.PATCH`. Tag `v0.1.0` created for this release.
-6. Deployment tables record Factory version (when applicable), protocol release, address, chain, source tag, date, verification. Local Anvil rows are **placeholders**. Testnet **not claimed**. Mainnet **no addresses**.
+| Contract | Creation (bytes) | Runtime (bytes) | EIP-170 24576 | Margin gate (≤23552) |
+| --- | ---: | ---: | --- | --- |
+| ReactorFactory | 25409 | **23280** | under | pass |
+| InstantLaunchModule | 17627 | 17037 | under | pass |
+| InstantCurve | 19644 | 18960 | under | pass |
+| ReactorHook | 11813 | 10952 | under | pass |
+| TickerRegistry | 5655 | 4760 | under | pass |
 
-## How CI fails on drift
+Arc / Ethereum runtime limit treated as **24,576**. CI `pnpm size:guard` fails if Factory runtime exceeds 24,576 − 1,024.
 
-```bash
-pnpm docs:check
-# examples that must exit 1:
-#  - change PROTOCOL_FEE_BPS copy in docs without the Solidity constant (or vice versa)
-#  - bump package.json version without docs/version.json
-#  - edit docs/deployments.md by hand
-#  - let apps/web/src/lib/deployment.json diverge from deployments/local.json
-#  - put a 0x address in the generated Arc Mainnet section
-```
+Split (no proxies): `InstantLaunchModule` holds `new ReactorToken`, EIP-712 `LaunchAuthorization.verify`, and official-pool open. Factory still `claimOnLaunch`s, opens InstantCurve, pulls Dev Buy, and owns fair bid/claim storage.
+
+## Arc Public Testnet deploy attempt
+
+Script: `pnpm arc:factory-attempt` → `deployments/arc-factory-attempt.json`.
+
+- RPC: `https://rpc.testnet.arc.io` (chain **5042002** expected).
+- Exact Factory creation bytecode + dummy constructor args.
+- `eth_estimateGas` recorded (success or error).
+- `eth_sendRawTransaction` **not** sent (no `ARC_TESTNET_PK`).
+- **`claimed: false`**. Do not treat this as a live Factory on Arc.
+- Mainnet 5042 blocked.
+
+## P0 landings
+
+**A. Launch admission.** Public `POST /launch/authorize` → durable admission (Postgres/SQLite) → ALLOW receipt → isolated signer. CHALLENGE ≠ ALLOW. Direct signer without receipt fails. Real Turnstile when `TURNSTILE_SECRET` is set. LOCAL bypass only if secret unset and `TURNSTILE_REQUIRED !== 1`.
+
+**B. EIP-712 identity.** Signed: factory, Factory version, creator, quote, decimals, mode, ticker, name, metadata hash, virtualQuote0, curve, authId, deadline, chain. Metadata frozen at launch (`metaFrozen`). `permanentlyLockTicker` requires a REACTOR-native authorized-factory token with matching ticker; `reserveTicker` is separate; both irreversible.
+
+**C. Factory EIP-170.** Measured, split, CI guard, Arc probe. See table.
+
+**D. Quotes.** Simulate exact RouteGraph edges (`OFFICIAL_REACTOR_V4` / `EXTERNAL_V4_HOOKLESS` / `BONDING_CURVE`). Nested fees per REACTOR leg. ≤3 hops. Sim fail → unavailable. Never `minOut` 0/1.
+
+**E. Indexer.** Rich `OfficialPoolCreated` UPSERT, transactional idempotence, 24h aggregations, SQL pagination/search, `ARC_FINALITY_CONFIRMATIONS` (default 8).
+
+**F. Keeper.** Single lease leadership (not mixed with advisory). Canonical `ValuationService`. No silent static ZEC in prod (`ZEC_HTTP_URL` required). R2/S3 fail-closed in prod. Safe genesis Batch A → verify → Batch B T0. `CoreToken` naming. SSE.
+
+## Docs / UI
+
+Deep `/docs` corpus (Trader / Creator / Builder / Protocol / Reference), How REACTOR Works, trust top-10, Guardian/Keeper, admission, routes, examples, `llms.txt`, version badges, `docs:check`. UI: home search, `/search`, launch ticker + challenge, Lightweight Charts, tape, contextual docs, Ops token gate in prod.
 
 ## Tests
 
 | Suite | Result |
 | --- | --- |
-| `pnpm docs:check` | required green for this pass |
-| Tokenomics / Foundry | not re-run for this docs-only change; last recorded 318 pass at `b43ebc3` |
+| `pnpm size:guard` | green (Factory 23280 ≤ 23552) |
+| `pnpm docs:check` | required green this pass |
+| Indexer unit (admission, launch-auth, persist) | required green |
+| Foundry | re-run this pass after module wiring |
+| Playwright / visual 1440/390 | after preview |
+
+## Honest gaps
+
+- Not audited. No public mainnet addresses.
+- Arc Factory **not claimed** — estimate/RPC only unless an explorer hash exists in `deployments/arc-factory-attempt.json`.
+- Top-10 ranks remain an offchain API (trust assumption #1).
+- LOCAL Turnstile bypass when secret unset.
+- LOCAL inline signer (`SIGNER_INLINE`) unless set to `0`. Isolated signer process still exists for prod-shaped runs.
+- Funding-cluster signals are practical heuristics, not a full chain-analysis product.
+- `setMetadata` removed — identity is frozen at launch; no post-launch creator edit path.
 
 Mainnet blocked pending Codex + audits + KMS/Safe rehearsal.

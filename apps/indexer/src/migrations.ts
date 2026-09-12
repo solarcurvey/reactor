@@ -1,6 +1,6 @@
 import type { Store } from "./db.ts";
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 const V1_TABLES = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -199,6 +199,54 @@ CREATE INDEX IF NOT EXISTS idx_keeper_status ON keeper_operations(status, ts);
 CREATE INDEX IF NOT EXISTS idx_venues_pair ON route_venues(token_in, token_out);
 `;
 
+const V4_TABLES = `
+CREATE TABLE IF NOT EXISTS admission_hits (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key TEXT NOT NULL,
+  ts INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_admission_hits_key_ts ON admission_hits(key, ts);
+CREATE TABLE IF NOT EXISTS admission_challenges (
+  id TEXT PRIMARY KEY,
+  wallet TEXT,
+  session TEXT,
+  ip TEXT,
+  ticker TEXT,
+  status TEXT,
+  created_ts INTEGER,
+  solved_ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS admission_image_hashes (
+  hash TEXT PRIMARY KEY,
+  first_seen INTEGER,
+  count INTEGER
+);
+CREATE TABLE IF NOT EXISTS issuance_state (
+  k TEXT PRIMARY KEY,
+  v TEXT,
+  ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS admission_receipts (
+  id TEXT PRIMARY KEY,
+  hmac TEXT,
+  payload TEXT,
+  consumed INTEGER,
+  expires INTEGER,
+  ts INTEGER
+);
+CREATE TABLE IF NOT EXISTS official_pools (
+  pool_id TEXT PRIMARY KEY,
+  token TEXT,
+  quote TEXT,
+  factory TEXT,
+  mode INTEGER,
+  hook TEXT,
+  block INTEGER,
+  tx TEXT,
+  ts INTEGER
+);
+`;
+
 export async function applyMigrations(store: Store): Promise<number> {
   await store.exec(
     store.dialect === "postgres"
@@ -241,6 +289,14 @@ export async function applyMigrations(store: Store): Promise<number> {
     );
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 3, Math.floor(Date.now() / 1000));
     current = 3;
+  }
+  if (current < 4) {
+    const ddl = store.dialect === "postgres"
+      ? postgres(V4_TABLES)
+      : V4_TABLES;
+    await store.exec(ddl);
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 4, Math.floor(Date.now() / 1000));
+    current = 4;
   }
   return current;
 }

@@ -5,7 +5,21 @@
 
 export const MAX_LEGS = 3;
 
-export type AdapterKind = "protocol" | "user" | "hookless";
+export type AdapterKind = "protocol" | "user" | "hookless" | "OFFICIAL_REACTOR_V4" | "EXTERNAL_V4_HOOKLESS" | "BONDING_CURVE";
+
+export const VENUE = {
+  OFFICIAL_REACTOR_V4: "OFFICIAL_REACTOR_V4",
+  EXTERNAL_V4_HOOKLESS: "EXTERNAL_V4_HOOKLESS",
+  BONDING_CURVE: "BONDING_CURVE",
+} as const;
+
+export function normalizeVenueKind(kind: string): AdapterKind {
+  if (kind === "OFFICIAL_REACTOR_V4" || kind === "protocol") return "protocol";
+  if (kind === "EXTERNAL_V4_HOOKLESS" || kind === "hookless") return "hookless";
+  if (kind === "BONDING_CURVE") return "BONDING_CURVE";
+  if (kind === "user") return "user";
+  return kind as AdapterKind;
+}
 
 export type MarketEdge = {
   from: string;
@@ -72,7 +86,8 @@ export function planRoute(
   for (const e of edges) {
     if (!e.usable) continue;
     if (!opts.adapters.has(norm(e.adapter))) continue;
-    if (!wantKind.includes(e.kind)) continue;
+    const kind = normalizeVenueKind(e.kind);
+    if (!wantKind.includes(kind === "BONDING_CURVE" ? "protocol" : kind)) continue;
     const f = norm(e.from);
     const t = norm(e.to);
     const qf = quotes.get(f);
@@ -161,6 +176,64 @@ export function scoreRoute(
 export function pickBest(routes: ScoredRoute[]): ScoredRoute {
   if (routes.length === 0) throw new RouteReject("no scored routes");
   return routes.reduce((a, b) => (b.score > a.score ? b : a));
+}
+
+/** All simple routes ≤ MAX_LEGS. Caller simulates each and pickBest. Never invents venues. */
+export function planCandidates(
+  tokenIn: string,
+  tokenOut: string,
+  edges: MarketEdge[],
+  quotes: Map<string, QuoteMeta>,
+  opts: { protocol: boolean; adapters: Set<string>; maxCandidates?: number },
+): PlannedRoute[] {
+  const src = norm(tokenIn);
+  const dst = norm(tokenOut);
+  if (src === dst) return [{ hops: [], path: [src], reason: "identity" }];
+  const wantKind: AdapterKind[] = opts.protocol ? ["protocol", "hookless"] : ["user", "hookless"];
+  const adj = new Map<string, MarketEdge[]>();
+  for (const e of edges) {
+    if (!e.usable) continue;
+    if (!opts.adapters.has(norm(e.adapter))) continue;
+    const kind = normalizeVenueKind(e.kind);
+    if (!wantKind.includes(kind === "BONDING_CURVE" ? "protocol" : kind)) continue;
+    const f = norm(e.from);
+    const list = adj.get(f) ?? [];
+    list.push(e);
+    adj.set(f, list);
+  }
+  const found: PlannedRoute[] = [];
+  type Node = { at: string; path: string[]; used: MarketEdge[] };
+  const queue: Node[] = [{ at: src, path: [src], used: [] }];
+  const seen = new Set<string>([src]);
+  const cap = opts.maxCandidates ?? 8;
+  while (queue.length && found.length < cap) {
+    const cur = queue.shift()!;
+    if (cur.at === dst) {
+      found.push({
+        hops: cur.used.map((e) => ({
+          adapter: e.adapter as `0x${string}`,
+          tokenIn: e.from as `0x${string}`,
+          tokenOut: e.to as `0x${string}`,
+          minOut: 0n,
+          data: e.data,
+        })),
+        path: cur.path,
+        reason: `ok ${cur.path.join("→")}`,
+      });
+      continue;
+    }
+    if (cur.used.length >= MAX_LEGS) continue;
+    for (const e of adj.get(cur.at) ?? []) {
+      const nxt = norm(e.to);
+      if (cur.path.includes(nxt)) continue;
+      const key = `${cur.path.join(",")}>${nxt}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      queue.push({ at: nxt, path: [...cur.path, nxt], used: [...cur.used, e] });
+    }
+  }
+  if (found.length === 0) throw new RouteReject(`no route ${src} → ${dst}`);
+  return found;
 }
 
 export function encodeHooklessPoolKey(a: `0x${string}`, b: `0x${string}`): {

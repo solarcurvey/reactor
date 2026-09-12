@@ -64,14 +64,14 @@ contract LaunchPricingTest is Base {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, LaunchAuthorization.digest(factory.authDomain(), a));
         sig = abi.encodePacked(r, s, v);
         vm.expectRevert(LaunchAuthorization.Expired.selector);
-        factory.instantLaunchPriced(_p(), a, sig);
+        factory.instantLaunch(_p(), a, sig);
     }
 
     function test_replaySigReverts() public {
         (LaunchAuthorization.Auth memory a, bytes memory sig) = _priceAuth(address(zec));
-        factory.instantLaunchPriced(_p(), a, sig);
+        factory.instantLaunch(_p(), a, sig);
         vm.expectRevert();
-        factory.instantLaunchPriced(_p(), a, sig);
+        factory.instantLaunch(_p(), a, sig);
     }
 
     function test_wrongFactoryReverts() public {
@@ -80,7 +80,7 @@ contract LaunchPricingTest is Base {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, LaunchAuthorization.digest(factory.authDomain(), a));
         sig = abi.encodePacked(r, s, v);
         vm.expectRevert(LaunchAuthorization.WrongFactory.selector);
-        factory.instantLaunchPriced(_p(), a, sig);
+        factory.instantLaunch(_p(), a, sig);
     }
 
     function test_wrongQuoteReverts() public {
@@ -89,7 +89,7 @@ contract LaunchPricingTest is Base {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, LaunchAuthorization.digest(factory.authDomain(), a));
         sig = abi.encodePacked(r, s, v);
         vm.expectRevert(LaunchAuthorization.WrongQuote.selector);
-        factory.instantLaunchPriced(_p(), a, sig);
+        factory.instantLaunch(_p(), a, sig);
     }
 
     function test_wrongDecimalsReverts() public {
@@ -97,7 +97,7 @@ contract LaunchPricingTest is Base {
         a.quoteDecimals = 6;
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, LaunchAuthorization.digest(factory.authDomain(), a));
         vm.expectRevert(LaunchAuthorization.WrongDecimals.selector);
-        factory.instantLaunchPriced(_p(), a, abi.encodePacked(r, s, v));
+        factory.instantLaunch(_p(), a, abi.encodePacked(r, s, v));
     }
 
     function test_zeroVirtualQuoteReverts() public {
@@ -105,14 +105,14 @@ contract LaunchPricingTest is Base {
         bytes memory sig = _sig(a);
         ReactorFactory.InstantParams memory p = _p();
         vm.expectRevert(ReactorFactory.NeedPricingAuth.selector);
-        factory.instantLaunchPriced(p, a, sig);
+        factory.instantLaunch(p, a, sig);
     }
 
     function test_tamperedVirtualQuoteReverts() public {
         (LaunchAuthorization.Auth memory a, bytes memory sig) = _priceAuth(address(zec));
         a.virtualQuote0 = a.virtualQuote0 + 1;
         vm.expectRevert(LaunchAuthorization.BadSigner.selector);
-        factory.instantLaunchPriced(_p(), a, sig);
+        factory.instantLaunch(_p(), a, sig);
     }
 
     function _sig(LaunchAuthorization.Auth memory a) internal view returns (bytes memory sig) {
@@ -124,7 +124,7 @@ contract LaunchPricingTest is Base {
         (LaunchAuthorization.Auth memory a, bytes memory sig) = _priceAuth(address(zec));
         auth.setLaunchSigner(bob);
         vm.expectRevert(LaunchAuthorization.BadSigner.selector);
-        factory.instantLaunchPriced(_p(), a, sig);
+        factory.instantLaunch(_p(), a, sig);
         auth.setLaunchSigner(pricingSigner);
     }
 
@@ -133,7 +133,7 @@ contract LaunchPricingTest is Base {
         a.creator = alice;
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, LaunchAuthorization.digest(factory.authDomain(), a));
         vm.expectRevert(LaunchAuthorization.WrongCreator.selector);
-        factory.instantLaunchPriced(_p(), a, abi.encodePacked(r, s, v));
+        factory.instantLaunch(_p(), a, abi.encodePacked(r, s, v));
     }
 
     function test_zeroAuthIdReverts() public {
@@ -141,14 +141,14 @@ contract LaunchPricingTest is Base {
         a.authId = bytes32(0);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pricingPk, LaunchAuthorization.digest(factory.authDomain(), a));
         vm.expectRevert(LaunchAuthorization.WrongParams.selector);
-        factory.instantLaunchPriced(_p(), a, abi.encodePacked(r, s, v));
+        factory.instantLaunch(_p(), a, abi.encodePacked(r, s, v));
     }
 
     function test_quarantinedQuoteReverts() public {
         registry.setEnabled(address(zec), false);
         (LaunchAuthorization.Auth memory a, bytes memory sig) = _priceAuth(address(zec));
         vm.expectRevert();
-        factory.instantLaunchPriced(_p(), a, sig);
+        factory.instantLaunch(_p(), a, sig);
         registry.setEnabled(address(zec), true);
     }
 
@@ -164,11 +164,11 @@ contract LaunchPricingTest is Base {
         (LaunchAuthorization.Auth memory a2, bytes memory s2) =
             _launchAuthFor(address(this), "Z2", address(zec), vq, LaunchAuthorization.INSTANT_CURVE_V1);
         assertTrue(a1.authId != a2.authId);
-        (address t1,) = factory.instantLaunchPriced(_p(), a1, s1);
+        (address t1,) = factory.instantLaunch(_p(), a1, s1);
         ReactorFactory.InstantParams memory p2 = _p();
         p2.name = "Z2";
         p2.symbol = "Z2";
-        (address t2,) = factory.instantLaunchPriced(p2, a2, s2);
+        (address t2,) = factory.instantLaunch(p2, a2, s2);
         assertTrue(t1 != t2);
         assertTrue(curve.existsOf(t1) && curve.existsOf(t2));
     }
@@ -191,7 +191,7 @@ contract LaunchPricingTest is Base {
         uint256 evq = CurveMath.virtualQuote0ForUsd(ReactorConstants.DEFAULT_SUPPLY, 6, 1_080_000);
         (LaunchAuthorization.Auth memory a, bytes memory sig) =
             _launchAuthFor(address(this), "E", address(eurc), evq, LaunchAuthorization.INSTANT_CURVE_V1);
-        (address token,) = factory.instantLaunchPriced(p, a, sig);
+        (address token,) = factory.instantLaunch(p, a, sig);
         assertTrue(curve.existsOf(token));
     }
 
@@ -199,7 +199,7 @@ contract LaunchPricingTest is Base {
         (LaunchAuthorization.Auth memory a, bytes memory sig) = _priceAuth(address(zec));
         vm.chainId(1);
         vm.expectRevert(LaunchAuthorization.BadSigner.selector);
-        factory.instantLaunchPriced(_p(), a, sig);
+        factory.instantLaunch(_p(), a, sig);
     }
 
     function test_rotatedKeeperDoesNotChangeSigner() public {
@@ -208,7 +208,7 @@ contract LaunchPricingTest is Base {
         assertEq(auth.pricingSigner(), prev);
         (LaunchAuthorization.Auth memory a, bytes memory sig) = _priceAuth(address(zec));
         address token = address(0);
-        (token,) = factory.instantLaunchPriced(_p(), a, sig);
+        (token,) = factory.instantLaunch(_p(), a, sig);
         assertTrue(curve.existsOf(token));
         auth.setKeeper(keeper);
     }
@@ -216,7 +216,7 @@ contract LaunchPricingTest is Base {
     function test_signedVirtualQuote0ControlsCurve() public {
         uint256 custom = 1_234_567_890;
         (LaunchAuthorization.Auth memory a, bytes memory sig) = _priceAuthVq(address(zec), custom);
-        (address token,) = factory.instantLaunchPriced(_p(), a, sig);
+        (address token,) = factory.instantLaunch(_p(), a, sig);
         assertEq(curve.virtualQuoteOf(token), custom);
         uint256 derived = CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, 8);
         assertTrue(custom != derived);
@@ -251,7 +251,7 @@ contract LaunchPricingTest is Base {
         );
 
         (LaunchAuthorization.Auth memory za, bytes memory zs) = _priceAuthUsd(address(zec), zecUsd);
-        (address zTok,) = factory.instantLaunchPriced(_p(), za, zs);
+        (address zTok,) = factory.instantLaunch(_p(), za, zs);
 
         ReactorFactory.InstantParams memory bp = _p();
         bp.name = "B";
@@ -264,7 +264,7 @@ contract LaunchPricingTest is Base {
             CurveMath.virtualQuote0ForUsd(ReactorConstants.DEFAULT_SUPPLY, 8, btcUsd),
             LaunchAuthorization.INSTANT_CURVE_V1
         );
-        (address bTok,) = factory.instantLaunchPriced(bp, ba, bs);
+        (address bTok,) = factory.instantLaunch(bp, ba, bs);
 
         ReactorFactory.InstantParams memory ep = _p();
         ep.name = "E";
@@ -277,7 +277,7 @@ contract LaunchPricingTest is Base {
             CurveMath.virtualQuote0ForUsd(ReactorConstants.DEFAULT_SUPPLY, 18, ethUsd),
             LaunchAuthorization.INSTANT_CURVE_V1
         );
-        (address eTok,) = factory.instantLaunchPriced(ep, ea, es);
+        (address eTok,) = factory.instantLaunch(ep, ea, es);
 
         uint256 usdcVq = curve.virtualQuoteOf(usdcTok);
         assertEq(usdcVq, CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, 6));

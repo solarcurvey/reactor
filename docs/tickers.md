@@ -22,7 +22,8 @@ Shared by `Ticker.sol`, `@reactor/sdk`, the indexer, and the launch UI. Invalid 
 | --- | --- |
 | Successful launch | 24h **global** lock across quotes, factories, and modes |
 | Failed / expired auth | **No squat.** Digest is not consumed. Ticker stays free. |
-| `permanentlyLockTicker(ticker, token)` | Guardian-only, one-way. Qualitative — **not** an mcap oracle |
+| `permanentlyLockTicker(ticker, token)` | Guardian-only, one-way. REACTOR-native token from an authorized factory with matching ticker. **not** an mcap oracle |
+| `reserveTicker(ticker)` | Guardian-only reserved name (no token). Separate from launched-token locks. |
 
 Reserved at genesis (permanent, no launch token): `CORE`, `REACTOR`, `USDC`, `ZEC`, `WBTC`, `EURC`.
 

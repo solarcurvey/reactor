@@ -184,6 +184,10 @@ pnpm --filter indexer watchdog
 | 95 | LaunchAuthorization every launch, unique authId | `LaunchAuthorization.t.sol` |
 | 96 | Factory version persist; deprecate new-only | `TickerRegistry.t.sol` |
 | 97 | Permanent lock one-way, not an oracle | `TickerRegistry.t.sol` |
+| 80 | P0 admission: signer bypass fails; CHALLENGE ≠ ALLOW; durable throttle | `admission.test.ts` |
+| 80 | P0 EIP-712 full identity + frozen metadata + hardened lock | `LaunchAuthorization.t.sol`, `TickerRegistry.t.sol` |
+| 80 | P0 quote exact RouteGraph edges; never minOut 0/1 | `routes.test.ts`, `quote-service.ts` |
+| 80 | P0 Factory EIP-170 sizes + Arc attempt | `scripts/size-guard.ts`, `deployments/arc-factory-attempt.json` |
 
 ## Arc smoke
 

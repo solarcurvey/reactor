@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {Base} from "../Base.sol";
 import {ReactorFactory} from "../../src/ReactorFactory.sol";
+import {InstantLaunchModule} from "../../src/InstantLaunchModule.sol";
 import {Ticker} from "../../src/libraries/Ticker.sol";
 import {TickerRegistry} from "../../src/TickerRegistry.sol";
 import {LaunchAuthorization} from "../../src/libraries/LaunchAuthorization.sol";
@@ -89,7 +90,7 @@ contract TickerRegistryTest is Base {
         assertEq(tickers.factoryVersionOf(address(factory)), 1);
 
         auth.deprecateFactory(address(factory));
-        vm.expectRevert(ReactorFactory.FactoryInactive.selector);
+        vm.expectRevert(InstantLaunchModule.FactoryInactive.selector);
         _instant(_usdc("V1B"));
 
         // Existing V1 token still trades / graduates — deprecate is new-launch only.
@@ -114,6 +115,27 @@ contract TickerRegistryTest is Base {
         _instant(_usdc("LOCK"));
         vm.expectRevert(TickerRegistry.TickerPermanent.selector);
         auth.permanentlyLockTicker("LOCK", token);
+    }
+
+    function test_97_permanent_lock_requires_reactor_native_matching_ticker() public {
+        (address token,) = _instant(_usdc("NATV"));
+        vm.expectRevert(TickerRegistry.ReservedSeparate.selector);
+        auth.permanentlyLockTicker("NATV", address(0));
+        vm.expectRevert(TickerRegistry.NotReactorNative.selector);
+        auth.permanentlyLockTicker("NATV", alice);
+        vm.expectRevert(TickerRegistry.TickerMismatch.selector);
+        auth.permanentlyLockTicker("OTHER", token);
+        auth.reserveTicker("NEWRES");
+        (,, bool avail, bool reserved) = tickers.status("NEWRES");
+        assertFalse(avail);
+        assertTrue(reserved);
+    }
+
+    function test_97_metadata_frozen_after_launch() public {
+        (address token,) = _instant(_usdc("META"));
+        assertTrue(factory.metaFrozen(token));
+        (string memory image,,,,) = factory.metadata(token);
+        assertEq(image, "");
     }
 
     function test_97_non_guardian_cannot_lock_or_version() public {

@@ -1,0 +1,38 @@
+{
+  "limit": 24576,
+  "margin": 1024,
+  "maxOk": 23552,
+  "rows": [
+    {
+      "name": "ReactorFactory",
+      "runtime": 23280,
+      "creation": 25409,
+      "ok": true
+    },
+    {
+      "name": "InstantLaunchModule",
+      "runtime": 17037,
+      "creation": 17627,
+      "ok": true
+    },
+    {
+      "name": "InstantCurve",
+      "runtime": 18960,
+      "creation": 19644,
+      "ok": true
+    },
+    {
+      "name": "ReactorHook",
+      "runtime": 10952,
+      "creation": 11813,
+      "ok": true
+    },
+    {
+      "name": "TickerRegistry",
+      "runtime": 4760,
+      "creation": 5655,
+      "ok": true
+    }
+  ],
+  "at": "2026-09-12T00:43:26.902Z"
+}

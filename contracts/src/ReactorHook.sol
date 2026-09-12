@@ -43,6 +43,7 @@ contract ReactorHook is IHooks, IUnlockCallback {
     ISelfBurnSink public selfBurn;
     address public factory;
     address public curve;
+    address public launchModule;
     address public coreLpVault;
     ReactorGuardian public immutable auth;
 
@@ -146,6 +147,13 @@ contract ReactorHook is IHooks, IUnlockCallback {
         curve = curve_;
     }
 
+    function bindLaunchModule(address m) external {
+        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (launchModule != address(0)) revert AlreadyBound();
+        if (m == address(0)) revert NotFactory();
+        launchModule = m;
+    }
+
     function bindSelfBurn(address vault_) external {
         if (msg.sender != auth.guardian()) revert NotGuardian();
         if (address(selfBurn) != address(0)) revert AlreadyBound();
@@ -186,7 +194,7 @@ contract ReactorHook is IHooks, IUnlockCallback {
             return IHooks.beforeInitialize.selector;
         }
 
-        if (sender != factory && sender != curve) revert NotFactory();
+        if (sender != factory && sender != curve && sender != launchModule) revert NotFactory();
         bool q0 = registry.isEnabled(c0);
         bool q1 = registry.isEnabled(c1);
         if (q0 == q1) revert InvalidPool();

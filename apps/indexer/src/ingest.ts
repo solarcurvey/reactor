@@ -192,6 +192,7 @@ export async function recordTrade(
       t.ts,
       token,
     );
+    await rollOneMarket(store, token, t.ts);
   }
   sse?.publish({
     type: "trade",
@@ -205,6 +206,85 @@ export function curvePriceX18(quoteRaw: string, tokenRaw: string, quoteDecimals:
   } catch {
     return "0";
   }
+}
+
+export async function upsertOfficialPool(
+  store: Store,
+  row: {
+    poolId: string;
+    token: string;
+    quote: string;
+    factory?: string;
+    mode?: number;
+    hook?: string;
+    block: number;
+    tx: string;
+    ts: number;
+  },
+) {
+  if (!row.poolId) return;
+  await store.run(
+    `INSERT INTO official_pools(pool_id,token,quote,factory,mode,hook,block,tx,ts)
+     VALUES(?,?,?,?,?,?,?,?,?)
+     ON CONFLICT(pool_id) DO UPDATE SET
+       token=COALESCE(NULLIF(excluded.token,''),official_pools.token),
+       quote=COALESCE(NULLIF(excluded.quote,''),official_pools.quote),
+       factory=COALESCE(NULLIF(excluded.factory,''),official_pools.factory),
+       mode=excluded.mode,
+       hook=COALESCE(NULLIF(excluded.hook,''),official_pools.hook),
+       block=excluded.block,
+       tx=excluded.tx,
+       ts=excluded.ts`,
+    row.poolId,
+    row.token.toLowerCase(),
+    row.quote.toLowerCase(),
+    (row.factory ?? "").toLowerCase(),
+    row.mode ?? 0,
+    row.hook ?? "",
+    row.block,
+    row.tx,
+    row.ts,
+  );
+}
+
+async function rollOneMarket(store: Store, token: string, nowTs: number) {
+  const since = nowTs - 86_400;
+  const agg = await store.get<{ n: number; vol: string; last: string }>(
+    `SELECT COUNT(*) as n, COALESCE(SUM(CAST(notional_quote AS INTEGER)),0) as vol,
+            MAX(price_quote_x18) as last
+     FROM trades WHERE token=? AND ts>=?`,
+    token,
+    since,
+  );
+  const mkt = await store.get<{ price_quote_x18: string; quote: string }>(
+    "SELECT price_quote_x18, quote FROM markets WHERE token=?",
+    token,
+  );
+  const tok = await store.get<{ supply: string }>("SELECT supply FROM tokens WHERE address=?", token);
+  const price = mkt?.price_quote_x18 && mkt.price_quote_x18 !== "0" ? mkt.price_quote_x18 : agg?.last ?? "0";
+  let fdv = "0";
+  try {
+    const supply = BigInt(tok?.supply || "0");
+    const px = BigInt(price || "0");
+    fdv = supply > 0n && px > 0n ? ((supply * px) / 10n ** 18n).toString() : "0";
+  } catch {
+    fdv = "0";
+  }
+  await store.run(
+    `UPDATE markets SET volume_24h_quote=?, trades_24h=?, fdv_usd6=?, price_usd6=?, updated_ts=? WHERE token=?`,
+    String(agg?.vol ?? "0"),
+    Number(agg?.n ?? 0),
+    fdv,
+    price,
+    nowTs,
+    token,
+  );
+}
+
+export async function rollMarketAggregations(store: Store) {
+  const now = Math.floor(Date.now() / 1000);
+  const tokens = await store.all<{ token: string }>("SELECT token FROM markets");
+  for (const t of tokens) await rollOneMarket(store, t.token, now);
 }
 
 export async function setState(store: Store, k: string, v: string) {

@@ -63,9 +63,17 @@ export default function TokenPage() {
             <Badge className="border-amber-300/30 bg-amber-300/10 text-amber-100">Batch Fair</Badge>
           ) : null}
         </div>
-        <Link href={`/trade`} className="text-[11px] uppercase tracking-wider text-zinc-500 hover:text-cyan-200">
-          All markets
-        </Link>
+        <div className="flex flex-wrap gap-3 text-[11px] uppercase tracking-wider">
+          <Link href="/docs/fees" className="text-zinc-500 hover:text-cyan-200">
+            Fees
+          </Link>
+          <Link href="/docs/curve" className="text-zinc-500 hover:text-cyan-200">
+            Curve
+          </Link>
+          <Link href="/trade" className="text-zinc-500 hover:text-cyan-200">
+            All markets
+          </Link>
+        </div>
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.35fr_0.85fr]">
@@ -102,8 +110,8 @@ export default function TokenPage() {
           {(tape ?? []).length === 0 ? (
             <p className="mt-2 text-[12px] text-zinc-500">No prints yet. Chart uses candles, not this tape.</p>
           ) : (
-            <ul className="mt-2 max-h-28 space-y-1 overflow-auto text-[12px] font-mono text-zinc-300">
-              {[...(tape ?? [])].slice(-8).reverse().map((s, i) => (
+            <ul className="mt-2 max-h-40 space-y-1 overflow-auto text-[12px] font-mono text-zinc-300">
+              {[...(tape ?? [])].slice(-24).reverse().map((s, i) => (
                 <li key={`${s.t}-${i}`}>
                   {s.source ?? "trade"} · {formatUnitsSafe(BigInt(s.notional || "0"), t.quoteDecimals ?? 18, 3)}{" "}
                   {t.quoteSymbol}

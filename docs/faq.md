@@ -14,4 +14,8 @@
 
 **Where is Ops?** Off the public nav. `/ops` requires `OPS_TOKEN`.
 
-**What is the protocol version vs Factory V1?** Protocol **0.1.0** is the overall REACTOR release (`docs/version.json`). Factory **V1** is an immutable on-chain constant and stays V1 forever. See [versioning](/docs/versioning).
+**Is CHALLENGE the same as ALLOW?** No. Complete Turnstile. The signer will not sign a challenge.
+
+**Can I call the signer directly?** No. Direct calls without an admission receipt fail.
+
+**What is the protocol version vs Factory V1?** Protocol **0.2.0** is the overall REACTOR release (`docs/version.json`). Factory **V1** is an immutable on-chain constant and stays V1 forever. See [versioning](/docs/versioning).

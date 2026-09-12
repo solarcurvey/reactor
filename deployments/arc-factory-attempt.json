@@ -1,0 +1,15 @@
+{
+  "at": "2026-09-12T00:44:11.009Z",
+  "rpc": "https://rpc.testnet.arc.io",
+  "chainWanted": 5042002,
+  "eip170": 24576,
+  "claimed": false,
+  "chainId": 5042002,
+  "chainHex": "0x4cef52",
+  "creationBytes": 25409,
+  "runtimeBytes": 23280,
+  "runtimeOverEip170": false,
+  "head": "0x3acb639",
+  "estimateError": "execution reverted",
+  "error": "no ARC_TESTNET_PK — eth_sendRawTransaction not attempted. RPC live + estimate recorded. Not claimed."
+}

@@ -1,18 +1,25 @@
 # For creators
 
-You pick **image, name, ticker, description, quote, Standard vs Rewards**, and an optional Dev Buy. Protocol owns supply (1B / 18), curve, FDV, and fees.
+> Protocol **0.2.0**. You pick image, name, ticker, description, quote, Standard vs Rewards, optional Dev Buy (5% token-out). Protocol owns 1B / 18 supply, curve, FDV, and 3.5% fees.
 
 ## Ticker
 
 Canonical: uppercase `A–Z0–9`, max 10. No Unicode. Reserved: CORE, REACTOR, USDC, ZEC, WBTC, EURC.
 
-A successful launch locks that ticker **globally for 24 hours**. Failed or expired authorization does **not** squat. Permanent uniqueness is Guardian judgment, not an oracle. See [Ticker Registry](/docs/tickers).
+A successful launch locks that ticker **globally for 24 hours**. Failed or expired authorization does **not** squat. Permanent lock is Guardian judgment on a **REACTOR-native** token from an authorized factory with a matching ticker. Reserved names use a separate `reserveTicker`. Both are irreversible. See [Ticker Registry](/docs/tickers).
 
 ## Authorization
 
-Every launch — **including USDC** — needs a short-lived EIP-712 `LaunchAuthorization` from the isolated Launch Signer. The digest binds you, the quote, the active factory, and the ticker.
+Public path: `POST /launch/authorize`.
 
-Admission may ALLOW, CHALLENGE (Turnstile), or DENY. No KYC. A refundable bond is **not collected** (documented as future).
+1. Admission (ticker / factory / quote / metadata / Turnstile / rates / funding-cluster).
+2. ALLOW → HMAC receipt. CHALLENGE ≠ ALLOW — complete Turnstile. DENY stops.
+3. Isolated signer (loopback + receipt). Not a public signer.
+4. EIP-712 binds creator, factory, Factory **V1**, ticker, **name**, **metadata hash**, quote, mode, `virtualQuote0`, curve hash, expiry, chain, `authId`.
+
+Identity is frozen at launch. Creators cannot edit name/ticker/metadata after `metaFrozen`.
+
+No KYC. A refundable bond is **not collected** (FUTURE).
 
 ## Instant vs Batch Fair
 

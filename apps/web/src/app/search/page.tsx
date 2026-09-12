@@ -1,0 +1,80 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { useLaunchTokens } from "@/lib/hooks";
+import { formatUnitsSafe } from "@/lib/utils";
+
+export default function SearchPage() {
+  const { data, isLoading, isError } = useLaunchTokens();
+  const [q, setQ] = useState("");
+  const [stage, setStage] = useState<"all" | "bonding" | "v4">("all");
+
+  const items = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return (data ?? []).filter((t) => {
+      if (stage === "bonding" && !t.bonding) return false;
+      if (stage === "v4" && !t.marketLive) return false;
+      if (!needle) return true;
+      return (
+        t.name.toLowerCase().includes(needle) ||
+        t.symbol.toLowerCase().includes(needle) ||
+        t.token.toLowerCase().includes(needle) ||
+        (t.quoteSymbol ?? "").toLowerCase().includes(needle) ||
+        (t.ticker ?? "").toLowerCase().includes(needle)
+      );
+    });
+  }, [data, q, stage]);
+
+  return (
+    <div className="mx-auto max-w-3xl">
+      <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/80">Search</p>
+      <h1 className="mt-1 text-2xl font-semibold">Find a market</h1>
+      <p className="mt-1 text-[13px] text-zinc-400">
+        SQL-backed indexer search by name, ticker, quote, or address.{" "}
+        <Link href="/docs/traders" className="text-cyan-200 underline">
+          Trader docs
+        </Link>
+      </p>
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search ticker, name, quote, 0x…"
+        className="mt-4 h-11 w-full rounded-2xl border border-white/10 bg-black/30 px-4 text-sm outline-none"
+        autoFocus
+      />
+      <div className="mt-3 flex gap-2">
+        {(["all", "bonding", "v4"] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setStage(s)}
+            className={`rounded-full px-3 py-1 text-[12px] ${stage === s ? "bg-white text-zinc-950" : "bg-white/5 text-zinc-400"}`}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+      {isLoading && <p className="mt-6 text-sm text-zinc-500">Loading markets…</p>}
+      {isError && <p className="mt-6 text-sm text-red-300">Indexer unreachable.</p>}
+      {!isLoading && items.length === 0 && <p className="mt-6 text-sm text-zinc-500">No matches.</p>}
+      <ul className="mt-4 divide-y divide-white/8 rounded-2xl border border-white/8">
+        {items.map((t) => (
+          <li key={t.token}>
+            <Link href={`/token/${t.token}`} className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.03]">
+              <span>
+                <span className="font-medium">{t.name}</span>
+                <span className="ml-2 font-mono text-[12px] text-zinc-500">${t.symbol}</span>
+              </span>
+              <span className="text-[11px] uppercase tracking-wider text-cyan-100">
+                {t.rewardsMode === false ? "BUY+BURN" : `EARNS ${t.quoteSymbol}`}
+                {t.priceQuoteX18 && t.priceQuoteX18 !== "0"
+                  ? ` · ${formatUnitsSafe(BigInt(t.priceQuoteX18), 18, 6)}`
+                  : ""}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

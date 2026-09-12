@@ -15,7 +15,8 @@ export function OhlcvChart({ candles }: { candles: Candle[] }) {
       const lc = await import("lightweight-charts");
       if (disposed || !ref.current) return;
       chart = lc.createChart(ref.current, {
-        height: 260,
+        height: 320,
+        autoSize: true,
         layout: { background: { color: "transparent" }, textColor: "#a1a1aa" },
         grid: { vertLines: { color: "rgba(255,255,255,0.04)" }, horzLines: { color: "rgba(255,255,255,0.04)" } },
         rightPriceScale: { borderVisible: false },
@@ -45,5 +46,5 @@ export function OhlcvChart({ candles }: { candles: Candle[] }) {
       chart?.remove();
     };
   }, [candles]);
-  return <div ref={ref} className="h-64 w-full" />;
+  return <div ref={ref} className="h-72 w-full sm:h-80" />;
 }

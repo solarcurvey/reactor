@@ -36,6 +36,7 @@ contract SafeGenesisBatch is Script {
         address usdc = vm.envAddress("USDC");
         address hook = vm.envAddress("HOOK");
         address factory = vm.envAddress("FACTORY");
+        address launchModule = vm.envAddress("LAUNCH_MODULE");
         address vault = vm.envAddress("VAULT");
         address flywheel = vm.envAddress("FLYWHEEL");
         address buyback = vm.envAddress("BUYBACK");
@@ -113,11 +114,22 @@ contract SafeGenesisBatch is Script {
         _log("bindBuyback", hook, abi.encodeWithSelector(ReactorHook.bindBuyback.selector, buyback));
         _log("bindFlywheel", hook, abi.encodeWithSelector(ReactorHook.bindFlywheel.selector, flywheel));
         _log("hook.bindFactory", hook, abi.encodeWithSelector(ReactorHook.bindFactory.selector, factory));
+        _log("hook.bindLaunchModule", hook, abi.encodeWithSelector(ReactorHook.bindLaunchModule.selector, launchModule));
         _log("vault.bindFactory", vault, abi.encodeWithSelector(ReactorLiquidityVault.bindFactory.selector, factory));
+        _log(
+            "vault.bindLaunchModule",
+            vault,
+            abi.encodeWithSelector(ReactorLiquidityVault.bindLaunchModule.selector, launchModule)
+        );
         _log("registry.bindFactory", registry, abi.encodeWithSelector(QuoteAssetRegistry.bindFactory.selector, factory));
         _log("flywheel.bind", flywheel, abi.encodeWithSelector(FlywheelVault.bind.selector, factory));
         _log("buyback.bindFactory", buyback, abi.encodeWithSelector(BuybackVault.bindFactory.selector, factory));
         _log("factory.bindCurve", factory, abi.encodeWithSelector(ReactorFactory.bindCurve.selector, curve, selfBurn));
+        _log(
+            "factory.bindLaunchModule",
+            factory,
+            abi.encodeWithSelector(ReactorFactory.bindLaunchModule.selector, launchModule)
+        );
         _log("hook.bindCurve", hook, abi.encodeWithSelector(ReactorHook.bindCurve.selector, curve));
         _log("hook.bindSelfBurn", hook, abi.encodeWithSelector(ReactorHook.bindSelfBurn.selector, selfBurn));
         _log("bindExecutor", buyback, abi.encodeWithSelector(BuybackVault.bindExecutor.selector, coreBuyback));

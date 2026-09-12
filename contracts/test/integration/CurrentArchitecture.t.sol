@@ -54,7 +54,7 @@ contract CurrentArchitectureTest is Base {
             _launchAuthFor(alice, "CAT", zcat, vq0, LaunchAuthorization.INSTANT_CURVE_V1);
 
         vm.prank(alice);
-        (address cat,) = factory.launchStandardPriced(
+        (address cat,) = factory.launchStandard(
             ReactorFactory.InstantParams({
                 name: "CAT",
                 symbol: "CAT",

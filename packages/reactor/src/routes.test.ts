@@ -1,4 +1,4 @@
-import { planRoute, RouteReject, MAX_LEGS, applyMinOuts, approvedEdges, requireProvenPool, scoreRoute, pickBest } from "./routes.ts";
+import { planRoute, planCandidates, RouteReject, MAX_LEGS, applyMinOuts, approvedEdges, requireProvenPool, scoreRoute, pickBest, VENUE } from "./routes.ts";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -92,5 +92,10 @@ assert(MAX_LEGS === 3, "max 3");
   const a = scoreRoute(r, { amountOut: 100n, impactBps: 10, gasEstimate: 200_000, reliabilityBps: 9_000 });
   const b = scoreRoute(r, { amountOut: 80n, impactBps: 80, gasEstimate: 400_000, reliabilityBps: 5_000 });
   assert(pickBest([a, b]).amountOut === 100n, "best out wins");
+}
+{
+  const c = planCandidates(ZCAT, USDC, edges, quotes, { protocol: true, adapters });
+  assert(c.length >= 1 && c.every((r) => r.hops.length <= MAX_LEGS), "candidates ≤3 hops");
+  assert(VENUE.OFFICIAL_REACTOR_V4 === "OFFICIAL_REACTOR_V4", "official venue name");
 }
 console.log("routes tests ok");

@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {Base, IERC20Like} from "../Base.sol";
 import {ReactorFactory} from "../../src/ReactorFactory.sol";
+import {InstantLaunchModule} from "../../src/InstantLaunchModule.sol";
 import {ReactorToken} from "../../src/ReactorToken.sol";
 import {ReactorHook} from "../../src/ReactorHook.sol";
 import {ReactorRouter} from "../../src/ReactorRouter.sol";
@@ -338,7 +339,7 @@ contract SecurityTest is Base {
     }
 
     function test_fairAuctionBpsLockedAndPriceContinuity() public {
-        vm.expectRevert(ReactorFactory.AuctionBpsLocked.selector);
+        vm.expectRevert(InstantLaunchModule.AuctionBpsLocked.selector);
         _fair(
             ReactorFactory.FairParams({
                 name: "Bad",
