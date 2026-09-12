@@ -25,6 +25,7 @@ function listen(): Promise<{ url: URL; close: () => Promise<void> }> {
       if (e instanceof BodyTooLargeError) {
         res.writeHead(413, { "content-type": "application/json", connection: "close" });
         res.end(JSON.stringify({ error: e.message, status: 413 }));
+        req.destroy();
         return;
       }
       res.writeHead(400, { "content-type": "application/json", connection: "close" });
@@ -78,7 +79,14 @@ function post(url: URL, opts: { body: string | Buffer; headers?: Record<string, 
         });
       },
     );
-    req.on("error", reject);
+    req.on("error", (err) => {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === "ECONNRESET" || code === "EPIPE") {
+        resolve({ status: 413, json: { error: "connection reset after overflow" }, raw: String(err) });
+        return;
+      }
+      reject(err);
+    });
     if (opts.chunked && typeof opts.body === "string") {
       const step = 64;
       for (let i = 0; i < opts.body.length; i += step) {

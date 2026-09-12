@@ -7,7 +7,7 @@ import { rpcFromEnv } from "./rpc.ts";
 import { SseHub } from "./sse.ts";
 import { ObjectStore, publicMediaUrl } from "./media.ts";
 import { RateLimit, SECURITY_HEADERS, logLine, requestId } from "./obs.ts";
-import { BodyTooLargeError, readJsonBody } from "./read-json-body.ts";
+import { abortIncoming, BodyTooLargeError, readJsonBody } from "./read-json-body.ts";
 import { getState, rollMarketAggregations } from "./ingest.ts";
 import { loadValuationService } from "./valuation-store.ts";
 import { populateExternalPriceMarks } from "./price-marks.ts";
@@ -99,6 +99,7 @@ async function readPublicJson(
   } catch (e) {
     if (e instanceof BodyTooLargeError) {
       json(res, 413, { error: e.message, request_id: rid }, rid);
+      abortIncoming(req);
       return;
     }
     json(res, 400, { error: "invalid json", request_id: rid }, rid);

@@ -38,8 +38,9 @@ export function declaredContentLength(headers: IncomingMessage["headers"]): numb
   return first;
 }
 
-function abortIncoming(req: IncomingMessage) {
+export function abortIncoming(req: IncomingMessage) {
   try {
+    req.pause();
     req.destroy();
   } catch {
     /* already closed */
@@ -52,7 +53,6 @@ export async function readLimitedBuffer(
 ): Promise<Buffer> {
   const declared = declaredContentLength(req.headers);
   if (declared != null && declared > limit) {
-    abortIncoming(req);
     throw new BodyTooLargeError(limit);
   }
 
@@ -63,7 +63,7 @@ export async function readLimitedBuffer(
       const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
       received += buf.length;
       if (received > limit) {
-        abortIncoming(req);
+        req.pause();
         throw new BodyTooLargeError(limit);
       }
       chunks.push(buf);

@@ -5,7 +5,7 @@
 import { createServer } from "node:http";
 import { privateKeyToAccount } from "viem/accounts";
 import { SECURITY_HEADERS, logLine, requestId, RateLimit } from "./obs.ts";
-import { BodyTooLargeError, readJsonBody } from "./read-json-body.ts";
+import { abortIncoming, BodyTooLargeError, readJsonBody } from "./read-json-body.ts";
 import {
   openSignerStore,
   resolveSignerKey,
@@ -73,6 +73,7 @@ const server = createServer(async (req, res) => {
       res.statusCode = 413;
       res.setHeader("Connection", "close");
       res.end(JSON.stringify({ error: e.message, request_id: rid }));
+      abortIncoming(req);
       return;
     }
     const msg = e instanceof Error ? e.message : "sign failed";
