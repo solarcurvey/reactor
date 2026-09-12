@@ -6,7 +6,7 @@
 
 ## Amendment — burn-adjusted USD FDV (issue #8)
 
-Rebased onto `main` after #27 merged (`b4bf25d`). `GET /markets` `fdv_usd6` uses `tokens.current_supply` (**schema v9**, after #27 v7 log identity + v8 journal/`event_kind`). Column **tracks** remaining `totalSupply()` — not TokenCreated `tokens.supply`, not a protocol-event sum, not claimed ≡. Public `burn()` is `Transfer` to zero and/or `Burned` via canonical `(chain_id, tx, log_index, event_kind)`. Protocol SelfBurn/Top10/COREBurned are attribution only. Bounded `totalSupply()` reconcile runs every tick including at head (corrects missed / same-tx Transfer+Burned). Architecture and tokenomics unchanged. No mainnet. Leave #8 open.
+Rebased onto `main` after #27 merged (`b4bf25d`). `GET /markets` `fdv_usd6` uses `tokens.current_supply` (**schema v9**, next free after #27 v7 log identity + v8 journal/`event_kind`). Column **tracks** remaining `totalSupply()` — not TokenCreated `tokens.supply`, not a protocol-event sum, not claimed ≡. Public `burn()` is `Transfer` to zero and/or `Burned` via canonical `(chain_id, tx, log_index, event_kind)`. Protocol SelfBurn/Top10/COREBurned are attribution only. Bounded `totalSupply()` reconcile runs every tick including at head (corrects missed / same-tx Transfer+Burned). Architecture and tokenomics unchanged. No mainnet. Leave #8 open.
 
 ## This HEAD
 
