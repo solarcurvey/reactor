@@ -106,6 +106,7 @@ export async function withLeaderLock<T>(
   if (!lease) return undefined;
   let renewTimer: ReturnType<typeof setInterval> | undefined;
   try {
+    await renewLeaderLease(store, lease);
     renewTimer = setInterval(() => {
       void renewLeaderLease(store, lease);
     }, renewEveryMs);

@@ -42,9 +42,9 @@ const store = await openStore({ sqlitePath: join(dir, "lease.sqlite") });
 }
 
 {
-  const stale = await acquireLeaderLease(store, "stale", 80);
+  const stale = await acquireLeaderLease(store, "stale", 120);
   assert(stale, "short lease");
-  await sleep(120);
+  await sleep(200);
   assert(!(await stillLeader(store, stale)), "expired lease is not live");
   assert(!(await renewLeaderLease(store, stale)), "renew must not resurrect an expired lease");
   const fresh = await acquireLeaderLease(store, "fresh", 5_000);
@@ -70,20 +70,31 @@ const store = await openStore({ sqlitePath: join(dir, "lease.sqlite") });
 }
 
 {
+  const lease = await acquireLeaderLease(store, "extend", 180);
+  assert(lease, "lease to extend");
+  await sleep(90);
+  assert(await renewLeaderLease(store, lease), "mid-life renew");
+  await sleep(120);
+  assert(await stillLeader(store, lease), "renew extends past the original TTL");
+  assert(!(await acquireLeaderLease(store, "thief", 180)), "cannot steal a renewed lease");
+  await store.releaseLease(KEEPER_LOCK_NAME, lease.owner, lease.fence);
+}
+
+{
   let followerWon = false;
   const held = await withLeaderLock(
     store,
     "long-tick",
     async (lease) => {
       const started = Date.now();
-      while (Date.now() - started < 280) {
-        const steal = await acquireLeaderLease(store, "overlap", 80);
+      while (Date.now() - started < 900) {
+        const steal = await acquireLeaderLease(store, "overlap", 400);
         if (steal) {
           followerWon = true;
           await store.releaseLease(KEEPER_LOCK_NAME, steal.owner, steal.fence);
           break;
         }
-        await sleep(25);
+        await sleep(50);
       }
       assert(await stillLeader(store, lease), "renewed leader still holds after work > TTL");
       let broadcasts = 0;
@@ -93,7 +104,7 @@ const store = await openStore({ sqlitePath: join(dir, "lease.sqlite") });
       assert(broadcasts === 1, "live long-tick leader may still send");
       return "done";
     },
-    { ttlMs: 80, renewEveryMs: 20 },
+    { ttlMs: 400, renewEveryMs: 80 },
   );
   assert(held === "done", "withLeaderLock returns fn result");
   assert(!followerWon, "renewal prevents overlapping broadcasters during a long tick");
