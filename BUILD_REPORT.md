@@ -11,6 +11,7 @@
 | Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
 | Intent | Persist official-list version/hash/retrieved/last-success; 7-day SLA fail-closed; startup + scheduled refresh keeps last-known-good; health + `/ops` name dataset + policy versions; minimized audit; alerts; operator runbook. HTTP identity is #62 recovered EIP-191 only. Fixture refresh LOCAL/test-only. |
+| Rebase | Onto `origin/main` `300b7e5` (#73 after #77). `.github/workflows/ci.yml` taken from main (prefer-main). Docs-only conflicts vs #73 CI-cost notes. Sanctions AC code replayed cleanly. |
 | Indexer / lib | `sanctions-ops.test.ts` + `sanctions-audit.test.ts` + indexer `sanctions-ops.test.ts` + `pnpm docs:check` |
 | Foundry | Not re-run this pass (ops/docs only) |
 | Docs | `/docs/sanctions-ops`, runbook, incident-response, trust, API, builders, TESTING row 61 |
