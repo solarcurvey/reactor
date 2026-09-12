@@ -6,7 +6,7 @@ export default defineConfig({
   webServer: {
     command: "NEXT_PUBLIC_REVIEW_FIXTURES=1 pnpm dev",
     url: "http://127.0.0.1:43147",
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: { ...process.env, NEXT_PUBLIC_REVIEW_FIXTURES: "1" },
   },

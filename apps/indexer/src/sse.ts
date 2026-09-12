@@ -5,12 +5,40 @@ export type SseEvent = {
   data: unknown;
 };
 
+export type SseHello = {
+  ok: true;
+  last: number;
+  /** Last published event id at attach time. Live clients toast only ids > head. */
+  head: number;
+};
+
+export function streamHello(last: number, head: number): SseHello {
+  return { ok: true, last, head };
+}
+
+/** Resume cursor from `?after=` and/or `Last-Event-ID`. */
+export function streamResumeAfter(urlPath: string, lastEventIdHeader?: string): number {
+  let q = 0;
+  try {
+    q = Number(new URL(urlPath || "/stream", "http://127.0.0.1").searchParams.get("after") ?? 0);
+  } catch {
+    q = 0;
+  }
+  const h = Number(lastEventIdHeader ?? 0);
+  const last = Math.max(Number.isFinite(q) ? q : 0, Number.isFinite(h) ? h : 0);
+  return last > 0 ? last : 0;
+}
+
 type Client = { res: ServerResponse; lastId: number };
 
 export class SseHub {
   private clients = new Set<Client>();
   private buf: Array<{ id: number; ev: SseEvent }> = [];
   private nextId = 1;
+
+  get headId() {
+    return this.nextId - 1;
+  }
 
   publish(ev: SseEvent) {
     const id = this.nextId++;
@@ -34,10 +62,10 @@ export class SseHub {
       "Access-Control-Allow-Origin": "*",
       "X-Accel-Buffering": "no",
     });
-    const last = Number(req.headers["last-event-id"] ?? 0);
+    const last = streamResumeAfter(req.url ?? "/stream", String(req.headers["last-event-id"] ?? ""));
     const client: Client = { res, lastId: last };
     this.clients.add(client);
-    res.write(`event: hello\ndata: ${JSON.stringify({ ok: true, last })}\n\n`);
+    res.write(`event: hello\ndata: ${JSON.stringify(streamHello(last, this.headId))}\n\n`);
     for (const row of this.buf) {
       if (row.id > last) {
         res.write(`id: ${row.id}\nevent: ${row.ev.type}\ndata: ${JSON.stringify(row.ev.data)}\n\n`);

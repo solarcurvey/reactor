@@ -68,13 +68,16 @@ export class ReactorClient {
 
   stream(onEvent: (ev: { type: string; data: unknown }) => void): EventSource {
     const es = new EventSource(`${this.opts.baseUrl}/stream`);
-    es.onmessage = (m) => {
-      try {
-        onEvent(JSON.parse(m.data) as { type: string; data: unknown });
-      } catch {
-        /* ignore */
-      }
-    };
+    const types = ["trade", "launch", "bonding", "graduation", "rewards", "burn", "top10", "core", "hello"] as const;
+    for (const type of types) {
+      es.addEventListener(type, (m) => {
+        try {
+          onEvent({ type, data: JSON.parse(String((m as MessageEvent).data)) });
+        } catch {
+          /* ignore */
+        }
+      });
+    }
     return es;
   }
 }
