@@ -15,6 +15,8 @@ import {
   publicPolicyView,
   publicViewHasSensitiveKeys,
   restrictedHref,
+  isWalletProofPendingReason,
+  launchpadUxFromView,
   sanitizePublicPolicyView,
   unavailableStubView,
   writeCtaLabel,
@@ -118,6 +120,17 @@ const ALL_REASONS = Object.keys(USER_POLICY_MESSAGES) as OperatorPolicyReason[];
   assert(!unavailableStubView().writesAllowed, "PROD stub fail-closed");
   assert(unavailableStubView().source === "stub", "stub source");
   assert(OPERATOR_POLICY_ID === "reactor-operator-policy-v1", "policy id");
+}
+
+{
+  assert(isWalletProofPendingReason("UNAVAILABLE_WALLET_MISSING"), "wallet missing is pending proof");
+  assert(isWalletProofPendingReason("UNAVAILABLE_WALLET_PROOF"), "bad proof is pending proof");
+  assert(!isWalletProofPendingReason("UNAVAILABLE_POLICY_REQUIRED"), "generic unavailable is not pending");
+  const pending = publicPolicyView({ reason: "UNAVAILABLE_WALLET_MISSING", source: "indexer" });
+  const ux = launchpadUxFromView(pending);
+  assert(ux.kind === "allow" && ux.writesAllowed && ux.error === "", "pending proof is Launch Instant UX");
+  const geo = launchpadUxFromView(publicPolicyView({ reason: "DENY_GEO_BLOCKED", source: "indexer" }));
+  assert(geo.kind === "geo" && !geo.writesAllowed, "geo deny stays restricted");
 }
 
 {

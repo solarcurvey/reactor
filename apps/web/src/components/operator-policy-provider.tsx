@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useAccount, useSignMessage } from "wagmi";
 import {
   isOperatorPolicyReason,
+  launchpadUxFromView,
   parseWritePolicyError,
   type PublicOperatorPolicyView,
   type RestrictedUxKind,
@@ -44,12 +45,13 @@ function viewToUx(
   view: PublicOperatorPolicyView,
   extras: Pick<OperatorPolicyUx, "applyWriteError" | "refresh" | "ensureProof">,
 ): OperatorPolicyUx {
+  const ux = launchpadUxFromView(view);
   return {
-    kind: view.kind,
-    decision: view.decision,
+    kind: ux.kind,
+    decision: ux.decision,
     reason: view.reason,
-    userMessage: view.error,
-    writesAllowed: view.writesAllowed,
+    userMessage: ux.error,
+    writesAllowed: ux.writesAllowed,
     disclaimer: view.disclaimer,
     loading: false,
     ...extras,

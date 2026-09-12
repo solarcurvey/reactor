@@ -157,6 +157,29 @@ export function writesAllowedForReason(reason: OperatorPolicyReason): boolean {
   return reason === "ALLOW";
 }
 
+/** #68 status without a recovered proof. Not a restricted-account/geo denial. */
+export function isWalletProofPendingReason(reason: OperatorPolicyReason): boolean {
+  return reason === "UNAVAILABLE_WALLET_MISSING" || reason === "UNAVAILABLE_WALLET_PROOF";
+}
+
+/**
+ * Launchpad display for a public status view. Pending wallet proof is a
+ * signing prompt (`ensureProof` + write gate), not a restricted banner.
+ */
+export function launchpadUxFromView(
+  view: PublicOperatorPolicyView,
+): Pick<PublicOperatorPolicyView, "kind" | "decision" | "writesAllowed" | "error"> {
+  if (isWalletProofPendingReason(view.reason)) {
+    return { kind: "allow", decision: "allow", writesAllowed: true, error: "" };
+  }
+  return {
+    kind: view.kind,
+    decision: view.decision,
+    writesAllowed: view.writesAllowed,
+    error: view.error,
+  };
+}
+
 export function isOperatorPolicyReason(value: unknown): value is OperatorPolicyReason {
   return typeof value === "string" && value in USER_POLICY_MESSAGES;
 }

@@ -1,15 +1,14 @@
 /**
  * #65 write-gate bind for the #62 / PR #68 recovered-wallet model.
  *
- * Public reads: GET /operator-policy/challenge (official #68) and coordinated
- * GET /operator-policy/status (same evaluateOperatorPolicy as write gates).
- * Stock #68 has challenge + write gates only; this status GET is the #65 UX
- * companion #68 should list as a public read when it merges.
- * Subject is the recovered EIP-191 signer of a server challenge — never
- * x-reactor-wallet / body.wallet.
+ * Official #68 public reads: GET /operator-policy/challenge (signing helper)
+ * and GET /operator-policy/status (decision; same evaluateOperatorPolicy as
+ * write gates). Subject is the recovered EIP-191 signer of a server
+ * challenge — never x-reactor-wallet / body.wallet. No proof → geo DENY
+ * wins, else UNAVAILABLE_WALLET_MISSING (not ALLOW).
  *
  * If official `operator-policy.ts` from PR #68 is present, challenge/recover/gate
- * delegate to it. Otherwise this module is the compatible bind.
+ * /status delegate to it. Otherwise this module is the compatible bind.
  */
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -50,6 +49,10 @@ type OfficialBind = {
     env?: NodeJS.ProcessEnv;
     surface: string;
   }) => Promise<PolicyGateAllow | PolicyGateDeny>;
+  readOperatorPolicyStatus?: (input: {
+    headers: HeaderMap;
+    env?: NodeJS.ProcessEnv;
+  }) => Promise<{ status: 200 | 403 | 503; body: Record<string, unknown> }>;
   fixtureScreenAddress?: (address: string, env?: NodeJS.ProcessEnv) => AddressScreenResult;
   fixtureEvaluateGeo?: (headers: HeaderMap, env?: NodeJS.ProcessEnv) => GeoPolicyResult;
 };
@@ -272,25 +275,34 @@ export async function gateProtectedWrite(input: {
 }
 
 /**
- * Minimized public status. Proof is optional so geo denial can disable CTAs
- * before a wallet prompt. Account screening runs only on a recovered signer.
+ * Official #68 `GET /operator-policy/status` contract (be50ecb):
+ * same evaluate as write gates. No proof → geo DENY wins, else
+ * UNAVAILABLE_WALLET_MISSING (not ALLOW). Claimed wallet ignored.
  */
 export async function evaluateOperatorPolicyStatus(input: {
   headers: HeaderMap;
   env?: NodeJS.ProcessEnv;
-  requireWallet?: boolean;
 }): Promise<OperatorPolicyDecision> {
   await tryBindOfficialOperatorPolicy();
   const env = input.env ?? process.env;
-  const requireWallet = Boolean(input.requireWallet);
   const recovered = await recoverSubjectWallet({ headers: input.headers, env });
   const addressScreen: AddressScreenResult = recovered.address
     ? fixtureScreenAddress(recovered.address, env)
-    : requireWallet
-      ? { decision: "unavailable", reason: recovered.reason ?? "wallet_missing", freshness: "missing" }
-      : { decision: "clear", freshness: "current" };
+    : { decision: "unavailable", reason: recovered.reason ?? "wallet_missing", freshness: "missing" };
   const geo = fixtureEvaluateGeo(input.headers, env);
   return evaluateOperatorPolicy({ addressScreen, geo });
+}
+
+export async function readOperatorPolicyStatus(input: {
+  headers: HeaderMap;
+  env?: NodeJS.ProcessEnv;
+}): Promise<{ status: 200 | 403 | 503; body: Record<string, unknown> }> {
+  await tryBindOfficialOperatorPolicy();
+  if (official?.readOperatorPolicyStatus) {
+    return official.readOperatorPolicyStatus(input);
+  }
+  const decision = await evaluateOperatorPolicyStatus(input);
+  return { status: decision.httpStatus, body: minimizedStatusBody(decision) };
 }
 
 export function minimizedStatusBody(decision: OperatorPolicyDecision): Record<string, unknown> {

@@ -39,13 +39,27 @@ async function main() {
   setFixtureBlockedWallets([BLOCKED.address]);
 
   {
-    const geoOnly = await evaluateOperatorPolicyStatus({ headers: {}, env: LOCAL });
-    assert(geoOnly.reason === "ALLOW", `LOCAL geo-only should allow, got ${geoOnly.reason}`);
+    const noProof = await evaluateOperatorPolicyStatus({ headers: {}, env: LOCAL });
+    assert(
+      noProof.reason === "UNAVAILABLE_WALLET_MISSING",
+      `no-proof status is wallet-missing, got ${noProof.reason}`,
+    );
     const claimedBlocked = await evaluateOperatorPolicyStatus({
       headers: { "x-reactor-wallet": BLOCKED.address, "x-sanctions-clear": "1" },
       env: LOCAL,
     });
-    assert(claimedBlocked.reason === "ALLOW", "claimed blocked wallet is not a subject");
+    assert(
+      claimedBlocked.reason === "UNAVAILABLE_WALLET_MISSING",
+      "claimed blocked wallet is not a subject",
+    );
+  }
+
+  {
+    const geoDeny = await evaluateOperatorPolicyStatus({
+      headers: { "x-reactor-geo-fixture": "country=FX", "x-reactor-wallet": BLOCKED.address },
+      env: LOCAL,
+    });
+    assert(geoDeny.reason === "DENY_GEO_BLOCKED", `geo DENY wins without proof, got ${geoDeny.reason}`);
   }
 
   {
@@ -165,10 +179,19 @@ async function main() {
       const challengeOk = await fetch(`${server.url}/operator-policy/challenge`);
       const issued = (await challengeOk.json()) as { token?: string; message?: string };
       assert(challengeOk.ok && issued.token && issued.message, "official #62 challenge path");
-      const status = await fetch(`${server.url}/operator-policy/status`);
+      const status = await fetch(`${server.url}/operator-policy/status`, {
+        headers: { "x-reactor-wallet": CLEAR.address, "x-sanctions-clear": "1" },
+      });
       const statusBody = (await status.json()) as { reason?: string; wallet?: string; ip?: string };
-      assert(status.ok && statusBody.reason === "ALLOW", "coordinated status is geo-only allow without proof");
+      assert(status.status === 403, `no-proof status HTTP ${status.status}`);
+      assert(statusBody.reason === "UNAVAILABLE_WALLET_MISSING", String(statusBody.reason));
       assert(!statusBody.ip && !statusBody.wallet, "status minimized");
+
+      const geoStatus = await fetch(`${server.url}/operator-policy/status`, {
+        headers: { "x-reactor-geo-fixture": "country=FX" },
+      });
+      const geoBody = (await geoStatus.json()) as { reason?: string };
+      assert(geoStatus.status === 403 && geoBody.reason === "DENY_GEO_BLOCKED", "HTTP geo DENY without proof");
 
       const blockedProof = await proofFor(BLOCKED);
       const deniedStatus = await fetch(`${server.url}/operator-policy/status`, {

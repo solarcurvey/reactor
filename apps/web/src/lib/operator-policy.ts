@@ -7,6 +7,8 @@ export {
   USER_POLICY_MESSAGES,
   allowStubView,
   isOperatorPolicyReason,
+  isWalletProofPendingReason,
+  launchpadUxFromView,
   parseUxKind,
   parseWritePolicyError,
   publicPolicyView,

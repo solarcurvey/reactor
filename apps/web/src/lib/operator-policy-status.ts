@@ -1,15 +1,20 @@
 /**
  * Next BFF resolver for GET /api/operator-policy (issue #65).
  *
- * Decision read: indexer `GET /operator-policy/status` — same
- * `evaluateOperatorPolicy` + recovered-wallet subject as #62 / PR #68 write
- * gates. Stock #68 today only has `GET /operator-policy/challenge`; if status
- * 404s, this BFF probes that official challenge path and LOCAL-allows /
- * production-fail-closes until #68 lists status as a public read.
+ * Official #62 / #68 decision read is indexer `GET /operator-policy/status`
+ * only (`readOperatorPolicyStatus` / `evaluateOperatorPolicy`). Optional
+ * `x-reactor-wallet-proof` screens the recovered signer. Claimed `wallet` /
+ * country / `clear` are ignored.
  *
- * Claimed `x-reactor-wallet` / body.wallet is never forwarded or trusted.
- * Proof is optional on status (geo-only pre-wallet UX). Writes still require
- * a recovered proof at the indexer gate.
+ * `GET /operator-policy/challenge` is a signing helper (EIP-191 + HMAC), not
+ * a decision. Next never treats a challenge body as policy status.
+ *
+ * Without proof, `/status` returns `UNAVAILABLE_WALLET_MISSING` unless geo
+ * is independently `DENY`. The launchpad maps that pending-proof reason to
+ * allowed UX so unconnected users still see Launch Instant; write CTAs still
+ * call `ensureProof` and the write gate remains authoritative.
+ *
+ * 404 or network on `/status` → LOCAL allow stub / production fail-closed.
  */
 import {
   allowStubView,
@@ -21,7 +26,7 @@ import {
   type PublicOperatorPolicyView,
 } from "./operator-policy";
 
-/** Coordinated #62 UX decision GET (this branch; #68 should adopt). */
+/** Official #62 / #68 UX decision GET. */
 export const OPERATOR_POLICY_STATUS_PATH = "/operator-policy/status";
 
 /** Official #62 / #68 public challenge path. Not a decision GET. */
@@ -82,12 +87,6 @@ export function pickForwardHeaders(incoming: Headers, env: NodeJS.ProcessEnv = p
   return out;
 }
 
-function isChallengeBody(json: unknown): boolean {
-  if (!json || typeof json !== "object") return false;
-  const rec = json as Record<string, unknown>;
-  return typeof rec.token === "string" && typeof rec.message === "string";
-}
-
 async function fetchJson(
   fetchImpl: typeof fetch,
   url: string,
@@ -108,16 +107,15 @@ async function fetchJson(
 }
 
 /**
- * Prefer coordinated `GET /operator-policy/status`. If that 404s (stock #68),
- * probe `GET /operator-policy/challenge` so we never treat a missing invented
- * path as the only production signal.
+ * Official decision GET only. 404 / network → missing (LOCAL stub / PROD
+ * fail-closed). Any other unreadable response → failed (unavailable).
  */
 export async function fetchIndexerPolicyStatus(input: {
   indexer: string;
   headers: Headers;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
-}): Promise<PublicOperatorPolicyView | { missing: true } | { failed: true } | { present: true }> {
+}): Promise<PublicOperatorPolicyView | { missing: true } | { failed: true }> {
   const fetchImpl = input.fetchImpl ?? fetch;
   const timeoutMs = input.timeoutMs ?? 4_000;
 
@@ -127,24 +125,10 @@ export async function fetchIndexerPolicyStatus(input: {
     input.headers,
     timeoutMs,
   );
-  if (!("network" in status) && status.status !== 404) {
-    const view = sanitizePublicPolicyView(status.json, "indexer");
-    if (view) return view;
-    if (status.status >= 400) return { failed: true };
-  }
-
-  const challenge = await fetchJson(
-    fetchImpl,
-    `${input.indexer}${OPERATOR_POLICY_CHALLENGE_PATH}`,
-    input.headers,
-    timeoutMs,
-  );
-  if ("network" in challenge) return { missing: true };
-  if (challenge.status === 404) return { missing: true };
-  const view = sanitizePublicPolicyView(challenge.json, "indexer");
+  if ("network" in status) return { missing: true };
+  if (status.status === 404) return { missing: true };
+  const view = sanitizePublicPolicyView(status.json, "indexer");
   if (view) return view;
-  if (!challenge.status || challenge.status >= 400) return { failed: true };
-  if (isChallengeBody(challenge.json)) return { present: true };
   return { failed: true };
 }
 
@@ -167,8 +151,5 @@ export async function resolveOperatorPolicyStatus(input: {
   });
   if ("ok" in fromIndexer) return fromIndexer;
   if ("failed" in fromIndexer) return unavailableStubView();
-  if ("present" in fromIndexer) {
-    return productionLike(env) ? unavailableStubView() : allowStubView();
-  }
   return productionLike(env) ? unavailableStubView() : allowStubView();
 }

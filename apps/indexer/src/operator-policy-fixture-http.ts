@@ -1,15 +1,14 @@
 /**
  * LOCAL #62 write-gate fixture for Playwright / bind tests.
- * Official #68 path: GET /operator-policy/challenge. Coordinated #65 UX read:
- * GET /operator-policy/status (same evaluateOperatorPolicy as write gates).
+ * Official #68 paths: GET /operator-policy/challenge (signing helper) and
+ * GET /operator-policy/status (decision; same evaluateOperatorPolicy as write gates).
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import {
-  evaluateOperatorPolicyStatus,
   gateProtectedWrite,
   incomingHeaders,
   issueOperatorWalletChallenge,
-  minimizedStatusBody,
+  readOperatorPolicyStatus,
   resetOperatorPolicyBindState,
   setFixtureBlockedWallets,
 } from "./operator-policy-bind.ts";
@@ -59,12 +58,11 @@ export function createOperatorPolicyFixtureServer(opts?: {
         return;
       }
       if (url.pathname === "/operator-policy/status") {
-        const decision = await evaluateOperatorPolicyStatus({
+        const read = await readOperatorPolicyStatus({
           headers: incomingHeaders(req),
           env,
-          requireWallet: false,
         });
-        json(res, decision.httpStatus, minimizedStatusBody(decision));
+        json(res, read.status, read.body);
         return;
       }
       if (

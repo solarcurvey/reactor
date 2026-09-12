@@ -177,7 +177,7 @@ async function main() {
       indexer: indexer.url,
       headers: new Headers(),
     });
-    assert("present" in view, "stock #68 challenge-only is present, not a fake decision");
+    assert("missing" in view, "status 404 is missing; challenge is never a decision");
   } finally {
     await indexer.close();
   }
@@ -191,16 +191,10 @@ async function main() {
     fetchImpl: async (url) => {
       const path = String(url);
       if (path.endsWith(OPERATOR_POLICY_STATUS_PATH)) return new Response(null, { status: 404 });
-      if (path.endsWith(OPERATOR_POLICY_CHALLENGE_PATH)) {
-        return new Response(JSON.stringify({ token: "t", message: "REACTOR operator-policy v1" }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        });
-      }
-      throw new Error(`unexpected ${path}`);
+      throw new Error(`must not probe challenge as a decision, got ${path}`);
     },
   });
-  assert(prod.kind === "unavailable", "PROD fail-closes on stock #68 challenge-only");
+  assert(prod.kind === "unavailable", "PROD fail-closes when /status is missing");
   assert(!prod.writesAllowed, "PROD writes disabled without a decision GET");
 }
 
@@ -225,6 +219,33 @@ async function main() {
     },
   });
   assert(prod.kind === "allow" && prod.writesAllowed, "PROD uses coordinated status decision");
+}
+
+{
+  const req = new Request("http://127.0.0.1/api/operator-policy", {
+    headers: { "x-reactor-wallet": "0x1111111111111111111111111111111111111111" },
+  });
+  const view = await resolveOperatorPolicyStatus({
+    req,
+    env: { REACTOR_ENV: "PROD", NODE_ENV: "production" },
+    fetchImpl: async (url) => {
+      assert(String(url).endsWith(OPERATOR_POLICY_STATUS_PATH), `status only, got ${url}`);
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          reason: "UNAVAILABLE_WALLET_MISSING",
+          decision: "unavailable",
+          kind: "unavailable",
+          error: "A signed wallet proof is required for this action.",
+          writesAllowed: false,
+        }),
+        { status: 403, headers: { "content-type": "application/json" } },
+      );
+    },
+  });
+  assert(view.reason === "UNAVAILABLE_WALLET_MISSING", "BFF passes through no-proof status");
+  assert(view.kind === "unavailable", "BFF does not remap pending-proof");
+  assert(!view.writesAllowed, "write gate still authoritative at BFF");
 }
 
 {
