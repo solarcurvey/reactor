@@ -203,6 +203,7 @@ pnpm --filter indexer watchdog
 | 34 | Safe Builder JSON from local artifacts; deployer ≠ Safe | `scripts/safe-genesis-builder.test.ts` |
 | 35 | sharp required (not optional) | `sharp-check.test.ts` |
 | 36 | Postgres millisecond columns are BIGINT; Date.now() persists; v5 migrates | `pg-ms-timestamps.test.ts` (`pnpm --filter indexer test:pg`) |
+| 37 | R2/S3 object key equals public `/m/<id>.webp`; mock GET returns the object; PROD upload failure returns no StoredMedia | `media-r2.test.ts` |
 
 ## Arc smoke
 

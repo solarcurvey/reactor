@@ -24,6 +24,10 @@ Postgres millisecond timestamps. Tokenomics **unchanged**. Factory **V1**.
 - Real Postgres integration test (`pnpm --filter indexer test:pg`) inserts current `Date.now()` into admission, issuance bucket, leader lock, Keeper job, and alert paths; Keeper leadership and LaunchAuthorization issuance run against Postgres. CI job `postgres-ms-timestamps` runs that test on GitHub.
 - Backend docs record seconds-vs-milliseconds conventions. SQLite INTEGER is already 64-bit; the production bug is Postgres 32-bit INTEGER overflow (~1.8e12 ms vs max 2_147_483_647).
 
+### Fixed
+
+- R2/S3 object keys match returned public media URLs: upload `m/<id>.webp`, not the bare content id. `MEDIA_CDN_BASE` + `/m/<id>.webp` resolves to the uploaded object. Mock SigV4 GET-after-PUT in `media-r2.test.ts`.
+
 ### Tokenomics
 
 - No change. Different split = new Factory version, not an edit to V1.

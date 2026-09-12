@@ -24,6 +24,7 @@
 | Real Postgres `Date.now()` insert on admission / bucket / lock / job / alert | **Yes** | same test; v5 INTEGER rejects `Date.now()` on all six columns; GitHub Actions `postgres-ms-timestamps` |
 | Keeper leadership + LaunchAuthorization issuance on Postgres | **Yes** | `withLeaderLock` / `tryAdvisoryLock` + `consumeIssuanceToken` + `admit` ALLOW |
 | Seconds vs milliseconds documented | **Yes** | `ARCHITECTURE.md`, `LAUNCH_ADMISSION.md`, `docs/admission.md`, `docs/keeper.md`, `THREAT_MODEL.md` |
+| R2/S3 key = public `/m/<id>.webp` | **Yes** | `mediaObjectKey` / `assertMediaKeyMatchesPublicUri`. Mock SigV4 GET-after-PUT `media-r2.test.ts` |
 
 ## Still blocked (do not fake)
 
