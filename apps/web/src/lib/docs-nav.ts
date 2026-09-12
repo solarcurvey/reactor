@@ -10,6 +10,7 @@ export const DOCS: { slug: string; title: string; group: string; file: string }[
   { slug: "trust", title: "Trust assumptions", group: "Protocol", file: "trust.md" },
   { slug: "geo-policy", title: "Geo policy", group: "Protocol", file: "geo-policy.md" },
   { slug: "web-security", title: "Browser security", group: "Protocol", file: "web-security.md" },
+  { slug: "restricted-access", title: "Restricted access", group: "Protocol", file: "restricted-access.md" },
   { slug: "sanctions-ops", title: "Sanctions ops", group: "Protocol", file: "sanctions-ops.md" },
   { slug: "sanctions-runbook", title: "Sanctions runbook", group: "Protocol", file: "sanctions-runbook.md" },
   { slug: "incident-response", title: "Incident response", group: "Protocol", file: "incident-response.md" },

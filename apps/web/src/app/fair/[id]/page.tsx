@@ -14,14 +14,16 @@ import { unwrapFair, useMarket } from "@/lib/hooks";
 import { tokenPath } from "@/lib/untrusted-metadata";
 import { FIXTURE_FAIR, REVIEW_FIXTURES } from "@/lib/review-fixtures";
 import { resolveTradeWrite } from "@/lib/tx-guard";
-import { useOfficialChain } from "@/lib/use-official-chain";
+import { useOperatedWrites } from "@/lib/use-operated-writes";
+import { RestrictedNotice } from "@/components/restricted-notice";
 import { UntrustedText } from "@/components/untrusted-text";
 
 export default function FairPage() {
   const { id } = useParams<{ id: string }>();
   const fairId = BigInt(id);
   const router = useRouter();
-  const { address, writesEnabled, matched, mismatchMessage, chainId } = useOfficialChain();
+  const { address, writesEnabled, mismatchMessage, chainId, policyBlocked, writeBlockMessage, writeButtonLabel } =
+    useOperatedWrites();
   const client = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
   const [amount, setAmount] = useState("100");
@@ -54,11 +56,11 @@ export default function FairPage() {
 
   async function bid() {
     setError(null);
-    if (!address || !client) return;
-    if (!writesEnabled) {
-      setError(mismatchMessage);
+    if (policyBlocked || !writesEnabled) {
+      setError(writeBlockMessage ?? mismatchMessage);
       return;
     }
+    if (!address || !client) return;
     try {
       const write = resolveTradeWrite({
         chainId,
@@ -100,8 +102,8 @@ export default function FairPage() {
   async function finalize() {
     setError(null);
     if (!client) return;
-    if (!writesEnabled) {
-      setError(mismatchMessage);
+    if (policyBlocked || !writesEnabled) {
+      setError(writeBlockMessage ?? mismatchMessage);
       return;
     }
     try {
@@ -128,6 +130,10 @@ export default function FairPage() {
   }
 
   async function claim() {
+    if (policyBlocked || !writesEnabled) {
+      setError(writeBlockMessage ?? "REACTOR-operated services are not available for this request.");
+      return;
+    }
     if (!address) return;
     const write = resolveTradeWrite({
       chainId,
@@ -173,6 +179,7 @@ export default function FairPage() {
         {utcStamp(start)} → {utcStamp(end)}
       </p>
       <p className="mt-1 break-all font-mono text-[11px] text-zinc-400">{token}</p>
+      <RestrictedNotice className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/8 px-4 py-3 text-[13px] text-amber-50" />
       {!finalized && (
         <Card className="mt-4 space-y-2 p-4">
           <label htmlFor="fair-bid" className="block text-[11px] uppercase tracking-wider text-zinc-400">
@@ -180,19 +187,19 @@ export default function FairPage() {
           </label>
           <Input id="fair-bid" aria-label="Bid amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
           <div className="flex gap-2">
-            <Button className="flex-1" onClick={bid} disabled={!writesEnabled || isPending}>
-              {matched ? "Place bid" : "Wrong network"}
+            <Button className="flex-1" onClick={bid} disabled={!writesEnabled || isPending} data-testid="fair-bid">
+              {writeButtonLabel("Place bid")}
             </Button>
             <Button className="flex-1" variant="outline" onClick={finalize} disabled={!writesEnabled || isPending}>
-              Finalize
+              {writeButtonLabel("Finalize")}
             </Button>
           </div>
         </Card>
       )}
       {finalized && (
         <div className="mt-4 flex gap-2">
-          <Button onClick={claim} disabled={!writesEnabled}>
-            Claim tokens / refund
+          <Button onClick={claim} disabled={!writesEnabled} data-testid="fair-claim">
+            {writeButtonLabel("Claim tokens / refund")}
           </Button>
           {launch?.marketLive && (
             <Button variant="outline" onClick={() => router.push(tokenPath(launch.token))}>

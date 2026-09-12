@@ -87,6 +87,7 @@ Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, 
 - The consumer UI fails visible on indexer / RPC / quote outages (no empty-board disguise, no 0/1 minOut ticket). Review-only `?inject=` is not a production control.
 - **Exact official-list screening (`@reactor/sanctions`)** loads Treasury/OFAC HTTPS XML into a local index. Per-request screening does not call a third-party API. A missing or stale snapshot is `unavailable`, never `clear`. A listed address can still be `blocked` on last-known-good. This is **not** OFAC compliance, not hop attribution, and not a launch/trade policy gate (RELEASE GATE #60 children). Atomic refresh must not replace last-known-good with a partial parse. Host allowlist is Treasury/OFAC HTTPS only.
 - **Geo policy (#63)** is a server-side ALLOW / DENY / UNKNOWN evaluator. Production geo is a signed reverse-proxy / deployment-edge claim (`GEO_EDGE_SECRET`). Client country headers are ignored. LOCAL cannot activate the production deny revision. HTTP write enforcement is operator policy (#62). VPN/proxy/Tor is best-effort only. Residual: a compromised edge can mint any country; a missing or oblast-only Ukraine region (`UA-14` / `UA-09`) is UNKNOWN, not a country-wide or whole-oblast deny (FAQ 1009). Not a legal opinion. Not OFAC-compliance.
+- Hosted operator-policy UX (`/restricted`, disabled write CTAs) is not an onchain block. A user who calls Factory / Router directly is outside this control. The browser must not be given raw IP, screening records, or list metadata. Client “clear” / country headers are not authority.
 
 ## Repository / GitHub Actions (not custody)
 
@@ -96,4 +97,4 @@ Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, 
 
 ## Explicit non-goals
 
-We do not prevent external pools, creator dumping after a paid buy, or social-engineering of the registry admin.
+We do not prevent external pools, creator dumping after a paid buy, or social-engineering of the registry admin. We do not censor permissionless chain reads. We do not claim OFAC compliance.

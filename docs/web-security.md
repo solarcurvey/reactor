@@ -67,4 +67,8 @@ Keeper / Launch signer / Guardian **private keys**, Turnstile/admission HMAC sec
 
 `pnpm test:web-security` — **production** `next build` + `next start`, live response-header assertions, client-bundle sentinel, and Playwright XSS corpus on home / search / token terminal / trade / reactor activity / launch toasts.
 
+## Restricted access (operated services)
+
+`/restricted` and disabled Confirm / Launch / Quote CTAs are UX over a server policy decision. The browser is not given raw IP, screening records, or list metadata. Client “clear” / country headers cannot override. This does not censor permissionless chain reads. See [Restricted access](/docs/restricted-access).
+
 See [Media](/docs/media), [Trust](/docs/trust), [Admission](/docs/admission), [Creators](/docs/creators).

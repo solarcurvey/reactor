@@ -28,6 +28,8 @@ Every launch, including USDC, goes through `POST /launch/authorize`. REACTOR-ope
 
 Turnstile `siteverify` runs when `TURNSTILE_SECRET` is set. LOCAL bypass only if the secret is unset and `TURNSTILE_REQUIRED !== 1`.
 
+REACTOR-operated admit / authorize / upload also follow the hosted access decision. If that decision is deny or unavailable, **Launch Instant** / **Open Fair Launch** stay disabled and no wallet transaction is prompted. `/restricted` explains the three public states (account, location, temporarily unavailable). This does not block a direct onchain Factory call. See [Restricted access](/docs/restricted-access).
+
 ## Instant vs Fair binding
 
 - **Instant** `curveConfig` is `INSTANT_CURVE_V1`. Same geometry every time.
