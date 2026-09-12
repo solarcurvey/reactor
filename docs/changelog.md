@@ -2,7 +2,7 @@
 
 # Changelog
 
-Protocol release **0.3.0** (`v0.3.0`). Factory **V1** is unchanged by this number.
+Protocol release **0.3.1** (`v0.3.1`). Factory **V1** is unchanged by this number.
 
 The canonical file is `CHANGELOG.md` at the repo root. Same content below.
 
@@ -13,6 +13,32 @@ Versioning: [Semantic Versioning](https://semver.org/) for the **protocol releas
 - Protocol source of truth: `docs/version.json` (`protocolVersion`)
 - Git tag: `vMAJOR.MINOR.PATCH` (see [Versioning](docs/versioning.md) and `CONTRIBUTING.md`)
 - Factory **V1 stays V1 forever**. A new fee split or curve is Factory V2, not a protocol patch.
+
+## [0.3.1] - 2026-09-12
+
+Honest leftovers on 0.3.0. Tokenomics **unchanged**. Factory **V1**.
+
+### Added / Changed
+
+- Safe Transaction Builder JSON is generated from `deployments/local.json` (Batch A while paused → VerifyGenesis → Batch B T0) plus MultiSend packing. Local deployer ≠ Guardian Safe. Not an empty template.
+- `UserRouteQuoter` indexer `eth_call` uses ERC-20 state overrides so nested quotes do not need intermediate wallet balances. Executor fallback is documented only when the quoter is undeployed.
+- Production hard gates: non-LOCAL / `NODE_ENV=production` refuses start and launch if Turnstile secret/site key is missing, if `SIGNER_INLINE` would run, or if the Anvil `#0` signer fallback would be used. LOCAL may keep bypasses.
+- Funding-parent heuristic: bounded USDC `Transfer` lookback + rename. Not chain analysis.
+- `sharp` is an explicit required dependency (`pnpm.onlyBuiltDependencies`). Document `pnpm approve-builds`. Startup asserts the native pipeline.
+- Arc Public Testnet: no key in this environment — `deployments/arc-testnet-blocker.md` + `scripts/arc-testnet-checklist.md`. `claimed: false`.
+- Arc-compatible native gas metadata is USDC-18 (not ETH). `CoreToken` is the name; `TestCORE` remains a deprecated alias. `registerNative` stays fail-loud.
+
+### Tokenomics
+
+- No change. Different split = new Factory version, not an edit to V1.
+
+### Known limits (honest)
+
+- Not audited. No public mainnet.
+- Arc Factory **not claimed** unless `deployments/arc-factory-attempt.json` has a confirmed explorer hash.
+- Top-10 ranks remain an offchain API.
+- Funding-parent is a heuristic, not chain analysis.
+- Factory V1 runtime must stay ≤ 23,552.
 
 ## [0.3.0] - 2026-09-12
 

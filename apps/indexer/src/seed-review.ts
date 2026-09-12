@@ -6,6 +6,7 @@ const GIGA = "0x1111111111111111111111111111111111110002";
 const FCAT = "0x1111111111111111111111111111111111110003";
 const CAT = "0x1111111111111111111111111111111111110006";
 const BOND = "0x1111111111111111111111111111111111110007";
+const NEON = "0x1111111111111111111111111111111111110004";
 const ZEC = "0x99bba657f2bbc93c02d617f8ba121cb8fc104acf";
 const USDC = "0x4826533b4897376654bb4d4ad88b7fafd0c98528";
 const now = Math.floor(Date.now() / 1000);
@@ -36,12 +37,15 @@ await upsertToken(store, { address: CAT, symbol: "CAT", name: "Cat", quote: ZCAT
 await upsertMarket(store, { token: CAT, quote: ZCAT, stage: "bonding", bondingBps: 4120, image: "/icons/usdc.svg", ts: now });
 await upsertToken(store, { address: BOND, symbol: "BOND", name: "Bond", quote: USDC, ts: now });
 await upsertMarket(store, { token: BOND, quote: USDC, stage: "bonding", bondingBps: 6100, image: "/icons/usdc.svg", ts: now });
+await upsertToken(store, { address: NEON, symbol: "NEON", name: "Neon", quote: USDC, rewardsMode: true, supply: (10n ** 27n).toString(), ts: now });
+await upsertMarket(store, { token: NEON, quote: USDC, stage: "bonding", bondingBps: 1640, image: "/icons/usdc.svg", description: "Protocol bonding curve. Creator picks name and ticker only.", ts: now });
 const marks: [string, string, string, string, string][] = [
   [ZCAT, (2n * 10n ** 16n).toString(), (412_000n * 1_000_000n).toString(), (88_000n * 1_000_000n).toString(), "11564651717"],
   [GIGA, (381n * 10n ** 15n).toString(), (381_000n * 1_000_000n).toString(), (42_000n * 1_000_000n).toString(), "200000000"],
   [FCAT, (8n * 10n ** 14n).toString(), (41_000n * 1_000_000n).toString(), (3_200n * 1_000_000n).toString(), "0"],
   [CAT, (5n * 10n ** 16n).toString(), (22_000n * 1_000_000n).toString(), (1_100n * 1_000_000n).toString(), "0"],
   [BOND, (12n * 10n ** 13n).toString(), (12_000n * 1_000_000n).toString(), (6_400n * 1_000_000n).toString(), "40000000"],
+  [NEON, (8n * 10n ** 13n).toString(), (8_000n * 1_000_000n).toString(), (2_200n * 1_000_000n).toString(), "0"],
 ];
 for (const [token, px, fdv, vol, rewards] of marks) {
   await store.run(
@@ -70,4 +74,5 @@ for (let i = 0; i < 8; i++) {
   });
 }
 console.log("seeded review markets + continuous curve→v4 candles");
+console.log("BONDING_TOKEN", NEON);
 await store.close();

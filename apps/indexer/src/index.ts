@@ -23,6 +23,8 @@ import { authorizeLaunch } from "./authorize.ts";
 import { isReservedTicker, RESERVED_TICKERS } from "../../../packages/reactor/src/ticker.ts";
 import { HttpJsonProvider } from "../../../packages/reactor/src/pricing.ts";
 import { rollMarketAggregations, upsertOfficialPool } from "./ingest.ts";
+import { assertProductionHardGates } from "./prod-gates.ts";
+import { assertSharpWorks } from "./sharp-check.ts";
 
 const PORT = Number(process.env.INDEXER_PORT ?? 43148);
 const addrs = deployment.addresses as Record<string, string>;
@@ -759,6 +761,9 @@ async function loop(store: Store) {
   }
   setTimeout(() => loop(store), 2500);
 }
+
+assertProductionHardGates();
+await assertSharpWorks();
 
 const store = await openStore();
 {

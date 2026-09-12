@@ -11,7 +11,7 @@ const RPC = process.env.RPC_URL ?? deployment.rpc;
 const chain = defineChain({
   id: deployment.chainId,
   name: "reactor-local",
-  nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+  nativeCurrency: { name: "USD Coin", symbol: "USDC", decimals: 18 },
   rpcUrls: { default: { http: [RPC] } },
 });
 
@@ -29,7 +29,8 @@ async function main() {
   const registry = parseAbi(["function isUsdPegOne(address) view returns (bool)", "function usdc() view returns (address)"]);
   const g = await client.readContract({ address: A.Guardian, abi: guardian, functionName: "guardian" });
   const k = await client.readContract({ address: A.Guardian, abi: guardian, functionName: "keeper" });
-  const supply = await client.readContract({ address: A.TestCORE, abi: core, functionName: "totalSupply" });
+  const coreToken = (A.CoreToken ?? A.TestCORE) as `0x${string}`;
+  const supply = await client.readContract({ address: coreToken, abi: core, functionName: "totalSupply" });
   const usdc = await client.readContract({ address: A.QuoteAssetRegistry, abi: registry, functionName: "usdc" });
   const peg = await client.readContract({
     address: A.QuoteAssetRegistry,
@@ -40,7 +41,7 @@ async function main() {
   if (supply !== 1_000_000_000n * 10n ** 18n) throw new Error("CORE supply");
   if (!peg) throw new Error("USDC must be usdPegOne");
   const deployerCore = await client.readContract({
-    address: A.TestCORE,
+    address: coreToken,
     abi: core,
     functionName: "balanceOf",
     args: [g],

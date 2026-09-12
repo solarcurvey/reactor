@@ -194,6 +194,10 @@ pnpm --filter indexer watchdog
 | 29 | permanentlyLockTicker vs other token 24h lock | `TickerRegistry.t.sol` |
 | 30 | 24h NUMERIC / latest-by-ts / ValuationService USD | `ingest.ts`, `valuation.test.ts` |
 | 31 | UserRouteQuoter one eth_call; never minOut 0/1 | `quote-service.ts`, `UserRouteQuoter.sol` |
+| 32 | Nested quote without intermediate wallet balances | `UserRoute.t.sol` `test_nested_preview_without_intermediate_wallet_balances`, `quote-overrides.test.ts` |
+| 33 | Production hard gates (Turnstile + no Anvil/inline signer) | `prod-gates.test.ts` |
+| 34 | Safe Builder JSON from local artifacts; deployer ≠ Safe | `scripts/safe-genesis-builder.test.ts` |
+| 35 | sharp required (not optional) | `sharp-check.test.ts` |
 
 ## Arc smoke
 

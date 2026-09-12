@@ -309,4 +309,37 @@ contract UserRouteTest is Base {
             assertEq(hopOuts[0], amountOut);
         }
     }
+
+    /// @notice Nested USDC→ZEC→ZCAT preview. User wallet has 0 ZEC. Quoter has 0 ZEC
+    ///         before the call. Only the input USDC is credited (Foundry deal ≡ eth_call state override).
+    function test_nested_preview_without_intermediate_wallet_balances() public {
+        address token = _instantZcat(1);
+        vm.prank(bob);
+        zec.transfer(address(0xdead), zec.balanceOf(bob));
+        assertEq(zec.balanceOf(bob), 0, "user has no intermediate ZEC");
+        assertEq(zec.balanceOf(address(userQuoter)), 0, "quoter has no prefunded ZEC");
+        deal(address(usdc), address(userQuoter), 50e6);
+        assertEq(zec.balanceOf(address(userQuoter)), 0, "still no intermediate on quoter");
+
+        try userQuoter.previewBuy(token, 10e6, _hop(address(usdc), address(zec), zecUsdcKey)) {
+            revert("must revert PreviewRoute");
+        } catch (bytes memory err) {
+            require(err.length >= 4, "short");
+            bytes4 sel;
+            assembly {
+                sel := mload(add(err, 32))
+            }
+            assertEq(sel, UserRouteQuoter.PreviewRoute.selector);
+            bytes memory payload = new bytes(err.length - 4);
+            for (uint256 i; i < payload.length; i++) {
+                payload[i] = err[i + 4];
+            }
+            (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) =
+                abi.decode(payload, (uint256, uint256[], bytes32[]));
+            assertGt(amountOut, 1, "nested preview amountOut");
+            assertGe(kinds.length, 2, "hop + bonding/official");
+            assertGt(hopOuts[0], 1, "first hop produced ZEC inside the call");
+        }
+        assertEq(zec.balanceOf(bob), 0, "user still has no ZEC after quote");
+    }
 }

@@ -7,6 +7,7 @@ const GIGA = "0x1111111111111111111111111111111111110002" as `0x${string}`;
 const FCAT = "0x1111111111111111111111111111111111110003" as `0x${string}`;
 const CAT = "0x1111111111111111111111111111111111110006" as `0x${string}`;
 const BOND = "0x1111111111111111111111111111111111110007" as `0x${string}`;
+const NEON = "0x1111111111111111111111111111111111110004" as `0x${string}`;
 const USDC = "0x4826533B4897376654Bb4d4AD88B7faFD0C98528" as `0x${string}`;
 const ZEC = "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf" as `0x${string}`;
 
@@ -143,7 +144,36 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     fdvUsd6: (12_000n * 1_000_000n).toString(),
     volume24hUsd6: (6_400n * 1_000_000n).toString(),
   },
+  {
+    token: NEON,
+    quote: USDC,
+    creator: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    mode: 0,
+    poolId: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    marketLive: false,
+    fairId: 0n,
+    name: "Neon",
+    symbol: "NEON",
+    decimals: 18,
+    supply: 1_000_000_000n * 10n ** 18n,
+    image: "/icons/usdc.svg",
+    description: "USDC bonding Instant — protocol curve. No FDV knobs.",
+    bonding: true,
+    bondingBps: 1640,
+    rewardsMode: true,
+    website: "",
+    twitter: "",
+    telegram: "",
+    quoteSymbol: "USDC",
+    quoteDecimals: 6,
+    lifetimeRewards: 0n,
+    priceQuoteX18: (8n * 10n ** 13n).toString(),
+    fdvUsd6: (8_000n * 1_000_000n).toString(),
+    volume24hUsd6: (2_200n * 1_000_000n).toString(),
+  },
 ];
+
+export const FIXTURE_BONDING_TOKEN = NEON;
 
 export const FIXTURE_FAIR = {
   token: FCAT,

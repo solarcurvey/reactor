@@ -70,9 +70,9 @@ Pre-graduation Instant trades settle on `InstantCurve` (same 3.5% quote split). 
 
 - **Indexer:** production data model (Postgres when `DATABASE_URL` is set; SQLite local-only). Tables cover tokens/markets/quotes/pools/trades/candles/bonding/graduations/rewards/claims/selfburn/flywheel/CORE/Top-10/keeper/guardian/routes/marks/metadata. Never the source of truth for balances or fees.
 - **ValuationService:** one recursive CAT→ZCAT→ZEC→USD path with ancestry. Parent-only USD is rejected.
-- **Quote API:** `POST /quote` plans proven venues only (≤3 hops), simulates server-side, discloses each official 3.5% leg.
+- **Quote API:** `POST /quote` plans proven venues only (≤3 hops). One `UserRouteQuoter` `eth_call` with ERC-20 state overrides (no intermediate wallet balances). Discloses each official 3.5% leg.
 - **Web:** homepage is `GET /markets` (zero per-token RPC). Trades use the quote API — no wallet hop sim for missing intermediate assets.
-- **Pricing signer:** isolated process. Next never holds the key. Fail closed if down. No Anvil fallback outside `REACTOR_ENV=LOCAL`.
+- **Pricing signer:** isolated process. Next never holds the key. Fail closed if down. No Anvil / inline fallback outside `REACTOR_ENV=LOCAL` (production hard gates).
 - **Media:** validate + resize/WebP → object store; short URI onchain. No base64 metadata.
 - **SSE:** `/stream` for launches/trades/bonding/grad/rewards/burns/Top-10/CORE with reconnect/fallback.
 

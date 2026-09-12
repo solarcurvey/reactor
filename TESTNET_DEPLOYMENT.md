@@ -26,7 +26,7 @@ Gas: minimum `maxFeePerGas` 20 gwei. Base fee paid to beneficiary (no ETH-style 
 
 Buyback **testnet** safety constants are in `ReactorConstants` (300 bps impact, 20% chunk, 10% reserve, 1500 bps ref deviation, 5 min cooldown). See `ECONOMICS.md`.
 
-This environment does **not** automatically have a dedicated funded Arc Testnet key. If no key + faucet funds exist, **do not fabricate explorer evidence**.
+This environment does **not** automatically have a dedicated funded Arc Testnet key. If no key + faucet funds exist, **do not fabricate explorer evidence**. Checklist: `scripts/arc-testnet-checklist.md`. Blocker file: `deployments/arc-testnet-blocker.md`.
 
 ## Deploy REACTOR (local / funded testnet)
 
@@ -71,7 +71,7 @@ Never deploy with a temporary EOA Guardian and transfer later.
 3. `QuoteAssetRegistry` (Guardian-curated; usdPegOne on canonical USDC only)
 4. Mock USDC (local only) or register canonical USDC (testnet)
 5. Mock ZEC / BTC / NVDA (labeled)
-6. `TestCORE` genesis 100M vest + 900M LP
+6. `CoreToken` (`TestCORE` deprecated alias) genesis 100M vest + 900M LP
 7. Official hooked CORE/USDC lock (`CoreLiquidityVault`) — not hookless
 8. Vaults, router, hook CREATE2, factory, InstantCurve, UserRoute, adapters
 9. `SAFE_GENESIS=true` keeps launches paused until Safe enables

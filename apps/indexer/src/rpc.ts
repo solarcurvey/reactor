@@ -1,11 +1,12 @@
 import { createPublicClient, fallback, http, type PublicClient } from "viem";
 import { defineChain } from "viem";
+import { ARC_NATIVE_GAS } from "./arc-chain.ts";
 
 export function buildRpcClient(opts: { chainId: number; primary: string; fallbackUrl?: string; name?: string }): PublicClient {
   const chain = defineChain({
     id: opts.chainId,
     name: opts.name ?? "reactor",
-    nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+    nativeCurrency: { ...ARC_NATIVE_GAS },
     rpcUrls: { default: { http: [opts.primary] } },
   });
   const transports = [http(opts.primary, { timeout: 8_000, retryCount: 1 })];

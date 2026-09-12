@@ -7,6 +7,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { SECURITY_HEADERS, logLine, requestId, RateLimit } from "./obs.ts";
 import { resolveSignerKey, signAuthorized, type SignRequest } from "./launch-signer.ts";
 import { openStore } from "./db.ts";
+import { assertProductionHardGates } from "./prod-gates.ts";
 
 const PORT = Number(process.env.PRICING_SIGNER_PORT ?? 43149);
 const LOCAL = (process.env.REACTOR_ENV ?? "").toUpperCase() === "LOCAL";
@@ -60,6 +61,7 @@ const server = createServer(async (req, res) => {
 });
 
 try {
+  assertProductionHardGates();
   resolveSignerKey();
 } catch (e) {
   console.error("pricing signer refuse start", e);

@@ -1,6 +1,7 @@
 import type { Store } from "./db.ts";
 import { admit, type AdmitInput } from "./admission.ts";
 import { signAuthorized, type SignRequest } from "./launch-signer.ts";
+import { assertProductionHardGates, productionHardGatesApply } from "./prod-gates.ts";
 
 const SIGNER_URL = process.env.PRICING_SIGNER_URL ?? "http://127.0.0.1:43149";
 const INTERNAL = process.env.SIGNER_INTERNAL_TOKEN ?? (process.env.REACTOR_ENV?.toUpperCase() === "LOCAL" ? "local-internal-signer" : "");
@@ -44,10 +45,12 @@ export async function authorizeLaunch(store: Store, input: AdmitInput & SignRequ
     receipt: admitted.receipt,
   };
 
+  assertProductionHardGates();
   const inline =
-    process.env.SIGNER_INLINE === "1" ||
-    process.env.SIGNER_INLINE === "true" ||
-    ((process.env.REACTOR_ENV ?? "").toUpperCase() === "LOCAL" && process.env.SIGNER_INLINE !== "0");
+    !productionHardGatesApply() &&
+    (process.env.SIGNER_INLINE === "1" ||
+      process.env.SIGNER_INLINE === "true" ||
+      ((process.env.REACTOR_ENV ?? "").toUpperCase() === "LOCAL" && process.env.SIGNER_INLINE !== "0"));
   if (inline) {
     const signed = await signAuthorized(store, payload, {
       receipt: admitted.receipt,

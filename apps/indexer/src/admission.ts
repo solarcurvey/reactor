@@ -61,6 +61,9 @@ export type AdmitResult = {
   receipt?: string;
   receiptId?: string;
   launchConfigHash?: string;
+  /** Honest funding-parent heuristic id. Not chain-analysis. */
+  fundingParent?: string;
+  fundingParentKind?: "onchain-usdc-funder" | "network-rename";
 };
 
 function localEnv(): boolean {
@@ -166,13 +169,29 @@ export function networkCluster(asn?: string, ip?: string): string {
   return createHash("sha256").update(`net|${asn ?? ""}|${v4}`).digest("hex").slice(0, 16);
 }
 
-/** Lightweight onchain funder: first USDC Transfer `from` in a bounded lookback. Not chain-analysis. */
+/** Bounded lookback for the first USDC Transfer `from`. Not chain-analysis. */
+export const FUNDING_PARENT_LOOKBACK_BLOCKS = 50_000;
+
+function hexQty(n: number): string {
+  return `0x${n.toString(16)}`;
+}
+
+/** Lightweight onchain funding-parent: first USDC Transfer `from` in a bounded lookback. Not chain-analysis. */
 export async function onchainFunderSignal(wallet?: string): Promise<string | undefined> {
   if (!wallet || !/^0x[0-9a-fA-F]{40}$/.test(wallet)) return undefined;
   const rpc = process.env.RPC_URL ?? process.env.NEXT_PUBLIC_RPC_URL;
-  const usdc = process.env.USDC_ADDRESS;
+  const usdc = process.env.USDC_ADDRESS ?? process.env.NEXT_PUBLIC_USDC_ADDRESS;
   if (!rpc || !usdc) return undefined;
   try {
+    const headRes = await fetch(rpc, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 0, method: "eth_blockNumber", params: [] }),
+      signal: AbortSignal.timeout(4_000),
+    });
+    const headJ = (await headRes.json()) as { result?: string };
+    const head = Number.parseInt(headJ.result ?? "0x0", 16);
+    const fromBlock = Math.max(0, head - FUNDING_PARENT_LOOKBACK_BLOCKS);
     const topicTo = `0x${wallet.slice(2).toLowerCase().padStart(64, "0")}`;
     const res = await fetch(rpc, {
       method: "POST",
@@ -185,7 +204,7 @@ export async function onchainFunderSignal(wallet?: string): Promise<string | und
           {
             address: usdc,
             topics: ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", null, topicTo],
-            fromBlock: "earliest",
+            fromBlock: hexQty(fromBlock),
             toBlock: "latest",
           },
         ],
@@ -202,7 +221,11 @@ export async function onchainFunderSignal(wallet?: string): Promise<string | und
   }
 }
 
-export function fundingCluster(wallet?: string, asn?: string, ip?: string, funder?: string): string {
+/**
+ * Funding-parent heuristic id. Same onchain USDC funder → same id.
+ * Otherwise wallet + network rename (ASN + IPv4 /16). Not KYC. Not chain-analysis.
+ */
+export function fundingParentId(wallet?: string, asn?: string, ip?: string, funder?: string): string {
   if (funder) {
     return createHash("sha256").update(`funder|${funder.toLowerCase()}`).digest("hex").slice(0, 16);
   }
@@ -211,6 +234,9 @@ export function fundingCluster(wallet?: string, asn?: string, ip?: string, funde
     .digest("hex")
     .slice(0, 16);
 }
+
+/** @deprecated Use fundingParentId. Same function. */
+export const fundingCluster = fundingParentId;
 
 export function identityCurveConfig(input: AdmitInput): `0x${string}` {
   const path = input.mode === "fair" ? "fair" : input.mode === "standard" ? "standard" : "rewards";
@@ -335,8 +361,9 @@ export async function admit(store: Store, input: AdmitInput): Promise<AdmitResul
     );
   }
   const funder = await onchainFunderSignal(input.wallet);
-  const cluster = fundingCluster(input.wallet, input.asn, input.ip, funder);
+  const cluster = fundingParentId(input.wallet, input.asn, input.ip, funder);
   const clusterHits = await hit(store, `cluster:${cluster}`);
+  const fundingParentKind = funder ? ("onchain-usdc-funder" as const) : ("network-rename" as const);
   const signed = await signedAuthCount(store);
   const tokens = await peekIssuanceTokens(store, level);
 
@@ -396,6 +423,8 @@ export async function admit(store: Store, input: AdmitInput): Promise<AdmitResul
       curveConfig: identityCurveConfig(input),
       launchConfigHash: cfgHash,
       cluster,
+      fundingParent: cluster,
+      fundingParentKind,
       funder: funder ?? "",
       networkCluster: networkCluster(input.asn, input.ip),
     });
@@ -421,7 +450,16 @@ export async function admit(store: Store, input: AdmitInput): Promise<AdmitResul
     Math.floor(Date.now() / 1000),
   );
 
-  return { ...ev, ticker: parsed.ticker, challenge: ev.challenge, receipt, receiptId, launchConfigHash: cfgHash };
+  return {
+    ...ev,
+    ticker: parsed.ticker,
+    challenge: ev.challenge,
+    receipt,
+    receiptId,
+    launchConfigHash: cfgHash,
+    fundingParent: cluster,
+    fundingParentKind,
+  };
 }
 
 export function imageHash(buf: Buffer): string {

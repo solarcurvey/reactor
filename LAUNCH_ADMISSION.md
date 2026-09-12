@@ -24,7 +24,9 @@ usdPegOne quotes still need the signature. `virtualQuote0` must match protocol g
 
 ## Offchain signals → ALLOW / CHALLENGE / DENY
 
-Ticker, quote, factory, metadata, wallet, session, IP, ASN, client, Cloudflare Turnstile widget + `siteverify`, global signed-auth token-bucket, funding-cluster (network /16+ASN and/or first USDC funder), image-hash.
+Ticker, quote, factory, metadata, wallet, session, IP, ASN, client, Cloudflare Turnstile widget + `siteverify`, global signed-auth token-bucket, funding-parent heuristic (network /16+ASN and/or first USDC funder, bounded lookback), image-hash.
+
+**Production hard gates:** outside `REACTOR_ENV=LOCAL`, missing Turnstile secret/site key, `SIGNER_INLINE`, or an Anvil `#0` signer key refuses start and launch.
 
 Durable state in Postgres/SQLite: `admission_hits`, challenges, image hashes, `issuance_bucket`, receipts. Optional Redis. Not process-local Maps.
 

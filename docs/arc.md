@@ -24,6 +24,6 @@ Indexer default `ARC_FINALITY_CONFIRMATIONS=0`. The Ethereum-style 8-block lag i
 - Always records RPC liveness, chain id, Factory creation/runtime sizes.
 - Broadcasts **only** if `ARC_TESTNET_PK` is set, chain is 5042002, and runtime ≤ 24,576.
 - `claimed` stays **false** until an explorer hash is confirmed on [testnet.arcscan.app](https://testnet.arcscan.app).
-- Without a key, the JSON lists an honest blocker checklist (Circle faucet → key → re-run → explorer).
+- Without a key, the JSON lists an honest blocker checklist (Circle faucet → key → re-run → explorer). Same content: `deployments/arc-testnet-blocker.md` and `scripts/arc-testnet-checklist.md`. **claimed stays false.**
 
 PoolManager is **not** deployed on Arc Public Testnet as of this release. Local Anvil 5042002 ships official v4-core (BUSL, non-production).

@@ -18,6 +18,7 @@ import {
   type QuoteHop,
 } from "../../../packages/reactor/src/quote.ts";
 import { requestId } from "./obs.ts";
+import { quoterStateOverride, uniquePathTokens, QUOTER_FALLBACK_NOTE } from "./quote-overrides.ts";
 
 const curveAbi = parseAbi([
   "function buy(address token, uint256 quoteIn, uint256 minOut) returns (uint256)",
@@ -75,8 +76,10 @@ async function previewWholeRoute(
       functionName: side === "BUY" ? "previewBuy" : "previewSell",
       args: [token, amountIn, hops],
     });
+    const tokens = uniquePathTokens(ctx.addresses.USDC, token, hops);
+    const stateOverride = quoterStateOverride(quoter, tokens);
     try {
-      await ctx.client.call({ to: quoter, data, account });
+      await ctx.client.call({ to: quoter, data, account, stateOverride });
       throw new Error("UserRouteQuoter preview did not revert");
     } catch (e) {
       const raw = extractRevertData(e);
@@ -87,7 +90,7 @@ async function previewWholeRoute(
       return { amountOut, hopOuts, kinds: kinds.map(kindName) };
     }
   }
-  if (!executor) throw new Error("UserRouteQuoter/Executor missing");
+  if (!executor) throw new Error(QUOTER_FALLBACK_NOTE);
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 120);
   const sim = await ctx.client.simulateContract({
     address: executor,
