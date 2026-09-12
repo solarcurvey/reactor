@@ -39,7 +39,7 @@ Exact-address screening: `GET /sanctions/screen` returns `blocked` / `clear` / `
 `@reactor/sdk` does **not** evaluate geo policy. Jurisdiction decisions are server-side (`evaluateRequestGeo`). Do not copy ISO deny lists into a terminal. See [Geo policy](/docs/geo-policy). Write-path enforcement is [Operator policy](/docs/operator-policy).
 
 Protected write routes (`POST /quote`, `/upload`, `/launch/*`) fail closed on a stale or missing official-list snapshot. `GET /markets` and other public reads are not gated. See [Sanctions ops](/docs/sanctions-ops).
-Hosted write assistance (`POST /quote`, `/launch/authorize`, `/upload`) may return `deny` / `unavailable` with a public `reason`. Do not send browser country / IP / “clear” flags as authority. Do not expect the UI to hide `GET /markets`. See [Restricted access](/docs/restricted-access).
+Hosted write assistance (`POST /quote`, `/launch/authorize`, `/upload`) may return `deny` / `unavailable` with a public `reason`. Send `x-reactor-wallet-proof` from `GET /operator-policy/challenge` (EIP-191). Do not send browser country / IP / “clear” / claimed-wallet flags as authority. Do not expect the UI to hide `GET /markets`. See [Restricted access](/docs/restricted-access).
 
 See [API](/docs/api), [SDK](/docs/sdk), [Examples](/docs/examples), [Quoting](/docs/quoting), [Events](/docs/events), [UI QA](/docs/qa), [Operator policy](/docs/operator-policy).
 

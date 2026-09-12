@@ -1,11 +1,13 @@
 /**
  * Next BFF resolver for GET /api/operator-policy (issue #65).
  *
- * Prefers indexer `GET /operator-policy/status` from #62 / PR #68 when present.
- * Until that path exists, LOCAL stubs allow (demo continues) and production-like
- * environments fail closed as temporarily unavailable.
+ * Proxies indexer `GET /operator-policy/status` (this branch; #62 recovered-wallet
+ * model). Subject is the EIP-191 signer of `GET /operator-policy/challenge`.
+ * Claimed `x-reactor-wallet` / body.wallet is never forwarded or trusted.
  *
- * Browser-supplied clear/country/IP/wallet flags never become authority.
+ * Proof is optional on status (geo-only pre-wallet UX). Writes still require
+ * a recovered proof at the indexer gate. If an older indexer 404s the status
+ * path, LOCAL stubs allow and production-like environments fail closed.
  */
 import {
   allowStubView,
@@ -61,11 +63,15 @@ function localFixtureReason(req: Request, env: NodeJS.ProcessEnv): OperatorPolic
   return undefined;
 }
 
-export function pickForwardHeaders(incoming: Headers): Headers {
+export function pickForwardHeaders(incoming: Headers, env: NodeJS.ProcessEnv = process.env): Headers {
   const out = new Headers();
   for (const name of FORWARDED_POLICY_HEADERS) {
     const value = incoming.get(name);
     if (value) out.set(name, value);
+  }
+  if (!productionLike(env)) {
+    const geo = incoming.get("x-reactor-geo-fixture");
+    if (geo) out.set("x-reactor-geo-fixture", geo);
   }
   return out;
 }
@@ -105,7 +111,7 @@ export async function resolveOperatorPolicyStatus(input: {
     return publicPolicyView({ reason: fixture, source: "fixture" });
   }
 
-  const forwarded = pickForwardHeaders(input.req.headers);
+  const forwarded = pickForwardHeaders(input.req.headers, env);
   const fromIndexer = await fetchIndexerPolicyStatus({
     indexer: indexerBaseUrl(env),
     headers: forwarded,

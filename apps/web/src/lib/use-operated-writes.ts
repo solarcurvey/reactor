@@ -17,6 +17,7 @@ export function useOperatedWrites() {
   return {
     ...chain,
     policy,
+    ensureProof: policy.ensureProof,
     writesEnabled: chain.writesEnabled && policyAllows,
     policyBlocked,
     writeBlockMessage,

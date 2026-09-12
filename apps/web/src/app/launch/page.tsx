@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePublicClient, useSignMessage, useWriteContract } from "wagmi";
-import { signOperatorWalletProof } from "@/lib/wallet-proof";
 import { waitForTransactionReceipt } from "viem/actions";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -107,7 +106,7 @@ export default function LaunchPage() {
   const tickerStatus = tickerOverride || tickerRemote || "";
 
   async function authorizeLaunch(quoteAddr: `0x${string}`, ticker: string, mode: "instant" | "fair") {
-    const proof = await signOperatorWalletProof((message) => signMessageAsync({ message }));
+    const proof = await policy.ensureProof();
     const res = await fetch("/api/launch-pricing", {
       method: "POST",
       headers: { "content-type": "application/json", ...proof },
@@ -407,10 +406,14 @@ export default function LaunchPage() {
               }
               try {
                 const { INDEXER_URL } = await import("@/lib/chain");
-                const proof = await signOperatorWalletProof((message) => signMessageAsync({ message }));
-                const res = await fetch(`${INDEXER_URL}/upload`, { method: "POST", headers: proof, body: file });
-                const body = (await res.json()) as { publicUrl?: string; uri?: string; error?: string };
-                if (!res.ok) throw new Error(body.error ?? "upload failed");
+                const proof = await policy.ensureProof();
+                const res = await fetch(`${INDEXER_URL}/upload`, { method: "POST", headers: { ...proof }, body: file });
+                const body = (await res.json()) as { publicUrl?: string; uri?: string; error?: string; reason?: string };
+                if (!res.ok) {
+                  if (policy.applyWriteError(body)) throw new Error(body.error ?? "upload unavailable");
+                  throw new Error(body.error ?? "upload failed");
+                }
+>>>>>>> ae71316 (Bind restricted UX to #62 challenge and recovered-wallet proofs.)
                 const next = sanitizeMediaUrl(body.publicUrl ?? body.uri ?? "");
                 if (!next) throw new Error("upload returned a URL the launchpad will not render");
                 setImage(next);

@@ -57,6 +57,14 @@ async function main() {
 }
 
 {
+  const incoming = new Headers({ "x-reactor-geo-fixture": "country=FX" });
+  const local = pickForwardHeaders(incoming, { REACTOR_ENV: "LOCAL" });
+  assert(local.get("x-reactor-geo-fixture") === "country=FX", "LOCAL may forward geo fixture");
+  const prod = pickForwardHeaders(incoming, { REACTOR_ENV: "PROD" });
+  assert(!prod.has("x-reactor-geo-fixture"), "PROD must not forward geo fixture");
+}
+
+{
   const req = new Request("http://127.0.0.1/api/operator-policy?fixture=DENY_GEO_BLOCKED&sanctionsClear=1", {
     headers: {
       "x-sanctions-clear": "1",

@@ -69,6 +69,6 @@ Keeper / Launch signer / Guardian **private keys**, Turnstile/admission HMAC sec
 
 ## Restricted access (operated services)
 
-`/restricted` and disabled Confirm / Launch / Quote CTAs are UX over a server policy decision. The browser is not given raw IP, screening records, or list metadata. Client “clear” / country headers cannot override. This does not censor permissionless chain reads. See [Restricted access](/docs/restricted-access).
+`/restricted` and disabled Confirm / Launch / Quote CTAs are UX over a server policy decision. Account status uses a recovered EIP-191 wallet proof, not a claimed browser wallet. The browser is not given raw IP, screening records, or list metadata. Client “clear” / country headers cannot override. This does not censor permissionless chain reads. Production `next start` fail-closes if the indexer status path is missing. See [Restricted access](/docs/restricted-access).
 
 See [Media](/docs/media), [Trust](/docs/trust), [Admission](/docs/admission), [Creators](/docs/creators).

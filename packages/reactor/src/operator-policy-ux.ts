@@ -161,6 +161,14 @@ export function isOperatorPolicyReason(value: unknown): value is OperatorPolicyR
   return typeof value === "string" && value in USER_POLICY_MESSAGES;
 }
 
+/** EVM 20-byte identity. Checksum casing does not matter. */
+export function normalizeEvmAddress(raw: string | undefined | null): string | undefined {
+  if (!raw) return undefined;
+  const t = raw.trim();
+  if (!/^0x[a-fA-F0-9]{40}$/.test(t)) return undefined;
+  return t.toLowerCase();
+}
+
 export function parseUxKind(value: unknown): RestrictedUxKind | undefined {
   if (value === "wallet" || value === "geo" || value === "unavailable" || value === "allow" || value === "pending") {
     return value;

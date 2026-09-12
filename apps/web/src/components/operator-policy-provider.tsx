@@ -1,11 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useAccount, useSignMessage } from "wagmi";
 import {
   parseWritePolicyError,
   type PublicOperatorPolicyView,
   type RestrictedUxKind,
 } from "@/lib/operator-policy";
+import { fetchWalletProofChallenge, type WalletProofHeader } from "@/lib/wallet-proof";
 
 export type OperatorPolicyUx = {
   kind: RestrictedUxKind;
@@ -17,6 +19,7 @@ export type OperatorPolicyUx = {
   loading: boolean;
   applyWriteError: (body: unknown) => boolean;
   refresh: () => Promise<void>;
+  ensureProof: () => Promise<WalletProofHeader | undefined>;
 };
 
 const pending: OperatorPolicyUx = {
@@ -29,13 +32,16 @@ const pending: OperatorPolicyUx = {
   loading: true,
   applyWriteError: () => false,
   refresh: async () => undefined,
+  ensureProof: async () => undefined,
 };
 
 const OperatorPolicyContext = createContext<OperatorPolicyUx>(pending);
 
+type CachedProof = { address: string; header: string; exp: number };
+
 function viewToUx(
   view: PublicOperatorPolicyView,
-  extras: Pick<OperatorPolicyUx, "applyWriteError" | "refresh">,
+  extras: Pick<OperatorPolicyUx, "applyWriteError" | "refresh" | "ensureProof">,
 ): OperatorPolicyUx {
   return {
     kind: view.kind,
@@ -50,11 +56,42 @@ function viewToUx(
 }
 
 export function OperatorPolicyProvider({ children }: { children: React.ReactNode }) {
+  const { address, isConnected } = useAccount();
+  const { signMessageAsync } = useSignMessage();
   const [view, setView] = useState<PublicOperatorPolicyView | null>(null);
+  const proofRef = useRef<CachedProof | null>(null);
+
+  const ensureProof = useCallback(async (): Promise<WalletProofHeader | undefined> => {
+    if (!isConnected || !address) return undefined;
+    const now = Math.floor(Date.now() / 1000);
+    const cached = proofRef.current;
+    if (cached && cached.address === address.toLowerCase() && cached.exp - 20 > now) {
+      return { "x-reactor-wallet-proof": cached.header };
+    }
+    try {
+      const challenge = await fetchWalletProofChallenge();
+      const signature = await signMessageAsync({ message: challenge.message });
+      const header = JSON.stringify({ token: challenge.token, signature });
+      proofRef.current = {
+        address: address.toLowerCase(),
+        header,
+        exp: challenge.exp ?? now + 90,
+      };
+      return { "x-reactor-wallet-proof": header };
+    } catch {
+      proofRef.current = null;
+      return undefined;
+    }
+  }, [address, isConnected, signMessageAsync]);
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch("/api/operator-policy", { cache: "no-store" });
+      const headers: Record<string, string> = {};
+      if (isConnected && address) {
+        const proof = await ensureProof();
+        if (proof) Object.assign(headers, proof);
+      }
+      const res = await fetch("/api/operator-policy", { cache: "no-store", headers });
       const json: unknown = await res.json();
       const parsed = parseWritePolicyError(json);
       if (parsed) {
@@ -78,7 +115,7 @@ export function OperatorPolicyProvider({ children }: { children: React.ReactNode
         source: "stub",
       },
     );
-  }, []);
+  }, [address, ensureProof, isConnected]);
 
   const applyWriteError = useCallback((body: unknown) => {
     const parsed = parseWritePolicyError(body);
@@ -88,13 +125,14 @@ export function OperatorPolicyProvider({ children }: { children: React.ReactNode
   }, []);
 
   useEffect(() => {
+    if (!isConnected || !address) proofRef.current = null;
     void refresh();
-  }, [refresh]);
+  }, [address, isConnected, refresh]);
 
   const value = useMemo<OperatorPolicyUx>(() => {
-    if (!view) return { ...pending, refresh, applyWriteError };
-    return viewToUx(view, { refresh, applyWriteError });
-  }, [view, refresh, applyWriteError]);
+    if (!view) return { ...pending, refresh, applyWriteError, ensureProof };
+    return viewToUx(view, { refresh, applyWriteError, ensureProof });
+  }, [view, refresh, applyWriteError, ensureProof]);
 
   return <OperatorPolicyContext.Provider value={value}>{children}</OperatorPolicyContext.Provider>;
 }

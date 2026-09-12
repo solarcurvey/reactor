@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePublicClient, useSignMessage, useWriteContract } from "wagmi";
-import { signOperatorWalletProof } from "@/lib/wallet-proof";
 import { waitForTransactionReceipt } from "viem/actions";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
@@ -159,7 +158,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
     }
     setPhase("quoting");
     try {
-      const proof = await signOperatorWalletProof((message) => signMessageAsync({ message }));
+      const proof = await policy.ensureProof();
       const res = await fetch(`${INDEXER_URL}/quote`, {
         method: "POST",
         headers: { "content-type": "application/json", ...proof },
