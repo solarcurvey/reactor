@@ -19,6 +19,8 @@
 | Keeper | Designated maintenance. One atomic lease |
 | CORE | Protocol token (`CoreToken`). Never Top-10 |
 | Factory V1 | Immutable on-chain factory label. Not protocol semver |
-| Protocol 0.3.0 | This software + docs release |
+| Protocol 0.3.2 | This software + docs release |
+| Millisecond columns | `Date.now()` wall clock: admission hits, issuance `updated_ms`, leader lease, Keeper jobs, alerts. Postgres `BIGINT` (schema v6) |
+| Unix-seconds columns | `Date.now()/1000` or `block.timestamp`: trades, ticker lock, receipt expiry |
 | Arc gas USDC | Native 18-decimal gas unit |
 | Protocol USDC | ERC-20 6 decimals (`0x3600…0000` on Arc) |

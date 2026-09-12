@@ -2,7 +2,7 @@
 
 # Changelog
 
-Protocol release **0.3.1** (`v0.3.1`). Factory **V1** is unchanged by this number.
+Protocol release **0.3.2** (`v0.3.2`). Factory **V1** is unchanged by this number.
 
 The canonical file is `CHANGELOG.md` at the repo root. Same content below.
 
@@ -13,6 +13,27 @@ Versioning: [Semantic Versioning](https://semver.org/) for the **protocol releas
 - Protocol source of truth: `docs/version.json` (`protocolVersion`)
 - Git tag: `vMAJOR.MINOR.PATCH` (see [Versioning](docs/versioning.md) and `CONTRIBUTING.md`)
 - Factory **V1 stays V1 forever**. A new fee split or curve is Factory V2, not a protocol patch.
+
+## [0.3.2] - 2026-09-12
+
+Postgres millisecond timestamps. Tokenomics **unchanged**. Factory **V1**.
+
+### Added / Changed
+
+- Schema **v6** promotes wall-clock millisecond / lease columns to `BIGINT`: `admission_hits.ts`, `issuance_bucket.updated_ms`, `leader_locks.ts`, `leader_locks.lease_until`, `keeper_operations.ts`, `alerts.ts`. Fresh Postgres DDL matches. Existing v5 databases `ALTER COLUMN … TYPE BIGINT` without data loss.
+- Real Postgres integration test (`pnpm --filter indexer test:pg`) inserts current `Date.now()` into admission, issuance bucket, leader lock, Keeper job, and alert paths; Keeper leadership and LaunchAuthorization issuance run against Postgres. CI job `postgres-ms-timestamps` runs that test on GitHub.
+- Backend docs record seconds-vs-milliseconds conventions. SQLite INTEGER is already 64-bit; the production bug is Postgres 32-bit INTEGER overflow (~1.8e12 ms vs max 2_147_483_647).
+
+### Tokenomics
+
+- No change. Different split = new Factory version, not an edit to V1.
+
+### Known limits (honest)
+
+- Not audited. No public mainnet.
+- Arc Factory **not claimed** unless `deployments/arc-factory-attempt.json` has a confirmed explorer hash.
+- Top-10 ranks remain an offchain API.
+- Factory V1 runtime must stay ≤ 23,552.
 
 ## [0.3.1] - 2026-09-12
 

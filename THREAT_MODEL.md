@@ -43,6 +43,10 @@ Hostile-reader notes for Codex / external review. **Not an audit.**
 8. **Guardian cannot** withdraw, mint, change fee BPS, set Top-10, or take fee exemption as a wallet. See `GUARDIAN_MODEL.md`.
 9. **FoT / rebase quotes:** `creditRewards` / vault `accrue` measure actual received; shortfall reverts. Rebasing quotes are unsupported (document + do not register).
 
+## Offchain indexer (not custody)
+
+Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, so it will not catch 32-bit overflow. Columns that receive `Date.now()` milliseconds (`admission_hits.ts`, `issuance_bucket.updated_ms`, `leader_locks.ts` / `lease_until`, `keeper_operations.ts`, `alerts.ts`) must be `BIGINT`. A 32-bit INTEGER overflows (~1.8e12 vs max 2_147_483_647) and fails closed on admission throttle, Keeper leadership, jobs, and alerts. Unix-seconds fields (trades, ticker lock, receipt expiry) are a different convention — do not mix units. Schema v6. See `ARCHITECTURE.md`.
+
 ## Residual risks (highest first)
 
 1. **Hook custom accounting** — wrong sign on `BeforeSwapDelta` / afterSwap unspecified delta can steal from swappers or insolvent the hook. V1 tests cover exact-in buy/sell × token0/token1 (exact-out disabled).

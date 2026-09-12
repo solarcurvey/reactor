@@ -1,6 +1,6 @@
 {
   "name": "indexer",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,7 +16,8 @@
     "watchdog:once": "WATCHDOG_ONCE=1 tsx src/watchdog.ts",
     "seed-bonding": "tsx src/seed-bonding.ts",
     "seed-review": "tsx src/seed-review.ts",
-    "pg-smoke": "tsx src/pg-smoke.ts"
+    "pg-smoke": "tsx src/pg-smoke.ts",
+    "test:pg": "tsx src/pg-ms-timestamps.test.ts"
   },
   "dependencies": {
     "viem": "^2.56.3",

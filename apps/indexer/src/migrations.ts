@@ -1,6 +1,23 @@
 import type { Store } from "./db.ts";
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
+
+/**
+ * Wall-clock fields written as `Date.now()` milliseconds (≈1.8e12 today).
+ * Postgres INTEGER is 32-bit (max 2_147_483_647) and overflows; BIGINT is required.
+ * SQLite INTEGER is already 64-bit — the V6 ALTER is a Postgres-only type promotion.
+ *
+ * Unix-seconds fields (`Math.floor(Date.now() / 1000)`, chain `block.timestamp`,
+ * ticker `locked_until`, receipt `expires`) stay INTEGER until 2038.
+ */
+export const MS_TIMESTAMP_COLUMNS = [
+  { table: "admission_hits", column: "ts" },
+  { table: "issuance_bucket", column: "updated_ms" },
+  { table: "leader_locks", column: "ts" },
+  { table: "leader_locks", column: "lease_until" },
+  { table: "keeper_operations", column: "ts" },
+  { table: "alerts", column: "ts" },
+] as const;
 
 const V1_TABLES = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -148,7 +165,7 @@ CREATE TABLE IF NOT EXISTS targets (
   epoch_id TEXT, rank INTEGER, token TEXT, weight_bps INTEGER, mark_usdc TEXT, PRIMARY KEY (epoch_id, rank)
 );
 CREATE TABLE IF NOT EXISTS keeper_operations (
-  id TEXT PRIMARY KEY, kind TEXT, status TEXT, hash TEXT, nonce TEXT, receipt TEXT, note TEXT, request_id TEXT, op_id TEXT, ts INTEGER
+  id TEXT PRIMARY KEY, kind TEXT, status TEXT, hash TEXT, nonce TEXT, receipt TEXT, note TEXT, request_id TEXT, op_id TEXT, ts BIGINT
 );
 CREATE TABLE IF NOT EXISTS guardian_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, payload TEXT, block INTEGER, tx TEXT, ts INTEGER
@@ -164,10 +181,10 @@ CREATE TABLE IF NOT EXISTS metadata (
   token TEXT PRIMARY KEY, image TEXT, description TEXT, website TEXT, twitter TEXT, telegram TEXT, media_id TEXT
 );
 CREATE TABLE IF NOT EXISTS leader_locks (
-  name TEXT PRIMARY KEY, owner TEXT, ts INTEGER, lease_until INTEGER
+  name TEXT PRIMARY KEY, owner TEXT, ts BIGINT, lease_until BIGINT
 );
 CREATE TABLE IF NOT EXISTS alerts (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, level TEXT, code TEXT, detail TEXT, ts INTEGER
+  id INTEGER PRIMARY KEY AUTOINCREMENT, level TEXT, code TEXT, detail TEXT, ts BIGINT
 );
 CREATE TABLE IF NOT EXISTS tickers (
   ticker TEXT PRIMARY KEY,
@@ -203,7 +220,7 @@ const V4_TABLES = `
 CREATE TABLE IF NOT EXISTS admission_hits (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   key TEXT NOT NULL,
-  ts INTEGER NOT NULL
+  ts BIGINT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_admission_hits_key_ts ON admission_hits(key, ts);
 CREATE TABLE IF NOT EXISTS admission_challenges (
@@ -303,7 +320,7 @@ export async function applyMigrations(store: Store): Promise<number> {
       CREATE TABLE IF NOT EXISTS issuance_bucket (
         k TEXT PRIMARY KEY,
         tokens TEXT NOT NULL,
-        updated_ms INTEGER NOT NULL,
+        updated_ms BIGINT NOT NULL,
         signed_count INTEGER NOT NULL
       );
     `);
@@ -321,6 +338,15 @@ export async function applyMigrations(store: Store): Promise<number> {
     }
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 5, Math.floor(Date.now() / 1000));
     current = 5;
+  }
+  if (current < 6) {
+    if (store.dialect === "postgres") {
+      for (const { table, column } of MS_TIMESTAMP_COLUMNS) {
+        await store.exec(`ALTER TABLE ${table} ALTER COLUMN ${column} TYPE BIGINT`);
+      }
+    }
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 6, Math.floor(Date.now() / 1000));
+    current = 6;
   }
   return current;
 }

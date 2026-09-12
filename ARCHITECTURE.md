@@ -69,6 +69,9 @@ Pre-graduation Instant trades settle on `InstantCurve` (same 3.5% quote split). 
 ## Offchain
 
 - **Indexer:** production data model (Postgres when `DATABASE_URL` is set; SQLite local-only). Tables cover tokens/markets/quotes/pools/trades/candles/bonding/graduations/rewards/claims/selfburn/flywheel/CORE/Top-10/keeper/guardian/routes/marks/metadata. Never the source of truth for balances or fees.
+- **Time units (do not mix in one column):**
+  - **Milliseconds** (`Date.now()`): `admission_hits.ts`, `issuance_bucket.updated_ms`, `leader_locks.ts`, `leader_locks.lease_until`, `keeper_operations.ts`, `alerts.ts`. Postgres type is `BIGINT` (schema v6). SQLite `INTEGER` is already 64-bit, which is why local tests hid the overflow.
+  - **Unix seconds** (`Math.floor(Date.now() / 1000)` or chain `block.timestamp`): trade/candle/market/token timestamps, ticker `locked_until`, admission receipt `expires`/`ts`, challenges, `launch_auths.ts`, `schema_migrations.applied_ts`. These still fit in 32-bit `INTEGER` until 2038.
 - **ValuationService:** one recursive CAT→ZCAT→ZEC→USD path with ancestry. Parent-only USD is rejected.
 - **Quote API:** `POST /quote` plans proven venues only (≤3 hops). One `UserRouteQuoter` `eth_call` with ERC-20 state overrides (no intermediate wallet balances). Discloses each official 3.5% leg.
 - **Web:** homepage is `GET /markets` (zero per-token RPC). Trades use the quote API — no wallet hop sim for missing intermediate assets.

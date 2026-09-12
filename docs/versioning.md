@@ -2,15 +2,15 @@
 
 # Versioning
 
-> Protocol release **0.3.1** (`v0.3.1`, 2026-09-12). Factory **V1** is immutable and is not this number.
+> Protocol release **0.3.2** (`v0.3.2`, 2026-09-12). Factory **V1** is immutable and is not this number.
 
-pre-audit local/testnet — not mainnet. Honest leftovers: Safe Builder JSON from artifacts, UserRouteQuoter state-override nested quotes, production hard gates, funding-parent heuristic, sharp required, Arc testnet blocker. Factory V1 immutable. Not audited.
+pre-audit local/testnet — not mainnet. Postgres millisecond timestamp columns promoted to BIGINT (schema v6). Factory V1 immutable. Not audited.
 
 ## Two version numbers
 
 | Kind | What it is | Source of truth | This HEAD |
 | --- | --- | --- | --- |
-| **Protocol release** | Overall REACTOR software + docs release (semver) | `docs/version.json` → `protocolVersion` | **0.3.1** |
+| **Protocol release** | Overall REACTOR software + docs release (semver) | `docs/version.json` → `protocolVersion` | **0.3.2** |
 | **Factory version** | Immutable on-chain factory label for **new launches** | `ReactorFactory.FACTORY_VERSION` | **V1** (`1`) |
 
 Factory **V1 stays V1 forever**. A different fee split, supply, Dev Buy cap, or curve is a **new factory deploy** (V2, V3, …), authorized by Guardian for new launches only. Existing V1 tokens are untouched. See `FACTORY_VERSIONING.md`.
@@ -41,8 +41,8 @@ Every **production** protocol release:
 5. Create an annotated git tag matching `releaseTag`:
 
 ```
-git tag -a v0.3.1 -m "REACTOR protocol 0.3.1"
-git push origin v0.3.1
+git tag -a v0.3.2 -m "REACTOR protocol 0.3.2"
+git push origin v0.3.2
 ```
 
 Rules:

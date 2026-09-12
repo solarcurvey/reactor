@@ -1,6 +1,6 @@
 # Launch admission
 
-> Protocol **0.3.1**. CHALLENGE ≠ ALLOW. A solved challenge can ALLOW under limits.
+> Protocol **0.3.2**. CHALLENGE ≠ ALLOW. A solved challenge can ALLOW under limits.
 
 `POST /launch/authorize` is the public path. Direct isolated-signer calls without an ALLOW receipt fail.
 
@@ -15,6 +15,8 @@
 ## Issuance throttle
 
 Durable shared token-bucket in Postgres/SQLite (`issuance_bucket`). Optional Redis `EVAL` when `REDIS_URL` is set. **Counts signed LaunchAuthorizations**, not admit ALLOW hits.
+
+`admission_hits.ts` and `issuance_bucket.updated_ms` are **milliseconds** (`Date.now()`), stored as `BIGINT` on Postgres (schema v6). Receipt `expires` / `admission_receipts.ts` / challenge timestamps are **unix seconds**. Do not mix units in the same column. Canonical table: `ARCHITECTURE.md` (Offchain).
 
 | Level | Hourly signed-auth cap | How it is entered |
 | --- | ---: | --- |
