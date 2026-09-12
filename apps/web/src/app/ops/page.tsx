@@ -199,8 +199,8 @@ function Stat({ label, value, sub }: { label: string; value: string; sub: string
 function Row({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex justify-between gap-3">
-      <dt className="text-zinc-400">{k}</dt>
-      <dd className="truncate text-right text-zinc-200">{v}</dd>
+      <dt className="shrink-0 text-zinc-400">{k}</dt>
+      <dd className="break-all text-right text-zinc-200">{v}</dd>
     </div>
   );
 }
