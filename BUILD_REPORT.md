@@ -1,4 +1,49 @@
-# BUILD REPORT — CI cost cut without weakening release gates (Refs #69)
+# BUILD REPORT — Eliminate RPC waterfalls (#37)
+
+**Status:** Addresses issue **#37** on the same PR / branch. Rebased onto `origin/main` `300b7e5` (#73 CI cost cut / three-tier Actions after #77 founder residual). Issue **#37 stays open** — `Refs #37`, do not auto-close.
+**Not audited. Not mainnet.**  
+**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
+**Do not close #37 from this file.** Issue stays open until merge **and** post-merge verify.
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — notes / Unreleased only |
+| Factory | **V1** — unchanged |
+| Intent | Machine-checkable page request/RPC budgets on a 4k-market seed; abort obsolete search/filter/token/account/route loads; SSE patches without board refetch storms; explicit no-refetch-on-focus for expensive reads. Frozen economics unchanged. |
+| Foundry | Unchanged this pass (offchain read-path only). |
+| Indexer / lib | `page-budget.test.ts` in `pnpm test:lib` (also `test:ci-cost` + `ci-public-harden` from #73). 4,000 seeded markets, inventory loaders, abort, SSE, focus policy. Plus `rpc-batch.test.ts`, `page-reads.test.ts`, `markets-query.test.ts`, `indexed.test.ts`. |
+| Review shots | **Not regenerated** (no chrome/tokenomics change) |
+| Mainnet | **Blocked** |
+
+## Closed this run (implementation; issue stays open)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Inventory + before/after | **Yes** | `docs/perf.md` |
+| Prefer indexed APIs | **Yes** | `useQuotes` → `/quote-assets`; `useMarket` / `useTokenPage`; search `GET /markets?q=`; fair uses `/markets/:token` |
+| Token page aggregation | **Yes** | `GET /page/token/:token` (`aggregateTokenPage` `Promise.all`) |
+| TanStack hygiene | **Yes** | `createAppQueryClient` + `qk.*`; ticker/rewards no longer `useEffect` waterfalls |
+| Batch independent reads | **Yes** | `readContractsBatched` probe; Keeper `listFactoryTokens`; route-graph two-wave; rewards `pendingRewards` |
+| Arc Multicall3 not assumed | **Yes** | Bytecode + one successful `multicall`, else `Promise.all`. `rpc-batch.test.ts` |
+| Quote freshness / fail-closed | **Yes** | `POST /quote` still uncached; `QUOTE_TTL_MS = 30_000`; quoting.md + trade-panel unchanged |
+| Page-level budget CI on large seed | **Yes** | `page-budget.test.ts` — N=500 and N=4,000 same HTTP/RPC waves. Home/search/token/Launch/Rewards/REACTOR/CORE/quote/wallet. |
+| Cancel obsolete requests | **Yes** | TanStack `{ signal }` through `fetchIndexerJson` (rethrows `AbortError`). Rapid search/filter/token/account/route abort. |
+| SSE no refetch storm | **Yes** | `applyLiveEventToClient` patches only; 50 trades → 0 `invalidateQueries`. |
+| Refetch-on-focus policy | **Yes** | `EXPENSIVE_REFETCH_ON_FOCUS = false`; source-scanned on hooks / CORE / REACTOR. |
+
+## Still blocked (do not fake)
+
+| Blocker | Why |
+| --- | --- |
+| Public mainnet (5042) | Hard blocked. No addresses. |
+| Claim Arc Multicall3 exists | Probe only. Do not hardcode yes. |
+| Close #37 | **Stays open** until merge + post-merge verify. Do not close from BUILD_REPORT. `Refs #37`. |
+| Close #10 | Stays open (merged #53). Do not `Fixes #10`. |
+| Top-10 as onchain oracle | Frozen offchain by design. TTL is offchain policy. |
+
+---
+
+# Prior — merged #73 CI cost cut without weakening release gates (Refs #69)
 
 **Status:** PR **#73** for issue **#69**, rebased onto `origin/main` `0db39c0` (#77 after #76/#74). Do not auto-close #69. Cost/frequency refactor only. #15 / #17 / #18 production-readiness commands stay reachable.  
 **Not audited. Not mainnet.**  

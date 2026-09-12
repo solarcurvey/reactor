@@ -10,6 +10,7 @@ import {
   type MarketEdge,
   type QuoteMeta,
 } from "../../../../packages/reactor/src/routes";
+import { indexCalls, readContractsBatched } from "./rpc-batch";
 
 const ZERO = "0x0000000000000000000000000000000000000000";
 
@@ -28,9 +29,20 @@ export async function discoverApprovedUserGraph(client: PublicClient): Promise<{
   if (registry.address) {
     try {
       const n = Number(await client.readContract({ ...registry, functionName: "count" }));
-      for (let i = 0; i < n; i++) {
-        const token = (await client.readContract({ ...registry, functionName: "list", args: [BigInt(i)] })) as `0x${string}`;
-        const g = (await client.readContract({ ...registry, functionName: "get", args: [token] })) as readonly unknown[];
+      const listed = n > 0
+        ? await readContractsBatched<`0x${string}`>(client, indexCalls(registry.address, registry.abi, "list", n))
+        : [];
+      const rows = listed.length
+        ? await readContractsBatched<readonly unknown[]>(
+            client,
+            listed.map((token) => ({ ...registry, functionName: "get", args: [token] })),
+            { allowFailure: true },
+          )
+        : [];
+      const hopCandidates: `0x${string}`[] = [];
+      for (let i = 0; i < listed.length; i++) {
+        const token = listed[i]!;
+        const g = rows[i] ?? [];
         const enabled = Boolean(g[6]);
         const hopViaUsdc = Boolean(g[10]);
         const reactorNative = Boolean(g[11]);
@@ -45,17 +57,20 @@ export async function discoverApprovedUserGraph(client: PublicClient): Promise<{
           hopViaUsdc,
         });
         if (adapter && hopViaUsdc && token.toLowerCase() !== usdc.toLowerCase() && !reactorNative) {
-          const key = hooklessHopKey(usdc, token);
-          const sqrt = await readSqrtPriceX96(client, poolId(key));
-          const exists = Boolean(sqrt);
-          if (exists) {
-            const data = encodePoolKey(key);
-            raw.push(
-              { from: usdc, to: token, adapter, kind: "user", data, usable: true, exists },
-              { from: token, to: usdc, adapter, kind: "user", data, usable: true, exists },
-            );
-          }
+          hopCandidates.push(token);
         }
+      }
+      const hopSqrts = await Promise.all(
+        hopCandidates.map((token) => readSqrtPriceX96(client, poolId(hooklessHopKey(usdc, token)))),
+      );
+      for (let i = 0; i < hopCandidates.length; i++) {
+        if (!hopSqrts[i] || !adapter) continue;
+        const token = hopCandidates[i]!;
+        const data = encodePoolKey(hooklessHopKey(usdc, token));
+        raw.push(
+          { from: usdc, to: token, adapter, kind: "user", data, usable: true, exists: true },
+          { from: token, to: usdc, adapter, kind: "user", data, usable: true, exists: true },
+        );
       }
     } catch {
       /* fail closed */
@@ -64,20 +79,29 @@ export async function discoverApprovedUserGraph(client: PublicClient): Promise<{
 
   try {
     const len = Number(await client.readContract({ ...factory, functionName: "allTokensLength" }));
-    for (let i = 0; i < len; i++) {
-      const token = (await client.readContract({
-        ...factory,
-        functionName: "allTokens",
-        args: [BigInt(i)],
-      })) as `0x${string}`;
-      const info = (await client.readContract({ ...factory, functionName: "tokenInfo", args: [token] })) as readonly unknown[];
-      const quote = String(info[1]) as `0x${string}`;
-      const live = Boolean(info[5]);
-      if (!live || !adapter || !hook) continue;
-      const key = officialPoolKey(token, quote);
-      const sqrt = await readSqrtPriceX96(client, poolId(key));
-      if (!sqrt) continue;
-      const data = encodePoolKey(key);
+    const tokens = len > 0
+      ? await readContractsBatched<`0x${string}`>(client, indexCalls(factory.address, factory.abi, "allTokens", len))
+      : [];
+    const infos = tokens.length
+      ? await readContractsBatched<readonly unknown[]>(
+          client,
+          tokens.map((token) => ({ ...factory, functionName: "tokenInfo", args: [token] })),
+          { allowFailure: true },
+        )
+      : [];
+    const live: Array<{ token: `0x${string}`; quote: `0x${string}` }> = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i]!;
+      const info = infos[i] ?? [];
+      const quote = String(info[1] ?? "") as `0x${string}`;
+      if (!Boolean(info[5]) || !adapter || !hook || !quote) continue;
+      live.push({ token, quote });
+    }
+    const sqrts = await Promise.all(live.map((row) => readSqrtPriceX96(client, poolId(officialPoolKey(row.token, row.quote)))));
+    for (let i = 0; i < live.length; i++) {
+      if (!sqrts[i] || !adapter) continue;
+      const { token, quote } = live[i]!;
+      const data = encodePoolKey(officialPoolKey(token, quote));
       raw.push(
         { from: quote, to: token, adapter, kind: "user", data, usable: true, exists: true },
         { from: token, to: quote, adapter, kind: "user", data, usable: true, exists: true },

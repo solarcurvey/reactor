@@ -23,6 +23,16 @@ Indexer HTTP for the homepage board and trade tape.
 - `volume_24h_quote` — NUMERIC sum of notionals
 - Incremental: new trades add; `rolled` marks expire out of the 24h window; `rollOneMarket` corrects
 
+## `GET /markets/:token`
+
+Same projected columns as the board for one checksummed address (stored lowercase). **404** when the row is missing. Clients must not walk `allTokens` to render a token page.
+
+## `GET /page/token/:token`
+
+One HTTP hop for the trading-first token page. The indexer `Promise.all`s `getMarket`, bounded candles, and the tape. Query: `interval` (default `5m`), `candle_limit` (default 300, max 1000), `swap_limit` (default 200, max 500). `sparse` is true when fewer than three real (`n>0`) candles exist.
+
+This payload is **display** (chart + tape + board fields). It does not replace `POST /quote`. Marks can lag head; tickets stay 30s fail-closed.
+
 ## `GET /candles/:token`
 
 `interval` (`1m|5m|15m|1h|4h|1d`), `limit` (default 300, max 1000), `before`, `after` (exclusive keyset on `t`, same as SQL `t < before` / `t > after`). Gap-fill is **bounded**: at most `limit` buckets (hard cap 1000). With `before`, the last filled bucket is the previous interval when `before` is bucket-aligned — fill will not synthesize a candle at exactly `before`. Historical `before` never extends to wall-clock now. Page N+1 (`before` = oldest `t` from page N) has no overlap. Missing buckets copy the last close (`n=0`, `v=0`).

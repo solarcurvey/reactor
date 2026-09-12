@@ -3,11 +3,13 @@
 import { useAccount } from "wagmi";
 import { WalletButton } from "@/components/wallet-button";
 import { Card } from "@/components/ui/card";
-import { shortAddress } from "@/lib/utils";
+import { formatUnitsSafe, shortAddress } from "@/lib/utils";
 import { REVIEW_FIXTURES } from "@/lib/review-fixtures";
+import { useWalletSnapshot } from "@/lib/hooks";
 
 export default function WalletPage() {
   const { address, isConnected, chainId } = useAccount();
+  const { data: snap } = useWalletSnapshot(address);
   return (
     <div className="mx-auto max-w-md">
       <h1 className="text-2xl font-semibold">Wallet</h1>
@@ -26,6 +28,18 @@ export default function WalletPage() {
         <div className="flex items-center justify-between">
           <span className="text-[13px] text-zinc-400">Chain</span>
           <span className="font-mono text-sm">{isConnected ? String(chainId ?? "—") : "—"}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] text-zinc-400">USDC</span>
+          <span className="font-mono text-sm">{snap ? formatUnitsSafe(snap.usdc, 6, 2) : "—"}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] text-zinc-400">CORE</span>
+          <span className="font-mono text-sm">{snap ? formatUnitsSafe(snap.core, 18, 2) : "—"}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] text-zinc-400">USDC allowance (router)</span>
+          <span className="font-mono text-sm">{snap ? formatUnitsSafe(snap.usdcAllowance, 6, 2) : "—"}</span>
         </div>
         <WalletButton />
       </Card>

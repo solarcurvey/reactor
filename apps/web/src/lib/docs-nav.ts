@@ -13,6 +13,7 @@ export const DOCS: { slug: string; title: string; group: string; file: string }[
   { slug: "quoting", title: "Atomic quoter", group: "Protocol", file: "quoting.md" },
   { slug: "valuation", title: "Valuation", group: "Protocol", file: "valuation.md" },
   { slug: "markets", title: "Markets API", group: "Builders", file: "markets.md" },
+  { slug: "perf", title: "Read path performance", group: "Builders", file: "perf.md" },
   { slug: "media", title: "Media", group: "Builders", file: "media.md" },
   { slug: "arc", title: "Arc", group: "Reference", file: "arc.md" },
   { slug: "tickers", title: "Ticker registry", group: "Launch", file: "tickers.md" },

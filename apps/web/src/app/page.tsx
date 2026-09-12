@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useLaunchTokens } from "@/lib/hooks";
 import { formatUnitsSafe } from "@/lib/utils";
 import { REVIEW_FIXTURES } from "@/lib/review-fixtures";
-import { useReactorStream } from "@/lib/sse";
+import { useReactorLive } from "@/lib/sse";
 import { launchPath, quotePath } from "@/lib/untrusted-metadata";
 import { SafeTokenImage } from "@/components/safe-media";
 import { UntrustedText } from "@/components/untrusted-text";
@@ -15,7 +15,7 @@ const filters = ["Trending", "New", "Bonding", "Rewards", "Buy+Burn", "Batch Fai
 
 export default function HomePage() {
   const { data, isLoading, isError, error, refetch } = useLaunchTokens();
-  const live = useReactorStream();
+  const live = useReactorLive();
   const [filter, setFilter] = useState<(typeof filters)[number]>("New");
   const [q, setQ] = useState("");
 
@@ -127,7 +127,7 @@ export default function HomePage() {
       )}
       {isError && !REVIEW_FIXTURES && (
         <div className="mt-8 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
-          Could not read the factory. Is Anvil running on 127.0.0.1:8545?
+          Could not read indexed markets. Is the indexer on 127.0.0.1:43148?
           <div className="mt-2 text-xs text-red-200/80">{error instanceof Error ? error.message : "RPC error"}</div>
           <button className="mt-3 underline" onClick={() => refetch()}>
             Retry

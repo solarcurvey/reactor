@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePublicClient, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "viem/actions";
 import { useRouter } from "next/navigation";
@@ -8,9 +8,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { useQuotes } from "@/lib/hooks";
+import { useQuotes, useTickerStatus } from "@/lib/hooks";
 import { factory, erc20, launchAbi } from "@/lib/contracts";
-import { INDEXER_URL } from "@/lib/chain";
 import { parseUnitsSafe } from "@/lib/utils";
 import { TurnstileWidget, turnstileSiteKey } from "@/components/turnstile";
 import { sanitizeDescription, sanitizeMediaUrl, sanitizeTokenName, untrustedMetadataReasons } from "@/lib/untrusted-metadata";
@@ -35,36 +34,12 @@ export default function LaunchPage() {
   const [devBuy, setDevBuy] = useState("");
   const [durationMin, setDurationMin] = useState("45");
   const [error, setError] = useState<string | null>(null);
-  const [tickerStatus, setTickerStatus] = useState<string>("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const [needsChallenge, setNeedsChallenge] = useState(false);
   const siteKey = turnstileSiteKey();
 
   const selected = quotes?.find((q) => q.token.toLowerCase() === quote.toLowerCase());
-
-  useEffect(() => {
-    const raw = symbol.trim();
-    if (!raw) {
-      setTickerStatus("");
-      return;
-    }
-    let cancelled = false;
-    fetch(`${INDEXER_URL}/ticker/${encodeURIComponent(raw)}`)
-      .then((r) => r.json())
-      .then((j: { ticker?: string; reserved?: boolean; available?: boolean; error?: string }) => {
-        if (cancelled) return;
-        if (j.error) setTickerStatus(j.error);
-        else if (j.reserved) setTickerStatus(`${j.ticker} is reserved`);
-        else if (j.available === false) setTickerStatus(`${j.ticker} is locked`);
-        else setTickerStatus(`${j.ticker} available · 24h lock on success`);
-      })
-      .catch(() => {
-        if (!cancelled) setTickerStatus("Ticker status offline");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [symbol]);
+  const { data: tickerStatus } = useTickerStatus(symbol);
 
   async function authorizeLaunch(quoteAddr: `0x${string}`, ticker: string, mode: "instant" | "fair") {
     const res = await fetch("/api/launch-pricing", {

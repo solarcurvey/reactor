@@ -1,4 +1,4 @@
-import type { LaunchToken } from "@/lib/hooks";
+import type { LaunchToken } from "@/lib/indexed";
 
 export const REVIEW_FIXTURES = process.env.NEXT_PUBLIC_REVIEW_FIXTURES === "1";
 

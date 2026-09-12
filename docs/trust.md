@@ -11,7 +11,8 @@
 9. R2/S3 and the external price registry are fail-closed in PROD. Missing providers or a static-only config disable those quote launches. Accepted/rejected marks are persisted for the watchdog.
 10. Public JSON POSTs are stream-capped at 16KiB default / 64KiB hard max (Content-Length and chunked). Upload is 2MB. Limits stop unbounded buffering; they are not a DoS proof.
 11. **Token metadata is untrusted in the browser.** Names, tickers, descriptions, social URLs, and images are never rendered as HTML. URL schemes are allowlisted (`https:` / loopback `http:`). Images are first-party `/m/<id>.webp` or `/icons/…` only. Production CSP is a per-request nonce (`script-src` has no `'unsafe-inline'`). Wallet writes ignore metadata and indexer calldata; the official chain is required. Secrets are not `NEXT_PUBLIC_*`. See [Browser security](/docs/web-security). Admission DENYs `javascript:` / `data:` / HTML names before sign. The UI still sanitizes on read.
-12. This repo is **not audited**. Do not deploy to Arc Mainnet (5042).
-13. **Repository visibility is an operator decision.** The tree may stay private. Public-fork Actions must not receive repository secrets or a writable `GITHUB_TOKEN`. Do not publicize without founder instruction. Residual pre-rewrite dangling SHAs are accepted; Support purge/GC is not a #72 AC. See [Repo publicization](/docs/publicization).
+12. Indexed board / `/page/token` aggregation is display-only. Swap tickets remain `POST /quote` (30s TTL). Canonical Multicall3 is probed, not trusted as always present on Arc.
+13. This repo is **not audited**. Do not deploy to Arc Mainnet (5042).
+14. **Repository visibility is an operator decision.** The tree may stay private. Public-fork Actions must not receive repository secrets or a writable `GITHUB_TOKEN`. Do not publicize without founder instruction. Residual pre-rewrite dangling SHAs are accepted; Support purge/GC is not a #72 AC. See [Repo publicization](/docs/publicization).
 
 See `THREAT_MODEL.md`, `AUDIT_HANDOFF.md`.

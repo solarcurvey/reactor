@@ -7,7 +7,7 @@ import { OhlcvChart } from "@/components/ohlcv-chart";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { RewardsModule, TradePanel } from "@/components/trade-panel";
-import { useCandles, useCoreStats, useSwapSeries, useTokenByAddress } from "@/lib/hooks";
+import { useCoreStats, useTokenPage } from "@/lib/hooks";
 import { explorerAddress, formatUnitsSafe, shortAddress } from "@/lib/utils";
 import { addresses } from "@/lib/addresses";
 import { quotePath } from "@/lib/untrusted-metadata";
@@ -26,11 +26,12 @@ const INTERVALS = [
 
 export default function TokenPage() {
   const { address } = useParams<{ address: `0x${string}` }>();
-  const { data: t, isLoading } = useTokenByAddress(address);
-  const { data: tape } = useSwapSeries(address);
-  const { data: core } = useCoreStats();
   const [interval, setInterval] = useState<(typeof INTERVALS)[number]["id"]>("5m");
-  const { data: ohlcv } = useCandles(address, interval);
+  const { data: page, isLoading } = useTokenPage(address, interval);
+  const { data: core } = useCoreStats();
+  const t = page?.market;
+  const tape = page?.swaps;
+  const ohlcv = page?.ohlcv;
 
   if (isLoading) {
     return (

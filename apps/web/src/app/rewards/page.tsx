@@ -1,68 +1,16 @@
 "use client";
 
-import { useAccount, usePublicClient } from "wagmi";
-import { useEffect, useState } from "react";
+import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
-import { useLaunchTokens } from "@/lib/hooks";
-import { token as tokenC } from "@/lib/contracts";
+import { useLaunchTokens, usePendingRewards } from "@/lib/hooks";
 import { formatUnitsSafe } from "@/lib/utils";
 import Link from "next/link";
 import { tokenPath } from "@/lib/untrusted-metadata";
 
 export default function RewardsPage() {
   const { address, isConnected } = useAccount();
-  const client = usePublicClient();
   const { data: tokens, isLoading } = useLaunchTokens();
-  const [rows, setRows] = useState<{ token: string; symbol: string; quote: string; pending: bigint; dec: number }[]>([]);
-
-  useEffect(() => {
-    if (!tokens) return;
-    if (!address || !client) {
-      setRows(
-        tokens.map((t) => ({
-          token: t.token,
-          symbol: t.symbol,
-          quote: t.quoteSymbol ?? "",
-          pending: 0n,
-          dec: t.quoteDecimals ?? 18,
-        })),
-      );
-      return;
-    }
-    let cancel = false;
-    (async () => {
-      const next = [];
-      for (const t of tokens) {
-        try {
-          const pending = (await client.readContract({
-            address: t.token,
-            abi: tokenC.abi,
-            functionName: "pendingRewards",
-            args: [address],
-          })) as bigint;
-          next.push({
-            token: t.token,
-            symbol: t.symbol,
-            quote: t.quoteSymbol ?? "",
-            pending,
-            dec: t.quoteDecimals ?? 18,
-          });
-        } catch {
-          next.push({
-            token: t.token,
-            symbol: t.symbol,
-            quote: t.quoteSymbol ?? "",
-            pending: 0n,
-            dec: t.quoteDecimals ?? 18,
-          });
-        }
-      }
-      if (!cancel) setRows(next);
-    })();
-    return () => {
-      cancel = true;
-    };
-  }, [address, client, tokens]);
+  const { data: rows } = usePendingRewards(tokens, address);
 
   return (
     <div>
@@ -76,7 +24,7 @@ export default function RewardsPage() {
         </p>
       )}
       {isLoading && <p className="mt-4 text-sm text-zinc-500">Loading tokens…</p>}
-      {rows.length > 0 && (
+      {(rows ?? []).length > 0 && (
         <div className="mt-4 overflow-x-auto rounded-2xl border border-white/8">
           <table className="w-full min-w-[520px] text-left text-[13px]">
             <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.16em] text-zinc-500">
@@ -87,7 +35,7 @@ export default function RewardsPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {(rows ?? []).map((r) => (
                 <tr key={r.token} className="border-t border-white/6">
                   <td className="px-3 py-2 font-medium text-white">${r.symbol}</td>
                   <td className="px-3 py-2 font-mono text-zinc-300">
@@ -104,7 +52,7 @@ export default function RewardsPage() {
           </table>
         </div>
       )}
-      {isConnected && rows.length === 0 && !isLoading && (
+      {isConnected && (rows ?? []).length === 0 && !isLoading && (
         <p className="mt-6 text-sm text-zinc-500">No launch tokens indexed on this factory yet.</p>
       )}
     </div>

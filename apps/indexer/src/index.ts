@@ -20,8 +20,9 @@ import {
   resolveTop10Serve,
 } from "./top10-rank.ts";
 import { buildQuote } from "./quote-service.ts";
-import { fillCandlesForRequest, CANDLE_INTERVALS } from "../../../packages/reactor/src/prices.ts";
-import { listMarkets } from "./markets-query.ts";
+import { indexCalls, readContractsBatched } from "../../../packages/reactor/src/rpc-batch.ts";
+import { getMarket, listMarkets, normalizeMarketToken } from "./markets-query.ts";
+import { aggregateTokenPage, listCandles, listSwaps } from "./page-reads.ts";
 import { raiseAlert, recentAlerts } from "./alerts.ts";
 import type { ValuationService } from "../../../packages/reactor/src/valuation.ts";
 import { persistTickBatch, rewindIndexerCursor } from "./tick-persist.ts";
@@ -266,9 +267,18 @@ async function refreshQuotes(store: Store) {
   ] as const;
   try {
     const n = Number(await client.readContract({ address: registry, abi: registryAbi, functionName: "count" }));
-    for (let i = 0; i < n; i++) {
-      const token = (await client.readContract({ address: registry, abi: registryAbi, functionName: "list", args: [BigInt(i)] })) as `0x${string}`;
-      const g = (await client.readContract({ address: registry, abi: registryAbi, functionName: "get", args: [token] })) as readonly unknown[];
+    const listed = n > 0
+      ? await readContractsBatched<`0x${string}`>(client, indexCalls(registry, registryAbi, "list", n))
+      : [];
+    const assets = listed.length
+      ? await readContractsBatched<readonly unknown[]>(
+          client,
+          listed.map((token) => ({ address: registry, abi: registryAbi, functionName: "get", args: [token] })),
+        )
+      : [];
+    for (let i = 0; i < listed.length; i++) {
+      const token = listed[i]!;
+      const g = assets[i] ?? [];
       quoteDec.set(token.toLowerCase(), Number(g[3]));
       await store.run(
         `INSERT INTO quote_assets(token,symbol,name,decimals,category,enabled,usd_peg_one,hop_via_usdc,reactor_native,parent_quote,quarantined)
@@ -355,6 +365,35 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     );
     return;
   }
+  const marketOne = url.pathname.match(/^\/markets\/(0x[a-fA-F0-9]{40})$/);
+  if (marketOne) {
+    const token = normalizeMarketToken(marketOne[1]);
+    if (!token) {
+      json(res, 400, { error: "invalid token", request_id: rid }, rid);
+      return;
+    }
+    const item = await getMarket(store, token);
+    if (!item) {
+      json(res, 404, { error: "market not found", token, request_id: rid }, rid);
+      return;
+    }
+    json(res, 200, { item, request_id: rid }, rid);
+    return;
+  }
+  const tokenPage = url.pathname.match(/^\/page\/token\/(0x[a-fA-F0-9]{40})$/);
+  if (tokenPage) {
+    const page = await aggregateTokenPage(store, tokenPage[1] ?? "", {
+      interval: url.searchParams.get("interval"),
+      candleLimit: Number(url.searchParams.get("candle_limit") ?? 300),
+      swapLimit: Number(url.searchParams.get("swap_limit") ?? 200),
+    });
+    if (!page.ok) {
+      json(res, page.reason === "invalid token" ? 400 : 404, { error: page.reason, request_id: rid }, rid);
+      return;
+    }
+    json(res, 200, { ...page, request_id: rid }, rid);
+    return;
+  }
   if (url.pathname === "/quote-assets") {
     json(res, 200, { items: await store.all("SELECT * FROM quote_assets WHERE enabled=1"), request_id: rid }, rid);
     return;
@@ -430,56 +469,29 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
   }
   const candleMatch = url.pathname.match(/^\/candles\/(0x[a-fA-F0-9]{40})$/);
   if (candleMatch) {
-    const interval = (url.searchParams.get("interval") ?? "5m") as keyof typeof CANDLE_INTERVALS;
-    const sec = CANDLE_INTERVALS[interval] ?? 300;
-    const token = candleMatch[1]!.toLowerCase();
-    const limit = Math.min(1_000, Math.max(1, Number(url.searchParams.get("limit") ?? 300)));
-    const before = url.searchParams.get("before");
-    const after = url.searchParams.get("after");
-    const clauses = ["token=?", "interval_sec=?"];
-    const params: unknown[] = [token, sec];
-    if (before) {
-      clauses.push("t<?");
-      params.push(Number(before));
+    const body = await listCandles(store, candleMatch[1] ?? "", {
+      interval: url.searchParams.get("interval"),
+      limit: Number(url.searchParams.get("limit") ?? 300),
+      before: url.searchParams.get("before"),
+      after: url.searchParams.get("after"),
+    });
+    if (!body) {
+      json(res, 400, { error: "invalid token", request_id: rid }, rid);
+      return;
     }
-    if (after) {
-      clauses.push("t>?");
-      params.push(Number(after));
-    }
-    const rows = await store.all<{ t: number; o: string; h: string; l: string; c: string; v: string; n: number }>(
-      `SELECT t,o,h,l,c,v,n FROM candles WHERE ${clauses.join(" AND ")} ORDER BY t DESC LIMIT ?`,
-      ...params,
-      limit,
-    );
-    rows.reverse();
-    const now = Math.floor(Date.now() / 1000);
-    const filled = fillCandlesForRequest(
-      rows,
-      sec,
-      limit,
-      now,
-      before != null ? Number(before) : null,
-      after != null ? Number(after) : null,
-    );
-    json(res, 200, { interval, sec, limit, before, after, candles: filled, chainTime: true, request_id: rid }, rid);
+    json(res, 200, { ...body, chainTime: true, request_id: rid }, rid);
     return;
   }
   const swapMatch = url.pathname.match(/^\/swaps\/(0x[a-fA-F0-9]{40})$/);
   if (swapMatch) {
-    const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit") ?? 200)));
-    const beforeId = url.searchParams.get("before_id");
-    const clauses = ["token=?"];
-    const params: unknown[] = [swapMatch[1]!.toLowerCase()];
-    if (beforeId) {
-      clauses.push("id<?");
-      params.push(Number(beforeId));
+    const rows = await listSwaps(store, swapMatch[1] ?? "", {
+      limit: Number(url.searchParams.get("limit") ?? 200),
+      beforeId: url.searchParams.get("before_id"),
+    });
+    if (!rows) {
+      json(res, 400, { error: "invalid token", request_id: rid }, rid);
+      return;
     }
-    const rows = await store.all(
-      `SELECT id, block as t, ts, notional_quote as notional, holders_fee as holders, flywheel_fee as flywheel, core_fee as coreAmt, tx, sqrt_price as sqrtPrice, amount_out as tokensOut, source, price_quote_x18 as px FROM trades WHERE ${clauses.join(" AND ")} ORDER BY id DESC LIMIT ?`,
-      ...params,
-      limit,
-    );
-    (rows as Array<Record<string, unknown>>).reverse();
     json(res, 200, rows, rid);
     return;
   }

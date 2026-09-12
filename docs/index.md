@@ -12,7 +12,7 @@ This software is **not audited**. There is **no public mainnet**. Local and test
 | --- | --- |
 | Trader | [Trade on REACTOR](/docs/traders) |
 | Creator | [Launch a token](/docs/creators) |
-| Builder | [API, SDK, events](/docs/builders) |
+| Builder | [API, SDK, events](/docs/builders) · [Read path](/docs/perf) |
 | Protocol | [Curve](/docs/curve) · [Fees](/docs/fees) · [Quoter](/docs/quoting) · [Trust](/docs/trust) |
 | Reference | [API](/docs/api) · [Arc](/docs/arc) · [FAQ](/docs/faq) · [CI](/docs/ci) · [Versioning](/docs/versioning) · [Repo publicization](/docs/publicization) |
 

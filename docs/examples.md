@@ -30,6 +30,16 @@ curl -s 'http://127.0.0.1:43148/markets?sort=vol&limit=20&cursor_ts=0&cursor_tok
 
 `sort=vol` / `sort=price` are NUMERIC casts. Next page uses `next_cursor.cursor_ts` + `next_cursor.cursor_token` — and `cursor_ts` is that sort’s key (`volume_24h_usd6` / `price_usd6` / `updated_ts`), not a mismatched timestamp.
 
+## One market / token page
+
+```bash
+curl -s 'http://127.0.0.1:43148/markets/0x…'
+curl -s 'http://127.0.0.1:43148/page/token/0x…?interval=5m'
+curl -s 'http://127.0.0.1:43148/quote-assets'
+```
+
+`/page/token` is chart + tape + board fields in one hop. It is **not** a live swap ticket — still `POST /quote`.
+
 ## Candles and tape
 
 ```bash

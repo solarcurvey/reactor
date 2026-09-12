@@ -33,7 +33,16 @@ External quote USD marks are a configured provider registry with multi-source co
 
 ## [Unreleased]
 
-Public launchpad treats token metadata as untrusted (#41). Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33). Tokenomics **unchanged**. Factory **V1**. No mainnet.
+Read-path waterfalls removed (issue #37). Public launchpad treats token metadata as untrusted (#41). Tokenomics **unchanged**. Factory **V1**. No mainnet.
+
+### Added / Changed
+
+- Key pages prefer indexed HTTP: `/quote-assets` for the launch picker, `/markets?q=` for search, `/markets/:token` for a single market, `/page/token/:token` for market + candles + tape in one hop.
+- Independent RPC reads go through `readContractsBatched`: probe canonical Multicall3, require one successful `multicall`, otherwise `Promise.all`. Arc is not assumed to ship Multicall3.
+- TanStack Query keys + 4s catalog staleTime. Live `POST /quote` tickets stay in component state with a **30s** TTL and still fail closed.
+- Keeper registry/factory discovery is two-wave batched. Writes stay sequential and fenced.
+- Docs: [Read path performance](docs/perf.md) before/after inventory.
+- Page-level request/RPC budget CI (`page-budget.test.ts`) seeds 4,000 markets and asserts O(1)/O(page) HTTP + RPC waves across home, search, token terminal, Launch, Rewards, THE REACTOR, CORE, quote ecosystem, and wallet. Rapid search/filter/token/account/route changes abort obsolete fetches. SSE live prints patch TanStack cache and must not `invalidateQueries` the board. Expensive reads set `refetchOnWindowFocus: false`. **Refs #37** — issue stays open until merge + post-merge verify.
 
 ### CI / ops
 
