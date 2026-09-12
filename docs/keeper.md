@@ -6,7 +6,7 @@ Designated Keeper. Not permissionless. Not a bounty. Not Guardian.
 
 **One** mechanism: `leader_locks`. Acquire is `UPDATE … RETURNING` (Postgres) or a Store transaction (`BEGIN IMMEDIATE` on SQLite). Do not mix this with `pg_advisory_lock` as a second leader.
 
-The ~50s TTL (`KEEPER_LEASE_TTL_MS`, default 50_000) is a **dead-leader failover**, not a work budget. A tick can run longer than that (`waitForTransactionReceipt` timeout is 60s; discovery/sim loops scale with markets). A live leader **renews** `lease_until` on an interval (`KEEPER_LEASE_RENEW_MS`, default 15_000) and again immediately before every broadcast. Renew keeps the acquire-generation fence (`leader_locks.ts`) unchanged.
+The ~50s TTL (`KEEPER_LEASE_TTL_MS`, default 50_000) is a **dead-leader failover**, not a work budget. A tick can run longer than that (`waitForTransactionReceipt` timeout is 60s; discovery/sim loops scale with markets). A live leader **renews** `lease_until` on an interval (`KEEPER_LEASE_RENEW_MS`, default 15_000) and again immediately before every broadcast. Renew keeps the acquire-generation fence (`leader_locks.ts`) unchanged. Each acquire mints a **monotonic** fence (`max(now, prev.ts+1)`) so two acquires in the same millisecond are still distinct generations.
 
 If renew fails (expiry without renewal, or another owner stole after expiry) the process **refuses to send**. It does not re-acquire mid-tick. The next loop may become leader. That is the split-brain fence.
 

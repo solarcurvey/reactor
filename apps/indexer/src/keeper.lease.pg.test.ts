@@ -78,6 +78,18 @@ await workerA.run("DELETE FROM leader_locks WHERE name=?", lock);
 }
 
 {
+  const gens: number[] = [];
+  for (let i = 0; i < 8; i++) {
+    const lease = await acquireLeaderLease(workerA, "worker-a", 5_000, lock);
+    assert(lease, `same-ms re-acquire ${i}`);
+    gens.push(lease.fence);
+  }
+  assert(new Set(gens).size === 8, "Postgres fence is unique across same-ms re-acquires");
+  for (let i = 1; i < gens.length; i++) assert(gens[i]! > gens[i - 1]!, "Postgres fence is monotonic");
+  await workerA.releaseLease(lock, "worker-a", gens[gens.length - 1]!);
+}
+
+{
   let followerWon = false;
   let followerSent = false;
   const held = await withLeaderLock(

@@ -106,14 +106,15 @@ class SqliteStore implements Store {
       );
       const until = Number(row?.lease_until ?? 0);
       if (row && until > now && row.owner !== owner) return null;
+      const fence = Math.max(now, Number(row?.ts ?? 0) + 1);
       await tx.run(
         "INSERT INTO leader_locks(name,owner,ts,lease_until) VALUES(?,?,?,?) ON CONFLICT(name) DO UPDATE SET owner=excluded.owner, ts=excluded.ts, lease_until=excluded.lease_until",
         name,
         owner,
-        now,
+        fence,
         now + ttlMs,
       );
-      return now;
+      return fence;
     });
   }
   async renewLease(name: string, owner: string, fence: number, ttlMs: number) {
@@ -251,7 +252,10 @@ class PostgresStore implements Store {
     const until = now + ttlMs;
     const row = await this.get<{ owner: string; ts: number }>(
       `INSERT INTO leader_locks(name,owner,ts,lease_until) VALUES(?,?,?,?)
-       ON CONFLICT(name) DO UPDATE SET owner=excluded.owner, ts=excluded.ts, lease_until=excluded.lease_until
+       ON CONFLICT(name) DO UPDATE SET
+         owner=excluded.owner,
+         ts=CASE WHEN leader_locks.ts >= excluded.ts THEN leader_locks.ts + 1 ELSE excluded.ts END,
+         lease_until=excluded.lease_until
        WHERE leader_locks.lease_until IS NULL OR leader_locks.lease_until <= excluded.ts OR leader_locks.owner = excluded.owner
        RETURNING owner, ts`,
       name,

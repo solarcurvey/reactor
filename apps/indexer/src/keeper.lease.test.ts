@@ -111,15 +111,21 @@ const store = await openStore({ sqlitePath: join(dir, "lease.sqlite") });
 }
 
 {
-  const first = await acquireLeaderLease(store, "same-owner", 5_000);
-  assert(first, "first acquire");
-  const again = await acquireLeaderLease(store, "same-owner", 5_000);
-  assert(again, "same owner may re-acquire");
-  assert(again.fence !== first.fence, "re-acquire is a new generation");
+  const gens: number[] = [];
+  let last: Awaited<ReturnType<typeof acquireLeaderLease>>;
+  for (let i = 0; i < 8; i++) {
+    last = await acquireLeaderLease(store, "same-owner", 5_000);
+    assert(last, `re-acquire ${i}`);
+    gens.push(last.fence);
+  }
+  const unique = new Set(gens);
+  assert(unique.size === gens.length, "same-ms re-acquire must mint a new fence");
+  for (let i = 1; i < gens.length; i++) assert(gens[i]! > gens[i - 1]!, "fence is monotonic");
+  const first = { name: KEEPER_LOCK_NAME, owner: "same-owner", fence: gens[0]!, ttlMs: 5_000 };
   assert(!(await stillLeader(store, first)), "old generation is fenced out");
   await store.releaseLease(KEEPER_LOCK_NAME, first.owner, first.fence);
-  assert(await stillLeader(store, again), "fenced release must not drop a newer generation");
-  await store.releaseLease(KEEPER_LOCK_NAME, again.owner, again.fence);
+  assert(await stillLeader(store, last!), "fenced release must not drop a newer generation");
+  await store.releaseLease(KEEPER_LOCK_NAME, last!.owner, last!.fence);
 }
 
 {
