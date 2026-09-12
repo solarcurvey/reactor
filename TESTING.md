@@ -18,6 +18,7 @@ Web ranker / market-data / keeper / valuation / indexer schema (no RPC):
 
 ```bash
 pnpm --filter indexer test
+# tick-atomic.test.ts: SQLite always; Postgres when DATABASE_URL or compose :54329 is up (REQUIRE_PG=1 to fail if missing)
 npx --yes tsx apps/web/src/lib/top10.test.ts
 npx --yes tsx apps/web/src/lib/marketdata.test.ts
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
@@ -166,6 +167,7 @@ pnpm --filter indexer watchdog
 | 5 | Nested settle + nested Top-10 fee-exempt | `ProtocolSettlement.t.sol` |
 | 6 | Historical swap timestamps | `indexer.persist.test.ts` |
 | 7 | Indexer restart pool maps | same |
+| 7b | Event writes + cursor atomic; canonical `(chain_id, tx, log_index, event_kind)` (SQLite + Postgres) | `tick-atomic.test.ts`, `pg-smoke.ts` |
 | 8 | Inactive low-value does not freeze | `Top10Api.t.sol` thousands inactive |
 | 9 | Material candidate freezes | same |
 | 10 | External spot does not control mark | VWAP window + `fuseExternalUsd6` |
@@ -205,7 +207,8 @@ pnpm --filter indexer watchdog
 | 35 | sharp required (not optional) | `sharp-check.test.ts` |
 | 36 | Postgres millisecond columns are BIGINT; Date.now() persists; v5 migrates | `pg-ms-timestamps.test.ts` (`pnpm --filter indexer test:pg`) |
 | 37 | R2/S3 object key equals public `/m/<id>.webp`; mock GET returns the object; PROD upload failure returns no StoredMedia | `media-r2.test.ts` |
-| 38 | Selected route + atomic preview/minOuts/terminal from the same candidate; PreviewRoute is hops+1 (BUY append / SELL prepend) | `quote-integrity.test.ts`, `quote-select.ts`, `UserRoute.t.sol` `test_nested_previewSell_hops_plus_terminal` |
+| 38 | Indexer event writes + cursor atomic; log identity `(chain_id, tx, log_index, event_kind)` (schema v8 journal) | `tick-atomic.test.ts` (SQLite + Postgres), `pg-smoke.ts` |
+| 39 | Selected route + atomic preview/minOuts/terminal from the same candidate; PreviewRoute is hops+1 (BUY append / SELL prepend) | `quote-integrity.test.ts`, `quote-select.ts`, `UserRoute.t.sol` `test_nested_previewSell_hops_plus_terminal` |
 
 ## Arc smoke
 

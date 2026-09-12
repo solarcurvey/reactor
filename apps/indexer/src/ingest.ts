@@ -1,8 +1,10 @@
 import type { Store } from "./db.ts";
-import type { SseHub } from "./sse.ts";
 import { applyTradeToCandle, CANDLE_INTERVALS, priceQuoteX18 } from "../../../packages/reactor/src/prices.ts";
+import { journalEvent } from "./event-identity.ts";
 import { isUniqueViolation } from "./unique.ts";
 import { loadValuationService } from "./valuation-store.ts";
+
+export type SsePublisher = { publish(ev: { type: string; data: unknown }): void };
 
 const INTERVALS = Object.values(CANDLE_INTERVALS);
 
@@ -113,12 +115,14 @@ export async function upsertMarket(
 
 export async function recordTrade(
   store: Store,
-  sse: SseHub | undefined,
+  sse: SsePublisher | undefined,
   t: {
     block: number;
     tx: string;
     logIndex?: number;
     chainId?: number;
+    eventKind?: string;
+    address?: string;
     token: string;
     quote: string;
     side: string;
@@ -139,10 +143,23 @@ export async function recordTrade(
   const token = t.token.toLowerCase();
   const logIndex = t.logIndex ?? 0;
   const chainId = t.chainId ?? 0;
+  const eventKind =
+    t.eventKind ??
+    (t.source === "v4" ? "SwapFeeAccrued" : t.side === "buy" ? "CurveBuy" : t.side === "sell" ? "CurveSell" : "Trade");
+  await journalEvent(store, {
+    chainId,
+    tx: t.tx,
+    logIndex,
+    eventKind,
+    address: t.address ?? token,
+    block: t.block,
+    ts: t.ts,
+  });
   try {
-    await store.run(
+    const inserted = await store.runChanges(
       `INSERT INTO trades(chain_id,block,tx,log_index,token,quote,side,source,amount_in,amount_out,notional_quote,price_quote_x18,sqrt_price,holders_fee,flywheel_fee,core_fee,ts)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(chain_id, tx, log_index) DO NOTHING`,
       chainId,
       t.block,
       t.tx,
@@ -161,6 +178,7 @@ export async function recordTrade(
       t.core ?? "0",
       t.ts,
     );
+    if (inserted.changes === 0) return;
   } catch (e) {
     if (isUniqueViolation(e)) return;
     throw e;

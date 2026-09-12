@@ -1,6 +1,6 @@
 import type { Store } from "./db.ts";
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 8;
 
 /**
  * Wall-clock fields written as `Date.now()` milliseconds (≈1.8e12 today).
@@ -347,6 +347,139 @@ export async function applyMigrations(store: Store): Promise<number> {
     }
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 6, Math.floor(Date.now() / 1000));
     current = 6;
+  }
+  if (current < 7) {
+    for (const stmt of [
+      "ALTER TABLE claims ADD COLUMN chain_id INTEGER DEFAULT 0",
+      "ALTER TABLE claims ADD COLUMN log_index INTEGER DEFAULT 0",
+      "ALTER TABLE selfburn ADD COLUMN chain_id INTEGER DEFAULT 0",
+      "ALTER TABLE selfburn ADD COLUMN log_index INTEGER DEFAULT 0",
+      "ALTER TABLE flywheel ADD COLUMN chain_id INTEGER DEFAULT 0",
+      "ALTER TABLE flywheel ADD COLUMN log_index INTEGER DEFAULT 0",
+      "ALTER TABLE core_buybacks ADD COLUMN chain_id INTEGER DEFAULT 0",
+      "ALTER TABLE core_buybacks ADD COLUMN log_index INTEGER DEFAULT 0",
+      "ALTER TABLE reward_events ADD COLUMN chain_id INTEGER DEFAULT 0",
+      "ALTER TABLE reward_events ADD COLUMN log_index INTEGER DEFAULT 0",
+      "ALTER TABLE guardian_events ADD COLUMN chain_id INTEGER DEFAULT 0",
+      "ALTER TABLE guardian_events ADD COLUMN log_index INTEGER DEFAULT 0",
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    for (const stmt of [
+      "UPDATE claims SET log_index = id WHERE COALESCE(log_index,0)=0",
+      "UPDATE selfburn SET log_index = id WHERE COALESCE(log_index,0)=0",
+      "UPDATE flywheel SET log_index = id WHERE COALESCE(log_index,0)=0",
+      "UPDATE core_buybacks SET log_index = id WHERE COALESCE(log_index,0)=0",
+      "UPDATE reward_events SET log_index = id WHERE COALESCE(log_index,0)=0",
+      "UPDATE guardian_events SET log_index = id WHERE COALESCE(log_index,0)=0",
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    for (const stmt of [
+      "DROP INDEX IF EXISTS idx_claims_unique",
+      "DROP INDEX IF EXISTS idx_selfburn_unique",
+      "DROP INDEX IF EXISTS idx_flywheel_unique",
+      "DROP INDEX IF EXISTS idx_core_buybacks_unique",
+      "DROP INDEX IF EXISTS idx_reward_events_unique",
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    for (const stmt of [
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_claims_log ON claims(chain_id, tx, log_index)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_selfburn_log ON selfburn(chain_id, tx, log_index)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_flywheel_log ON flywheel(chain_id, tx, log_index)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_core_buybacks_log ON core_buybacks(chain_id, tx, log_index)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_reward_events_log ON reward_events(chain_id, tx, log_index)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_guardian_events_log ON guardian_events(chain_id, tx, log_index)",
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 7, Math.floor(Date.now() / 1000));
+    current = 7;
+  }
+  if (current < 8) {
+    await store.exec(`
+      CREATE TABLE IF NOT EXISTS indexer_event_journal (
+        chain_id INTEGER NOT NULL,
+        tx TEXT NOT NULL,
+        log_index INTEGER NOT NULL,
+        event_kind TEXT NOT NULL,
+        address TEXT NOT NULL DEFAULT '',
+        block INTEGER,
+        ts INTEGER,
+        PRIMARY KEY (chain_id, tx, log_index, event_kind)
+      );
+    `);
+    await store.exec("CREATE INDEX IF NOT EXISTS idx_event_journal_tx ON indexer_event_journal(tx, log_index)").catch(() => undefined);
+    for (const stmt of [
+      "ALTER TABLE claims ADD COLUMN event_kind TEXT DEFAULT ''",
+      "ALTER TABLE selfburn ADD COLUMN event_kind TEXT DEFAULT ''",
+      "ALTER TABLE flywheel ADD COLUMN event_kind TEXT DEFAULT ''",
+      "ALTER TABLE core_buybacks ADD COLUMN event_kind TEXT DEFAULT ''",
+      "ALTER TABLE reward_events ADD COLUMN event_kind TEXT DEFAULT ''",
+      "ALTER TABLE guardian_events ADD COLUMN event_kind TEXT DEFAULT ''",
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    for (const stmt of [
+      "UPDATE claims SET event_kind = 'RewardClaimed' WHERE COALESCE(event_kind,'') = ''",
+      "UPDATE selfburn SET event_kind = COALESCE(NULLIF(kind,''), 'SelfBurn') WHERE COALESCE(event_kind,'') = ''",
+      "UPDATE flywheel SET event_kind = COALESCE(NULLIF(kind,''), 'Flywheel') WHERE COALESCE(event_kind,'') = ''",
+      "UPDATE core_buybacks SET event_kind = 'BuybackExecuted' WHERE COALESCE(event_kind,'') = ''",
+      "UPDATE reward_events SET event_kind = 'RewardClaimed' WHERE COALESCE(event_kind,'') = ''",
+      "UPDATE guardian_events SET event_kind = COALESCE(NULLIF(name,''), 'Guardian') WHERE COALESCE(event_kind,'') = ''",
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    for (const stmt of [
+      "DROP INDEX IF EXISTS idx_claims_log",
+      "DROP INDEX IF EXISTS idx_selfburn_log",
+      "DROP INDEX IF EXISTS idx_flywheel_log",
+      "DROP INDEX IF EXISTS idx_core_buybacks_log",
+      "DROP INDEX IF EXISTS idx_reward_events_log",
+      "DROP INDEX IF EXISTS idx_guardian_events_log",
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    for (const stmt of [
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_claims_identity ON claims(chain_id, tx, log_index, event_kind)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_selfburn_identity ON selfburn(chain_id, tx, log_index, event_kind)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_flywheel_identity ON flywheel(chain_id, tx, log_index, event_kind)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_core_buybacks_identity ON core_buybacks(chain_id, tx, log_index, event_kind)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_reward_events_identity ON reward_events(chain_id, tx, log_index, event_kind)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_guardian_events_identity ON guardian_events(chain_id, tx, log_index, event_kind)",
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    for (const stmt of [
+      `INSERT INTO indexer_event_journal(chain_id,tx,log_index,event_kind,address,block,ts)
+       SELECT COALESCE(chain_id,0), tx, COALESCE(log_index,0), COALESCE(NULLIF(event_kind,''),'RewardClaimed'), COALESCE(token,''), block, ts FROM claims
+       ON CONFLICT(chain_id, tx, log_index, event_kind) DO NOTHING`,
+      `INSERT INTO indexer_event_journal(chain_id,tx,log_index,event_kind,address,block,ts)
+       SELECT COALESCE(chain_id,0), tx, COALESCE(log_index,0), COALESCE(NULLIF(event_kind,''),'SelfBurn'), COALESCE(token,''), block, ts FROM selfburn
+       ON CONFLICT(chain_id, tx, log_index, event_kind) DO NOTHING`,
+      `INSERT INTO indexer_event_journal(chain_id,tx,log_index,event_kind,address,block,ts)
+       SELECT COALESCE(chain_id,0), tx, COALESCE(log_index,0), COALESCE(NULLIF(event_kind,''),'Flywheel'), COALESCE(quote,''), block, ts FROM flywheel
+       ON CONFLICT(chain_id, tx, log_index, event_kind) DO NOTHING`,
+      `INSERT INTO indexer_event_journal(chain_id,tx,log_index,event_kind,address,block,ts)
+       SELECT COALESCE(chain_id,0), tx, COALESCE(log_index,0), COALESCE(NULLIF(event_kind,''),'BuybackExecuted'), COALESCE(quote,''), block, ts FROM core_buybacks
+       ON CONFLICT(chain_id, tx, log_index, event_kind) DO NOTHING`,
+      `INSERT INTO indexer_event_journal(chain_id,tx,log_index,event_kind,address,block,ts)
+       SELECT COALESCE(chain_id,0), tx, COALESCE(log_index,0), COALESCE(NULLIF(event_kind,''),'RewardClaimed'), COALESCE(token,''), block, ts FROM reward_events
+       ON CONFLICT(chain_id, tx, log_index, event_kind) DO NOTHING`,
+      `INSERT INTO indexer_event_journal(chain_id,tx,log_index,event_kind,address,block,ts)
+       SELECT COALESCE(chain_id,0), tx, COALESCE(log_index,0), COALESCE(NULLIF(event_kind,''),'Guardian'), '', block, ts FROM guardian_events
+       ON CONFLICT(chain_id, tx, log_index, event_kind) DO NOTHING`,
+      `INSERT INTO indexer_event_journal(chain_id,tx,log_index,event_kind,address,block,ts)
+       SELECT COALESCE(chain_id,0), tx, COALESCE(log_index,0),
+         CASE WHEN source = 'v4' THEN 'SwapFeeAccrued' WHEN side = 'buy' THEN 'CurveBuy' WHEN side = 'sell' THEN 'CurveSell' ELSE 'Trade' END,
+         COALESCE(token,''), block, ts FROM trades
+       ON CONFLICT(chain_id, tx, log_index, event_kind) DO NOTHING`,
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 8, Math.floor(Date.now() / 1000));
+    current = 8;
   }
   return current;
 }
