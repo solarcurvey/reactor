@@ -28,7 +28,7 @@ pnpm --filter web test          # Playwright smoke + interactive
 # Real Postgres (docker compose postgres on :54329, or local 5432)
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
-# CI: .github/workflows/docs-sync.yml job postgres-ms-timestamps
+# CI: .github/workflows/docs-sync.yml job postgres-ms-timestamps (includes test:pg-lease)
 ```
 
 `pnpm docs:check` (and `.github/workflows/docs-sync.yml`) **must fail** when generated constants, `docs/version.json`, Factory labels, or deployment tables have drifted from Solidity/config. Do not edit generated `docs/versioning.md` / `docs/deployments.md` / `docs/changelog.md` by hand — run `pnpm docs:gen`.

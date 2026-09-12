@@ -1,3 +1,8 @@
+/**
+ * SQLite single-Store unit tests (fast, no Postgres).
+ * Production two-worker / failover proof is `keeper.lease.pg.test.ts`
+ * (`pnpm --filter indexer test:pg-lease`, CI `postgres-ms-timestamps` + `keeper-lease-pg`).
+ */
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

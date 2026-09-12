@@ -59,6 +59,7 @@ assert(workerA !== workerB, "independent Store instances");
 await assertLeaseMsColumns(workerA);
 await workerA.run("DELETE FROM leader_locks WHERE name=?", lock);
 
+/* AC1 — simultaneous acquire → exactly one winner */
 {
   const [first, second] = await Promise.all([
     acquireLeaderLease(workerA, "worker-a", 5_000, lock),
@@ -89,6 +90,7 @@ await workerA.run("DELETE FROM leader_locks WHERE name=?", lock);
   await workerA.releaseLease(lock, "worker-a", gens[gens.length - 1]!);
 }
 
+/* AC2 — A renews past original TTL; B cannot acquire or broadcast */
 {
   let followerWon = false;
   let followerSent = false;
@@ -123,6 +125,7 @@ await workerA.run("DELETE FROM leader_locks WHERE name=?", lock);
   assert(!followerWon && !followerSent, "B cannot acquire or broadcast while A renews");
 }
 
+/* AC3 + AC4 — after A expires, B gets a new fence; stale A cannot renew / drop B / send */
 {
   const stale = await acquireLeaderLease(workerA, "worker-a", 180, lock);
   assert(stale, "A holds a short lease");
@@ -146,6 +149,7 @@ await workerA.run("DELETE FROM leader_locks WHERE name=?", lock);
   await workerB.releaseLease(lock, fresh.owner, fresh.fence);
 }
 
+/* AC5 — worker crash (no release) + expiry → safe takeover */
 {
   const crashed = await acquireLeaderLease(workerA, "worker-a", 180, lock);
   assert(crashed, "A acquired before crash");
