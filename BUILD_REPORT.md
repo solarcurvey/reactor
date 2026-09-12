@@ -1,6 +1,6 @@
 # BUILD REPORT — Exact official-list sanctions screening (Refs #61)
 
-**Status:** Branch `cursor/ofac-sanctions-dataset-1a33` / draft PR **#66**, rebased onto `origin/main` `0db39c0` after #77. Issue **#61 stays open** for independent audit (parent RELEASE GATE **#60**). Do not auto-close.  
+**Status:** Branch `cursor/ofac-sanctions-dataset-1a33` / draft PR **#66**, rebased onto `origin/main` `300b7e5` after #73. Issue **#61 stays open** for independent audit (parent RELEASE GATE **#60**). Do not auto-close.  
 **Not audited. Not mainnet. Not a legal/OFAC compliance claim.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Protocol release remains 0.3.3** — do not restore a pre-rewrite version.
@@ -9,7 +9,7 @@
 
 **Re-audit pass (freshness durability):** version id includes `sourceGenerationHash` (retrievedAt + source HTTP/publication metadata), not only the address-set `contentHash`. A same-address refresh persists t1 metadata; `loadFromDisk()` freshness ages from t1.
 
-**Rebase (after #77):** replayed the five #61 commits onto `origin/main` `0db39c0`. Conflicts were docs only (`AUDIT_HANDOFF.md`, `BUILD_REPORT.md`, `docs/faq.md`, `docs/trust.md`). Kept both #61 screening text and #72/#74/#77 publicization/harden (advertised-ref AC1; Support purge/GC accepted residual). `test:lib` includes sanctions fixtures **and** `ci-public-harden.test.ts`.
+**Rebase (after #73):** replayed the six #61 commits onto `origin/main` `300b7e5` (single `ci.yml`). Conflicts: `docs-sync.yml` (deleted on main — do not restore; fixtures stay in `test:lib` / `constants-version-deployments`), `AUDIT_HANDOFF.md`, `BUILD_REPORT.md`, `package.json`. Kept #61 screening AC, #73 three-tier single workflow, and #72/#74/#76/#77 publicization/harden (`contents: read`, `persist-credentials: false`, no `pull_request_target`). `test:lib` includes sanctions fixtures, `ci-cost.test.ts`, and `ci-public-harden.test.ts`. Live OFAC HTTPS stays `SANCTIONS_NETWORK=1` / `test:sanctions:network` — not a second workflow.
 
 ## This HEAD
 

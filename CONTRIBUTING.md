@@ -73,7 +73,7 @@ See `AGENTS.md`. Security > cleverness. Do not change tokenomics to make a test 
 ```bash
 pnpm docs:check          # version + constants + deployments
 pnpm docs:links          # in-repo docs slugs + relative files (no network)
-pnpm test:lib            # indexer + web unit + docs:check + docs:links + safe-genesis + page-budget + CI-cost + public-fork harden
+pnpm test:lib            # indexer + web unit + #61 sanctions fixtures + docs:check + docs:links + safe-genesis + page-budget + CI-cost + public-fork harden
 pnpm test:ci-cost        # workflow inventory / no duplicate push+PR / fail-safe paths
 pnpm test:web-unit       # web lib unit (also in test:lib)
 pnpm --filter web test:qa  # visual / a11y / failure-injection (CI ci.yml job web-qa, full/main)
