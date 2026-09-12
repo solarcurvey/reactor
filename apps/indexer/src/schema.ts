@@ -1,5 +1,5 @@
 /** Production schema. Postgres is the target; SQLite is local-only (translated). */
-export { sqliteSchema, postgresSchema, applyMigrations, SCHEMA_VERSION, MS_TIMESTAMP_COLUMNS } from "./migrations.ts";
+export { sqliteSchema, postgresSchema, applyMigrations, migrationApplied, SCHEMA_VERSION, MS_TIMESTAMP_COLUMNS } from "./migrations.ts";
 
 export const TABLES = [
   "indexer_state",

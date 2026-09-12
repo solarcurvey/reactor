@@ -4,7 +4,13 @@ import { join } from "node:path";
 import { openStore } from "./db.ts";
 import { populateExternalPriceMarks } from "./price-marks.ts";
 import { loadValuationService } from "./valuation-store.ts";
-import { assetsToPrice, loadPriceRegistry, loadVerifiedVenueUsd6 } from "./price-registry.ts";
+import { persistVenue } from "./route-graph.ts";
+import {
+  assetsToPrice,
+  loadPriceRegistry,
+  loadVerifiedVenueUsd6,
+  usd6FromVenueRow,
+} from "./price-registry.ts";
 import { launchBlockedByValuation, CONSENSUS_KIND, type PriceRegistry } from "../../../packages/reactor/src/pricing.ts";
 import { rankTop10 } from "../../../packages/reactor/src/top10.ts";
 
@@ -181,29 +187,78 @@ await store.run(
 }
 
 {
-  await store.run(
-    `INSERT INTO route_venues(id,token_in,token_out,adapter,kind,data,pool_id,exists_onchain,approved,reliability_bps)
-     VALUES(?,?,?,?,?,?,?,?,?,?)`,
-    "zec-usdc",
+  const parsed = usd6FromVenueRow(
+    {
+      token_in: "0xzec",
+      token_out: "0xusdc",
+      data: JSON.stringify({ priceQuoteX18: (10n * 10n ** 18n).toString() }),
+    },
     "0xzec",
     "0xusdc",
-    "v4",
-    "v4",
-    "{}",
-    "0xpool",
-    1,
-    1,
-    10_000,
   );
+  assert(parsed === 10_000_000n, `json venue mark ${parsed}`);
+}
+
+{
+  // Production shape: verified hookless quote↔USDC edge only. No REACTOR markets row.
+  await persistVenue(store, {
+    tokenIn: "0xzec",
+    tokenOut: "0xusdc",
+    adapter: "0x00000000000000000000000000000000000000aa",
+    kind: "hookless",
+    data: "{}",
+    poolId: "0xpool",
+    exists: true,
+    approved: true,
+    lastPriceQuoteX18: (10n * 10n ** 18n).toString(),
+  });
+  const markets = await store.get<{ n: number }>("SELECT COUNT(*) as n FROM markets WHERE lower(token)=?", "0xzec");
+  assert(Number(markets?.n ?? 0) === 0, "must not seed a synthetic REACTOR markets row");
+  const arc = await loadVerifiedVenueUsd6(store, "0xzec", "0xusdc");
+  assert(arc === 10_000_000n, `arc venue usd6 from route_venues ${arc}`);
+
+  const registry: PriceRegistry = {
+    assets: [
+      {
+        token: "0xzec",
+        symbol: "ZEC",
+        important: true,
+        minSources: 2,
+        sources: [
+          { name: "alpha", kind: "static", staticUsd6: "50000000" },
+          { name: "beta", kind: "static", staticUsd6: "50100000" },
+        ],
+      },
+    ],
+  };
+  const written = await populateExternalPriceMarks(store, { registry, now: now + 4, usdc: "0xusdc" });
+  assert(
+    written.some((o) => o.kind === CONSENSUS_KIND && !o.ok && o.reason === "arc sanity"),
+    `HTTP consensus must reject when venue mark is > configured deviation: ${written.find((o) => o.kind === CONSENSUS_KIND)?.reason}`,
+  );
+}
+
+{
+  // A stray markets row is not the production representation of a hookless venue.
+  await persistVenue(store, {
+    tokenIn: "0xext",
+    tokenOut: "0xusdc",
+    adapter: "0x00000000000000000000000000000000000000aa",
+    kind: "hookless",
+    data: "{}",
+    poolId: "0xextpool",
+    exists: true,
+    approved: true,
+  });
   await store.run(
     `INSERT INTO markets(token,quote,price_quote_x18,updated_ts) VALUES(?,?,?,?)`,
-    "0xzec",
+    "0xext",
     "0xusdc",
     (10n * 10n ** 18n).toString(),
     1,
   );
-  const arc = await loadVerifiedVenueUsd6(store, "0xzec", "0xusdc");
-  assert(arc === 10_000_000n, `arc venue usd6 ${arc}`);
+  const skipped = await loadVerifiedVenueUsd6(store, "0xext", "0xusdc");
+  assert(skipped === undefined, `venue without an executable mark must not read markets: ${skipped}`);
 }
 
 await store.close();
