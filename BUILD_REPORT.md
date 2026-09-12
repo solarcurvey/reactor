@@ -17,7 +17,7 @@
 | Fast PR | `pnpm test:lib` now includes `docs:links` + `test:web-unit` (`constants-sync` too). Targeted Foundry when Solidity paths change. |
 | Full / main extras | Full-only jobs `docs-links` (`pnpm docs:links`) and `web` (Playwright smoke + interactive). `ci-ok` requires both (`skipped ≠ pass`). |
 | Already on #73 full gate | Foundry CI fuzz + Attack + CREATE2 + `size:guard`, `web-production-security`, `live-toasts-ui`, `postgres-ms-timestamps`. |
-| Docs | `/docs/ci` updated in place. `TESTING.md`, `CONTRIBUTING.md`, `AUDIT_HANDOFF.md`. |
+| Docs | `/docs/ci` updated in place. `TESTING.md`, `CONTRIBUTING.md`, `AUDIT_HANDOFF.md`. Same-page `#accepted-residuals-non-blocking` hrefs match in-app `slugify` so `docs:links` stays green. |
 | Mainnet | **Blocked** |
 
 ## Acceptance (issue #17 stays open)
