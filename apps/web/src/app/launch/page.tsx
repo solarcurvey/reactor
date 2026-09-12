@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "viem/actions";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -240,13 +241,13 @@ export default function LaunchPage() {
       <p className="mt-1 text-[13px] text-zinc-400">
         You pick image, name, ticker, description, quote, and Standard vs Rewards. Protocol owns supply, curve, FDV,
         and fees. Same Instant config for every launch.{" "}
-        <a href="/docs/creators" className="text-cyan-200 underline">
+        <Link href="/docs/creators" className="text-cyan-200 underline">
           Creator docs
-        </a>
+        </Link>
         {" · "}
-        <a href="/docs/tickers" className="text-cyan-200 underline">
+        <Link href="/docs/tickers" className="text-cyan-200 underline">
           Ticker rules
-        </a>
+        </Link>
       </p>
 
       <Card className="mt-4 space-y-3 p-4">

@@ -32,6 +32,7 @@ export type LaunchToken = {
   fairId: bigint;
   name: string;
   symbol: string;
+  ticker?: string;
   decimals: number;
   supply: bigint;
   currentSupply?: bigint;
@@ -489,7 +490,7 @@ export function useSwapSeries(token?: string) {
         px?: string;
         source?: string;
       }[] = [];
-      const fixtures = [
+      const fixtures: typeof empty = [
         { t: 1, notional: "1000000000", holders: "20000000", buyback: "15000000", flywheel: "10000000", coreAmt: "5000000", sqrtPrice: "79228162514264337593543950336" },
         { t: 2, notional: "2000000000", holders: "40000000", buyback: "30000000", flywheel: "20000000", coreAmt: "10000000", sqrtPrice: "85000000000000000000000000000" },
         { t: 3, notional: "800000000", holders: "16000000", buyback: "12000000", flywheel: "8000000", coreAmt: "4000000", sqrtPrice: "91000000000000000000000000000" },
