@@ -50,28 +50,26 @@ contract CurrentArchitectureTest is Base {
 
         // Signed nested pricing (ZCAT/ZEC × ZEC/USD). No ZCAT/USDC pool required.
         uint256 vq0 = CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, 18);
-        (LaunchAuthorization.Auth memory priced, bytes memory sig) =
-            _launchAuthFor(alice, "CAT", zcat, vq0, LaunchAuthorization.INSTANT_CURVE_V1);
+        ReactorFactory.InstantParams memory catP = ReactorFactory.InstantParams({
+            name: "CAT",
+            symbol: "CAT",
+            decimals: 18,
+            supply: 0,
+            quote: zcat,
+            fdvQuoteRaw: 0,
+            devBuyQuote: 0,
+            image: "",
+            description: "",
+            website: "",
+            twitter: "",
+            telegram: ""
+        });
+        (LaunchAuthorization.Auth memory priced, bytes memory sig) = _launchAuthIdentity(
+            alice, catP, vq0, LaunchAuthorization.INSTANT_CURVE_V1, LaunchAuthorization.MODE_STANDARD
+        );
 
         vm.prank(alice);
-        (address cat,) = factory.launchStandard(
-            ReactorFactory.InstantParams({
-                name: "CAT",
-                symbol: "CAT",
-                decimals: 18,
-                supply: 0,
-                quote: zcat,
-                fdvQuoteRaw: 0,
-                devBuyQuote: 0,
-                image: "",
-                description: "",
-                website: "",
-                twitter: "",
-                telegram: ""
-            }),
-            priced,
-            sig
-        );
+        (address cat,) = factory.launchStandard(catP, priced, sig);
         assertEq(ReactorToken(cat).quoteAsset(), zcat, "CAT/ZCAT not CAT/USDC");
 
         vm.startPrank(bob);
