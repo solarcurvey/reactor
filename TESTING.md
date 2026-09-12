@@ -194,6 +194,7 @@ pnpm --filter indexer watchdog
 | 80 | P0 Factory EIP-170 sizes + Arc attempt | `scripts/size-guard.ts`, `deployments/arc-factory-attempt.json` |
 | 26 | Turnstile widget + ELEVATED/ATTACK ALLOW after challenge | `admission-unit.test.ts`, `admission.test.ts` |
 | 27 | launchConfigHash + atomic receipt consume | `admission.test.ts` |
+| 36 | Pricing signer fail-closed without durable store (no skip consume / bucket) | `pricing-signer-store.test.ts` |
 | 28 | Fair curveConfig binds sale params | `FairCurveConfig.t.sol` |
 | 29 | permanentlyLockTicker vs other token 24h lock | `TickerRegistry.t.sol` |
 | 30 | 24h NUMERIC / latest-by-ts / ValuationService USD | `ingest.ts`, `valuation.test.ts` |

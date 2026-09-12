@@ -50,7 +50,7 @@ See [Trust](/docs/trust) for the rest of the top 10.
 
 - Guardian can pause and quarantine. Guardian cannot steal LP or rewrite the 2/1/0.5 split.
 - Keeper maintains pots with simulated `minOut`. Keeper cannot configure. One leadership lease — atomic `leader_locks` only.
-- Launch Signer is isolated. Every launch, including USDC, needs a short-lived authorization that already passed admission.
+- Launch Signer is isolated. Every launch, including USDC, needs a short-lived authorization that already passed admission. If the durable store is unavailable, the signer returns 503 and does not sign.
 - Indexer prices and charts are not onchain truth.
 - Quote tickets are **one `UserRouteQuoter` eth_call** per candidate. Edge kinds survive plan/sim/response. Nested official 3.5% legs are listed separately. `minOut` is never 0 or 1.
 - Arc finality is deterministic BFT — no eth-8 lag. Native gas is USDC-18; protocol USDC is 6 decimals.

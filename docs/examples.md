@@ -20,7 +20,7 @@ curl -s http://127.0.0.1:43148/launch/authorize -H 'content-type: application/js
 
 - `403` + `decision: CHALLENGE` → complete Turnstile → retry. Not a signature.
 - `ALLOW` includes `launchConfigHash`, then `auth` + `signature`.
-- Direct isolated-signer calls without a receipt fail.
+- Direct isolated-signer calls without a receipt fail. Isolated signer calls without a durable store fail closed (503), and do not skip receipt consume.
 
 ## Markets keyset
 
