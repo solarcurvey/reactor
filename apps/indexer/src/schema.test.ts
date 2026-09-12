@@ -1,29 +1,32 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { openStore } from "./db.ts";
 import { consumeIssuanceToken } from "./admission.ts";
 import { raiseAlert } from "./alerts.ts";
 import { saveJob } from "./keeper-jobs.ts";
 import { recordTrade, upsertMarket, upsertToken } from "./ingest.ts";
-import { MS_TIMESTAMP_COLUMNS, SCHEMA_VERSION, TABLES } from "./schema.ts";
+import { applyMigrations, MS_TIMESTAMP_COLUMNS, SCHEMA_VERSION, TABLES } from "./schema.ts";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
 }
 
-assert(SCHEMA_VERSION === 8, "schema version 8 adds journal + event_kind identity after v7 (chain,tx,log) and v6 BIGINT");
+assert(SCHEMA_VERSION === 9, "schema version 9 adds external_price_marks.kind after v8 journal / v7 identity / v6 BIGINT");
 assert(MS_TIMESTAMP_COLUMNS.length >= 6, "millisecond timestamp columns listed");
 
 const dir = mkdtempSync(join(tmpdir(), "reactor-prod-"));
 const store = await openStore({ sqlitePath: join(dir, "t.sqlite") });
 const migrated = await store.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
-assert(Number(migrated?.n) === 8, "sqlite migrates to v8");
+assert(Number(migrated?.n) === 9, "sqlite migrates to v9");
 
 for (const t of TABLES) {
   const row = await store.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", t);
   assert(row?.name === t, `missing table ${t}`);
 }
+const markCols = await store.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
+assert(markCols.some((c) => c.name === "kind"), "v9 external_price_marks.kind");
 
 for (const idx of [
   "idx_claims_identity",
@@ -92,4 +95,44 @@ assert(Number(alert?.ts) >= nowMs, "alerts.ts milliseconds");
 
 await store.close();
 rmSync(dir, { recursive: true, force: true });
+
+// Preceding production schema is v8 (#27 journal). v9 adds mark kind only.
+{
+  const upgradeDir = mkdtempSync(join(tmpdir(), "reactor-v8-"));
+  const upgradePath = join(upgradeDir, "v8.sqlite");
+  const seed = new DatabaseSync(upgradePath);
+  seed.exec(`
+    CREATE TABLE schema_migrations (id INTEGER PRIMARY KEY, applied_ts INTEGER NOT NULL);
+    CREATE TABLE external_price_marks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT
+    );
+    CREATE UNIQUE INDEX idx_external_marks_unique ON external_price_marks(token, source, ts);
+  `);
+  const insertMig = seed.prepare("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)");
+  for (let id = 1; id <= 8; id++) insertMig.run(id, 1_700_000_000);
+  seed
+    .prepare("INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason) VALUES(?,?,?,?,?,?,?)")
+    .run("0xzec", "ZEC", "fused", "42000000", 1_700_000_100, 1, "");
+  seed
+    .prepare("INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason) VALUES(?,?,?,?,?,?,?)")
+    .run("0xzec", "ZEC", "coingecko", "41900000", 1_700_000_100, 1, "");
+  const v8Cols = seed.prepare("PRAGMA table_info(external_price_marks)").all() as Array<{ name: string }>;
+  assert(!v8Cols.some((c) => c.name === "kind"), "v8 production marks have no kind");
+  seed.close();
+
+  const upgraded = await openStore({ sqlitePath: upgradePath });
+  assert((await applyMigrations(upgraded)) === 9, "v8 upgrades to v9");
+  const ver = await upgraded.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
+  assert(Number(ver?.n) === 9, "schema_migrations records v9");
+  const cols = await upgraded.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
+  assert(cols.some((c) => c.name === "kind"), "v9 adds external_price_marks.kind");
+  const fused = await upgraded.get<{ kind: string }>("SELECT kind FROM external_price_marks WHERE source=?", "fused");
+  const obs = await upgraded.get<{ kind: string }>("SELECT kind FROM external_price_marks WHERE source=?", "coingecko");
+  assert(fused?.kind === "consensus", "legacy fused/consensus/fail/missing backfill to kind=consensus");
+  assert(obs?.kind === "observation", "provider rows default to kind=observation");
+  await upgraded.close();
+  rmSync(upgradeDir, { recursive: true, force: true });
+}
+
 console.log("schema/store tests ok");

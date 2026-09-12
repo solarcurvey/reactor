@@ -1,6 +1,6 @@
 import type { Store } from "./db.ts";
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 /**
  * Wall-clock fields written as `Date.now()` milliseconds (≈1.8e12 today).
@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS route_venues (
   exists_onchain INTEGER, approved INTEGER, reliability_bps INTEGER
 );
 CREATE TABLE IF NOT EXISTS external_price_marks (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT
+  id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT, kind TEXT DEFAULT 'observation'
 );
 CREATE TABLE IF NOT EXISTS metadata (
   token TEXT PRIMARY KEY, image TEXT, description TEXT, website TEXT, twitter TEXT, telegram TEXT, media_id TEXT
@@ -480,6 +480,14 @@ export async function applyMigrations(store: Store): Promise<number> {
     }
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 8, Math.floor(Date.now() / 1000));
     current = 8;
+  }
+  if (current < 9) {
+    await store.exec("ALTER TABLE external_price_marks ADD COLUMN kind TEXT DEFAULT 'observation'").catch(() => undefined);
+    await store.exec(
+      "UPDATE external_price_marks SET kind='consensus' WHERE source IN ('consensus','fused','fail','missing') AND (kind IS NULL OR kind='observation')",
+    ).catch(() => undefined);
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 9, Math.floor(Date.now() / 1000));
+    current = 9;
   }
   return current;
 }

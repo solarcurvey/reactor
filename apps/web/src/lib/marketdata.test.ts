@@ -1,4 +1,4 @@
-import { fdvQuoteRaw, vwapFdvQuoteRaw, lastGoodFdvQuote, MIN_VWAP_SAMPLES, MARK_WINDOW_SEC } from "./marketdata.ts";
+import { fdvQuoteRaw, vwapFdvQuoteRaw, lastGoodFdvQuote, MIN_VWAP_SAMPLES, MARK_WINDOW_SEC, consumeIndexerValuation } from "./marketdata.ts";
 import { rankTop10 } from "./top10.ts";
 
 function assert(cond: unknown, msg: string) {
@@ -82,6 +82,14 @@ function assert(cond: unknown, msg: string) {
   assert(lastGood === 1_000n, `3 historical samples must produce lastGood, got ${lastGood}`);
   const two = lastGoodFdvQuote(historical.slice(0, 2), 1_000n, true, now);
   assert(two === 0n, "fewer than 3 historical samples fail closed");
+}
+
+{
+  const accepted = consumeIndexerValuation({ ok: true, usd6: "50000000" }, true);
+  assert(accepted !== "offline" && accepted.ok, "ranker consumes accepted ValuationService mark");
+  const rejected = consumeIndexerValuation({ ok: false, usd6: "0" }, true);
+  assert(rejected !== "offline" && !rejected.ok, "reachable rejected mark must not fall through to a second pricer");
+  assert(consumeIndexerValuation(null, false) === "offline", "unreachable indexer is offline-only");
 }
 
 console.log("marketdata tests ok");

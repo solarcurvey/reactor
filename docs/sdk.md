@@ -1,6 +1,6 @@
 # SDK
 
-`@reactor/sdk` **0.3.2** — thin client for the public indexer. Factory version is a different number (**V1**).
+`@reactor/sdk` **0.3.3** — thin client for the public indexer. Factory version is a different number (**V1**).
 
 ## Authorize a launch
 
@@ -37,4 +37,4 @@ Helpers consume `POST /quote`:
 - On SELL, `minQuoteOut` is the first official/bonding quote floor from the same selected preview; `minOut` is the final USDC floor. Do not treat `amountIn` as `minQuoteOut`.
 - Preserve hop `kind` and `feeLegs[]` in the UI.
 
-`@reactor/core` exports `planCandidates`, `applyMinOuts`, `ValuationService`, `evaluateAdmission`, `fairCurveConfig`, `launchConfigHash`.
+`@reactor/core` exports `planCandidates`, `applyMinOuts`, `ValuationService`, `consensusUsd6`, `launchBlockedByValuation`, `evaluateAdmission`, `fairCurveConfig`, `launchConfigHash`. External USD is a configured provider registry + consensus — not a separate ZEC pricer.

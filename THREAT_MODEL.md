@@ -37,6 +37,7 @@ Hostile-reader notes for Codex / external review. **Not an audit.**
 13. **`protocolExempt` latch** is router-scoped and `nonReentrant`. User `swap` is forbidden while the latch is set. Malicious FoT callback cannot sneak a fee-free user trade (`ProtocolExemptReentrancy.t.sol`).
 14. **usdPegOne-only $1**. Guardian must set the peg flag. EURC is not $1.
 15. **Launch auth digest** is unique (no serial nonce griefing). Replay is `TickerRegistry.usedAuthorization[digest]`. Isolated signer **fail-closes** if the durable store is unavailable — it must not skip receipt consume or the signed-auth issuance bucket.
+16. **External USD marks** are offchain multi-source consensus (`fuseExternalUsd6`). Stale/outlier/deviating prints are persisted and rejected. PROD never falls back to a static dollar. A single HTTP outage or a two-source disagreement disables new launches on that quote and pauses a material Top-10 candidate. Not an onchain oracle.
 7. **Batch Fair finalize once**; `FairClaimVault` eligible; auction has no hook.
 10. **Canonical flush** — quote derived from `marketOfToken`; two-arg flush reverts on mismatch.
 11. **Exact-in + nonzero minOut + incomplete-fill revert** on the router.
