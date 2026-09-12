@@ -13,7 +13,7 @@
 | Intent | Server-side geo policy interface: ALLOW / DENY / UNKNOWN + reason codes; trusted edge HMAC; versioned comprehensive-jurisdiction file with source + effective date; LOCAL fixtures that cannot load production denylists. |
 | Indexer / lib | `packages/reactor/src/geo-policy.test.ts` + `apps/indexer/src/geo-policy.test.ts` + `pnpm docs:check` |
 | Foundry | Not re-run this pass (offchain policy only) |
-| Rebase | Onto `origin/main` `0db39c000c13adaf5e3694da73123e8ff73e067a` after merged **#77** (docs-only residual / advertised-ref AC1). Same PR **#67** / same branch. Protocol **0.3.3** / Factory **V1** unchanged. |
+| Rebase | Onto `origin/main` `300b7e5fccd445b32b79ab7d3033c2b813c9ffa5` after merged **#73** (CI cost cut / three-tier `ci.yml`). Same PR **#67** / same branch. `.github/workflows/ci.yml` taken from `main`. Protocol **0.3.3** / Factory **V1** unchanged. |
 | Mainnet | **Blocked** |
 
 ## Closed this run (#63 ACs — issue stays open)
