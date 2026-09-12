@@ -7,6 +7,7 @@ import { randomBytes } from "node:crypto";
 import { createPublicClient, http, parseAbi } from "viem";
 import { defineChain } from "viem";
 import deployment from "./deployment.json" with { type: "json" };
+import { launchBlockedByValuation } from "../../../packages/reactor/src/pricing.ts";
 import { normalizeTicker } from "../../../packages/reactor/src/ticker.ts";
 import {
   INSTANT_CURVE_V1,
@@ -165,15 +166,10 @@ export async function signAuthorized(
   const quoteDecimals = Number(await client.readContract({ address: quote, abi: erc20Abi, functionName: "decimals" }));
   const now = Math.floor(Date.now() / 1000);
 
-  const prod = (process.env.REACTOR_ENV ?? "").toUpperCase() === "PROD";
-  if (quote.toLowerCase() === (addrs.ZEC ?? "").toLowerCase() && prod && !process.env.ZEC_HTTP_URL) {
-    throw new Error("cannot price quote — static ZEC forbidden in prod");
-  }
   const svc = await loadValuationService(store);
   const valued = svc.quoteUsd6(quote);
-  if (!valued.ok || valued.usd6 === 0n) {
-    throw new Error("cannot price quote — valuation unavailable, launch disabled");
-  }
+  const blocked = launchBlockedByValuation(valued);
+  if (blocked) throw new Error(blocked);
 
   const virtualQuote0 = await client.readContract({
     address: addrs.ReactorFactory as `0x${string}`,

@@ -17,6 +17,7 @@ const STALE_MS = Number(process.env.WATCHDOG_STALE_MS ?? 5 * 60 * 1000);
 const INTERVAL = Number(process.env.WATCHDOG_INTERVAL_MS ?? 30_000);
 const RPC = process.env.NEXT_PUBLIC_RPC_URL ?? deployment.rpc;
 const API = process.env.REACTOR_TOP10_URL ?? "http://127.0.0.1:43147/api/reactor/top10";
+const INDEXER = process.env.INDEXER_URL ?? "http://127.0.0.1:43148";
 const MAINNET_CHAIN = 5042;
 
 const flywheelAbi = parseAbi([
@@ -133,6 +134,24 @@ async function check(): Promise<boolean> {
     if (res.ok) api = (await res.json()) as typeof api;
   } catch {
     warn("top10_api", "Top-10 API unreachable — cannot independently score epoch");
+  }
+
+  try {
+    const res = await fetch(`${INDEXER}/pricing/health`, { signal: AbortSignal.timeout(4_000) });
+    if (res.ok || res.status === 503) {
+      const body = (await res.json()) as {
+        ok?: boolean;
+        assets?: Array<{ symbol: string; ok: boolean; reason?: string; important?: boolean }>;
+      };
+      for (const a of body.assets ?? []) {
+        if (!a.ok) warn("price_consensus", `${a.symbol}: ${a.reason ?? "rejected"}`);
+      }
+      if (body.ok === false && api.pauseEpoch) {
+        warn("price_and_top10", "external consensus degraded and Top-10 epoch paused");
+      }
+    }
+  } catch {
+    warn("price_health", "indexer /pricing/health unreachable — cannot review accepted/rejected marks");
   }
 
   if (api.rows && beat.tokens) {

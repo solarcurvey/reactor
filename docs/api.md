@@ -14,7 +14,8 @@ Base URL: indexer (local `http://127.0.0.1:43148`).
 | GET | `/candles/:token` | `interval`, `limit`, exclusive `before`/`after` on `t`. Gap-fill ≤ `limit` (max 1000). |
 | GET | `/swaps/:token` | Bounded `limit`, `before_id` |
 | GET | `/quote-assets` | Registered quotes |
-| GET | `/valuation` | One ValuationService (nested multiply + ancestry) |
+| GET | `/valuation` | One ValuationService (nested multiply + ancestry). Consumes accepted consensus only. |
+| GET | `/pricing/health` | Per-asset consensus, accepted/rejected observations, Arc sanity. 503 in PROD when an important mark fails. |
 | GET | `/stream` | SSE |
 | GET | `/health` | Liveness |
 | POST | `/upload` | Stream 2MB + sharp + SigV4 remote. Returns `uri` `/m/<id>.webp` (R2/S3 key `m/<id>.webp`). |
