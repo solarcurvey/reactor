@@ -25,10 +25,10 @@ Guardian-added external quotes are scheduled automatically from `quote_assets`. 
 | --- | --- | --- |
 | Staleness | 120s (`maxAgeSec`) | Observation rejected. Consensus fails if remaining &lt; `minSources`. |
 | Deviation | 150 bps from median | Two-source disagreement fails. One outlier among ≥3 may be dropped if ≥2 inliers remain. |
-| Arc venue sanity | 400 bps | Applied only when a verified `route_venues` / official pool vs USDC exists and has an executable mark. |
+| Arc venue sanity | 400 bps | Applied only when a verified `route_venues` / official pool vs USDC exists **and** an executable mark is actually obtained. Hookless external quote↔USDC venues persist that mark on the venue row (`last_price_quote_x18` or JSON `data.priceQuoteX18`), not on a synthetic REACTOR `markets` row. Official Instant Launch pairs may still use `markets.price_quote_x18` when `official_pools` has the pair. A verified edge with no mark skips the band rather than inventing a price. |
 | Accepted mark freshness | 180s | ValuationService treats older consensus as `externalStale`. |
 
-Accepted and rejected observations plus the `kind=consensus` row are persisted for `/pricing/health` and the watchdog. Schema **v10** adds `external_price_marks.kind` after #23 **v9** `current_supply` (real v9 DBs `ALTER` + backfill).
+Accepted and rejected observations plus the `kind=consensus` row are persisted for `/pricing/health` and the watchdog. Schema **v10** adds `external_price_marks.kind` after #23 **v9** `current_supply` (real v9 DBs `ALTER` + backfill). `route_venues.last_price_quote_x18` is column-gated (no `schema_migrations` id) so the train stays **#23 (v9) → #30 (v10) → #29 (v11)**.
 
 ## Worker
 

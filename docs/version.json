@@ -5,5 +5,5 @@
   "releaseTag": "v0.3.3",
   "releaseDate": "2026-09-12",
   "status": "pre-audit local/testnet — not mainnet",
-  "notes": "External quote USD is a configured provider registry + multi-source consensus. PROD never uses a static mark. Schema v10 adds mark kind after #23 v9 current_supply (main v8 journal). Factory V1 immutable. Not audited."
+  "notes": "External quote USD is a configured provider registry + multi-source consensus. PROD never uses a static mark. Schema v10 adds mark kind after #23 v9 current_supply (main v8 journal). Arc sanity reads route_venues last_price_quote_x18, not a synthetic markets row. Factory V1 immutable. Not audited."
 }
