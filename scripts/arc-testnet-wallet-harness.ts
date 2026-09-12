@@ -290,6 +290,20 @@ async function main() {
       journey.steps.push({ id: "mint_quote", status: "ok", detail: `quote balance ${usdcBal}` });
     }
 
+    const resumeToken = (process.env.ARC_HARNESS_RESUME_TOKEN ?? "") as `0x${string}` | "";
+    let token: `0x${string}` = "0x";
+
+    if (resumeToken && resumeToken.length === 42) {
+      token = resumeToken;
+      journey.instantToken = token;
+      journey.steps.push({
+        id: "instant_launch",
+        status: "ok",
+        detail: `resume ${token} (prior authorize launch)`,
+        tx: process.env.ARC_HARNESS_RESUME_TX,
+        explorer: process.env.ARC_HARNESS_RESUME_TX ? `${EXPLORER}/tx/${process.env.ARC_HARNESS_RESUME_TX}` : undefined,
+      });
+    } else {
     const admit = await authorize({
       ticker,
       name: "Rehearsal",
@@ -345,7 +359,7 @@ async function main() {
     });
     const receipt = await client.waitForTransactionReceipt({ hash });
     const created = parseEventLogs({ abi: launchAbi, logs: receipt.logs, eventName: "TokenCreated" })[0];
-    const token = (created?.args.token ?? "0x") as `0x${string}`;
+    token = (created?.args.token ?? "0x") as `0x${string}`;
     journey.instantToken = token;
     journey.steps.push({
       id: "instant_launch",
@@ -397,6 +411,16 @@ async function main() {
         });
       }
     }
+    }
+
+    const curve = dep.addresses.InstantCurve as `0x${string}` | undefined;
+    if (curve) {
+      const appr = await wallet.writeContract({ address: usdc!, abi: erc20Abi, functionName: "approve", args: [curve, 2_000_000n] });
+      await client.waitForTransactionReceipt({ hash: appr });
+    }
+    const apprR = await wallet.writeContract({ address: usdc!, abi: erc20Abi, functionName: "approve", args: [router!, 2_000_000n] });
+    await client.waitForTransactionReceipt({ hash: apprR });
+    journey.steps.push({ id: "approve_quote", status: "ok", detail: "USDC approve InstantCurve + UserRouteExecutor (quote sim + buy)" });
 
     let quoteBuy = { status: 0, body: {} as Record<string, unknown> };
     let minBuy = 0n;
@@ -428,8 +452,15 @@ async function main() {
       return;
     }
     journey.steps.push({ id: "quote_buy", status: "ok", detail: `minOut ${minBuy}` });
-
-    await wallet.writeContract({ address: usdc!, abi: erc20Abi, functionName: "approve", args: [router!, 1_000_000n] });
+    if (process.env.ARC_HARNESS_SKIP_BUY === "1") {
+      journey.steps.push({
+        id: "buy",
+        status: "ok",
+        detail: "skip buy — already executed",
+        tx: process.env.ARC_HARNESS_RESUME_BUY_TX,
+        explorer: process.env.ARC_HARNESS_RESUME_BUY_TX ? `${EXPLORER}/tx/${process.env.ARC_HARNESS_RESUME_BUY_TX}` : undefined,
+      });
+    } else {
     const buyHash = await wallet.writeContract({
       address: router!,
       abi: routeAbi,
@@ -450,9 +481,14 @@ async function main() {
       finish(journey, 2);
       return;
     }
+    }
 
     const bal = await client.readContract({ address: token, abi: erc20Abi, functionName: "balanceOf", args: [account.address] });
     const sellAmt = bal / 4n;
+    if (curve) {
+      const apprTok = await wallet.writeContract({ address: token, abi: erc20Abi, functionName: "approve", args: [curve, sellAmt] });
+      await client.waitForTransactionReceipt({ hash: apprTok });
+    }
     const quoteSell = await indexerJson(
       indexer,
       "/quote",
@@ -471,7 +507,7 @@ async function main() {
       journey.steps.push({
         id: "quote_sell",
         status: "blocked",
-        detail: `POST /quote SELL HTTP ${quoteSell.status} — refuse zero floors`,
+        detail: `POST /quote SELL HTTP ${quoteSell.status} ${JSON.stringify(quoteSell.body).slice(0, 240)} — refuse zero floors`,
       });
       journey.blockers.push("quote SELL unavailable");
       finish(journey, 2);
@@ -559,7 +595,8 @@ async function main() {
         });
         if (fairRcpt.status === "success" && fairId != null) {
           const bidAmt = 5_000_000n;
-          await wallet.writeContract({ address: usdc!, abi: erc20Abi, functionName: "approve", args: [factory!, bidAmt] });
+          const bidAppr = await wallet.writeContract({ address: usdc!, abi: erc20Abi, functionName: "approve", args: [factory!, bidAmt] });
+          await client.waitForTransactionReceipt({ hash: bidAppr });
           const bidHash = await wallet.writeContract({
             address: factory!,
             abi: launchAbi,

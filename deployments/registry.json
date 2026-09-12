@@ -31,8 +31,8 @@
       "sourceTag": "v0.3.3",
       "deploymentDate": "2026-09-12",
       "verificationUrl": "https://testnet.arcscan.app/tx/0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67",
-      "verificationNote": "Blockscout API result=success for Factory create + Instant/Fair smoke. Keep #16 open for human AC.",
-      "note": "Issue #16 rehearsal on 5042002. Disposable EOA Guardian/Keeper/LaunchSigner `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E` (not Safe). Instant/Fair quote is Mock USDC-6 `0x44CBe037ABFA8696E4466cA9D278Dbbe44B932dC`, not canonical `0x3600…0000`. PoolManager is official v4-core BUSL deployed this session (not a Circle-provided manager). Smoke: Instant RHRSI `0x62A7aDF0deb2c1918603e9834dD9ACe07CDA2f87` + Fair RHRFA `0x077322bE71C871F7134a9bb97e8f85A3991497c6`. Evidence: deployments/arc-testnet.json + arc-testnet-smoke.json. No mainnet (5042)."
+      "verificationNote": "Blockscout API result=success for Factory create + Instant/Fair smoke + LOCAL authorize Instant RHRSL / Fair RHRFL. Keep #16 open for human AC.",
+      "note": "Issue #16 rehearsal on 5042002. Disposable EOA Guardian/Keeper/LaunchSigner `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E` (not Safe). Instant/Fair quote is Mock USDC-6 `0x44CBe037ABFA8696E4466cA9D278Dbbe44B932dC`, not canonical `0x3600…0000`. PoolManager is official v4-core BUSL deployed this session (not a Circle-provided manager). Smoke: Instant RHRSI `0x62A7aDF0deb2c1918603e9834dD9ACe07CDA2f87` + Fair RHRFA `0x077322bE71C871F7134a9bb97e8f85A3991497c6`. LOCAL authorize path: Instant RHRSL `0xf93a49eBc9B669891F29F87bCC151188Eb715e12` + Fair RHRFL `0x7B52a009560f55978E82E50aD24FDC3f0e1F86E0` (fairId 2). Evidence: deployments/arc-testnet.json + arc-testnet-smoke.json + arc-testnet-journey.json. No mainnet (5042)."
     },
     {
       "id": "arc-mainnet",

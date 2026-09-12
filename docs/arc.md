@@ -46,7 +46,7 @@ Chainlink CRE lists a separate **Arc Testnet** (EIP-155 **1883**) for TypeScript
 
 `forge script script/Deploy.s.sol:Deploy` on `https://rpc.testnet.arc.network` wrote `deployments/arc-testnet.json`. Factory `0xB48D1B397834eBcccb8961041d827487097e0535` create tx is [on explorer](https://testnet.arcscan.app/tx/0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67). Instant + Fair smoke: `pnpm arc:smoke` → `deployments/arc-testnet-smoke.json`. Instant/Fair quote is **Mock USDC-6** from that dump, not canonical `0x3600…0000`. Guardian is the disposable deployer EOA (not Safe).
 
-`pnpm arc:wallet-harness` is the production Instant + BUY/SELL path (same ABIs as the Next app: `POST /launch/authorize` → `launchStandard` → `POST /quote` → `UserRouteExecutor`). Direct Factory smoke does **not** replace that path.
+`pnpm arc:wallet-harness` ran the LOCAL authorize Instant RHRSL + Fair RHRFL path (same ABIs as the Next app: `POST /launch/authorize` → `launchStandard` / `createFairLaunch` → `POST /quote` → `UserRouteExecutor`). Evidence: `deployments/arc-testnet-journey.json`. Direct Factory smoke does **not** replace that path. LOCAL is not full PROD.
 
 `pnpm arc:prod-web` writes `deployments/arc-testnet.env.example`.
 

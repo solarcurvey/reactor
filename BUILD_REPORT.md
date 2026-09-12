@@ -1,6 +1,6 @@
 # BUILD REPORT — Issue #16 Arc Public Testnet rehearsal
 
-**Status:** Rebased onto `origin/main` `789eb5c` (#46 observability after #75 / #44 / #70 / #79 / #68 / #67 / #66 / #49 / #42 / #50 / #58 / #73). Protocol **0.3.4**. Factory **V1** unchanged. **#16 stays open.** Production-shaped `pnpm arc:wallet-harness` matches the Next `POST /quote` body and can Fair-authorize; live hashes go in `deployments/arc-testnet-journey.json` — do not invent them.
+**Status:** Rebased onto `origin/main` `789eb5c` (#46 observability after #75 / #44 / #70 / #79 / #68 / #67 / #66 / #49 / #42 / #50 / #58 / #73). Protocol **0.3.4**. Factory **V1** unchanged. **#16 stays open.** LOCAL authorize Instant RHRSL + Fair RHRFL explorer hashes are in `deployments/arc-testnet-journey.json` (Blockscout `result=success`). Not full PROD.
 **Not audited. Not mainnet.**
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
@@ -14,13 +14,15 @@
 | Factory | `0xB48D1B397834eBcccb8961041d827487097e0535` — [create tx](https://testnet.arcscan.app/tx/0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67) |
 | Instant RHRSI | `0x62A7aDF0deb2c1918603e9834dD9ACe07CDA2f87` launch [`0xde5fb884…`](https://testnet.arcscan.app/tx/0xde5fb884a0495f15715963a710d3e1efd3f93237c22978ee351e15d726c77f6f) buy [`0xf50b7715…`](https://testnet.arcscan.app/tx/0xf50b7715ed981d379c9c37cf6badb227e047e15b2e932cd194088a8fa73886b3) sell [`0x71d6f3ec…`](https://testnet.arcscan.app/tx/0x71d6f3ecbfd4c3a7de02d2fb5f477d6c22a40bec12115ea951c99731565e25cd) |
 | Fair RHRFA | `0x077322bE71C871F7134a9bb97e8f85A3991497c6` create [`0xb1a993e9…`](https://testnet.arcscan.app/tx/0xb1a993e9ce3c4261e1b2c6ee5b6cc92ca2fced4c9029b6960eabcbb979f0f46f) bid [`0xf2d8b9a3…`](https://testnet.arcscan.app/tx/0xf2d8b9a3f2407f037196506d4081c33f8787bcc62d1cff541f9f0c20bef362cb) finalize [`0xe839d3d2…`](https://testnet.arcscan.app/tx/0xe839d3d2230bb20448117149e61fed7c92ebe4307fcebeb886b8e65ca49d24c5) claim [`0x78f3f4ad…`](https://testnet.arcscan.app/tx/0x78f3f4adefe400cb452b022d15f2c0fcf99e44ca16abae29c553d83bb1e42ffb) |
+| LOCAL authorize Instant RHRSL | `0xf93a49eBc9B669891F29F87bCC151188Eb715e12` launch [`0xcb57af89…`](https://testnet.arcscan.app/tx/0xcb57af89340e0d94b20855bfe5af5114faf0f6c7d78496b38b315c2316c3994c) buy [`0xff40b4a2…`](https://testnet.arcscan.app/tx/0xff40b4a2ff1a04c9d1055ed7e07ae75fbb7cdefb923187db448087a6292040aa) sell [`0x9d8565d9…`](https://testnet.arcscan.app/tx/0x9d8565d93649cf7452e50837f51b431942019a416e987c4f467585fa4a0a44ff) |
+| LOCAL authorize Fair RHRFL | `0x7B52a009560f55978E82E50aD24FDC3f0e1F86E0` fairId 2 create [`0x07822d45…`](https://testnet.arcscan.app/tx/0x07822d45ef32794b8e16a739b9588601f9c8307730fd5e1575f43e381bbc4c58) bid [`0x71b51af2…`](https://testnet.arcscan.app/tx/0x71b51af2d936fb3daa4d9ab6248f48998131a690b094f5f927a488c1743dac33) finalize [`0xa7580c21…`](https://testnet.arcscan.app/tx/0xa7580c21d0051eb8c2355b859948578e81da983418403c4a4a91552d5501e190) claim [`0xd27d86b7…`](https://testnet.arcscan.app/tx/0xd27d86b7b2309b2296e54ca18ff0a31aa20bdb5f4c0b8a61011c2c836d9a522f) |
 | Quote | Mock USDC-6 `0x44CBe037ABFA8696E4466cA9D278Dbbe44B932dC` (labeled). Canonical `0x3600…0000` is not the Instant/Fair quote. |
 | PoolManager | Official v4-core BUSL `0xC320E526477A9A9c8919A0A8200eAB38fE55033f` — rehearsal deploy, not a Circle-provided manager |
 | Addresses | `deployments/arc-testnet.json` → `docs/deployments.md` |
 | Workflows | Inherited merged **#46** / **#75** / **#44** / **#70** / **#79** / **#68** / **#67** / **#66** / **#49** / **#42** / **#50** / **#73** `.github/workflows/ci.yml` (three-tier + page-budget + `web-qa` + `e2e-release-gate` + `obs-ui` + `docs:links` + sanctions/geo/operator-policy/restricted-access fixtures). Prefer main for CI. Do not rewrite decide-tier. Actions billing empty-step failures are not AC failures. |
 | Mainnet | **Blocked** |
 
-Keep **#16 open** until Instant + Fair explorer AC are human-confirmed. Guardian-signed Factory smoke (`pnpm arc:smoke`) is recorded. The Next-shaped path is `POST /launch/authorize` → `launchStandard` / `createFairLaunch` → `POST /quote` → `UserRouteExecutor` (`pnpm arc:wallet-harness`). Full PROD still needs Turnstile + isolated signer ≠ deployer.
+Keep **#16 open** until Instant + Fair explorer AC are human-confirmed. Guardian-signed Factory smoke (`pnpm arc:smoke`) is recorded. LOCAL authorize Instant RHRSL + Fair RHRFL (`pnpm arc:wallet-harness`) used `POST /launch/authorize` → `launchStandard` / `createFairLaunch` → `POST /quote` → `UserRouteExecutor`. Blockscout `status=ok` / `result=success`. Full PROD still needs Turnstile + isolated signer ≠ deployer. No Safe genesis.
 
 ---
 

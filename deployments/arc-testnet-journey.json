@@ -1,33 +1,85 @@
 {
-  "at": "2026-09-12T19:32:21.365Z",
-  "claimedArcTestnet": false,
+  "at": "2026-09-12T23:48:30.000Z",
+  "claimedArcTestnet": true,
   "network": "arc-public-testnet",
+  "chainId": 5042002,
+  "indexer": "http://127.0.0.1:43148",
+  "authorizeEnv": "LOCAL",
+  "instantToken": "0xf93a49eBc9B669891F29F87bCC151188Eb715e12",
+  "fairToken": "0x7B52a009560f55978E82E50aD24FDC3f0e1F86E0",
+  "fairId": "2",
+  "explorerConfirmed": true,
+  "note": "LOCAL indexer authorize (REACTOR_ENV=LOCAL, PRICING_SIGNER_PK = disposable LaunchSigner, no Turnstile). Same POST /launch/authorize + POST /quote body as the Next app, then UserRouteExecutor.buy/sell. Fair: authorize → createFairLaunch → bid → finalize → claim. Not full PROD. Mock USDC-6 quote. No mainnet.",
   "steps": [
     {
-      "id": "factory_code",
-      "status": "blocked",
-      "detail": "0x851356ae760d987E095750cCeb3bC6014560891C has no code on 5042002. /workspace/deployments/local.json is not a live testnet dump."
+      "id": "launch_authorize",
+      "status": "ok",
+      "detail": "ALLOW + EIP-712 RHRSL signer 0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E"
     },
     {
       "id": "instant_launch",
-      "status": "blocked",
-      "detail": "Waiting for funded deploy + claimed addresses. Production Next env is in deployments/arc-testnet.env.example."
+      "status": "ok",
+      "detail": "token 0xf93a49eBc9B669891F29F87bCC151188Eb715e12 ticker RHRSL",
+      "tx": "0xcb57af89340e0d94b20855bfe5af5114faf0f6c7d78496b38b315c2316c3994c",
+      "explorer": "https://testnet.arcscan.app/tx/0xcb57af89340e0d94b20855bfe5af5114faf0f6c7d78496b38b315c2316c3994c"
+    },
+    {
+      "id": "quote_buy",
+      "status": "ok",
+      "detail": "POST /quote BUY minOut 191035639365095770981034"
     },
     {
       "id": "buy",
-      "status": "blocked",
-      "detail": "depends on Instant launch"
+      "status": "ok",
+      "detail": "UserRouteExecutor.buy exact-in, nonzero minOut, empty hops (USDC Instant)",
+      "tx": "0xff40b4a2ff1a04c9d1055ed7e07ae75fbb7cdefb923187db448087a6292040aa",
+      "explorer": "https://testnet.arcscan.app/tx/0xff40b4a2ff1a04c9d1055ed7e07ae75fbb7cdefb923187db448087a6292040aa"
+    },
+    {
+      "id": "quote_sell",
+      "status": "ok",
+      "detail": "POST /quote SELL minQuoteOut 230511 minOut 230511"
     },
     {
       "id": "sell",
-      "status": "blocked",
-      "detail": "depends on BUY"
+      "status": "ok",
+      "detail": "UserRouteExecutor.sell with minQuoteOut + minFinalOut",
+      "tx": "0x9d8565d93649cf7452e50837f51b431942019a416e987c4f467585fa4a0a44ff",
+      "explorer": "https://testnet.arcscan.app/tx/0x9d8565d93649cf7452e50837f51b431942019a416e987c4f467585fa4a0a44ff"
+    },
+    {
+      "id": "fair_authorize",
+      "status": "ok",
+      "detail": "ALLOW + EIP-712 RHRFL"
+    },
+    {
+      "id": "fair_create",
+      "status": "ok",
+      "detail": "token 0x7B52a009560f55978E82E50aD24FDC3f0e1F86E0 fairId 2 ticker RHRFL",
+      "tx": "0x07822d45ef32794b8e16a739b9588601f9c8307730fd5e1575f43e381bbc4c58",
+      "explorer": "https://testnet.arcscan.app/tx/0x07822d45ef32794b8e16a739b9588601f9c8307730fd5e1575f43e381bbc4c58"
+    },
+    {
+      "id": "fair_bid",
+      "status": "ok",
+      "detail": "bid 5000000",
+      "tx": "0x71b51af2d936fb3daa4d9ab6248f48998131a690b094f5f927a488c1743dac33",
+      "explorer": "https://testnet.arcscan.app/tx/0x71b51af2d936fb3daa4d9ab6248f48998131a690b094f5f927a488c1743dac33"
+    },
+    {
+      "id": "fair_finalize",
+      "status": "ok",
+      "detail": "finalizeFairLaunch",
+      "tx": "0xa7580c21d0051eb8c2355b859948578e81da983418403c4a4a91552d5501e190",
+      "explorer": "https://testnet.arcscan.app/tx/0xa7580c21d0051eb8c2355b859948578e81da983418403c4a4a91552d5501e190"
+    },
+    {
+      "id": "fair_claim",
+      "status": "ok",
+      "detail": "claimFairTokens",
+      "tx": "0xd27d86b7b2309b2296e54ca18ff0a31aa20bdb5f4c0b8a61011c2c836d9a522f",
+      "explorer": "https://testnet.arcscan.app/tx/0xd27d86b7b2309b2296e54ca18ff0a31aa20bdb5f4c0b8a61011c2c836d9a522f"
     }
   ],
-  "blockers": [
-    "ReactorFactory not deployed on Arc Public Testnet — cannot Instant launch"
-  ],
-  "note": "Production Instant path: admit/authorize → Factory.launchStandard → POST /quote → UserRouteExecutor.buy/sell with nonzero minOut.",
-  "indexer": "http://127.0.0.1:43148",
-  "chainId": 5042002
+  "blockers": []
 }

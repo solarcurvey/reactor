@@ -316,50 +316,38 @@ async function refreshQuotes(store: Store) {
   const registryAbi = parseAbi([
     "function count() view returns (uint256)",
     "function list(uint256) view returns (address)",
-    "function get(address) view returns (address token, string symbol, string name, uint8 decimals, string icon, uint8 category, bool enabled, bool exists, bool rewardsEnabled, bool buybackRouteEnabled, bool hopViaUsdc, bool reactorNative, bool usdPegOne)",
+    "function isUsdPegOne(address) view returns (bool)",
+    "function isEnabled(address) view returns (bool)",
   ]);
+  const erc20Meta = parseAbi(["function decimals() view returns (uint8)", "function symbol() view returns (string)", "function name() view returns (string)"]);
   try {
     const n = Number(await client.readContract({ address: registry, abi: registryAbi, functionName: "count" }));
     const listed = n > 0
       ? await readContractsBatched<`0x${string}`>(client, indexCalls(registry, registryAbi, "list", n))
       : [];
-    type QuoteGet = {
-      token: `0x${string}`;
-      symbol: string;
-      name: string;
-      decimals: number;
-      category: number;
-      enabled: boolean;
-      exists: boolean;
-      hopViaUsdc: boolean;
-      reactorNative: boolean;
-      usdPegOne: boolean;
-    };
-    const assets = listed.length
-      ? await readContractsBatched<QuoteGet>(
-          client,
-          listed.map((token) => ({ address: registry, abi: registryAbi, functionName: "get", args: [token] })),
-        )
-      : [];
-    for (let i = 0; i < listed.length; i++) {
-      const token = listed[i]!;
-      const g = assets[i];
-      if (!g) continue;
-      quoteDec.set(token.toLowerCase(), Number(g.decimals));
+    for (const token of listed) {
+      const [usdPegOne, enabled, decimals, symbol, name] = await Promise.all([
+        client.readContract({ address: registry, abi: registryAbi, functionName: "isUsdPegOne", args: [token] }),
+        client.readContract({ address: registry, abi: registryAbi, functionName: "isEnabled", args: [token] }),
+        client.readContract({ address: token, abi: erc20Meta, functionName: "decimals" }),
+        client.readContract({ address: token, abi: erc20Meta, functionName: "symbol" }).catch(() => "Q"),
+        client.readContract({ address: token, abi: erc20Meta, functionName: "name" }).catch(() => "Quote"),
+      ]);
+      quoteDec.set(token.toLowerCase(), Number(decimals));
       await store.run(
         `INSERT INTO quote_assets(token,symbol,name,decimals,category,enabled,usd_peg_one,hop_via_usdc,reactor_native,parent_quote,quarantined)
          VALUES(?,?,?,?,?,?,?,?,?,'',?)
          ON CONFLICT(token) DO UPDATE SET enabled=excluded.enabled, usd_peg_one=excluded.usd_peg_one, hop_via_usdc=excluded.hop_via_usdc, quarantined=excluded.quarantined`,
         token.toLowerCase(),
-        g.symbol,
-        g.name,
-        Number(g.decimals),
-        Number(g.category),
-        g.enabled ? 1 : 0,
-        g.usdPegOne ? 1 : 0,
-        g.hopViaUsdc ? 1 : 0,
-        g.reactorNative ? 1 : 0,
-        g.exists && !g.enabled ? 1 : 0,
+        String(symbol),
+        String(name),
+        Number(decimals),
+        0,
+        enabled ? 1 : 0,
+        usdPegOne ? 1 : 0,
+        0,
+        0,
+        enabled ? 0 : 1,
       );
     }
   } catch (e) {

@@ -58,7 +58,7 @@ https://faucet.circle.com/api/graphql → HTTP 200 RECAPTCHA_ERROR. Circle `/v1/
 
 ## Production web journey
 
-Direct Factory Instant + Fair smoke is done. `pnpm arc:wallet-harness` is the Next-shaped authorize + `/quote` + `UserRouteExecutor` path (LOCAL authorize unless Turnstile + isolated signer are wired). Keep #16 open.
+Direct Factory Instant + Fair smoke is done. LOCAL authorize Instant RHRSL + Fair RHRFL is recorded in `deployments/arc-testnet-journey.json` (`POST /launch/authorize` + `/quote` + `UserRouteExecutor`). Not full PROD (no Turnstile / isolated signer). Keep #16 open.
 
 Then re-run (never commit the key):
 
