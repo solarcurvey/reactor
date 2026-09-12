@@ -52,5 +52,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Real Postgres millisecond BIGINT + leadership + issuance
         run: pnpm --filter indexer test:pg
+      - name: Two-worker Keeper lease fencing
+        run: pnpm --filter indexer test:pg-lease
       - name: Postgres smoke
         run: pnpm --filter indexer pg-smoke

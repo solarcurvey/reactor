@@ -48,7 +48,11 @@ function crashStore(inner: Store, shouldCrash: (sql: string, writeIndex: number)
     transaction: (fn) => s.transaction((tx) => fn(wrap(tx))),
     close: () => s.close(),
     tryAdvisoryLock: (n, o, t) => s.tryAdvisoryLock(n, o, t),
+    acquireLease: (n, o, t) => s.acquireLease(n, o, t),
+    renewLease: (n, o, f, t) => s.renewLease(n, o, f, t),
+    hasLease: (n, o, f) => s.hasLease(n, o, f),
     releaseLock: (n, o) => s.releaseLock(n, o),
+    releaseLease: (n, o, f) => s.releaseLease(n, o, f),
   });
   return wrap(inner);
 }
