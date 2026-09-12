@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import {
   BodyTooLargeError,
   DEFAULT_JSON_BODY_LIMIT_BYTES,
+  MAX_JSON_BODY_LIMIT_BYTES,
+  clampJsonBodyLimit,
   declaredContentLength,
   jsonBodyLimitBytes,
   readJsonBody,
@@ -15,10 +17,10 @@ function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
 }
 
-function listen(): Promise<{ url: URL; close: () => Promise<void> }> {
+function listen(limit = 1024): Promise<{ url: URL; close: () => Promise<void> }> {
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     try {
-      const body = await readJsonBody(req, 1024);
+      const body = await readJsonBody(req, limit);
       res.writeHead(200, { "content-type": "application/json", connection: "close" });
       res.end(JSON.stringify({ ok: true, body }));
     } catch (e) {
@@ -101,15 +103,25 @@ function post(url: URL, opts: { body: string | Buffer; headers?: Record<string, 
 
 {
   assert(DEFAULT_JSON_BODY_LIMIT_BYTES === 16 * 1024, "default 16KiB");
+  assert(MAX_JSON_BODY_LIMIT_BYTES === 64 * 1024, "hard max 64KiB");
+  assert(DEFAULT_JSON_BODY_LIMIT_BYTES < MAX_JSON_BODY_LIMIT_BYTES, "default under hard max");
   const prev = process.env.JSON_BODY_LIMIT_BYTES;
   delete process.env.JSON_BODY_LIMIT_BYTES;
   assert(jsonBodyLimitBytes() === 16_384, "env default");
   process.env.JSON_BODY_LIMIT_BYTES = "4096";
-  assert(jsonBodyLimitBytes() === 4096, "env override");
+  assert(jsonBodyLimitBytes() === 4096, "env override under hard max");
+  process.env.JSON_BODY_LIMIT_BYTES = "65536";
+  assert(jsonBodyLimitBytes() === MAX_JSON_BODY_LIMIT_BYTES, "env exact hard max");
+  process.env.JSON_BODY_LIMIT_BYTES = "1000000000";
+  assert(jsonBodyLimitBytes() === MAX_JSON_BODY_LIMIT_BYTES, "absurd env cannot raise cap");
+  process.env.JSON_BODY_LIMIT_BYTES = "65537";
+  assert(jsonBodyLimitBytes() === MAX_JSON_BODY_LIMIT_BYTES, "one-over hard max clamps");
   process.env.JSON_BODY_LIMIT_BYTES = "nope";
   assert(jsonBodyLimitBytes() === 16_384, "bad env falls back");
   if (prev === undefined) delete process.env.JSON_BODY_LIMIT_BYTES;
   else process.env.JSON_BODY_LIMIT_BYTES = prev;
+  assert(clampJsonBodyLimit(1_000_000_000) === MAX_JSON_BODY_LIMIT_BYTES, "clamp absurd caller limit");
+  assert(clampJsonBodyLimit(1024) === 1024, "clamp keeps test/sub-max limits");
 }
 
 {
@@ -230,6 +242,16 @@ const { url, close } = await listen();
 }
 
 await close();
+
+{
+  const huge = await listen(1_000_000_000);
+  const over = `{"pad":"${"x".repeat(MAX_JSON_BODY_LIMIT_BYTES)}"}`;
+  assert(Buffer.byteLength(over) > MAX_JSON_BODY_LIMIT_BYTES, "fixture over hard max");
+  const hit = await post(huge.url, { body: over, chunked: true });
+  assert(hit.status === 413, `absurd caller limit still 413 ${hit.status} ${hit.raw}`);
+  assert(String(hit.json.error).includes(`${MAX_JSON_BODY_LIMIT_BYTES} byte JSON limit`), `hard-max error ${hit.raw}`);
+  await huge.close();
+}
 
 {
   const here = dirname(fileURLToPath(import.meta.url));

@@ -216,7 +216,7 @@ pnpm --filter indexer watchdog
 | 41 | Two Postgres workers: one winner, renew vs overlap, expiry/crash takeover, stale fence cannot send | `keeper.lease.pg.test.ts` (`test:pg-lease`, CI `keeper-lease-pg`) |
 | 42 | Markets keyset cursor matches `sort` (`new`/`vol`/`price`); insert-ahead no dupes | `markets-query.test.ts` |
 | 43 | Candle gap-fill bounded; exclusive aligned `before` | `packages/reactor/src/prices.test.ts` |
-| 44 | Public JSON POSTs reject oversized / chunked bodies (413, no unbounded buffer) | `read-json-body.test.ts`, `limited-json.test.ts` |
+| 44 | Public JSON POSTs reject oversized / chunked bodies (413); env cannot raise past 64KiB hard max | `read-json-body.test.ts`, `limited-json.test.ts` |
 
 ## Arc smoke
 

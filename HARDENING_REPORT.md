@@ -176,8 +176,8 @@ Always re-read `factory.hook()` after bytecode changes.
 
 | Item | Status | Proof |
 | --- | --- | --- |
-| Public JSON POSTs unbounded buffer | **FIXED** | Stream 16KiB on `/quote`, `/launch/admit`, `/launch/authorize`. Content-Length **and** chunked. 413 + destroy. `read-json-body.test.ts` |
-| Next BFF `/api/launch-pricing` | **FIXED** | Same 16KiB stream cap before proxy. `limited-json.test.ts` |
+| Public JSON POSTs unbounded buffer | **FIXED** | Stream 16KiB default / 64KiB hard max on `/quote`, `/launch/admit`, `/launch/authorize`. Content-Length **and** chunked. Env cannot raise past hard max. 413 + destroy. `read-json-body.test.ts` |
+| Next BFF `/api/launch-pricing` | **FIXED** | Same 16KiB default / 64KiB hard max before proxy. `limited-json.test.ts` |
 | Isolated signer unbounded parse | **FIXED** | Same reader (not a public API) |
 | Upload 2MB | Unchanged | Already streamed |
 

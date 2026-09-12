@@ -4,7 +4,7 @@ import { BodyTooLargeError, readLimitedText } from "../../../lib/limited-json";
 /**
  * Public Next route never talks to the isolated signer.
  * Forwards to indexer POST /launch/authorize (admission → receipt → internal sign).
- * Body is capped (16KiB) before the proxy buffer so chunked oversize cannot fill the BFF.
+ * Body is capped (16KiB default / 64KiB hard max) before the proxy buffer so chunked oversize cannot fill the BFF.
  */
 export async function POST(req: Request) {
   const indexer = process.env.INDEXER_URL ?? process.env.NEXT_PUBLIC_INDEXER_URL ?? "http://127.0.0.1:43148";

@@ -23,7 +23,7 @@ Quote API SELL tickets take `minQuoteOut` from `assembleAtomicTicket.terminalMin
 
 | Item | Status | Evidence |
 | --- | --- | --- |
-| Stream cap on public JSON POSTs | **Yes** | 16KiB default (`JSON_BODY_LIMIT_BYTES`). `/quote`, `/launch/admit`, `/launch/authorize` |
+| Stream cap on public JSON POSTs | **Yes** | 16KiB default / 64KiB hard max (`JSON_BODY_LIMIT_BYTES` cannot exceed hard max). `/quote`, `/launch/admit`, `/launch/authorize` |
 | Chunked Transfer-Encoding | **Yes** | Cap is byte-count on the stream, not Content-Length alone |
 | 413 + destroy | **Yes** | `BodyTooLargeError`; socket destroyed at first overflowing byte |
 | Next BFF + isolated signer | **Yes** | Same 16KiB cap; signer stays fail-closed on missing store (#26) |

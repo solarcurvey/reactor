@@ -66,9 +66,9 @@ Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, 
 
 ## API / indexer controls
 
-- Public JSON POSTs (`/quote`, `/launch/admit`, `/launch/authorize`) reject bodies over **16KiB** with **413**. Enforcement is on the stream: declared `Content-Length` and chunked bodies with no length. The request is destroyed at the first overflowing byte so the process cannot buffer an unbounded JSON POST.
+- Public JSON POSTs (`/quote`, `/launch/admit`, `/launch/authorize`) reject bodies over the JSON cap with **413** (default **16KiB**, hard max **64KiB**). `JSON_BODY_LIMIT_BYTES` cannot raise the cap past the hard max. Enforcement is on the stream: declared `Content-Length` and chunked bodies with no length. The request is destroyed at the first overflowing byte so the process cannot buffer an unbounded JSON POST.
 - `POST /upload` already stream-caps at 2MB.
-- The public Next BFF `/api/launch-pricing` applies the same 16KiB cap before proxying.
+- The public Next BFF `/api/launch-pricing` applies the same 16KiB default / 64KiB hard max before proxying.
 - Rate limits (quote / upload / pricing) are separate. Body caps + RPM are not a complete L7 DoS proof.
 
 ## Explicit non-goals

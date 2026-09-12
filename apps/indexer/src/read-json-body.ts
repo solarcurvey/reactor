@@ -7,11 +7,16 @@
 import type { IncomingMessage } from "node:http";
 
 export const DEFAULT_JSON_BODY_LIMIT_BYTES = 16 * 1024;
+/** Hard ceiling. `JSON_BODY_LIMIT_BYTES` cannot raise the cap above this. */
+export const MAX_JSON_BODY_LIMIT_BYTES = 64 * 1024;
+
+export function clampJsonBodyLimit(bytes: number): number {
+  if (!Number.isFinite(bytes) || bytes <= 0) return DEFAULT_JSON_BODY_LIMIT_BYTES;
+  return Math.min(Math.floor(bytes), MAX_JSON_BODY_LIMIT_BYTES);
+}
 
 export function jsonBodyLimitBytes(): number {
-  const n = Number(process.env.JSON_BODY_LIMIT_BYTES ?? DEFAULT_JSON_BODY_LIMIT_BYTES);
-  if (!Number.isFinite(n) || n <= 0) return DEFAULT_JSON_BODY_LIMIT_BYTES;
-  return Math.floor(n);
+  return clampJsonBodyLimit(Number(process.env.JSON_BODY_LIMIT_BYTES ?? DEFAULT_JSON_BODY_LIMIT_BYTES));
 }
 
 export class BodyTooLargeError extends Error {
@@ -51,9 +56,10 @@ export async function readLimitedBuffer(
   req: IncomingMessage,
   limit: number = jsonBodyLimitBytes(),
 ): Promise<Buffer> {
+  const cap = clampJsonBodyLimit(limit);
   const declared = declaredContentLength(req.headers);
-  if (declared != null && declared > limit) {
-    throw new BodyTooLargeError(limit);
+  if (declared != null && declared > cap) {
+    throw new BodyTooLargeError(cap);
   }
 
   const chunks: Buffer[] = [];
@@ -62,9 +68,9 @@ export async function readLimitedBuffer(
     for await (const chunk of req) {
       const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
       received += buf.length;
-      if (received > limit) {
+      if (received > cap) {
         req.pause();
-        throw new BodyTooLargeError(limit);
+        throw new BodyTooLargeError(cap);
       }
       chunks.push(buf);
     }
