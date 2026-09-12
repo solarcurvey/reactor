@@ -38,6 +38,14 @@ export function assertGeoPolicyShape(policy: GeoDenyPolicy): void {
       throw new Error(`GEO_POLICY: bad region ${r.iso3166_2}`);
     }
   }
+  for (const r of policy.insufficientRegions ?? []) {
+    if (!/^[A-Z]{2}$/.test(r.country) || !/^[A-Z]{2}-[A-Z0-9]{1,4}$/.test(r.iso3166_2)) {
+      throw new Error(`GEO_POLICY: bad insufficient region ${r.iso3166_2}`);
+    }
+    if (policy.regions.some((d) => d.iso3166_2.toUpperCase() === r.iso3166_2.toUpperCase())) {
+      throw new Error(`GEO_POLICY: ${r.iso3166_2} cannot be both denied and insufficient`);
+    }
+  }
   const denied = new Set(policy.jurisdictions.map((j) => j.iso2));
   for (const note of policy.programNotes ?? []) {
     if (!/^[A-Z]{2}$/.test(note.iso2)) throw new Error(`GEO_POLICY: bad programNote ${note.iso2}`);

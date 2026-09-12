@@ -15,7 +15,7 @@ function assert(cond: unknown, msg: string): asserts cond {
 const prodLike: GeoDenyPolicy = {
   kind: "production",
   policyId: "us-comprehensive-sanctions",
-  revision: 2,
+  revision: 3,
   schemaVersion: 1,
   effectiveDate: "2026-09-12",
   source: {
@@ -24,7 +24,7 @@ const prodLike: GeoDenyPolicy = {
     url: "https://ofac.treasury.gov/sanctions-programs-and-country-information",
     retrieved: "2026-09-12",
   },
-  disclaimer: "Test double of revision 2. Not a legal opinion.",
+  disclaimer: "Test double of revision 3. Not a legal opinion.",
   programNotes: [
     {
       iso2: "SY",
@@ -41,11 +41,27 @@ const prodLike: GeoDenyPolicy = {
     { iso2: "IR", name: "Iran" },
     { iso2: "KP", name: "North Korea" },
   ],
+  insufficientRegions: [
+    { country: "UA", iso3166_2: "UA-14", names: ["Donetsk Oblast", "Donetsk"] },
+    { country: "UA", iso3166_2: "UA-09", names: ["Luhansk Oblast", "Luhansk", "Lugansk"] },
+  ],
   regions: [
-    { country: "UA", iso3166_2: "UA-43", name: "Crimea", aliases: ["Krym"] },
-    { country: "UA", iso3166_2: "UA-40", name: "Sevastopol" },
-    { country: "UA", iso3166_2: "UA-14", name: "Donetsk", aliases: ["DNR"] },
-    { country: "UA", iso3166_2: "UA-09", name: "Luhansk", aliases: ["Lugansk", "LNR"] },
+    { country: "UA", iso3166_2: "UA-43", name: "Crimea", aliases: ["Krym"], matchPrecision: "iso3166_2_subdivision" },
+    { country: "UA", iso3166_2: "UA-40", name: "Sevastopol", matchPrecision: "iso3166_2_subdivision" },
+    {
+      country: "UA",
+      iso3166_2: "UA-DPR",
+      name: "Donetsk People's Republic",
+      aliases: ["DNR", "DPR"],
+      matchPrecision: "covered_region_claim",
+    },
+    {
+      country: "UA",
+      iso3166_2: "UA-LPR",
+      name: "Luhansk People's Republic",
+      aliases: ["LNR", "LPR"],
+      matchPrecision: "covered_region_claim",
+    },
   ],
 };
 
@@ -74,7 +90,7 @@ for (const iso of ["CU", "IR", "KP"]) {
   const d = evaluateGeoPolicy(createFixtureClaim({ country: iso }), prodLike);
   assert(d.decision === "DENY" && d.reason === "DENY_COMPREHENSIVE_JURISDICTION", `${iso} deny`);
   assert(d.matched?.code === iso, `${iso} match`);
-  assert(d.policyRevision === 2 && d.policyEffectiveDate === "2026-09-12", `${iso} revision`);
+  assert(d.policyRevision === 3 && d.policyEffectiveDate === "2026-09-12", `${iso} revision`);
 }
 
 {
@@ -110,6 +126,53 @@ for (const iso of ["CU", "IR", "KP"]) {
 {
   const d = evaluateGeoPolicy(createFixtureClaim({ country: "UA", region: "UA-32" }), prodLike);
   assert(d.decision === "ALLOW", "Kyiv oblast allow");
+}
+
+{
+  const d = evaluateGeoPolicy(createFixtureClaim({ country: "UA", region: "UA-14" }), prodLike);
+  assert(d.decision === "UNKNOWN" && d.reason === "UNKNOWN_REGION_METADATA_UNAVAILABLE", "UA-14 oblast not blanket DENY");
+  assert(d.matched === undefined, "UA-14 has no deny match");
+}
+
+{
+  const d = evaluateGeoPolicy(createFixtureClaim({ country: "UA", region: "UA-09" }), prodLike);
+  assert(d.decision === "UNKNOWN" && d.reason === "UNKNOWN_REGION_METADATA_UNAVAILABLE", "UA-09 oblast not blanket DENY");
+}
+
+{
+  const d = evaluateGeoPolicy(createFixtureClaim({ country: "UA", regionName: "Donetsk Oblast" }), prodLike);
+  assert(d.decision === "UNKNOWN" && d.reason === "UNKNOWN_REGION_METADATA_UNAVAILABLE", "Donetsk Oblast name insufficient");
+}
+
+{
+  const d = evaluateGeoPolicy(createFixtureClaim({ country: "UA", regionName: "Luhansk Oblast" }), prodLike);
+  assert(d.decision === "UNKNOWN" && d.reason === "UNKNOWN_REGION_METADATA_UNAVAILABLE", "Luhansk Oblast name insufficient");
+}
+
+{
+  const d = evaluateGeoPolicy(createFixtureClaim({ country: "UA", region: "UA-DPR" }), prodLike);
+  assert(d.decision === "DENY" && d.reason === "DENY_COMPREHENSIVE_REGION", "precise UA-DPR covered-region code");
+  assert(d.matched?.code === "UA-DPR", "DPR match");
+}
+
+{
+  const d = evaluateGeoPolicy(createFixtureClaim({ country: "UA", regionName: "Donetsk People's Republic" }), prodLike);
+  assert(d.decision === "DENY" && d.matched?.code === "UA-DPR", "precise DPR regionName");
+}
+
+{
+  const d = evaluateGeoPolicy(createFixtureClaim({ country: "RU", regionName: "DNR" }), prodLike);
+  assert(d.decision === "DENY" && d.matched?.code === "UA-DPR", "DNR alias via RU provider");
+}
+
+{
+  const d = evaluateGeoPolicy(createFixtureClaim({ country: "UA", region: "UA-14", regionName: "Donetsk People's Republic" }), prodLike);
+  assert(d.decision === "DENY" && d.matched?.code === "UA-DPR", "precise name wins over oblast code");
+}
+
+{
+  const d = evaluateGeoPolicy(createFixtureClaim({ country: "UA", region: "UA-LPR" }), prodLike);
+  assert(d.decision === "DENY" && d.matched?.code === "UA-LPR", "precise UA-LPR covered-region code");
 }
 
 {

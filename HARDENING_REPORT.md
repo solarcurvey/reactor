@@ -196,6 +196,7 @@ Economics / 3.5% / Factory V1 / no mainnet: unchanged.
 | Browser country / IP headers trusted | **REJECTED** | Unsigned `CF-IPCountry` / `X-Country` → `UNKNOWN_UNTRUSTED_SOURCE` |
 | Versioned deny revision + source/date | **SHIPPED** | `geo-policy-us-comprehensive.v1.json` |
 | Region fail-closed without metadata | **SHIPPED** | UA without ISO 3166-2 → `UNKNOWN_REGION_METADATA_UNAVAILABLE` |
+| Whole-oblast Donetsk/Luhansk DENY | **REJECTED** | `UA-14` / `UA-09` / oblast names → UNKNOWN (FAQ 1009). DENY only `UA-DPR` / `UA-LPR` or precise DPR/LPR names |
 | VPN/Tor invented as certain | **REJECTED** | `confidence: "best_effort"` only; Tor → UNKNOWN |
 | LOCAL loads production deny list | **REJECTED** | Fixture `FX`/`FY`; `GEO_DENY_COUNTRIES` ignored |
 | HTTP enforcement / UX / SDN | **OUT OF SCOPE** | #62 / #65 / #61 |

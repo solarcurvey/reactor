@@ -45,17 +45,31 @@ There is **no** bundled GeoIP database. The indexer does not map IP → country 
 
 ## Versioned deny policy
 
-Production revisions live in `apps/indexer/config/geo-policy-us-comprehensive.v1.json` (`kind: "production"`). Each revision records `revision`, `effectiveDate`, and a `source` (publisher / title / URL / retrieved). Revision **2** (effective 2026-09-12) maps comprehensive U.S. programs only:
+Production revisions live in `apps/indexer/config/geo-policy-us-comprehensive.v1.json` (`kind: "production"`). Each revision records `revision`, `effectiveDate`, and a `source` (publisher / title / URL / retrieved). Revision **3** (effective 2026-09-12) maps comprehensive U.S. programs only:
 
 - Jurisdictions: `CU`, `IR`, `KP` (31 CFR 515 / 560 / 510).
-- Regions: Crimea `UA-43`, Sevastopol `UA-40` (E.O. 13685); Donetsk `UA-14`, Luhansk `UA-09` (E.O. 14065).
+- Regions (precise DENY): Crimea `UA-43`, Sevastopol `UA-40` (E.O. 13685, ISO 3166-2 subdivisions); E.O. 14065 covered regions only via edge-issued `UA-DPR` / `UA-LPR` or signed covered-region names (below).
+- **Donetsk / Luhansk oblasts are not blanket geo denials.** [OFAC FAQ 1009](https://ofac.treasury.gov/faqs/1009) (and [FAQ 1006](https://ofac.treasury.gov/faqs/1006)): E.O. 14065 does **not** block the entire Donetsk or Luhansk oblasts — only the so-called DPR/LPR Covered Regions. ISO 3166-2 `UA-14` / `UA-09` and oblast-level names (`Donetsk Oblast`, `Luhansk Oblast`) are `insufficientRegions` → `UNKNOWN_REGION_METADATA_UNAVAILABLE`.
 - **Syria (`SY`) is not a blanket geo deny.** OFAC ended the comprehensive Syria Sanctions Program effective **2025-07-01** (E.O. 14312; [FAQ 1220](https://ofac.treasury.gov/faqs/1220)). 31 CFR part 542 was removed from the CFR (90 FR 41505, effective 2025-08-26). Remaining Syria restrictions are **list-based / targeted** (including E.O. 13894). Still-designated persons and addresses belong in issue **#61** + enforcement **#62**, not this file.
 
 Russia, Belarus, Venezuela, and other **sectoral / list-based** programs are **not** in this revision. `programNotes` records jurisdictions that must not be re-added as country-wide denials. A different split of this list is a new revision of this file, not a UI `if (country === …)` branch.
 
 ## Region metadata
 
-When the active revision has region rules for a country (Ukraine in v1) and the trusted claim has **no** ISO 3166-2 region, the decision is `UNKNOWN_REGION_METADATA_UNAVAILABLE`. The layer does not deny the whole country and does not pretend the visitor is outside the listed regions. Unrecognized region *names* (not ISO codes) also fail closed as `UNKNOWN`. Occupied-territory aliases (`Crimea`, `DNR`, `LNR`, `Sevastopol`) match even if a provider attributes the point to `RU`.
+When the active revision has region rules for a country (Ukraine in v1) and the trusted claim has **no** usable region, the decision is `UNKNOWN_REGION_METADATA_UNAVAILABLE`. The layer does not deny the whole country and does not pretend the visitor is outside the listed regions. Unrecognized region *names* (not ISO codes) also fail closed as `UNKNOWN`. Occupied-territory aliases (`Crimea`, `Sevastopol`) and precise covered-region aliases (`DNR`, `DPR`, `LNR`, `LPR`, `Donetsk People's Republic`, `Luhansk People's Republic`) match even if a provider attributes the point to `RU`.
+
+### E.O. 14065 precision (what may DENY)
+
+This process has **no** bundled GeoIP / postal-code / map database. A DENY for the so-called DPR/LPR Covered Regions requires the **signed edge claim** to identify that geography with more precision than the oblast:
+
+| Signed field | DENY shape | Insufficient (UNKNOWN) |
+| --- | --- | --- |
+| `x-reactor-geo-region` | Edge-issued covered-region codes `UA-DPR` or `UA-LPR` | ISO 3166-2 `UA-14` / `UA-09` (whole oblast) |
+| `x-reactor-geo-region-name` | HMAC-covered alias: `Donetsk People's Republic`, `DNR`, `DPR`, `Luhansk People's Republic`, `LNR`, `LPR` (or the `so-called …` forms) | `Donetsk`, `Donetsk Oblast`, `Donetska`, `Luhansk`, `Luhansk Oblast`, `Luhanska`, `Lugansk` |
+
+The reverse-proxy / deployment edge may emit `UA-DPR` / `UA-LPR` **only** when its GeoIP or occupancy product exposes a **covered-region / occupied-territory identifier** for the so-called DPR/LPR — not when it only has the ISO 3166-2 oblast subdivision. The edge must not rewrite `UA-14` → `UA-DPR` or `UA-09` → `UA-LPR`. Compact `x-reactor-geo` can carry `UA-DPR` / `UA-LPR` in the region slot; oblast-only names still require the signed `region-name` header.
+
+FAQ 1009 says U.S. persons may reasonably rely on vetted third-party postal codes and maps. Those inputs are **not** in this claim today. Oblast-only metadata is UNKNOWN, not a guessed DENY or ALLOW.
 
 ## LOCAL / test
 

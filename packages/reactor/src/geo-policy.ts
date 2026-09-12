@@ -62,12 +62,33 @@ export type GeoDeniedJurisdiction = {
 
 export type GeoDeniedRegion = {
   country: string;
+  /**
+   * Match key for a DENY. For Crimea / Sevastopol this is the ISO 3166-2
+   * subdivision. For E.O. 14065 covered regions this is an edge-issued
+   * covered-region code (`UA-DPR` / `UA-LPR`), never the whole-oblast
+   * ISO 3166-2 (`UA-14` / `UA-09`).
+   */
   iso3166_2: string;
   name: string;
   aliases?: string[];
+  /** How the signed edge claim must identify this row. */
+  matchPrecision?: "iso3166_2_subdivision" | "covered_region_claim";
   program?: string;
   citation?: string;
   url?: string;
+};
+
+/**
+ * Region metadata that is too coarse to DENY or ALLOW.
+ * E.O. 14065 / OFAC FAQ 1009: oblast-level Donetsk / Luhansk is not the Covered Region.
+ */
+export type GeoInsufficientRegion = {
+  country: string;
+  iso3166_2: string;
+  names?: string[];
+  citation?: string;
+  url?: string;
+  note?: string;
 };
 
 export type GeoProgramStatusNote = {
@@ -92,6 +113,8 @@ export type GeoDenyPolicy = {
   programNotes?: GeoProgramStatusNote[];
   jurisdictions: GeoDeniedJurisdiction[];
   regions: GeoDeniedRegion[];
+  /** Oblast-level (or similarly coarse) codes/names → UNKNOWN, never DENY. */
+  insufficientRegions?: GeoInsufficientRegion[];
 };
 
 export type GeoPolicyMatch = {
@@ -244,7 +267,9 @@ function jurisdictionByIso(policy: GeoDenyPolicy, iso2: string): GeoDeniedJurisd
 }
 
 function countriesWithRegionRules(policy: GeoDenyPolicy): Set<string> {
-  return new Set(policy.regions.map((r) => r.country.toUpperCase()));
+  const s = new Set(policy.regions.map((r) => r.country.toUpperCase()));
+  for (const r of policy.insufficientRegions ?? []) s.add(r.country.toUpperCase());
+  return s;
 }
 
 function matchDeniedRegion(
@@ -260,7 +285,23 @@ function matchDeniedRegion(
     if (country && regionCode && regionCode === `${country}-${iso.split("-")[1]}`) return row;
     const aliases = [row.name, ...(row.aliases ?? [])].map(fold);
     if (nameFold && aliases.includes(nameFold)) return row;
-    if (regionCode && aliases.includes(fold(regionCode))) return row;
+  }
+  return undefined;
+}
+
+function matchInsufficientRegion(
+  policy: GeoDenyPolicy,
+  country: string | undefined,
+  regionCode: string | undefined,
+  regionName: string | undefined,
+): GeoInsufficientRegion | undefined {
+  const nameFold = regionName ? fold(regionName) : "";
+  for (const row of policy.insufficientRegions ?? []) {
+    const iso = row.iso3166_2.toUpperCase();
+    if (regionCode && regionCode === iso) return row;
+    if (country && regionCode && regionCode === `${country}-${iso.split("-")[1]}`) return row;
+    const names = (row.names ?? []).map(fold);
+    if (nameFold && names.includes(nameFold)) return row;
   }
   return undefined;
 }
@@ -307,7 +348,8 @@ export function evaluateGeoPolicy(
 
   const regionCode = normalizeIso3166_2(country, claim.region);
   const regionName = claim.regionName?.trim() || undefined;
-  const deniedRegion = matchDeniedRegion(policy, country, regionCode, regionName ?? claim.region);
+  const deniedRegion = matchDeniedRegion(policy, country, regionCode, regionName);
+  const insufficientRegion = matchInsufficientRegion(policy, country, regionCode, regionName);
 
   if (country) {
     const deniedCountry = jurisdictionByIso(policy, country);
@@ -342,6 +384,14 @@ export function evaluateGeoPolicy(
       country,
       region: regionCode ?? deniedRegion.iso3166_2,
     };
+  }
+
+  if (insufficientRegion) {
+    return unknownDecision(policy, "UNKNOWN_REGION_METADATA_UNAVAILABLE", {
+      anonymizer,
+      country,
+      region: regionCode ?? insufficientRegion.iso3166_2,
+    });
   }
 
   if (country && countriesWithRegionRules(policy).has(country)) {

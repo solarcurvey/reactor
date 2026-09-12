@@ -1,7 +1,7 @@
 {
   "kind": "production",
   "policyId": "us-comprehensive-sanctions",
-  "revision": 2,
+  "revision": 3,
   "schemaVersion": 1,
   "effectiveDate": "2026-09-12",
   "source": {
@@ -10,7 +10,7 @@
     "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information",
     "retrieved": "2026-09-12"
   },
-  "disclaimer": "Operational snapshot of jurisdictions and regions under comprehensive U.S. sanctions programs as of the effective date. Not a legal opinion. Not a claim that REACTOR is OFAC-compliant. Sectoral, list-based, and secondary programs are out of scope for this revision. Targeted Syrian persons/addresses are not a geo deny (issues #61 / #62).",
+  "disclaimer": "Operational snapshot of jurisdictions and regions under comprehensive U.S. sanctions programs as of the effective date. Not a legal opinion. Not a claim that REACTOR is OFAC-compliant. Sectoral, list-based, and secondary programs are out of scope for this revision. Targeted Syrian persons/addresses are not a geo deny (issues #61 / #62). E.O. 14065 does not block the entire Donetsk or Luhansk oblasts (OFAC FAQ 1009).",
   "programNotes": [
     {
       "iso2": "SY",
@@ -45,12 +45,31 @@
       "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/north-korea-sanctions"
     }
   ],
+  "insufficientRegions": [
+    {
+      "country": "UA",
+      "iso3166_2": "UA-14",
+      "names": ["Donetsk Oblast", "Donetska", "Donetsk"],
+      "citation": "E.O. 14065; OFAC FAQ 1009",
+      "url": "https://ofac.treasury.gov/faqs/1009",
+      "note": "ISO 3166-2 UA-14 and oblast-level names identify the Donetsk oblast, not the so-called DPR Covered Region. FAQ 1009: E.O. 14065 does not block the entire oblast. Decision is UNKNOWN_REGION_METADATA_UNAVAILABLE, not DENY."
+    },
+    {
+      "country": "UA",
+      "iso3166_2": "UA-09",
+      "names": ["Luhansk Oblast", "Luhanska", "Lugansk", "Luhansk"],
+      "citation": "E.O. 14065; OFAC FAQ 1009",
+      "url": "https://ofac.treasury.gov/faqs/1009",
+      "note": "ISO 3166-2 UA-09 and oblast-level names identify the Luhansk oblast, not the so-called LPR Covered Region. FAQ 1009: E.O. 14065 does not block the entire oblast. Decision is UNKNOWN_REGION_METADATA_UNAVAILABLE, not DENY."
+    }
+  ],
   "regions": [
     {
       "country": "UA",
       "iso3166_2": "UA-43",
       "name": "Crimea",
       "aliases": ["Krym", "Autonomous Republic of Crimea", "Republic of Crimea"],
+      "matchPrecision": "iso3166_2_subdivision",
       "program": "Ukraine-/Russia-Related Sanctions",
       "citation": "E.O. 13685 (2014-12-19)",
       "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/ukraine-russia-related-sanctions"
@@ -60,27 +79,30 @@
       "iso3166_2": "UA-40",
       "name": "Sevastopol",
       "aliases": ["City of Sevastopol"],
+      "matchPrecision": "iso3166_2_subdivision",
       "program": "Ukraine-/Russia-Related Sanctions",
       "citation": "E.O. 13685 (2014-12-19)",
       "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/ukraine-russia-related-sanctions"
     },
     {
       "country": "UA",
-      "iso3166_2": "UA-14",
-      "name": "Donetsk",
-      "aliases": ["Donetsk Oblast", "Donetska", "Donetsk People's Republic", "DNR"],
+      "iso3166_2": "UA-DPR",
+      "name": "Donetsk People's Republic",
+      "aliases": ["DNR", "DPR", "so-called Donetsk People's Republic"],
+      "matchPrecision": "covered_region_claim",
       "program": "Ukraine-/Russia-Related Sanctions",
-      "citation": "E.O. 14065 (2022-02-21)",
-      "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/ukraine-russia-related-sanctions"
+      "citation": "E.O. 14065 (2022-02-21); OFAC FAQ 1009 / FAQ 1006",
+      "url": "https://ofac.treasury.gov/faqs/1009"
     },
     {
       "country": "UA",
-      "iso3166_2": "UA-09",
-      "name": "Luhansk",
-      "aliases": ["Lugansk", "Luhansk Oblast", "Luhanska", "Luhansk People's Republic", "LNR"],
+      "iso3166_2": "UA-LPR",
+      "name": "Luhansk People's Republic",
+      "aliases": ["LNR", "LPR", "so-called Luhansk People's Republic"],
+      "matchPrecision": "covered_region_claim",
       "program": "Ukraine-/Russia-Related Sanctions",
-      "citation": "E.O. 14065 (2022-02-21)",
-      "url": "https://ofac.treasury.gov/sanctions-programs-and-country-information/ukraine-russia-related-sanctions"
+      "citation": "E.O. 14065 (2022-02-21); OFAC FAQ 1009 / FAQ 1006",
+      "url": "https://ofac.treasury.gov/faqs/1009"
     }
   ]
 }

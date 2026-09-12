@@ -79,7 +79,7 @@ assert(productionHardGatesApply(prodEnv), "prod env");
 
 {
   const p = resolveActiveGeoPolicy(prodEnv);
-  assert(p.kind === "production" && p.revision === 2, "PROD loads revision 2");
+  assert(p.kind === "production" && p.revision === 3, "PROD loads revision 3");
   assert(p.effectiveDate === "2026-09-12", "PROD effective date");
   assert(p.source.url.includes("ofac.treasury.gov"), "PROD source url");
   assert(p.disclaimer.toLowerCase().includes("not a legal opinion"), "disclaimer");
@@ -119,12 +119,49 @@ assert(productionHardGatesApply(prodEnv), "prod env");
 
 {
   const d = evaluateRequestGeo(signed({ country: "UA", region: "UA-14" }), prodEnv, NOW);
-  assert(d.decision === "DENY" && d.reason === "DENY_COMPREHENSIVE_REGION", "Donetsk");
+  assert(d.decision === "UNKNOWN" && d.reason === "UNKNOWN_REGION_METADATA_UNAVAILABLE", "UA-14 oblast is not blanket DENY");
+  assert(d.matched === undefined, "UA-14 has no deny match");
+}
+
+{
+  const d = evaluateRequestGeo(signed({ country: "UA", region: "UA-09" }), prodEnv, NOW);
+  assert(d.decision === "UNKNOWN" && d.reason === "UNKNOWN_REGION_METADATA_UNAVAILABLE", "UA-09 oblast is not blanket DENY");
+}
+
+{
+  const d = evaluateRequestGeo(signed({ country: "UA", regionName: "Donetsk Oblast" }), prodEnv, NOW);
+  assert(d.decision === "UNKNOWN" && d.reason === "UNKNOWN_REGION_METADATA_UNAVAILABLE", "Donetsk Oblast name insufficient");
+}
+
+{
+  const d = evaluateRequestGeo(signed({ country: "UA", regionName: "Luhansk Oblast" }), prodEnv, NOW);
+  assert(d.decision === "UNKNOWN" && d.reason === "UNKNOWN_REGION_METADATA_UNAVAILABLE", "Luhansk Oblast name insufficient");
 }
 
 {
   const d = evaluateRequestGeo(signed({ country: "UA", regionName: "Luhansk" }), prodEnv, NOW);
-  assert(d.decision === "DENY" && d.matched?.code === "UA-09", "Luhansk name");
+  assert(d.decision === "UNKNOWN" && d.reason === "UNKNOWN_REGION_METADATA_UNAVAILABLE", "bare Luhansk is oblast-level");
+}
+
+{
+  const d = evaluateRequestGeo(signed({ country: "UA", region: "UA-DPR" }), prodEnv, NOW);
+  assert(d.decision === "DENY" && d.reason === "DENY_COMPREHENSIVE_REGION", "precise UA-DPR covered-region code");
+  assert(d.matched?.code === "UA-DPR", "DPR code match");
+}
+
+{
+  const d = evaluateRequestGeo(signed({ country: "UA", regionName: "Donetsk People's Republic" }), prodEnv, NOW);
+  assert(d.decision === "DENY" && d.matched?.code === "UA-DPR", "precise DPR regionName");
+}
+
+{
+  const d = evaluateRequestGeo(signed({ country: "UA", regionName: "DNR" }), prodEnv, NOW);
+  assert(d.decision === "DENY" && d.matched?.code === "UA-DPR", "DNR alias");
+}
+
+{
+  const d = evaluateRequestGeo(signed({ country: "UA", region: "UA-LPR" }), prodEnv, NOW);
+  assert(d.decision === "DENY" && d.matched?.code === "UA-LPR", "precise UA-LPR covered-region code");
 }
 
 {
@@ -207,13 +244,24 @@ assert(productionHardGatesApply(prodEnv), "prod env");
 
 {
   assert(PRODUCTION_GEO_POLICY_V1.source.retrieved === "2026-09-12", "retrieved date");
-  assert(PRODUCTION_GEO_POLICY_V1.revision === 2, "revision 2 after Syria program end");
+  assert(PRODUCTION_GEO_POLICY_V1.revision === 3, "revision 3 after FAQ 1009 oblast fix");
   assert(PRODUCTION_GEO_POLICY_V1.jurisdictions.length === 3, "three comprehensive countries");
   assert(
     PRODUCTION_GEO_POLICY_V1.jurisdictions.map((j) => j.iso2).sort().join(",") === "CU,IR,KP",
     "deny set is CU IR KP only",
   );
-  assert(PRODUCTION_GEO_POLICY_V1.regions.length === 4, "four regions");
+  assert(!PRODUCTION_GEO_POLICY_V1.regions.some((r) => r.iso3166_2 === "UA-14" || r.iso3166_2 === "UA-09"), "oblast codes are not deny keys");
+  assert(
+    PRODUCTION_GEO_POLICY_V1.insufficientRegions?.map((r) => r.iso3166_2).sort().join(",") === "UA-09,UA-14",
+    "oblast codes are insufficient",
+  );
+  for (const row of PRODUCTION_GEO_POLICY_V1.regions) {
+    const labels = [row.name, ...(row.aliases ?? [])];
+    for (const label of labels) {
+      assert(!/oblast/i.test(label), `${row.iso3166_2} deny label must not be oblast-level: ${label}`);
+    }
+  }
+  assert(PRODUCTION_GEO_POLICY_V1.regions.length === 4, "four precise regions");
 }
 
 function walk(dir: string, acc: string[] = []): string[] {
