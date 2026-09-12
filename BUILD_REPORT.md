@@ -25,7 +25,7 @@ Issue #6: a ~50s `leader_locks` TTL is shorter than possible tick work (`waitFor
 | Stale generation cannot delete a newer row | `releaseLease(name, owner, ts)` |
 | Regression | SQLite `keeper.lease.test.ts`; two-worker Postgres `test:pg-lease` (CI `keeper-lease-pg`) |
 | Docs | `docs/keeper.md` Operations, `KEEPER_MODEL.md`, `THREAT_MODEL.md` |
-| Protocol / Factory | **unchanged** (0.3.1 / V1). No mainnet. |
+| Protocol / Factory | **0.3.2 / V1** (from #19). This PR does not bump semver. No mainnet. |
 
 ## This HEAD
 

@@ -4,11 +4,11 @@
  *   docker compose up -d postgres
  *   DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg-lease
  *
- * Date.now() millisecond fences overflow 32-bit INTEGER. This test promotes
- * `leader_locks.ts` / `lease_until` to BIGINT when needed so it runs before
- * issue #1 lands, and still exercises the BIGINT path after that merge.
+ * Schema v6 (#19 / #1) stores `leader_locks.ts` / `lease_until` as BIGINT so
+ * Date.now() millisecond fences persist. This test asserts that path.
  */
 import { openStore, type Store } from "./db.ts";
+import { SCHEMA_VERSION } from "./migrations.ts";
 import {
   acquireLeaderLease,
   renewLeaderLease,
@@ -37,17 +37,16 @@ const INT32_MAX = 2_147_483_647;
 const nowMs = Date.now();
 assert(nowMs > INT32_MAX, `Date.now() ${nowMs} must exceed INTEGER max ${INT32_MAX}`);
 
-async function ensureLeaseMsColumns(store: Store) {
-  for (const col of ["ts", "lease_until"]) {
-    await store.exec(`ALTER TABLE leader_locks ALTER COLUMN ${col} TYPE BIGINT`).catch(() => undefined);
-  }
+async function assertLeaseMsColumns(store: Store) {
+  const ver = await store.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
+  assert(Number(ver?.n) >= SCHEMA_VERSION && SCHEMA_VERSION >= 6, `schema v${ver?.n} must include BIGINT ms columns`);
   const rows = await store.all<{ column_name: string; data_type: string }>(
     `SELECT column_name, data_type FROM information_schema.columns
      WHERE table_name='leader_locks' AND column_name IN ('ts','lease_until')`,
   );
   for (const col of ["ts", "lease_until"]) {
     const t = rows.find((r) => r.column_name === col)?.data_type;
-    assert(t === "bigint", `${col} must be bigint (got ${t})`);
+    assert(t === "bigint", `${col} must be bigint from schema v6 (got ${t})`);
   }
 }
 
@@ -57,7 +56,7 @@ const workerB = await openStore({ databaseUrl: url });
 assert(workerA.dialect === "postgres" && workerB.dialect === "postgres", "two postgres pools");
 assert(workerA !== workerB, "independent Store instances");
 
-await ensureLeaseMsColumns(workerA);
+await assertLeaseMsColumns(workerA);
 await workerA.run("DELETE FROM leader_locks WHERE name=?", lock);
 
 {
