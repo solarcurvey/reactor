@@ -1,6 +1,10 @@
 # BUILD REPORT — Issue #5 nested fee-leg disclosure on main+#21+#28+#25+#22+#24
 
+<<<<<<< HEAD
 **Status:** Rebased onto latest `main` (`b17e190` — #24 JSON body limits on #22 markets / #25 Keeper / #21+#28 quote pipeline). Duplicated pipeline commits dropped.  
+=======
+**Status:** Rebased onto latest `main` (`59478f2` — #22 markets keyset / candle bounds on #25 Keeper fencing + #21+#28 quote pipeline). Duplicated pipeline commits dropped. Accepted `discloseSelectedRoute` + per-denom UI kept. No `bestPreview`.  
+>>>>>>> be4def1 (Note #31 rebase onto main after #22 markets and #25 Keeper fencing.)
 **Not audited. Not mainnet.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 unchanged.**
 
