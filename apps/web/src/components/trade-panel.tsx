@@ -8,10 +8,16 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { erc20, router, token as tokenC, curve, userRoute } from "@/lib/contracts";
 import { officialPoolKey, buyZeroForOne } from "@/lib/pool";
-import { feeSplit, formatUnitsSafe, parseUnitsSafe } from "@/lib/utils";
-import type { LaunchToken } from "@/lib/hooks";
+import { formatUnitsSafe, parseUnitsSafe } from "@/lib/utils";
+import { useQuotes, type LaunchToken } from "@/lib/hooks";
 import { addresses } from "@/lib/addresses";
 import { INDEXER_URL } from "@/lib/chain";
+import {
+  buildQuoteDenomCatalog,
+  formatOfficialFeeDisclosure,
+  protocolQuoteFallbacks,
+  type TicketFeeLeg,
+} from "@/lib/fee-legs";
 
 const QUOTE_TTL_MS = 30_000;
 
@@ -25,29 +31,41 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   const [slippage, setSlippage] = useState("1");
   const [quotedOut, setQuotedOut] = useState<bigint | null>(null);
   const [quotedAt, setQuotedAt] = useState<number>(0);
-  const [quoteNotional, setQuoteNotional] = useState<bigint | null>(null);
   const [minQuoteOut, setMinQuoteOut] = useState<bigint | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState<string | null>(null);
   const [liveHops, setLiveHops] = useState<
     { adapter: `0x${string}`; tokenIn: `0x${string}`; tokenOut: `0x${string}`; minOut: bigint; data: `0x${string}` }[]
   >([]);
-  const [feeLegs, setFeeLegs] = useState<Array<{ reactorOfficial: boolean; protocolFeeBps: number; venue: string }>>([]);
+  const [feeLegs, setFeeLegs] = useState<TicketFeeLeg[]>([]);
+  const [aggregateImpactBps, setAggregateImpactBps] = useState(0);
+  const [reactorFeeCount, setReactorFeeCount] = useState(0);
   const [, setQuoteTx] = useState<{ to: string; data: `0x${string}`; functionName: string } | null>(null);
+  const { data: quotes } = useQuotes();
 
   const quoteDec = t.quoteDecimals ?? 18;
   const usdcRoute = Boolean(payUsdc && t.quote.toLowerCase() !== addresses.USDC.toLowerCase() && userRoute.address);
   const inDec = side === "buy" ? (usdcRoute ? 6 : quoteDec) : t.decimals;
   const parsed = parseUnitsSafe(amount, inDec);
 
-  const split = feeSplit(quoteNotional ?? 0n);
+  const feeView = formatOfficialFeeDisclosure(
+    feeLegs,
+    buildQuoteDenomCatalog({
+      quotes: quotes ?? [],
+      terminal: { token: t.quote, symbol: t.quoteSymbol, decimals: quoteDec },
+      extras: protocolQuoteFallbacks(),
+    }),
+    { side, reactorFeeCount, aggregateImpactBps },
+  );
 
   async function refreshQuote() {
     setError(null);
     if (!address || !client || parsed === 0n) {
       setQuotedOut(null);
-      setQuoteNotional(null);
       setMinQuoteOut(null);
+      setFeeLegs([]);
+      setAggregateImpactBps(0);
+      setReactorFeeCount(0);
       return;
     }
     try {
@@ -71,7 +89,9 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         minOut?: string;
         minQuoteOut?: string;
         hops?: typeof liveHops;
-        feeLegs?: Array<{ reactorOfficial: boolean; protocolFeeBps: number; venue: string; notionalQuote?: string }>;
+        feeLegs?: TicketFeeLeg[];
+        aggregateProtocolImpactBps?: number;
+        reactorFeeCount?: number;
         tx?: { to: string; data: `0x${string}`; functionName: string };
       };
       if (!res.ok || !q.ok || !q.amountOut) {
@@ -81,9 +101,10 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       setQuotedAt(Date.now());
       setLiveHops(q.hops ?? []);
       setFeeLegs(q.feeLegs ?? []);
+      setAggregateImpactBps(q.aggregateProtocolImpactBps ?? 0);
+      setReactorFeeCount(q.reactorFeeCount ?? q.feeLegs?.filter((f) => f.reactorOfficial && !f.feeExempt).length ?? 0);
       setQuoteTx(q.tx ?? null);
-      const notion = q.feeLegs?.find((f) => f.reactorOfficial)?.notionalQuote;
-      setQuoteNotional(notion ? BigInt(notion) : side === "buy" && !usdcRoute ? parsed : null);
+      // First-leg floor is quote units from the atomic preview — never tokenIn / minOut.
       if (q.minQuoteOut) setMinQuoteOut(BigInt(q.minQuoteOut));
       else if (side === "sell" && q.minOut) setMinQuoteOut(BigInt(q.minOut));
       else setMinQuoteOut(null);
@@ -124,6 +145,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       }
       const bonding = Boolean(t.bonding && t.curve && !t.marketLive);
       const hops = liveHops;
+      // API already applied slippage to minQuoteOut (quote units) and minOut (final).
       const firstMin = side === "sell" ? (minQuoteOut ?? minOut) : minOut;
       if (side === "sell" && usdcRoute && (firstMin === 0n || firstMin === 1n)) {
         setError("minQuoteOut is dust. Increase size.");
@@ -195,6 +217,9 @@ export function TradePanel({ t }: { t: LaunchToken }) {
             onClick={() => {
               setSide(s);
               setQuotedOut(null);
+              setFeeLegs([]);
+              setAggregateImpactBps(0);
+              setReactorFeeCount(0);
             }}
             className={`flex-1 rounded-full py-2 text-sm capitalize ${
               side === s ? "bg-cyan-300 text-zinc-950" : "text-zinc-400"
@@ -232,20 +257,23 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         placeholder="0.0"
       />
       <div className="mt-3 space-y-1 text-xs text-zinc-400">
-        {side === "buy" ? (
-          <p>
-            3.5% of official-market {t.quoteSymbol} notional
-            {quoteNotional !== null ? ` (${formatUnitsSafe(quoteNotional, quoteDec, 6)} ${t.quoteSymbol})` : ""}
-            {usdcRoute ? " — not 3.5% of USDC in" : ""}: {formatUnitsSafe(split.fee, quoteDec, 6)} {t.quoteSymbol} ·{" "}
-            {formatUnitsSafe(split.holders, quoteDec, 6)} Rewards/Standard · {formatUnitsSafe(split.flywheel, quoteDec, 6)}{" "}
-            Top-10 · {formatUnitsSafe(split.core, quoteDec, 6)} CORE
-          </p>
+        {feeView.officialCount > 0 ? (
+          <>
+            <p>{feeView.headline}</p>
+            {feeView.legs.map((leg, i) => (
+              <p key={`${leg.quoteToken}-${leg.hopLabel}-${i}`}>{leg.line}</p>
+            ))}
+            {usdcRoute && feeView.officialCount > 1 ? (
+              <p>Each official hop charges 3.5% in that hop’s quote — not 3.5% of USDC in.</p>
+            ) : null}
+          </>
+        ) : side === "buy" ? (
+          <p>Official 3.5% (2 / 1 / 0.5) is taken on each official REACTOR quote notional after Quote.</p>
         ) : (
           <p>
-            Two sell floors: first-leg min is {t.quoteSymbol}
-            {minQuoteOut !== null ? ` (${formatUnitsSafe(minQuoteOut, quoteDec, 6)})` : ""} — not your token
-            size; final min is {usdcRoute ? "USDC" : t.quoteSymbol}. 3.5% (2/1/0.5) comes out of the quote
-            leg.
+            First leg min is {t.quoteSymbol}
+            {minQuoteOut !== null ? ` (${formatUnitsSafe(minQuoteOut, quoteDec, 6)})` : ""}; final min is{" "}
+            {usdcRoute ? "USDC" : t.quoteSymbol}. Official 3.5% comes from the quote ticket fee legs.
           </p>
         )}
         <p>
@@ -262,10 +290,10 @@ export function TradePanel({ t }: { t: LaunchToken }) {
             Route {liveHops.length ? liveHops.map((h) => `${h.tokenIn.slice(0, 6)}→${h.tokenOut.slice(0, 6)}`).join(" · ") : "quote API — no wallet hop sim"}
           </p>
         )}
-        {feeLegs.length > 0 && (
+        {feeView.officialCount > 1 && (
           <p className="text-[11px] text-amber-100/90">
-            REACTOR fees: {feeLegs.filter((f) => f.reactorOfficial).map((f) => `${f.venue} ${f.protocolFeeBps / 100}%`).join(" + ") || "none"}
-            {feeLegs.filter((f) => f.reactorOfficial).length > 1 ? " — nested official hops each charge 3.5%" : ""}
+            Nested official hops each charge 3.5% in that hop’s quote (compound {aggregateImpactBps / 100}% before
+            slippage). Aggregate is bps only — quote amounts from different assets are not added.
           </p>
         )}
         {quotedOut !== null && (

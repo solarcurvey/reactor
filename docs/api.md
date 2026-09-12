@@ -10,7 +10,7 @@ Base URL: indexer (local `http://127.0.0.1:43148`).
 | --- | --- | --- |
 | GET | `/markets` | Keyset (`cursor_ts`,`cursor_token`) matches `sort`: `new`/`vol`/`price`. NUMERIC casts. Search/filter. |
 | GET | `/ticker/:ticker` | Canonical status, 24h lock, latest token |
-| POST | `/quote` | One `UserRouteQuoter` eth_call per candidate. Ticket hops / `amountOut` / `minOut`s / terminal market-leg are atomic to the selected candidate (`PreviewRoute` is `hops+1`). SELL includes `minQuoteOut` (first-leg quote) and `minOut` (final USDC). Nested 3.5% legs listed separately. JSON body **16KiB** default / **64KiB** hard max (stream + chunked). |
+| POST | `/quote` | One `UserRouteQuoter` eth_call per candidate. Winner is `pickBest` (not max raw out). `feeLegs[]` are that winner + terminal market (`aggregateProtocolImpactBps` compounds). SELL includes `minQuoteOut` (first-leg quote) and `minOut` (final USDC). Protocol kinds use `exemptOfficialLegs[]`. JSON body **16KiB** default / **64KiB** hard max (stream + chunked). |
 | GET | `/candles/:token` | `interval`, `limit`, exclusive `before`/`after` on `t`. Gap-fill ≤ `limit` (max 1000). |
 | GET | `/swaps/:token` | Bounded `limit`, `before_id` |
 | GET | `/quote-assets` | Registered quotes |

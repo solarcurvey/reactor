@@ -21,6 +21,37 @@ export function normalizeVenueKind(kind: string): AdapterKind {
   return kind as AdapterKind;
 }
 
+/** Official REACTOR pool or Instant bonding — not hookless external v4. */
+export function isOfficialReactorVenue(kind?: string): boolean {
+  if (!kind) return false;
+  const n = normalizeVenueKind(kind);
+  return n === "protocol" || n === "user" || n === "BONDING_CURVE" || kind === VENUE.OFFICIAL_REACTOR_V4;
+}
+
+export function isHooklessVenue(kind?: string): boolean {
+  if (!kind) return false;
+  return normalizeVenueKind(kind) === "hookless" || kind === VENUE.EXTERNAL_V4_HOOKLESS;
+}
+
+/** Canonical hop `kind` on quote tickets. */
+export function displayVenueKind(kind?: string): string {
+  if (!kind) return VENUE.EXTERNAL_V4_HOOKLESS;
+  if (kind === VENUE.BONDING_CURVE || normalizeVenueKind(kind) === "BONDING_CURVE") return VENUE.BONDING_CURVE;
+  if (isOfficialReactorVenue(kind)) return VENUE.OFFICIAL_REACTOR_V4;
+  return VENUE.EXTERNAL_V4_HOOKLESS;
+}
+
+export function hopFromEdge(e: MarketEdge, minOut = 0n): Hop {
+  return {
+    adapter: e.adapter as `0x${string}`,
+    tokenIn: e.from as `0x${string}`,
+    tokenOut: e.to as `0x${string}`,
+    minOut,
+    data: e.data,
+    kind: e.kind,
+  };
+}
+
 export type MarketEdge = {
   from: string;
   to: string;
@@ -46,6 +77,8 @@ export type Hop = {
   tokenOut: `0x${string}`;
   minOut: bigint;
   data: `0x${string}`;
+  /** Off-chain venue identity. Not part of the on-chain Hop ABI. */
+  kind?: AdapterKind | string;
 };
 
 export type PlannedRoute = {
@@ -106,13 +139,7 @@ export function planRoute(
     const cur = queue.shift()!;
     if (cur.at === dst) {
       if (cur.used.length > MAX_LEGS) throw new RouteReject("too many legs");
-      const hops: Hop[] = cur.used.map((e, i) => ({
-        adapter: e.adapter as `0x${string}`,
-        tokenIn: e.from as `0x${string}`,
-        tokenOut: e.to as `0x${string}`,
-        minOut: opts.minOuts?.[i] ?? 0n,
-        data: e.data,
-      }));
+      const hops: Hop[] = cur.used.map((e, i) => hopFromEdge(e, opts.minOuts?.[i] ?? 0n));
       return { hops, path: cur.path, reason: `ok ${cur.path.join("→")}` };
     }
     if (cur.used.length >= MAX_LEGS) continue;
@@ -210,13 +237,7 @@ export function planCandidates(
     const cur = queue.shift()!;
     if (cur.at === dst) {
       found.push({
-        hops: cur.used.map((e) => ({
-          adapter: e.adapter as `0x${string}`,
-          tokenIn: e.from as `0x${string}`,
-          tokenOut: e.to as `0x${string}`,
-          minOut: 0n,
-          data: e.data,
-        })),
+        hops: cur.used.map((e) => hopFromEdge(e)),
         path: cur.path,
         reason: `ok ${cur.path.join("→")}`,
       });

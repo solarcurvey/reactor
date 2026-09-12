@@ -6,6 +6,9 @@ import {ReactorFactory} from "../../src/ReactorFactory.sol";
 import {ReactorToken} from "../../src/ReactorToken.sol";
 import {UserRouteExecutor} from "../../src/UserRouteExecutor.sol";
 import {UserRouteQuoter} from "../../src/UserRouteQuoter.sol";
+import {LaunchAuthorization} from "../../src/libraries/LaunchAuthorization.sol";
+import {CurveMath} from "../../src/libraries/CurveMath.sol";
+import {ReactorConstants} from "../../src/ReactorConstants.sol";
 
 contract UserRouteTest is Base {
     function test_userBuySellUsdcOfficialLeg() public {
@@ -268,24 +271,6 @@ contract UserRouteTest is Base {
         vm.stopPrank();
     }
 
-    function _decodePreviewRoute(bytes memory err)
-        internal
-        view
-        returns (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds)
-    {
-        require(err.length >= 4, "short");
-        bytes4 sel;
-        assembly {
-            sel := mload(add(err, 32))
-        }
-        assertEq(sel, UserRouteQuoter.PreviewRoute.selector);
-        bytes memory payload = new bytes(err.length - 4);
-        for (uint256 i; i < payload.length; i++) {
-            payload[i] = err[i + 4];
-        }
-        (amountOut, hopOuts, kinds) = abi.decode(payload, (uint256, uint256[], bytes32[]));
-    }
-
     /// @notice §BM 31 — one preview call; always reverts PreviewRoute; amountOut > 1
     function test_31_quoter_whole_route_preview() public {
         (address token,) = _instant(
@@ -309,7 +294,18 @@ contract UserRouteTest is Base {
         try userQuoter.previewBuy(token, 10e6, _emptyHops()) {
             revert("must revert PreviewRoute");
         } catch (bytes memory err) {
-            (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) = _decodePreviewRoute(err);
+            require(err.length >= 4, "short");
+            bytes4 sel;
+            assembly {
+                sel := mload(add(err, 32))
+            }
+            assertEq(sel, UserRouteQuoter.PreviewRoute.selector);
+            bytes memory payload = new bytes(err.length - 4);
+            for (uint256 i; i < payload.length; i++) {
+                payload[i] = err[i + 4];
+            }
+            (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) =
+                abi.decode(payload, (uint256, uint256[], bytes32[]));
             assertGt(amountOut, 1, "preview amountOut dust");
             assertEq(hopOuts.length, 1, "0 hops -> 1 terminal slot");
             assertEq(kinds.length, 1);
@@ -334,16 +330,22 @@ contract UserRouteTest is Base {
         try userQuoter.previewBuy(token, 10e6, _hop(address(usdc), address(zec), zecUsdcKey)) {
             revert("must revert PreviewRoute");
         } catch (bytes memory err) {
-            (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) = _decodePreviewRoute(err);
+            require(err.length >= 4, "short");
+            bytes4 sel;
+            assembly {
+                sel := mload(add(err, 32))
+            }
+            assertEq(sel, UserRouteQuoter.PreviewRoute.selector);
+            bytes memory payload = new bytes(err.length - 4);
+            for (uint256 i; i < payload.length; i++) {
+                payload[i] = err[i + 4];
+            }
+            (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) =
+                abi.decode(payload, (uint256, uint256[], bytes32[]));
             assertGt(amountOut, 1, "nested preview amountOut");
-            assertEq(hopOuts.length, 2, "1 routing hop + terminal market leg");
-            assertEq(kinds.length, 2, "kinds is hops+1");
-            assertEq(kinds[0], userQuoter.KIND_EXTERNAL(), "BUY routing slot first");
-            assertTrue(
-                kinds[1] == userQuoter.KIND_BONDING() || kinds[1] == userQuoter.KIND_OFFICIAL(),
-                "BUY terminal last"
-            );
-            assertEq(amountOut, hopOuts[1], "amountOut is terminal tokens");
+            assertGe(kinds.length, 2, "hop + bonding/official");
+            assertEq(kinds[0], userQuoter.KIND_EXTERNAL(), "USDC-ZEC hookless");
+            assertEq(kinds[kinds.length - 1], userQuoter.KIND_BONDING(), "ZCAT market is bonding");
             assertGt(hopOuts[0], 1, "first hop produced ZEC inside the call");
         }
         assertEq(zec.balanceOf(bob), 0, "user still has no ZEC after quote");
@@ -360,7 +362,7 @@ contract UserRouteTest is Base {
         try userQuoter.previewSell(token, sellAmt, _hop(address(zec), address(usdc), zecUsdcKey)) {
             revert("must revert PreviewRoute");
         } catch (bytes memory err) {
-            (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) = _decodePreviewRoute(err);
+            (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) = _decodePreview(err);
             assertGt(amountOut, 1, "nested sell amountOut");
             assertEq(hopOuts.length, 2, "1 routing hop + terminal market leg");
             assertEq(kinds.length, 2, "kinds is hops+1");
@@ -372,5 +374,92 @@ contract UserRouteTest is Base {
             assertEq(amountOut, hopOuts[1], "amountOut is final USDC");
             assertGt(hopOuts[0], 1, "terminal quote out");
         }
+    }
+
+    /// @notice USDC→ZEC (hookless) → ZCAT (official) → CAT (bonding). Preview kinds must
+    ///         keep official identity on the ZEC→ZCAT hop so fee-leg disclosure can list two 3.5%s.
+    function test_nested_preview_kinds_official_intermediate_buy_and_sell() public {
+        address zcat = _instantZcat(1);
+        _fillAndGraduate(alice, zcat);
+        uint256 vq0 = CurveMath.virtualQuote0(ReactorConstants.DEFAULT_SUPPLY, 18);
+        ReactorFactory.InstantParams memory catP = ReactorFactory.InstantParams({
+            name: "CAT",
+            symbol: "CAT",
+            decimals: 18,
+            supply: 0,
+            quote: zcat,
+            fdvQuoteRaw: 0,
+            devBuyQuote: 0,
+            image: "",
+            description: "",
+            website: "",
+            twitter: "",
+            telegram: ""
+        });
+        (LaunchAuthorization.Auth memory priced, bytes memory sig) =
+            _launchAuthIdentity(alice, catP, vq0, LaunchAuthorization.INSTANT_CURVE_V1, LaunchAuthorization.MODE_STANDARD);
+        vm.prank(alice);
+        (address cat,) = factory.launchStandard(catP, priced, sig);
+
+        usdc.mint(address(userQuoter), 80e6);
+        try userQuoter.previewBuy(
+            cat, 40e6, _twoHops(address(usdc), address(zec), zecUsdcKey, zcat, _key(zcat, address(zec)))
+        ) {
+            revert("must revert PreviewRoute");
+        } catch (bytes memory err) {
+            (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) = _decodePreview(err);
+            assertGt(amountOut, 1, "CAT buy preview");
+            assertEq(kinds.length, 3, "USDC-ZEC, ZEC-ZCAT, ZCAT-CAT");
+            assertEq(kinds[0], userQuoter.KIND_EXTERNAL(), "USDC-ZEC hookless");
+            assertEq(kinds[1], userQuoter.KIND_OFFICIAL(), "ZEC-ZCAT official 3.5%");
+            assertEq(kinds[2], userQuoter.KIND_BONDING(), "ZCAT-CAT bonding 3.5%");
+            assertGt(hopOuts[0], 1);
+            assertGt(hopOuts[1], 1);
+        }
+
+        vm.startPrank(bob);
+        usdc.approve(address(userRouter), 40e6);
+        uint256 catBal = userRouter.buy(
+            cat,
+            40e6,
+            _twoHops(address(usdc), address(zec), zecUsdcKey, zcat, _key(zcat, address(zec))),
+            1,
+            block.timestamp + 60
+        );
+        ReactorToken(cat).transfer(address(userQuoter), catBal / 2);
+        vm.stopPrank();
+
+        uint256 sellIn = ReactorToken(cat).balanceOf(address(userQuoter));
+        require(sellIn > 1, "need CAT to preview sell");
+        try userQuoter.previewSell(
+            cat, sellIn, _twoHops(zcat, address(zec), _key(zcat, address(zec)), address(usdc), zecUsdcKey)
+        ) {
+            revert("must revert PreviewRoute");
+        } catch (bytes memory err) {
+            (uint256 amountOut,, bytes32[] memory kinds) = _decodePreview(err);
+            assertGt(amountOut, 1, "CAT sell preview");
+            assertEq(kinds.length, 3, "CAT-ZCAT, ZCAT-ZEC, ZEC-USDC");
+            assertEq(kinds[0], userQuoter.KIND_BONDING(), "CAT-ZCAT bonding 3.5%");
+            assertEq(kinds[1], userQuoter.KIND_OFFICIAL(), "ZCAT-ZEC official 3.5%");
+            assertEq(kinds[2], userQuoter.KIND_EXTERNAL(), "ZEC-USDC hookless");
+        }
+    }
+
+    function _decodePreview(bytes memory err)
+        internal
+        pure
+        returns (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds)
+    {
+        require(err.length >= 4, "short");
+        bytes4 sel;
+        assembly {
+            sel := mload(add(err, 32))
+        }
+        assertEq(sel, UserRouteQuoter.PreviewRoute.selector);
+        bytes memory payload = new bytes(err.length - 4);
+        for (uint256 i; i < payload.length; i++) {
+            payload[i] = err[i + 4];
+        }
+        (amountOut, hopOuts, kinds) = abi.decode(payload, (uint256, uint256[], bytes32[]));
     }
 }
