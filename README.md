@@ -7,7 +7,7 @@ Token launchpad for **Arc**. Official REACTOR pools are Uniswap v4 markets with 
 
 > This repository is **not audited**. Do not deploy to Arc Mainnet (chain 5042).
 
-Protocol release **0.3.0** (`v0.3.0`). Factory **V1** (`FACTORY_VERSION = 1`, immutable). Source of truth: `docs/version.json`. Changelog: `CHANGELOG.md`. Docs policy: `CONTRIBUTING.md`.
+Protocol release **0.3.1** (`v0.3.1`). Factory **V1** (`FACTORY_VERSION = 1`, immutable). Source of truth: `docs/version.json`. Changelog: `CHANGELOG.md`. Docs policy: `CONTRIBUTING.md`.
 
 ## Quick start (local Arc-compatible demo)
 
@@ -26,7 +26,7 @@ cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0
 
 # Apps
 pnpm install
-pnpm --filter indexer dev             # http://127.0.0.1:43148  Postgres if DATABASE_URL, else SQLite
+REACTOR_ENV=LOCAL pnpm --filter indexer dev   # http://127.0.0.1:43148  Postgres if DATABASE_URL, else SQLite
 # optional Postgres smoke (docker compose postgres on :54329)
 # docker compose up -d postgres
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
@@ -68,7 +68,14 @@ In-app docs: [`/docs`](http://127.0.0.1:43147/docs) (sidebar, search, TOC). Sour
 ```bash
 pnpm docs:check   # fail on fee / supply / Dev Buy / ticker lock / factory / version / deployment drift
 pnpm docs:gen     # regenerate versioning + deployments + changelog pages from config
+pnpm safe:genesis # Safe Transaction Builder JSON from deployments/local.json (deployer ≠ Safe)
 ```
+
+**Production (`REACTOR_ENV=PROD` or `NODE_ENV=production`):** the indexer and isolated signer refuse to start if `TURNSTILE_SECRET` / site key are missing, if `SIGNER_INLINE` is on, or if the Anvil `#0` signer fallback would be used. `LOCAL` may keep those bypasses.
+
+**Media:** `sharp` is required. On a fresh host, `pnpm approve-builds` (allow `sharp`) if the install asks.
+
+**Arc Public Testnet:** this repo does not claim a Factory deploy without an explorer hash. If `ARC_TESTNET_PK` is unset, see `deployments/arc-testnet-blocker.md`.
 
 ## Protocol notes
 

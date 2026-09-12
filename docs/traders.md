@@ -8,7 +8,7 @@ Official REACTOR pools are Uniswap v4 with a **0% LP fee**. You pay a **3.5% quo
 
 1. The UI (or your bot) calls `POST /quote` with token, side, `amountIn`, slippage.
 2. The indexer plans ≤8 candidates (≤3 hops, no cycles).
-3. Each candidate is one **`UserRouteQuoter` `eth_call`**. The indexer does not stitch per-hop sims that would need intermediate balances.
+3. Each candidate is one **`UserRouteQuoter` `eth_call`** with state overrides. The indexer does not stitch per-hop sims that would need intermediate wallet balances.
 4. The winner is the real `amountOut`. Hop `kind` is preserved: `OFFICIAL_REACTOR_V4` / `EXTERNAL_V4_HOOKLESS` / `BONDING_CURVE`.
 5. Nested official legs appear in `feeLegs[]`. A failed preview is **unavailable** — never `minOut` 0 or 1.
 

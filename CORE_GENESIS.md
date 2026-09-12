@@ -8,7 +8,7 @@ This is **not audited**. Do not deploy to Arc Mainnet.
 
 ## Supply
 
-Exactly **1,000,000,000e18**, minted once in `TestCORE.genesis`. Nobody can mint after — not Guardian, not Keeper, not the deployer.
+Exactly **1,000,000,000e18**, minted once in `CoreToken.genesis` (`TestCORE` is a deprecated alias). Nobody can mint after — not Guardian, not Keeper, not the deployer.
 
 `burn(uint256)` reduces `totalSupply`. There is **no** `0xdead` fallback.
 

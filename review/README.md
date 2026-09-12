@@ -19,8 +19,8 @@ Captured from the running local app (Playwright, `CAPTURE=1`) against **current*
 | Internal ops | `ops-1440.png` | `ops-390.png` |
 
 ```bash
-pnpm --filter indexer seed-bonding   # writes BONDING_TOKEN
-CAPTURE=1 BONDING_TOKEN=0x… pnpm --filter web test
+pnpm --filter indexer seed-review    # prints BONDING_TOKEN (Neon fixture)
+CAPTURE=1 BONDING_TOKEN=0x1111111111111111111111111111111111110004 NEXT_PUBLIC_REVIEW_FIXTURES=1 pnpm --filter web test -- e2e/capture.spec.ts
 ```
 
 Instant launch has **no creator FDV / supply / fee knobs**. CORE is genesis, not Instant. `/reactor` states ranks are not a trustless oracle.

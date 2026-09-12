@@ -129,7 +129,7 @@ const addrs = deployment.addresses as Record<string, string>;
 const chain = defineChain({
   id: deployment.chainId,
   name: "reactor-local",
-  nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+  nativeCurrency: { name: "USD Coin", symbol: "USDC", decimals: 18 },
   rpcUrls: { default: { http: [RPC] } },
 });
 const client = createPublicClient({ chain, transport: http(RPC) });

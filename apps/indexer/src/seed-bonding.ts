@@ -16,7 +16,7 @@ const curveAbi = parseAbi([
 const chain = defineChain({
   id: deployment.chainId,
   name: "reactor-local",
-  nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+  nativeCurrency: { name: "USD Coin", symbol: "USDC", decimals: 18 },
   rpcUrls: { default: { http: [RPC] } },
 });
 
@@ -32,7 +32,7 @@ async function main() {
   const hash = await wallet.writeContract({
     address: factory,
     abi: factoryAbi,
-    functionName: "instantLaunch", // local seed must pass LaunchAuthorization — use helperInstant / UI
+    functionName: "instantLaunch", // requires LaunchAuthorization — prefer `seed-review` + BONDING_TOKEN for screenshots
     args: [
       {
         name: "Neon",

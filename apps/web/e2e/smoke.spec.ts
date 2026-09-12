@@ -24,7 +24,7 @@ test("docs are in primary nav", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /For traders/i })).toBeVisible();
   await page.goto("/docs/versioning");
   await expect(page.getByRole("heading", { name: /Versioning/i })).toBeVisible();
-  await expect(page.getByText(/Protocol release 0\.3\.0/i)).toBeVisible();
+  await expect(page.getByText(/Protocol release 0\.3\.1/i)).toBeVisible();
 });
 
 test("token detail is not the homepage", async ({ page }) => {

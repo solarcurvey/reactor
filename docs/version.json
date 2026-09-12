@@ -1,9 +1,9 @@
 {
-  "protocolVersion": "0.3.0",
+  "protocolVersion": "0.3.1",
   "factoryVersion": 1,
   "factoryVersionLabel": "V1",
-  "releaseTag": "v0.3.0",
+  "releaseTag": "v0.3.1",
   "releaseDate": "2026-09-12",
   "status": "pre-audit local/testnet — not mainnet",
-  "notes": "Admission integrity (real Turnstile, ELEVATED/ATTACK ALLOW after challenge, signed-auth token-bucket, launchConfigHash, atomic receipts), UserRouteQuoter whole-route preview, indexer 24h/USD/keyset, ValuationService, SigV4 media, Arc BFT finality. Factory V1 immutable."
+  "notes": "Honest leftovers: Safe Builder JSON from artifacts, UserRouteQuoter state-override nested quotes, production hard gates, funding-parent heuristic, sharp required, Arc testnet blocker. Factory V1 immutable. Not audited."
 }

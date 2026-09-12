@@ -1,6 +1,6 @@
 # How REACTOR works
 
-> Protocol **0.3.0** · Factory **V1** (immutable) · Not audited · No public mainnet
+> Protocol **0.3.1** · Factory **V1** (immutable) · Not audited · No public mainnet
 
 REACTOR is a token launchpad for **Arc**. Creators launch a market that pays holders in the **quote they pick**. Official pools are Uniswap v4 with a **0% LP fee**. The **3.5%** quote-side charge is hook custom accounting: **2% holders / 1% Top-10 / 0.5% CORE**.
 

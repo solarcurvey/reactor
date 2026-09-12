@@ -10,7 +10,9 @@ import {
   verifyReceipt,
   computeLaunchConfigHash,
   fundingCluster,
+  fundingParentId,
   networkCluster,
+  FUNDING_PARENT_LOOKBACK_BLOCKS,
 } from "./admission.ts";
 import { evaluateAdmission } from "../../../packages/reactor/src/admission.ts";
 
@@ -61,12 +63,17 @@ delete process.env.TURNSTILE_SECRET;
 }
 
 {
-  const a = fundingCluster("0x1111111111111111111111111111111111111111", "AS1", "10.1.2.3");
-  const b = fundingCluster("0x2222222222222222222222222222222222222222", "AS1", "10.1.9.9", "0xabc");
-  const c = fundingCluster("0x3333333333333333333333333333333333333333", "AS1", "10.1.9.9", "0xabc");
-  assert(b === c, "same onchain funder clusters together");
-  assert(a !== b, "wallet-only cluster ≠ funder cluster");
+  const a = fundingParentId("0x1111111111111111111111111111111111111111", "AS1", "10.1.2.3");
+  const b = fundingParentId("0x2222222222222222222222222222222222222222", "AS1", "10.1.9.9", "0xabc");
+  const c = fundingParentId("0x3333333333333333333333333333333333333333", "AS1", "10.1.9.9", "0xabc");
+  assert(b === c, "same onchain funding-parent clusters together");
+  assert(a !== b, "wallet-only heuristic ≠ funder parent");
+  assert(
+    fundingCluster("0x1111111111111111111111111111111111111111", "AS1", "10.1.2.3") === a,
+    "fundingCluster alias === fundingParentId",
+  );
   assert(networkCluster("AS1", "10.1.2.3") === networkCluster("AS1", "10.1.8.8"), "/16 network rename");
+  assert(FUNDING_PARENT_LOOKBACK_BLOCKS === 50_000, "bounded lookback — not earliest");
 }
 
 const dir = mkdtempSync(join(tmpdir(), "reactor-admit-"));
@@ -96,6 +103,8 @@ const store = await openStore({ sqlitePath: join(dir, "t.sqlite") });
     "MOON",
   );
   assert(allow.launchConfigHash === expected, "launchConfigHash binds identity");
+  assert(allow.fundingParent, "ALLOW includes funding-parent heuristic id");
+  assert(allow.fundingParentKind === "network-rename" || allow.fundingParentKind === "onchain-usdc-funder", "parent kind");
 }
 
 {

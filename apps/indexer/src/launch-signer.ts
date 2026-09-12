@@ -24,14 +24,21 @@ import {
 import { consumeIssuanceToken, consumeReceipt, verifyReceipt } from "./admission.ts";
 import type { Store } from "./db.ts";
 import { loadValuationService } from "./valuation-store.ts";
+import { ANVIL0_PK, isLocalEnv } from "./prod-gates.ts";
+import { ARC_NATIVE_GAS } from "./arc-chain.ts";
 
-const LOCAL = (process.env.REACTOR_ENV ?? "").toUpperCase() === "LOCAL";
-const ANVIL0 = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const LOCAL = isLocalEnv();
+const ANVIL0 = ANVIL0_PK;
 const addrs = deployment.addresses as Record<string, string>;
 
 export function resolveSignerKey(): `0x${string}` {
   const env = process.env.PRICING_SIGNER_PK;
-  if (env && env.length >= 10) return env as `0x${string}`;
+  if (env && env.length >= 10) {
+    if (!LOCAL && env.toLowerCase() === ANVIL0) {
+      throw new Error("PRICING_SIGNER_UNAVAILABLE: Anvil #0 key forbidden outside LOCAL");
+    }
+    return env as `0x${string}`;
+  }
   if (LOCAL && deployment.chainId === 5042002) return ANVIL0;
   throw new Error("PRICING_SIGNER_UNAVAILABLE");
 }
@@ -49,7 +56,7 @@ const erc20Abi = parseAbi(["function decimals() view returns (uint8)"]);
 const chain = defineChain({
   id: deployment.chainId,
   name: "reactor",
-  nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+  nativeCurrency: { ...ARC_NATIVE_GAS },
   rpcUrls: { default: { http: [process.env.RPC_URL ?? deployment.rpc] } },
 });
 const client = createPublicClient({ chain, transport: http(chain.rpcUrls.default.http[0]) });
