@@ -1,8 +1,10 @@
 /**
  * #65 write-gate bind for the #62 / PR #68 recovered-wallet model.
  *
- * Public read: GET /operator-policy/challenge only. #68 does not expose a
- * public status GET — do not add a parallel `/operator-policy/status`.
+ * Public reads: GET /operator-policy/challenge (official #68) and coordinated
+ * GET /operator-policy/status (same evaluateOperatorPolicy as write gates).
+ * Stock #68 has challenge + write gates only; this status GET is the #65 UX
+ * companion #68 should list as a public read when it merges.
  * Subject is the recovered EIP-191 signer of a server challenge — never
  * x-reactor-wallet / body.wallet.
  *

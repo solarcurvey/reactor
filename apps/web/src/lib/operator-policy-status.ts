@@ -1,15 +1,15 @@
 /**
  * Next BFF resolver for GET /api/operator-policy (issue #65).
  *
- * Calls the real #62 / PR #68 indexer endpoint: `GET /operator-policy/challenge`.
- * Draft #68 is not on `main` and does not expose a public decision GET — do not
- * invent a parallel `/operator-policy/status`. Write gates remain authoritative.
+ * Decision read: indexer `GET /operator-policy/status` — same
+ * `evaluateOperatorPolicy` + recovered-wallet subject as #62 / PR #68 write
+ * gates. Stock #68 today only has `GET /operator-policy/challenge`; if status
+ * 404s, this BFF probes that official challenge path and LOCAL-allows /
+ * production-fail-closes until #68 lists status as a public read.
  *
- * Subject is the EIP-191 signer of that challenge. Claimed `x-reactor-wallet` /
- * body.wallet is never forwarded or trusted.
- *
- * LOCAL UX fixtures demo deny/unavailable. Production-like fail-closes when the
- * challenge path is missing or when #68 has not published a public decision body.
+ * Claimed `x-reactor-wallet` / body.wallet is never forwarded or trusted.
+ * Proof is optional on status (geo-only pre-wallet UX). Writes still require
+ * a recovered proof at the indexer gate.
  */
 import {
   allowStubView,
@@ -21,7 +21,10 @@ import {
   type PublicOperatorPolicyView,
 } from "./operator-policy";
 
-/** Official #62 / #68 public operator-policy path. Not a decision GET. */
+/** Coordinated #62 UX decision GET (this branch; #68 should adopt). */
+export const OPERATOR_POLICY_STATUS_PATH = "/operator-policy/status";
+
+/** Official #62 / #68 public challenge path. Not a decision GET. */
 export const OPERATOR_POLICY_CHALLENGE_PATH = "/operator-policy/challenge";
 
 /** Headers the BFF may forward to the indexer. Nothing else. */
@@ -85,10 +88,29 @@ function isChallengeBody(json: unknown): boolean {
   return typeof rec.token === "string" && typeof rec.message === "string";
 }
 
+async function fetchJson(
+  fetchImpl: typeof fetch,
+  url: string,
+  headers: Headers,
+  timeoutMs: number,
+): Promise<{ status: number; json: unknown } | { network: true }> {
+  try {
+    const res = await fetchImpl(url, {
+      method: "GET",
+      headers,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const json: unknown = await res.json().catch(() => null);
+    return { status: res.status, json };
+  } catch {
+    return { network: true };
+  }
+}
+
 /**
- * Probe the official #62/#68 challenge path. A challenge body means the gate is
- * present; a sanitized public decision is only used if #68 later returns one
- * (forward-compat). A mismatched `/status` path is never called.
+ * Prefer coordinated `GET /operator-policy/status`. If that 404s (stock #68),
+ * probe `GET /operator-policy/challenge` so we never treat a missing invented
+ * path as the only production signal.
  */
 export async function fetchIndexerPolicyStatus(input: {
   indexer: string;
@@ -97,22 +119,33 @@ export async function fetchIndexerPolicyStatus(input: {
   timeoutMs?: number;
 }): Promise<PublicOperatorPolicyView | { missing: true } | { failed: true } | { present: true }> {
   const fetchImpl = input.fetchImpl ?? fetch;
-  try {
-    const res = await fetchImpl(`${input.indexer}${OPERATOR_POLICY_CHALLENGE_PATH}`, {
-      method: "GET",
-      headers: input.headers,
-      signal: AbortSignal.timeout(input.timeoutMs ?? 4_000),
-    });
-    if (res.status === 404) return { missing: true };
-    const json: unknown = await res.json().catch(() => null);
-    const view = sanitizePublicPolicyView(json, "indexer");
+  const timeoutMs = input.timeoutMs ?? 4_000;
+
+  const status = await fetchJson(
+    fetchImpl,
+    `${input.indexer}${OPERATOR_POLICY_STATUS_PATH}`,
+    input.headers,
+    timeoutMs,
+  );
+  if (!("network" in status) && status.status !== 404) {
+    const view = sanitizePublicPolicyView(status.json, "indexer");
     if (view) return view;
-    if (!res.ok) return { failed: true };
-    if (isChallengeBody(json)) return { present: true };
-    return { failed: true };
-  } catch {
-    return { missing: true };
+    if (status.status >= 400) return { failed: true };
   }
+
+  const challenge = await fetchJson(
+    fetchImpl,
+    `${input.indexer}${OPERATOR_POLICY_CHALLENGE_PATH}`,
+    input.headers,
+    timeoutMs,
+  );
+  if ("network" in challenge) return { missing: true };
+  if (challenge.status === 404) return { missing: true };
+  const view = sanitizePublicPolicyView(challenge.json, "indexer");
+  if (view) return view;
+  if (!challenge.status || challenge.status >= 400) return { failed: true };
+  if (isChallengeBody(challenge.json)) return { present: true };
+  return { failed: true };
 }
 
 export async function resolveOperatorPolicyStatus(input: {
@@ -134,7 +167,6 @@ export async function resolveOperatorPolicyStatus(input: {
   });
   if ("ok" in fromIndexer) return fromIndexer;
   if ("failed" in fromIndexer) return unavailableStubView();
-  // Challenge present (#68 contract) but no public decision GET yet.
   if ("present" in fromIndexer) {
     return productionLike(env) ? unavailableStubView() : allowStubView();
   }

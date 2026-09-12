@@ -165,8 +165,17 @@ async function main() {
       const challengeOk = await fetch(`${server.url}/operator-policy/challenge`);
       const issued = (await challengeOk.json()) as { token?: string; message?: string };
       assert(challengeOk.ok && issued.token && issued.message, "official #62 challenge path");
-      const invented = await fetch(`${server.url}/operator-policy/status`);
-      assert(invented.status === 404, "do not invent a parallel status GET");
+      const status = await fetch(`${server.url}/operator-policy/status`);
+      const statusBody = (await status.json()) as { reason?: string; wallet?: string; ip?: string };
+      assert(status.ok && statusBody.reason === "ALLOW", "coordinated status is geo-only allow without proof");
+      assert(!statusBody.ip && !statusBody.wallet, "status minimized");
+
+      const blockedProof = await proofFor(BLOCKED);
+      const deniedStatus = await fetch(`${server.url}/operator-policy/status`, {
+        headers: { "x-reactor-wallet-proof": blockedProof, "x-reactor-wallet": CLEAR.address },
+      });
+      const deniedBody = (await deniedStatus.json()) as { reason?: string };
+      assert(deniedStatus.status === 403 && deniedBody.reason === "DENY_ADDRESS_BLOCKED", "status screens recovered signer");
     } finally {
       await server.close();
     }
