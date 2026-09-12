@@ -16,6 +16,6 @@
 
 When `MEDIA_CDN_BASE` is set, `publicUrl` is `MEDIA_CDN_BASE` + `uri` (no extra slash). The R2/S3 object key is that same path without the leading slash: **`m/<id>.webp`**. Not the bare content id. A custom-domain CDN mapped to the bucket root then serves `https://cdn…/m/<id>.webp` from the object that was uploaded.
 
-`mediaObjectKey(id)` and `mediaPublicUri(id)` are the single source of truth. `assertMediaKeyMatchesPublicUri` refuses a remote key that would 404 behind the returned URL.
+`mediaObjectKey(id)` and `mediaPublicUri(id)` are the single source of truth. `assertMediaKeyMatchesPublicUri` refuses a remote key that would 404 behind the returned URL. The mock SigV4 fixture stores the PUT body under that key and a subsequent GET of `m/<id>.webp` must return the same bytes and `image/webp`. A PROD remote PUT failure throws and returns no `StoredMedia` (no dead public URL).
 
 No base64 onchain. The launch form posts the file and stores the returned URL.
