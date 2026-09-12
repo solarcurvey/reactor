@@ -2,15 +2,23 @@
 
 | Term | Meaning |
 | --- | --- |
-| Official pool | Factory-initialized hooked 0% LP pool the hook charges |
-| Instant | Bonding curve → locked v4 |
-| Batch Fair | Pro-rata timed sale → migrate |
-| Launch Signer | Isolated EIP-712 key for `LaunchAuthorization` |
-| TickerRegistry | Global ticker identity across factory versions |
-| usdPegOne | Quote treated as $1 for curve geometry (not “Stablecoins”) |
-| ValuationService | One recursive nested USD path |
-| RouteGraph | Proven venues only |
-| Guardian | Immutable security Safe |
-| Keeper | Designated maintenance key |
-| Protocol release | Semver of the overall REACTOR software (`docs/version.json`, now 0.1.0) |
-| Factory version | Immutable on-chain factory label (V1 stays V1) |
+| Official REACTOR Pool | Hooked Uniswap v4 pool, **0% LP**, 3.5% quote-side hook charge |
+| Instant | Bonding curve → ready → frozen → graduate → locked v4 |
+| Fair | Pro-rata timed sale, 0% during auction, 50/50 locked at clear |
+| `INSTANT_CURVE_V1` | Instant `curveConfig` constant |
+| `fairCurveConfig` | `keccak256(abi.encode(supply, decimals, duration, auctionBps, minRaise))` |
+| `FAIR_V1` | Identifier only — not a valid Fair `curveConfig` |
+| `launchConfigHash` | ALLOW-receipt digest of immutable launch identity |
+| Turnstile | Cloudflare widget + `siteverify`. CHALLENGE ≠ ALLOW |
+| Issuance bucket | Durable cap on **signed** LaunchAuthorizations |
+| ValuationService | Single USD engine for signer, Top-10, `/markets` |
+| `usdPegOne` | Explicit $1 flag. EURC / “stable” is not $1 |
+| UserRouteQuoter | Whole-route `eth_call` preview; always reverts `PreviewRoute` |
+| UserRouteExecutor | User nested USDC path. Not a vault |
+| Guardian | Only privileged security authority |
+| Keeper | Designated maintenance. One atomic lease |
+| CORE | Protocol token (`CoreToken`). Never Top-10 |
+| Factory V1 | Immutable on-chain factory label. Not protocol semver |
+| Protocol 0.3.0 | This software + docs release |
+| Arc gas USDC | Native 18-decimal gas unit |
+| Protocol USDC | ERC-20 6 decimals (`0x3600…0000` on Arc) |

@@ -8,11 +8,14 @@ import { SseHub } from "./sse.ts";
 import { ObjectStore, publicMediaUrl } from "./media.ts";
 import { RateLimit, SECURITY_HEADERS, logLine, requestId } from "./obs.ts";
 import { curvePriceX18, getState, recordTrade, setState, upsertMarket, upsertToken } from "./ingest.ts";
+import { isUniqueViolation } from "./unique.ts";
+import { loadValuationService } from "./valuation-store.ts";
+import { populateExternalPriceMarks } from "./price-marks.ts";
 import { buildQuote } from "./quote-service.ts";
 import { persistVenue } from "./route-graph.ts";
 import { fillContinuous, CANDLE_INTERVALS } from "../../../packages/reactor/src/prices.ts";
 import { raiseAlert, recentAlerts } from "./alerts.ts";
-import { ValuationService, type QuoteNode } from "../../../packages/reactor/src/valuation.ts";
+import type { ValuationService } from "../../../packages/reactor/src/valuation.ts";
 import { consensusUsd6, StaticProvider } from "../../../packages/reactor/src/pricing.ts";
 import { priceQuoteX18FromSqrt } from "../../../packages/reactor/src/prices.ts";
 import { admit, tryNormalizeTicker } from "./admission.ts";
@@ -95,7 +98,8 @@ async function tick(store: Store) {
   const head = await client.getBlockNumber();
   const last = BigInt((await getState(store, "block")) ?? "0");
   const lastHash = await getState(store, "block_hash");
-  const confirmations = BigInt(process.env.ARC_FINALITY_CONFIRMATIONS ?? 8);
+  // Arc docs: deterministic BFT finality on commit — no eth-8 confirmation lag.
+  const confirmations = BigInt(process.env.ARC_FINALITY_CONFIRMATIONS ?? 0);
   if (last > 0n && lastHash) {
     try {
       const blk = await client.getBlock({ blockNumber: last });
@@ -297,15 +301,27 @@ async function tick(store: Store) {
       });
     }
     if (name === "RewardClaimed") {
-      await store.run("INSERT INTO claims(token,account,amount,block,tx,ts) VALUES(?,?,?,?,?,?)", token.toLowerCase(), String(args.account ?? ""), String(args.amount ?? "0"), block, tx, ts);
-      sse.publish({ type: "rewards", data: { token, account: args.account, amount: args.amount, tx } });
+      try {
+        await store.run("INSERT INTO claims(token,account,amount,block,tx,ts) VALUES(?,?,?,?,?,?)", token.toLowerCase(), String(args.account ?? ""), String(args.amount ?? "0"), block, tx, ts);
+        sse.publish({ type: "rewards", data: { token, account: args.account, amount: args.amount, tx } });
+      } catch (e) {
+        if (!isUniqueViolation(e)) throw e;
+      }
     }
     if (name === "SelfBurnAccrued" || name === "SelfBurnExecuted") {
-      await store.run("INSERT INTO selfburn(token,quote,amount,burned,kind,block,tx,ts) VALUES(?,?,?,?,?,?,?,?)", token.toLowerCase(), String(args.quote ?? ""), String(args.amount ?? args.quoteIn ?? "0"), String(args.burned ?? "0"), name, block, tx, ts);
-      sse.publish({ type: "burn", data: { token, name, tx } });
+      try {
+        await store.run("INSERT INTO selfburn(token,quote,amount,burned,kind,block,tx,ts) VALUES(?,?,?,?,?,?,?,?)", token.toLowerCase(), String(args.quote ?? ""), String(args.amount ?? args.quoteIn ?? "0"), String(args.burned ?? "0"), name, block, tx, ts);
+        sse.publish({ type: "burn", data: { token, name, tx } });
+      } catch (e) {
+        if (!isUniqueViolation(e)) throw e;
+      }
     }
     if (name === "FlywheelAccrued" || name === "QuoteSettled") {
-      await store.run("INSERT INTO flywheel(quote,amount,usdc_in,kind,block,tx,ts) VALUES(?,?,?,?,?,?,?)", String(args.quote ?? "").toLowerCase(), String(args.amount ?? "0"), String(args.usdcIn ?? "0"), name, block, tx, ts);
+      try {
+        await store.run("INSERT INTO flywheel(quote,amount,usdc_in,kind,block,tx,ts) VALUES(?,?,?,?,?,?,?)", String(args.quote ?? "").toLowerCase(), String(args.amount ?? "0"), String(args.usdcIn ?? "0"), name, block, tx, ts);
+      } catch (e) {
+        if (!isUniqueViolation(e)) throw e;
+      }
     }
     if (name === "EpochSubmitted") {
       await store.run(
@@ -319,14 +335,19 @@ async function tick(store: Store) {
       sse.publish({ type: "top10", data: { epochId: args.epochId, pot: args.pot } });
     }
     if (name === "BuybackExecuted" || name === "COREBurned") {
-      await store.run("INSERT INTO core_buybacks(quote,quote_in,core_out,block,tx,ts) VALUES(?,?,?,?,?,?)", String(args.quote ?? "").toLowerCase(), String(args.quoteIn ?? "0"), String(args.coreOut ?? args.amount ?? "0"), block, tx, ts);
-      sse.publish({ type: "core", data: { name, tx } });
+      try {
+        await store.run("INSERT INTO core_buybacks(quote,quote_in,core_out,block,tx,ts) VALUES(?,?,?,?,?,?)", String(args.quote ?? "").toLowerCase(), String(args.quoteIn ?? "0"), String(args.coreOut ?? args.amount ?? "0"), block, tx, ts);
+        sse.publish({ type: "core", data: { name, tx } });
+      } catch (e) {
+        if (!isUniqueViolation(e)) throw e;
+      }
     }
   }
   const headBlk = await client.getBlock({ blockNumber: to });
   await setState(store, "block", to.toString());
   await setState(store, "block_hash", headBlk.hash ?? "");
   await rollMarketAggregations(store);
+  await populateExternalPriceMarks(store).catch(() => undefined);
 }
 
 async function refreshQuotes(store: Store) {
@@ -374,26 +395,7 @@ async function refreshQuotes(store: Store) {
 }
 
 async function valuationNodes(store: Store): Promise<ValuationService> {
-  const quotes = await store.all<{ token: string; symbol: string; decimals: number; usd_peg_one: number; parent_quote: string; quarantined: number }>("SELECT * FROM quote_assets");
-  const markets = await store.all<{ token: string; quote: string; price_quote_x18: string }>("SELECT token,quote,price_quote_x18 FROM markets");
-  const nodes = new Map<string, QuoteNode>();
-  for (const q of quotes) {
-    nodes.set(q.token.toLowerCase(), {
-      token: q.token,
-      symbol: q.symbol,
-      decimals: Number(q.decimals),
-      usdPegOne: q.usd_peg_one === 1,
-      quarantined: q.quarantined === 1,
-      parentQuote: q.parent_quote || undefined,
-    });
-  }
-  for (const m of markets) {
-    if (!m.quote || !m.price_quote_x18 || m.price_quote_x18 === "0") continue;
-    const key = m.token.toLowerCase();
-    const prev = nodes.get(key) ?? { token: m.token, symbol: m.token.slice(0, 6), decimals: 18, usdPegOne: false };
-    nodes.set(key, { ...prev, parentQuote: m.quote.toLowerCase(), priceInParentX18: BigInt(m.price_quote_x18) });
-  }
-  return new ValuationService(nodes);
+  return loadValuationService(store);
 }
 
 async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
@@ -433,17 +435,31 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     const quote = url.searchParams.get("quote")?.toLowerCase() ?? "";
     const sort = url.searchParams.get("sort") ?? "new";
     const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 40)));
-    const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0));
+    const cursorTs = url.searchParams.get("cursor_ts");
+    const cursorToken = url.searchParams.get("cursor_token")?.toLowerCase() ?? "";
+    const offset = cursorTs == null ? Math.max(0, Number(url.searchParams.get("offset") ?? 0)) : 0;
     const like = `%${q}%`;
     const stageSql = stage === "bonding" ? "bonding" : stage === "v4" || stage === "trending" ? "v4" : "";
-    const order = sort === "vol" ? "CAST(m.volume_24h_usd6 AS INTEGER) DESC" : "m.updated_ts DESC";
+    const order =
+      sort === "vol"
+        ? "CAST(m.volume_24h_usd6 AS NUMERIC) DESC, m.token DESC"
+        : sort === "price"
+          ? "CAST(m.price_usd6 AS NUMERIC) DESC, m.token DESC"
+          : "m.updated_ts DESC, m.token DESC";
+    const keyset =
+      cursorTs != null
+        ? sort === "vol"
+          ? " AND (CAST(m.volume_24h_usd6 AS NUMERIC), m.token) < (CAST(? AS NUMERIC), ?)"
+          : " AND (m.updated_ts, m.token) < (?, ?)"
+        : "";
     const where = `WHERE (?='' OR lower(COALESCE(t.symbol,'')) LIKE ? OR lower(COALESCE(t.name,'')) LIKE ? OR m.token LIKE ? OR lower(COALESCE(t.ticker,'')) LIKE ?)
       AND (?='' OR m.stage=?)
-      AND (?='' OR m.quote=?)`;
-    const params = [q, like, like, like, like, stageSql, stageSql, quote, quote];
+      AND (?='' OR m.quote=?)${keyset}`;
+    const params: unknown[] = [q, like, like, like, like, stageSql, stageSql, quote, quote];
+    if (cursorTs != null) params.push(cursorTs, cursorToken);
     const total = await store.get<{ n: number }>(
-      `SELECT COUNT(*) as n FROM markets m LEFT JOIN tokens t ON t.address=m.token ${where}`,
-      ...params,
+      `SELECT COUNT(*) as n FROM markets m LEFT JOIN tokens t ON t.address=m.token ${where.replace(keyset, "")}`,
+      q, like, like, like, like, stageSql, stageSql, quote, quote,
     );
     const items = await store.all<Record<string, unknown>>(
       `SELECT m.token,m.quote,m.pool_id,m.stage,m.market_live,m.fair_id,m.bonding_bps,m.real_quote,m.grad_target,m.price_quote_x18,m.price_usd6,m.fdv_usd6,m.volume_24h_quote,m.volume_24h_usd6,m.trades_24h,m.lifetime_rewards,m.image,m.description,m.updated_ts,
@@ -454,12 +470,25 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
        LEFT JOIN quote_assets q ON q.token=m.quote
        ${where}
        ORDER BY ${order}
-       LIMIT ? OFFSET ?`,
+       LIMIT ?${cursorTs == null && offset ? " OFFSET ?" : ""}`,
       ...params,
       limit,
-      offset,
+      ...(cursorTs == null && offset ? [offset] : []),
     );
-    json(res, 200, { items, total: Number(total?.n ?? 0), request_id: rid }, rid);
+    const last = items[items.length - 1];
+    json(
+      res,
+      200,
+      {
+        items,
+        total: Number(total?.n ?? 0),
+        next_cursor: last
+          ? { cursor_ts: sort === "vol" ? String(last.volume_24h_usd6 ?? "0") : String(last.updated_ts ?? 0), cursor_token: String(last.token ?? "") }
+          : null,
+        request_id: rid,
+      },
+      rid,
+    );
     return;
   }
   if (url.pathname === "/quote-assets") {
@@ -499,8 +528,18 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       return;
     }
     try {
+      const max = 2 * 1024 * 1024;
       const chunks: Buffer[] = [];
-      for await (const c of req) chunks.push(c as Buffer);
+      let received = 0;
+      for await (const c of req) {
+        received += (c as Buffer).length;
+        if (received > max) {
+          req.destroy();
+          json(res, 413, { error: "image too large (2MB stream limit)", request_id: rid }, rid);
+          return;
+        }
+        chunks.push(c as Buffer);
+      }
       const raw = Buffer.concat(chunks);
       const stored = await media.put(raw, req.headers["content-type"] ?? "application/octet-stream");
       json(res, 200, { ...stored, publicUrl: publicMediaUrl(stored.uri), request_id: rid }, rid);
@@ -514,22 +553,46 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     const interval = (url.searchParams.get("interval") ?? "5m") as keyof typeof CANDLE_INTERVALS;
     const sec = CANDLE_INTERVALS[interval] ?? 300;
     const token = candleMatch[1]!.toLowerCase();
+    const limit = Math.min(1_000, Math.max(1, Number(url.searchParams.get("limit") ?? 300)));
+    const before = url.searchParams.get("before");
+    const after = url.searchParams.get("after");
+    const clauses = ["token=?", "interval_sec=?"];
+    const params: unknown[] = [token, sec];
+    if (before) {
+      clauses.push("t<?");
+      params.push(Number(before));
+    }
+    if (after) {
+      clauses.push("t>?");
+      params.push(Number(after));
+    }
     const rows = await store.all<{ t: number; o: string; h: string; l: string; c: string; v: string; n: number }>(
-      "SELECT t,o,h,l,c,v,n FROM candles WHERE token=? AND interval_sec=? ORDER BY t ASC",
-      token,
-      sec,
+      `SELECT t,o,h,l,c,v,n FROM candles WHERE ${clauses.join(" AND ")} ORDER BY t DESC LIMIT ?`,
+      ...params,
+      limit,
     );
+    rows.reverse();
     const now = Math.floor(Date.now() / 1000);
     const filled = rows.length ? fillContinuous(rows, sec, rows[0]!.t, Math.max(rows[rows.length - 1]!.t, now)) : [];
-    json(res, 200, { interval, sec, candles: filled, chainTime: true, request_id: rid }, rid);
+    json(res, 200, { interval, sec, limit, before, after, candles: filled.slice(-limit), chainTime: true, request_id: rid }, rid);
     return;
   }
   const swapMatch = url.pathname.match(/^\/swaps\/(0x[a-fA-F0-9]{40})$/);
   if (swapMatch) {
+    const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit") ?? 200)));
+    const beforeId = url.searchParams.get("before_id");
+    const clauses = ["token=?"];
+    const params: unknown[] = [swapMatch[1]!.toLowerCase()];
+    if (beforeId) {
+      clauses.push("id<?");
+      params.push(Number(beforeId));
+    }
     const rows = await store.all(
-      "SELECT block as t, ts, notional_quote as notional, holders_fee as holders, flywheel_fee as flywheel, core_fee as coreAmt, tx, sqrt_price as sqrtPrice, amount_out as tokensOut, source, price_quote_x18 as px FROM trades WHERE token=? ORDER BY id ASC",
-      swapMatch[1]!.toLowerCase(),
+      `SELECT id, block as t, ts, notional_quote as notional, holders_fee as holders, flywheel_fee as flywheel, core_fee as coreAmt, tx, sqrt_price as sqrtPrice, amount_out as tokensOut, source, price_quote_x18 as px FROM trades WHERE ${clauses.join(" AND ")} ORDER BY id DESC LIMIT ?`,
+      ...params,
+      limit,
     );
+    (rows as Array<Record<string, unknown>>).reverse();
     json(res, 200, rows, rid);
     return;
   }
@@ -627,6 +690,14 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
         client: String(req.headers["user-agent"] ?? ""),
         turnstile: String(body.turnstile ?? body.cfTurnstile ?? ""),
         wallet: String(body.wallet ?? body.creator ?? ""),
+        factory: String(body.factory ?? addrs.ReactorFactory ?? ""),
+        factoryVersion: Number(body.factoryVersion ?? 1),
+        supply: body.supply as string | undefined,
+        decimals: body.decimals != null ? Number(body.decimals) : undefined,
+        duration: body.duration != null ? Number(body.duration) : undefined,
+        auctionBps: body.auctionBps != null ? Number(body.auctionBps) : undefined,
+        minRaise: body.minRaise as string | undefined,
+        mode: String(body.mode ?? "rewards"),
       });
       json(res, out.status, { ...out.body, request_id: rid }, rid);
     } catch (e) {

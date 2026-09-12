@@ -9,8 +9,18 @@ import {Ticker} from "./Ticker.sol";
 /// (no serial quote nonce). Signed by the isolated Launch Signer after admission.
 library LaunchAuthorization {
     bytes32 internal constant INSTANT_CURVE_V1 = keccak256("REACTOR.InstantCurve.v1");
+    /// @dev Identifier only. Fair LaunchAuthorization binds `fairCurveConfig(...)`, not this constant.
     bytes32 internal constant FAIR_V1 = keccak256("REACTOR.FairLaunch.v1");
     uint256 internal constant MAX_TTL = 30 minutes;
+
+    /// @notice Fair `curveConfig` digest. Instant keeps `INSTANT_CURVE_V1`.
+    function fairCurveConfig(uint256 supply, uint8 decimals, uint64 duration, uint16 auctionBps, uint256 minRaise)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(supply, decimals, duration, auctionBps, minRaise));
+    }
 
     uint8 internal constant MODE_STANDARD = 0;
     uint8 internal constant MODE_REWARDS = 1;

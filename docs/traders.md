@@ -1,27 +1,36 @@
 # For traders
 
-> Protocol **0.2.0** · Official charge **3.5%** (2% holders / 1% / 0.5% CORE)
+> Exact-in. Nonzero `minOut`. Incomplete fills revert. Not audited. Chain **5042002**.
 
-## Board
+Official REACTOR pools are Uniswap v4 with a **0% LP fee**. You pay a **3.5% quote-side** hook charge: **2% holders / 1% Top-10 / 0.5% CORE**. Transfer has **zero tax**.
 
-The homepage is `GET /markets` — SQL search, stage, quote, sort, limit, offset. No per-token RPC on the board. Live tape via SSE `/stream`. Dedicated search: `/search`.
+## How a trade is quoted
 
-## Ticket
+1. The UI (or your bot) calls `POST /quote` with token, side, `amountIn`, slippage.
+2. The indexer plans ≤8 candidates (≤3 hops, no cycles).
+3. Each candidate is one **`UserRouteQuoter` `eth_call`**. The indexer does not stitch per-hop sims that would need intermediate balances.
+4. The winner is the real `amountOut`. Hop `kind` is preserved: `OFFICIAL_REACTOR_V4` / `EXTERNAL_V4_HOOKLESS` / `BONDING_CURVE`.
+5. Nested official legs appear in `feeLegs[]`. A failed preview is **unavailable** — never `minOut` 0 or 1.
 
-`POST /quote` plans **proven** RouteGraph venues only (≤3 hops). Kinds: `OFFICIAL_REACTOR_V4`, `EXTERNAL_V4_HOOKLESS`, `BONDING_CURVE`. Official 3.5% legs are listed **separately**. The API does not invent a 0.30% pool that is not in the graph. If simulation fails, the quote is **unavailable** — never `minOut` 0 or 1.
+Submit the ticket’s `tx.to` + `tx.data`. Apply your own slippage on the returned `amountOut`. Do not invent hops.
 
-You submit exact-in with a **nonzero minOut**. Incomplete fills revert.
+USDC → nested quote → official/bonding goes through `UserRouteExecutor`. Bonding markets use `curve.buy` / `curve.sell` on the last leg (the executor-only `buyRouted` path is not a user quote).
 
-Terminal: Lightweight Charts OHLCV + tape on `/token/[address]`.
+## Board, charts, tape
 
-## Bonding vs v4
-
-Before graduation you trade on the Instant curve. After `graduate()`, the official hooked 0% LP pool is the market. OHLCV is the same `price_quote_x18` unit on both sides so the chart continues.
+| Surface | Source |
+| --- | --- |
+| Homepage / search | `GET /markets` — search, NUMERIC sort (`new` / `vol` / `price`), keyset (`cursor_ts` + `cursor_token`) |
+| 24h price | Latest trade **by `ts`**, not `MAX(price)` |
+| 24h USD volume | ValuationService (`volume_24h_usd6`) |
+| Chart | `GET /candles/:token?interval=&limit=&before=&after=` (bounded) |
+| Tape | `GET /swaps/:token?limit=&before_id=` (bounded) |
+| Live | `GET /stream` SSE |
 
 ## Rewards
 
-Rewards Instant: 2% of quote notional accrues to holders, O(1), no staking, survives transfers. Standard: that 2% later market-buys and burns the token. If Rewards `eligibleSupply == 0`, the 2% goes to SelfBurn — not the first holder.
+Holder rewards are **same-quote**, no staking. Claim on the token page. When Rewards `eligibleSupply==0`, the 2% goes to SelfBurn (not the first remaining holder).
 
-## Nested quotes
+CORE never ranks in Top-10. Ranks are an **offchain API** — contracts check structure only. See [Trust](/docs/trust).
 
-A token can earn ZEC, or a graduated ZCAT. USD marks multiply the official path (CAT→ZCAT→ZEC→USD). Parent-only USD is rejected. See [nested fees](/docs/fees).
+Continue: [Quoter](/docs/quoting) · [Fees](/docs/fees) · [Markets API](/docs/markets) · [Valuation](/docs/valuation).

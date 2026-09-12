@@ -1,17 +1,17 @@
-# Nested fees (honest)
+# Nested fees
 
-> Official REACTOR legs charge **3.5% in quote**. Nested official hops stack. The UI must never collapse them into one “0.30%” Uniswap fee.
+Official REACTOR LP fee is **0%**. The **3.5%** is hook custom accounting in **quote**:
 
-Official REACTOR legs charge **3.5% in quote**. User hops through official pools pay that on **each** official leg. Protocol vault hops (`ProtocolV4Adapter`) are fee-exempt and must not mint a new 2/1/0.5.
+| Slice | bps |
+| --- | ---: |
+| Holders (or SelfBurn if `eligibleSupply==0`) | 200 |
+| Top-10 flywheel | 100 |
+| CORE buy+burn | 50 |
 
-## Disclosure
+A nested USDC → ZCAT → CAT path can charge 3.5% on **each** official REACTOR hop. `POST /quote` lists every official leg in `feeLegs[]`. `reactorFeeCount` and `totalProtocolFeeBps` are the sums.
 
-`POST /quote` lists every official 3.5% leg separately. The UI must not collapse nested legs into one “0.30%” Uniswap fee. RouteGraph stores **proven** official pools only — it does not invent hopViaUsdc 0.30% edges.
+Fair auction: **0%** during the sale. 3.5% starts after one migration.
 
-## Example
+Maintenance / Top-10 / CORE / SelfBurn use the **fee-exempt** planner. Never `minOut` 0 or 1.
 
-Buy CAT with USDC while CAT is quoted in ZCAT and ZCAT is quoted in ZEC:
-
-`USDC → ZEC (hopless 0.30% if that pool exists) → ZCAT (official 3.5%) → CAT (official 3.5%)`
-
-The ticket shows both 3.5% legs. Valuation multiplies CAT/ZCAT × ZCAT/ZEC × ZEC/USD. Copying ZEC’s USD onto CAT is rejected.
+CI (`pnpm docs:check`) fails if this page drifts from `ReactorConstants`.

@@ -28,7 +28,14 @@ export default function TokenPage() {
   const [interval, setInterval] = useState<(typeof INTERVALS)[number]["id"]>("5m");
   const { data: ohlcv } = useCandles(address, interval);
 
-  if (isLoading) return <p className="text-sm text-zinc-500">Loading token…</p>;
+  if (isLoading) {
+    return (
+      <div aria-busy="true">
+        <p className="text-sm text-zinc-500">Loading token…</p>
+        <div className="mt-4 h-48 animate-pulse rounded-2xl bg-white/[0.04]" />
+      </div>
+    );
+  }
   if (!t) {
     return (
       <div>

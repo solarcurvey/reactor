@@ -6,12 +6,16 @@ import { applyMigrations } from "./migrations.ts";
 
 export type SqlRow = Record<string, unknown>;
 
+export type RunResult = { changes: number };
+
 export interface Store {
   dialect: "sqlite" | "postgres";
   exec(sql: string): Promise<void>;
   run(sql: string, ...params: unknown[]): Promise<void>;
+  runChanges(sql: string, ...params: unknown[]): Promise<RunResult>;
   get<T extends SqlRow>(sql: string, ...params: unknown[]): Promise<T | undefined>;
   all<T extends SqlRow>(sql: string, ...params: unknown[]): Promise<T[]>;
+  transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T>;
   close(): Promise<void>;
   tryAdvisoryLock(name: string, owner: string, ttlMs: number): Promise<boolean>;
   releaseLock(name: string, owner: string): Promise<void>;
@@ -25,6 +29,8 @@ function q(sql: string, dialect: "sqlite" | "postgres"): string {
 
 class SqliteStore implements Store {
   dialect = "sqlite" as const;
+  private txDepth = 0;
+  private gate: Promise<void> = Promise.resolve();
   constructor(private db: DatabaseSync) {}
   async exec(sql: string) {
     this.db.exec(sql);
@@ -32,21 +38,73 @@ class SqliteStore implements Store {
   async run(sql: string, ...params: unknown[]) {
     this.db.prepare(sql).run(...(params as never[]));
   }
+  async runChanges(sql: string, ...params: unknown[]) {
+    const info = this.db.prepare(sql).run(...(params as never[]));
+    return { changes: Number((info as { changes?: number }).changes ?? 0) };
+  }
   async get<T extends SqlRow>(sql: string, ...params: unknown[]) {
     return this.db.prepare(sql).get(...(params as never[])) as T | undefined;
   }
   async all<T extends SqlRow>(sql: string, ...params: unknown[]) {
     return this.db.prepare(sql).all(...(params as never[])) as T[];
   }
+  async transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T> {
+    let release: () => void = () => undefined;
+    const prev = this.gate;
+    this.gate = new Promise<void>((r) => {
+      release = r;
+    });
+    await prev;
+    try {
+      if (this.txDepth > 0) {
+        this.txDepth += 1;
+        try {
+          return await fn(this);
+        } finally {
+          this.txDepth -= 1;
+        }
+      }
+      this.db.exec("BEGIN IMMEDIATE");
+      this.txDepth = 1;
+      try {
+        const out = await fn(this);
+        this.db.exec("COMMIT");
+        return out;
+      } catch (e) {
+        try {
+          this.db.exec("ROLLBACK");
+        } catch {
+          /* ignore */
+        }
+        throw e;
+      } finally {
+        this.txDepth = 0;
+      }
+    } finally {
+      release();
+    }
+  }
   async close() {
     this.db.close();
   }
   async tryAdvisoryLock(name: string, owner: string, ttlMs: number) {
     const now = Date.now();
-    const row = await this.get<{ owner: string; ts: number }>("SELECT owner, ts FROM leader_locks WHERE name=?", name);
-    if (row && now - Number(row.ts) < ttlMs && row.owner !== owner) return false;
-    await this.run("INSERT INTO leader_locks(name,owner,ts) VALUES(?,?,?) ON CONFLICT(name) DO UPDATE SET owner=excluded.owner, ts=excluded.ts", name, owner, now);
-    return true;
+    return this.transaction(async (tx) => {
+      const row = await tx.get<{ owner: string; ts: number; lease_until?: number }>(
+        "SELECT owner, ts, lease_until FROM leader_locks WHERE name=?",
+        name,
+      );
+      const until = Number(row?.lease_until ?? (row ? Number(row.ts) + ttlMs : 0));
+      if (row && until > now && row.owner !== owner) return false;
+      await tx.run(
+        "INSERT INTO leader_locks(name,owner,ts,lease_until) VALUES(?,?,?,?) ON CONFLICT(name) DO UPDATE SET owner=excluded.owner, ts=excluded.ts, lease_until=excluded.lease_until",
+        name,
+        owner,
+        now,
+        now + ttlMs,
+      );
+      return true;
+    });
   }
   async releaseLock(name: string, owner: string) {
     await this.run("DELETE FROM leader_locks WHERE name=? AND owner=?", name, owner);
@@ -55,12 +113,15 @@ class SqliteStore implements Store {
 
 class PostgresStore implements Store {
   dialect = "postgres" as const;
-  private lockClients = new Map<string, { query: (t: string, p?: unknown[]) => Promise<{ rows: SqlRow[] }>; release: () => void }>();
+  private lockClients = new Map<string, { query: (t: string, p?: unknown[]) => Promise<{ rows: SqlRow[]; rowCount?: number }>; release: () => void }>();
   constructor(
     private pool: {
-      query: (t: string, p?: unknown[]) => Promise<{ rows: SqlRow[] }>;
+      query: (t: string, p?: unknown[]) => Promise<{ rows: SqlRow[]; rowCount?: number }>;
       end: () => Promise<void>;
-      connect: () => Promise<{ query: (t: string, p?: unknown[]) => Promise<{ rows: SqlRow[] }>; release: () => void }>;
+      connect: () => Promise<{
+        query: (t: string, p?: unknown[]) => Promise<{ rows: SqlRow[]; rowCount?: number }>;
+        release: () => void;
+      }>;
     },
   ) {}
   async exec(sql: string) {
@@ -69,6 +130,10 @@ class PostgresStore implements Store {
   async run(sql: string, ...params: unknown[]) {
     await this.pool.query(q(sql, "postgres"), params);
   }
+  async runChanges(sql: string, ...params: unknown[]) {
+    const r = await this.pool.query(q(sql, "postgres"), params);
+    return { changes: Number(r.rowCount ?? r.rows.length ?? 0) };
+  }
   async get<T extends SqlRow>(sql: string, ...params: unknown[]) {
     const r = await this.pool.query(q(sql, "postgres"), params);
     return r.rows[0] as T | undefined;
@@ -76,6 +141,29 @@ class PostgresStore implements Store {
   async all<T extends SqlRow>(sql: string, ...params: unknown[]) {
     const r = await this.pool.query(q(sql, "postgres"), params);
     return r.rows as T[];
+  }
+  async transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T> {
+    const client = await this.pool.connect();
+    const scoped = new PostgresStore({
+      query: (t, p) => client.query(t, p),
+      end: async () => undefined,
+      connect: async () => client,
+    });
+    await client.query("BEGIN");
+    try {
+      const out = await fn(scoped);
+      await client.query("COMMIT");
+      return out;
+    } catch (e) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        /* ignore */
+      }
+      throw e;
+    } finally {
+      client.release();
+    }
   }
   async close() {
     for (const [name, c] of this.lockClients) {
@@ -91,22 +179,19 @@ class PostgresStore implements Store {
     await this.pool.end();
   }
   async tryAdvisoryLock(name: string, owner: string, ttlMs: number) {
-    // Single leadership authority: lease table only. Not mixed with pg_advisory_lock.
     const now = Date.now();
-    const row = await this.get<{ owner: string; ts: number; lease_until?: number }>(
-      "SELECT owner, ts, lease_until FROM leader_locks WHERE name=?",
-      name,
-    );
-    const until = Number(row?.lease_until ?? (row ? Number(row.ts) + ttlMs : 0));
-    if (row && until > now && row.owner !== owner) return false;
-    await this.run(
-      "INSERT INTO leader_locks(name,owner,ts,lease_until) VALUES(?,?,?,?) ON CONFLICT(name) DO UPDATE SET owner=excluded.owner, ts=excluded.ts, lease_until=excluded.lease_until",
+    const until = now + ttlMs;
+    const row = await this.get<{ owner: string }>(
+      `INSERT INTO leader_locks(name,owner,ts,lease_until) VALUES(?,?,?,?)
+       ON CONFLICT(name) DO UPDATE SET owner=excluded.owner, ts=excluded.ts, lease_until=excluded.lease_until
+       WHERE leader_locks.lease_until IS NULL OR leader_locks.lease_until <= excluded.ts OR leader_locks.owner = excluded.owner
+       RETURNING owner`,
       name,
       owner,
       now,
-      now + ttlMs,
+      until,
     );
-    return true;
+    return row?.owner === owner;
   }
   async releaseLock(name: string, owner: string) {
     await this.run("DELETE FROM leader_locks WHERE name=? AND owner=?", name, owner);

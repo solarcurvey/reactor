@@ -1,25 +1,27 @@
-# Keeper and Guardian matrix
+# Keeper
 
-> Protocol **0.2.0**. Factory **V1**. Designated Keeper. Immutable Guardian.
+Designated Keeper. Not permissionless. Not a bounty. Not Guardian.
 
-| Action | Guardian | Keeper | Anyone |
-| --- | --- | --- | --- |
-| Pause / unpause launches | Yes | No | No |
-| Quarantine a quote | Yes | No | No |
-| Rotate Launch Signer | Yes | No | No |
-| Permanently lock a REACTOR-native ticker | Yes (matching factory token) | No | No |
-| Reserve a protocol ticker | Yes (`reserveTicker`) | No | No |
-| Authorize / deprecate a factory | Yes | No | No |
-| Settle flywheel quote→USDC | No | Yes | No |
-| Submit Top-10 epoch | No | Yes (structure-checked) | No |
-| CORE / SelfBurn buy+burn | No | Yes | No |
-| Withdraw LP | No | No | No |
-| Change 3.5% / 2% holders / 1% / 0.5% | No | No | No — new Factory |
+## Leadership
 
-Leadership: **one lease** in `leader_locks` (SQLite or Postgres). Not a mix of lease OR `pg_advisory_lock`. A follower does not run jobs.
+**One** mechanism: `leader_locks.lease_until`. Acquire is `UPDATE … RETURNING` (Postgres) or a Store transaction (`BEGIN IMMEDIATE` on SQLite). Do not mix this with `pg_advisory_lock` as a second leader.
 
-Every maintenance hop is simulated on the exact RouteGraph edge. Failed sim → job skipped. `minOut` is never 0 or 1.
+## Jobs
 
-Modes: `LOCAL` · `DRY_RUN` · `ARC_TESTNET`. Chain 5042 is disabled.
+Each job takes a **20% chunk** + cooldown. The Keeper supplies `minOut` from a **whole-route, fee-exempt** preview (`planFeeExemptRoute` + ProtocolV4Adapter). That path never shares `UserRouteQuoter`. Successful quotes refuse `minOut` 0 or 1.
 
-See `KEEPER_MODEL.md`, `GUARDIAN_MODEL.md`, `PRIVILEGE_MAP.md`.
+Top-10 jobs execute the **frozen onchain epoch**, not the latest API snapshot.
+
+`submitOnce` — if the RPC is ambiguous (timeout after broadcast), do not resubmit.
+
+## Modes
+
+| Mode | Meaning |
+| --- | --- |
+| `LOCAL` | Anvil 5042002 |
+| `DRY_RUN` | Simulate only |
+| `ARC_TESTNET` | Chain 5042002 public RPC |
+
+Arc Mainnet **5042 is disabled** in Keeper and deploy scripts.
+
+Independent `watchdog` process checks heartbeat + on-chain epoch. See `KEEPER_MODEL.md`, [Trust](/docs/trust), [Quoting](/docs/quoting).

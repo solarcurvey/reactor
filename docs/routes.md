@@ -1,8 +1,8 @@
 # Routes
 
-> Protocol **0.2.0**. Max 3 hops. Proven venues only.
+> Protocol **0.3.0**. Max 3 hops. Proven venues only. One eth_call per candidate.
 
-`POST /quote` simulates **exact** RouteGraph edges. Kinds:
+`POST /quote` previews **exact** RouteGraph edges through `UserRouteQuoter`. Kinds are preserved on every hop:
 
 | Kind | Meaning |
 | --- | --- |
@@ -10,4 +10,6 @@
 | `EXTERNAL_V4_HOOKLESS` | Proven external v4 pool (fee/hooks from stored key) |
 | `BONDING_CURVE` | InstantCurve buy/sell |
 
-The planner does **not** recreate a generic 0.30% hookless pool. Multi-candidate search ≤ 3 hops; the ticket uses the best simulated candidate. Maintenance: sim fail → unavailable.
+The planner does **not** recreate a generic 0.30% hookless pool. Multi-candidate search ≤ 3 hops; the ticket uses the best **real `amountOut`**. Maintenance uses a **separate** fee-exempt planner. Sim fail → unavailable. Never maintenance `minOut` 0/1.
+
+See [Atomic quoter](/docs/quoting).

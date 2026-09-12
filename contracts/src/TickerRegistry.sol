@@ -161,6 +161,9 @@ contract TickerRegistry is ITickerAdmin {
         bytes32 k = Ticker.hashCanonical(canonical);
         Record storage rec = records[k];
         if (rec.permanent) revert TickerPermanent();
+        if (rec.token != address(0) && rec.token != canonicalToken && rec.lockedUntil > block.timestamp) {
+            revert TickerUnavailable();
+        }
         if (tokenFactoryVersion[canonicalToken] == 0) revert NotReactorNative();
         if (tokenTickerKey[canonicalToken] != k) revert TickerMismatch();
         string memory onchain = Ticker.normalize(IERC20Symbol(canonicalToken).symbol());
