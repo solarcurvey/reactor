@@ -57,6 +57,15 @@ function assert(cond: unknown, msg: string) {
   assert(filled.length === 3 && filled[1]!.c === "1" && filled[1]!.n === 0, "gap filled");
 }
 {
+  const sparse = [{ t: 0, o: "1", h: "1", l: "1", c: "1", v: "1", n: 1 }];
+  const inclusive = fillContinuous(sparse, 60, 0, 300);
+  assert(inclusive.some((c) => c.t === 300), "inclusive fill still includes aligned toTs");
+  const exclusive = fillContinuous(sparse, 60, 0, 300, 1_000, true);
+  assert(!exclusive.some((c) => c.t === 300), "exclusive fill: no candle at aligned before=300");
+  assert(exclusive.every((c) => c.t < 300), "exclusive fill is t < before");
+  assert(exclusive[exclusive.length - 1]!.t === 240, "exclusive fill last bucket is previous interval");
+}
+{
   const yearAgo = 0;
   const now = 365 * 24 * 3600;
   const sparse = [

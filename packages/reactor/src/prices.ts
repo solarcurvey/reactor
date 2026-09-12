@@ -129,6 +129,9 @@ export function boundedCandleWindow(opts: {
 /**
  * Fill missing buckets with last close so charts stay continuous across curve→v4.
  * If `[fromTs, toTs]` would exceed `maxBuckets`, keep the **most recent** window (DoS bound).
+ *
+ * `endExclusive` matches SQL `t < before`: aligned `toTs=300` on 60s includes 240, not 300.
+ * Default is inclusive so existing closed-range fills (`from=0, to=120` → three buckets) stay valid.
  */
 export function fillContinuous(
   candles: Ohlcv[],
@@ -136,12 +139,13 @@ export function fillContinuous(
   fromTs: number,
   toTs: number,
   maxBuckets: number = MAX_CANDLE_FILL_BUCKETS,
+  endExclusive: boolean = false,
 ): Ohlcv[] {
   if (candles.length === 0 || intervalSec <= 0) return [];
   const cap = Math.min(MAX_CANDLE_FILL_BUCKETS, Math.max(1, Math.floor(maxBuckets)));
   const byT = new Map(candles.map((c) => [c.t, c]));
   let start = bucketTs(fromTs, intervalSec);
-  const end = bucketTs(toTs, intervalSec);
+  const end = endExclusive ? exclusiveBeforeBucket(toTs, intervalSec) : bucketTs(toTs, intervalSec);
   if (end < start) return [];
   const span = Math.floor((end - start) / intervalSec) + 1;
   if (span > cap) {
@@ -177,5 +181,8 @@ export function fillCandlesForRequest(
 ): Ohlcv[] {
   if (rows.length === 0) return [];
   const { fromTs, toTs, maxBuckets } = boundedCandleWindow({ intervalSec, limit, nowTs, before, after });
-  return fillContinuous(rows, intervalSec, fromTs, toTs, maxBuckets);
+  if (before != null && Number.isFinite(Number(before))) {
+    return fillContinuous(rows, intervalSec, fromTs, Number(before), maxBuckets, true);
+  }
+  return fillContinuous(rows, intervalSec, fromTs, toTs, maxBuckets, false);
 }
