@@ -79,6 +79,7 @@ Pre-graduation Instant trades settle on `InstantCurve` (same 3.5% quote split). 
 - **Pricing signer:** isolated process. Next never holds the key. Fail closed if down **or if the durable store cannot be opened** (`SIGNER_STORE_UNAVAILABLE` / 503). Receipt consume + signed-auth bucket always run. No Anvil / inline fallback outside `REACTOR_ENV=LOCAL` (production hard gates).
 - **Media:** validate + resize/WebP → object store; short URI onchain. No base64 metadata.
 - **SSE:** `/stream` for launches/trades/bonding/grad/rewards/burns/Top-10/CORE with reconnect/fallback. First-session `hello.head` separates history from live; reconnect uses `?after=` and does not raise that cutoff. Web toasts confirmed CORE buy+burn and Top-10 `Top10Buy` keyed by `(chainId, tx, logIndex, eventKind)`.
+- **Sanctions exact-list cache (`@reactor/sanctions`):** official OFAC/Treasury HTTPS XML → immutable versioned snapshot → O(1) exact address lookup (`GET /sanctions/screen`). Not a policy gate. Not hop attribution. Atomic `current.json` swing; last-known-good survives a bad download. See `SANCTIONS.md`.
 
 ## Trust boundaries
 

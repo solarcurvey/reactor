@@ -4,6 +4,8 @@
 
 `POST /launch/authorize` is the public path. Direct isolated-signer calls without an ALLOW receipt fail. Public JSON POSTs (`/launch/authorize`, `/launch/admit`) are stream-capped at **16KiB** default / **64KiB** hard max (Content-Length and chunked); oversize is **413**.
 
+Exact official-list wallet screening exists as `@reactor/sanctions` / `GET /sanctions/screen` (Refs #61). Admission does **not** call it yet — server policy gate, geo/IP, and UX are later RELEASE GATE #60 children. Do not read a missing screen as ALLOW.
+
 ## Flow
 
 1. **Admission** — ticker, reserved list, factory, quote, metadata, **real Cloudflare Turnstile**, wallet/session/IP rates, image-hash, funding-cluster, global issuance. Creator image / website / X / Telegram URLs are scheme-allowlisted; HTML names and `javascript:` / `data:` media **DENY** (not CHALLENGE).

@@ -36,6 +36,8 @@ npx --yes tsx apps/web/src/lib/tx-guard.test.ts
 npx --yes tsx apps/web/src/lib/secret-sentinel.test.ts
 npx --yes tsx packages/reactor/src/untrusted-metadata.test.ts
 npx --yes tsx scripts/safe-genesis-builder.test.ts  # Safe ≠ deployer, batch A/B, MultiSend (#17)
+pnpm --filter @reactor/sanctions test   # #61 exact official-list parser/store/screen (pinned fixtures, no network)
+# SANCTIONS_NETWORK=1 pnpm test:sanctions:network   # isolated live OFAC HTTPS; not unit CI
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
 pnpm docs:links                 # in-repo /docs slugs + relative files (CI docs-links job; no network)
 pnpm test:web-unit              # top10 / marketdata / limited-json / fee-legs / constants-sync
@@ -267,12 +269,13 @@ pnpm --filter indexer watchdog
 | 49 | Top-10 ranks from indexer ValuationService snapshot (schema v11); no `discoverTop10` Factory RPC | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts`, `apps/web/src/lib/marketdata.test.ts` |
 | 50 | Top-10 snapshot TTL: healthy → age past 15m → refresh fails → API pauses and Keeper refuses; indexed `quote_lp` liquidity arm; no mint-supply fallback after v9 | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts` |
 | 51 | Untrusted token metadata (no raw HTML, URL scheme allowlist, media policy) + production CSP (nonce `script-src`, live headers, bundle sentinel, browser XSS corpus, tx-guard / chain mismatch) | `untrusted-metadata.test.ts`, `security-headers.test.ts`, `tx-guard.test.ts`, `secret-sentinel.test.ts`, `e2e/prod-security.spec.ts`, `admission-unit.test.ts` |
-| 52 | Visual / a11y / failure-injection gate; CI fails on unexplained screenshot, serious axe diffs, color-contrast, leftover `text-zinc-500|600|700`, or unexpected console/pageerror | `e2e/visual.spec.ts`, `e2e/states.spec.ts`, `e2e/a11y.spec.ts`, `e2e/failures.spec.ts`, `qa-inject.test.ts`, `e2e/contrast.test.ts`, `e2e/console-gate.test.ts` |
+| 52 | Exact official-list screening (#61): EVM canonicalization, duplicates, malformed rows, non-EVM families; atomic last-known-good; `blocked`/`clear`/`unavailable` + version | `packages/sanctions/src/normalize.test.ts`, `parse.test.ts`, `store.test.ts`, `screen.test.ts`, `refresh.test.ts`, `http.test.ts`, `apps/indexer/src/sanctions-api.test.ts` |
 | 53 | Multicall3 probed then verified; missing/failed multicall falls back to parallel `readContract` | `packages/reactor/src/rpc-batch.test.ts` |
 | 54 | `GET /markets/:token` + `GET /page/token/:token` aggregate market/candles/swaps; invalid token rejected | `page-reads.test.ts`, `markets-query.test.ts` |
 | 55 | Search/query path + quote-asset / market row mapping | `apps/web/src/lib/indexed.test.ts` |
 | 56 | Page request/RPC budgets on 4k seeded markets; abort obsolete loads; SSE patches without invalidate; no refetch-on-focus. Required always-on CI job `page-budget` (`ci-ok` requires success) | `apps/web/src/lib/page-budget.test.ts`, `.github/workflows/ci.yml` |
 | 57 | Full GitHub CI on the #69 three-tier `ci.yml`: Solidity / size guard / Attack / CREATE2, backend + web unit + Safe genesis via `test:lib`, `docs:check` + `docs:links`, Playwright smoke + interactive (`web`), Postgres | `.github/workflows/ci.yml`, `docs/ci.md`, `scripts/docs-links.ts`, `scripts/safe-genesis-builder.test.ts` |
+| 58 | Visual / a11y / failure-injection gate; CI fails on unexplained screenshot, serious axe diffs, color-contrast, leftover `text-zinc-500|600|700`, or unexpected console/pageerror | `e2e/visual.spec.ts`, `e2e/states.spec.ts`, `e2e/a11y.spec.ts`, `e2e/failures.spec.ts`, `qa-inject.test.ts`, `e2e/contrast.test.ts`, `e2e/console-gate.test.ts` |
 
 ## Arc smoke
 

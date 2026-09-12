@@ -1,0 +1,60 @@
+<?xml version="1.0" standalone="yes"?>
+<sdnList>
+  <publshInformation>
+    <Publish_Date>09/12/2026</Publish_Date>
+    <Record_Count>2</Record_Count>
+  </publshInformation>
+  <sdnEntry>
+    <uid>900001</uid>
+    <lastName>ACME SANCTIONED DESK</lastName>
+    <sdnType>Entity</sdnType>
+    <programList>
+      <program>CYBER2</program>
+    </programList>
+    <idList>
+      <id>
+        <uid>910001</uid>
+        <idType>Digital Currency Address - ETH</idType>
+        <idNumber>0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</idNumber>
+      </id>
+      <id>
+        <uid>910002</uid>
+        <idType>Digital Currency Address - ETH</idType>
+        <idNumber>0xAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAa</idNumber>
+      </id>
+      <id>
+        <uid>910003</uid>
+        <idType>Digital Currency Address - XBT</idType>
+        <idNumber>1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2</idNumber>
+      </id>
+      <id>
+        <uid>910004</uid>
+        <idType>Passport</idType>
+        <idNumber>AB1234567</idNumber>
+      </id>
+      <id>
+        <uid>910005</uid>
+        <idType>Digital Currency Address - ETH</idType>
+        <idNumber>0xdead</idNumber>
+      </id>
+      <id>
+        <uid>910006</uid>
+        <idType>Digital Currency Address - ETH</idType>
+        <idNumber></idNumber>
+      </id>
+    </idList>
+  </sdnEntry>
+  <sdnEntry>
+    <uid>900002</uid>
+    <firstName>JANE</firstName>
+    <lastName>FIXTURE</lastName>
+    <sdnType>Individual</sdnType>
+    <idList>
+      <id>
+        <uid>910007</uid>
+        <idType>Digital Currency Address - ETH</idType>
+        <idNumber>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</idNumber>
+      </id>
+    </idList>
+  </sdnEntry>
+</sdnList>

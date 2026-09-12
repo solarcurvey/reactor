@@ -71,6 +71,7 @@ UI QA gate (issue #36 — **stays open** until merge + post-merge verify) plus i
 
 ### Added / Changed
 
+- Exact official-list digital-currency address screening (`@reactor/sanctions`, `GET /sanctions/screen`). Official Treasury/OFAC HTTPS XML only. Decision is `blocked` / `clear` / `unavailable` plus dataset version — not a boolean, not legal/OFAC compliance, not hop attribution, not a #60 policy gate. Refs #61 (parent #60). Economics unchanged.
 - Live UI: bottom-right toasts for **confirmed** CORE `BuybackExecuted` / `COREBurned` and Top-10 `Top10Buy` after indexer SSE commit. First-session `hello.head` skips history; reconnect `?after=` delivers missed live events once. Dedupe is canonical `(chainId, txHash, logIndex, eventKind)` on a module `seen` set that outlives the visible toast array (dismiss, stack cap, remount). Hover/focus pauses auto-dismiss; safe-area insets; reduced-motion skips enter animation. Visible CI gate `live-toasts-ui`. Refs #38 — stays open until post-merge verify. Economics unchanged.
 - Playwright `toHaveScreenshot` against the production `next build` artifact (`playwright.qa.config.ts` + #35 `start-web.mjs`). Viewports: 1440, **1280 laptop**, 390, **360 narrow Android**. Shared fixture fails on unexpected `console.error`, hydration warnings, and `pageerror` (narrow `?inject=` allowlists only; diagnostics attach on failure).
 - State matrix: Discover loading/empty/search/filter, launch ticker/upload/Standard vs Rewards/Dev Buy, tx pending/confirmed/reverted, wallet menu, dialogs, live toasts, quote ecosystem.

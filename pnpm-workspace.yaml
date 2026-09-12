@@ -3,3 +3,4 @@ packages:
   - apps/indexer
   - packages/reactor
   - packages/sdk
+  - packages/sanctions
