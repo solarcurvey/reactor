@@ -281,78 +281,77 @@ async function persistOneLog(
   }
   if (name === "RewardClaimed") {
     const addr = emitting || token.toLowerCase();
-    if (await journalEvent(store, { chainId, tx, logIndex, eventKind: name, address: addr, block, ts })) {
-      await insertLogOnce(
-        store,
-        `INSERT INTO claims(token,account,amount,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?)
-         ${EVENT_IDENTITY_CONFLICT}`,
-        token.toLowerCase(),
-        String(args.account ?? ""),
-        String(args.amount ?? "0"),
-        block,
-        tx,
-        ts,
-        chainId,
-        logIndex,
-        name,
-      );
-      await insertLogOnce(
-        store,
-        `INSERT INTO reward_events(token,amount,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?)
-         ${EVENT_IDENTITY_CONFLICT}`,
-        token.toLowerCase(),
-        String(args.amount ?? "0"),
-        block,
-        tx,
-        ts,
-        chainId,
-        logIndex,
-        name,
-      );
+    const claimed = await journalEvent(store, { chainId, tx, logIndex, eventKind: name, address: addr, block, ts });
+    const claimRow = await insertLogOnce(
+      store,
+      `INSERT INTO claims(token,account,amount,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?)
+       ${EVENT_IDENTITY_CONFLICT}`,
+      token.toLowerCase(),
+      String(args.account ?? ""),
+      String(args.amount ?? "0"),
+      block,
+      tx,
+      ts,
+      chainId,
+      logIndex,
+      name,
+    );
+    await insertLogOnce(
+      store,
+      `INSERT INTO reward_events(token,amount,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?)
+       ${EVENT_IDENTITY_CONFLICT}`,
+      token.toLowerCase(),
+      String(args.amount ?? "0"),
+      block,
+      tx,
+      ts,
+      chainId,
+      logIndex,
+      name,
+    );
+    if (claimed || claimRow) {
       sse.publish({ type: "rewards", data: { token, account: args.account, amount: args.amount, tx } });
     }
   }
   if (name === "SelfBurnAccrued" || name === "SelfBurnExecuted") {
     const addr = emitting || token.toLowerCase();
-    if (await journalEvent(store, { chainId, tx, logIndex, eventKind: name, address: addr, block, ts })) {
-      await insertLogOnce(
-        store,
-        `INSERT INTO selfburn(token,quote,amount,burned,kind,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?,?,?)
-         ${EVENT_IDENTITY_CONFLICT}`,
-        token.toLowerCase(),
-        String(args.quote ?? ""),
-        String(args.amount ?? args.quoteIn ?? "0"),
-        String(args.burned ?? "0"),
-        name,
-        block,
-        tx,
-        ts,
-        chainId,
-        logIndex,
-        name,
-      );
-      sse.publish({ type: "burn", data: { token, name, tx } });
-    }
+    const burned = await journalEvent(store, { chainId, tx, logIndex, eventKind: name, address: addr, block, ts });
+    const burnRow = await insertLogOnce(
+      store,
+      `INSERT INTO selfburn(token,quote,amount,burned,kind,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+       ${EVENT_IDENTITY_CONFLICT}`,
+      token.toLowerCase(),
+      String(args.quote ?? ""),
+      String(args.amount ?? args.quoteIn ?? "0"),
+      String(args.burned ?? "0"),
+      name,
+      block,
+      tx,
+      ts,
+      chainId,
+      logIndex,
+      name,
+    );
+    if (burned || burnRow) sse.publish({ type: "burn", data: { token, name, tx } });
   }
   if (name === "FlywheelAccrued" || name === "QuoteSettled") {
     const quote = String(args.quote ?? "").toLowerCase();
-    if (await journalEvent(store, { chainId, tx, logIndex, eventKind: name, address: emitting || quote, block, ts })) {
-      await insertLogOnce(
-        store,
-        `INSERT INTO flywheel(quote,amount,usdc_in,kind,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?,?)
-         ${EVENT_IDENTITY_CONFLICT}`,
-        quote,
-        String(args.amount ?? "0"),
-        String(args.usdcIn ?? "0"),
-        name,
-        block,
-        tx,
-        ts,
-        chainId,
-        logIndex,
-        name,
-      );
-    }
+    await journalEvent(store, { chainId, tx, logIndex, eventKind: name, address: emitting || quote, block, ts });
+    await insertLogOnce(
+      store,
+      `INSERT INTO flywheel(quote,amount,usdc_in,kind,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?,?)
+       ${EVENT_IDENTITY_CONFLICT}`,
+      quote,
+      String(args.amount ?? "0"),
+      String(args.usdcIn ?? "0"),
+      name,
+      block,
+      tx,
+      ts,
+      chainId,
+      logIndex,
+      name,
+    );
   }
   if (name === "EpochSubmitted") {
     await store.run(
@@ -367,22 +366,21 @@ async function persistOneLog(
   }
   if (name === "BuybackExecuted" || name === "COREBurned") {
     const quote = String(args.quote ?? "").toLowerCase();
-    if (await journalEvent(store, { chainId, tx, logIndex, eventKind: name, address: emitting || quote, block, ts })) {
-      await insertLogOnce(
-        store,
-        `INSERT INTO core_buybacks(quote,quote_in,core_out,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?)
-         ${EVENT_IDENTITY_CONFLICT}`,
-        quote,
-        String(args.quoteIn ?? "0"),
-        String(args.coreOut ?? args.amount ?? "0"),
-        block,
-        tx,
-        ts,
-        chainId,
-        logIndex,
-        name,
-      );
-      sse.publish({ type: "core", data: { name, tx } });
-    }
+    const bought = await journalEvent(store, { chainId, tx, logIndex, eventKind: name, address: emitting || quote, block, ts });
+    const buyRow = await insertLogOnce(
+      store,
+      `INSERT INTO core_buybacks(quote,quote_in,core_out,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?)
+       ${EVENT_IDENTITY_CONFLICT}`,
+      quote,
+      String(args.quoteIn ?? "0"),
+      String(args.coreOut ?? args.amount ?? "0"),
+      block,
+      tx,
+      ts,
+      chainId,
+      logIndex,
+      name,
+    );
+    if (bought || buyRow) sse.publish({ type: "core", data: { name, tx } });
   }
 }
