@@ -7,6 +7,9 @@ import { useLaunchTokens } from "@/lib/hooks";
 import { formatUnitsSafe } from "@/lib/utils";
 import { REVIEW_FIXTURES } from "@/lib/review-fixtures";
 import { useReactorStream } from "@/lib/sse";
+import { launchPath, quotePath } from "@/lib/untrusted-metadata";
+import { SafeTokenImage } from "@/components/safe-media";
+import { UntrustedText } from "@/components/untrusted-text";
 
 const filters = ["Trending", "New", "Bonding", "Rewards", "Buy+Burn", "Batch Fair", "USDC-quoted"] as const;
 
@@ -153,29 +156,29 @@ export default function HomePage() {
             </thead>
             <tbody>
               {list.map((t, i) => {
-                const href = t.mode === 1 && !t.marketLive ? `/fair/${t.fairId}` : `/token/${t.token}`;
+                const href = launchPath(t);
                 return (
                   <tr key={t.token} className="border-t border-white/6 hover:bg-white/[0.03]">
                     <td className="px-3 py-2 tabular-nums text-zinc-500">{i + 1}</td>
                     <td className="px-3 py-2">
                       <Link href={href} className="flex items-center gap-2">
                         <span className="grid h-7 w-7 place-items-center overflow-hidden rounded-full border border-white/10 bg-zinc-900 text-[10px] text-cyan-100">
-                          {t.image ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={t.image} alt="" className="h-full w-full object-cover" />
-                          ) : (
-                            t.symbol.slice(0, 2)
-                          )}
+                          <SafeTokenImage src={t.image} className="h-full w-full object-cover" />
+                          {!t.image ? t.symbol.slice(0, 2) : null}
                         </span>
                         <span>
-                          <span className="font-medium text-white">{t.name}</span>
-                          <span className="ml-1.5 font-mono text-[11px] text-zinc-500">${t.symbol}</span>
+                          <UntrustedText field="name" className="font-medium text-white">
+                            {t.name}
+                          </UntrustedText>
+                          <UntrustedText field="ticker" className="ml-1.5 font-mono text-[11px] text-zinc-500">
+                            ${t.symbol}
+                          </UntrustedText>
                         </span>
                       </Link>
                     </td>
                     <td className="px-3 py-2">
                       <Link
-                        href={`/quote/${t.quoteSymbol ?? "x"}`}
+                        href={quotePath(t.quoteSymbol ?? "x")}
                         className="rounded-full bg-cyan-300/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cyan-100"
                       >
                         {t.rewardsMode === false ? "BUY+BURN" : `EARNS ${t.quoteSymbol ?? "X"}`}

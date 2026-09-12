@@ -10,6 +10,10 @@ import { RewardsModule, TradePanel } from "@/components/trade-panel";
 import { useCandles, useCoreStats, useSwapSeries, useTokenByAddress } from "@/lib/hooks";
 import { explorerAddress, formatUnitsSafe, shortAddress } from "@/lib/utils";
 import { addresses } from "@/lib/addresses";
+import { quotePath } from "@/lib/untrusted-metadata";
+import { SafeExternalLink } from "@/components/safe-link";
+import { UntrustedText } from "@/components/untrusted-text";
+import { sanitizeDisplayText } from "@/lib/untrusted-metadata";
 
 const INTERVALS = [
   { id: "1m", sec: 60 },
@@ -52,10 +56,14 @@ export default function TokenPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/8 pb-3">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold">{t.name}</h1>
-          <span className="font-mono text-sm text-zinc-500">${t.symbol}</span>
+          <UntrustedText as="h1" field="name" className="text-2xl font-semibold">
+            {t.name}
+          </UntrustedText>
+          <UntrustedText field="ticker" className="font-mono text-sm text-zinc-500">
+            ${t.symbol}
+          </UntrustedText>
           <Link
-            href={`/quote/${t.quoteSymbol ?? "x"}`}
+            href={quotePath(t.quoteSymbol ?? "x")}
             className="rounded-full bg-cyan-300/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cyan-100"
           >
             {t.rewardsMode === false ? "BUY+BURN" : `EARNS ${t.quoteSymbol}`}
@@ -120,9 +128,12 @@ export default function TokenPage() {
             <ul className="mt-2 max-h-40 space-y-1 overflow-auto text-[12px] font-mono text-zinc-300">
               {[...(tape ?? [])].slice(-24).reverse().map((s, i) => (
                 <li key={`${s.t}-${i}`}>
-                  {s.source ?? "trade"} · {formatUnitsSafe(BigInt(s.notional || "0"), t.quoteDecimals ?? 18, 3)}{" "}
+                  <UntrustedText field="activity">
+                    {sanitizeDisplayText("source" in s && s.source ? String(s.source) : "trade", 32)}
+                  </UntrustedText>{" "}
+                  · {formatUnitsSafe(BigInt(s.notional || "0"), t.quoteDecimals ?? 18, 3)}{" "}
                   {t.quoteSymbol}
-                  {s.px && s.px !== "0" ? ` · ${formatUnitsSafe(BigInt(s.px), 18, 6)}` : ""}
+                  {"px" in s && s.px && s.px !== "0" ? ` · ${formatUnitsSafe(BigInt(s.px), 18, 6)}` : ""}
                 </li>
               ))}
             </ul>
@@ -157,7 +168,22 @@ export default function TokenPage() {
 
       <div className="mt-4 grid gap-3 lg:grid-cols-[1.35fr_0.85fr]">
         <div>
-          <p className="text-[13px] leading-5 text-zinc-400">{t.description || "No description."}</p>
+          <UntrustedText as="p" field="description" clamp className="text-[13px] leading-5 text-zinc-400">
+            {t.description || "No description."}
+          </UntrustedText>
+          {(t.website || t.twitter || t.telegram) && (
+            <div className="mt-3 flex flex-wrap gap-3 text-[12px]">
+              <SafeExternalLink href={t.website} className="text-cyan-200 underline underline-offset-2">
+                Website
+              </SafeExternalLink>
+              <SafeExternalLink href={t.twitter} className="text-cyan-200 underline underline-offset-2">
+                X
+              </SafeExternalLink>
+              <SafeExternalLink href={t.telegram} className="text-cyan-200 underline underline-offset-2">
+                Telegram
+              </SafeExternalLink>
+            </div>
+          )}
           <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[12px] sm:grid-cols-3">
             <Meta label="Token" value={shortAddress(t.token)} href={explorerAddress(t.token)} />
             <Meta label="Quote" value={`${t.quoteSymbol} ${shortAddress(t.quote)}`} href={explorerAddress(t.quote)} />
@@ -185,7 +211,7 @@ function Meta({ label, value, href }: { label: string; value: string; href?: str
     <div>
       <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
       {href ? (
-        <a className="font-mono text-cyan-100 underline-offset-2 hover:underline" href={href} target="_blank" rel="noreferrer">
+        <a className="font-mono text-cyan-100 underline-offset-2 hover:underline" href={href} target="_blank" rel="noopener noreferrer">
           {value}
         </a>
       ) : (

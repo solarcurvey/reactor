@@ -7,3 +7,4 @@ export * from "./pricing.ts";
 export * from "./ticker.ts";
 export * from "./launch-auth.ts";
 export * from "./admission.ts";
+export * from "./untrusted-metadata.ts";

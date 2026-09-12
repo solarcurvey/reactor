@@ -1,4 +1,4 @@
-import { formatUnitsSafe, shortAddress } from "./utils.ts";
+import { formatUnitsSafe, shortAddress } from "./utils";
 
 export const LIVE_TOAST_LIMIT = 4;
 export const LIVE_TOAST_MS = 8_000;

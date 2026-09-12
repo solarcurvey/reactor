@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { usePublicClient, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "viem/actions";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -12,10 +13,15 @@ import { factory, erc20, launchAbi } from "@/lib/contracts";
 import { INDEXER_URL } from "@/lib/chain";
 import { parseUnitsSafe } from "@/lib/utils";
 import { TurnstileWidget, turnstileSiteKey } from "@/components/turnstile";
+import { sanitizeDescription, sanitizeMediaUrl, sanitizeTokenName, untrustedMetadataReasons } from "@/lib/untrusted-metadata";
+import { SafeTokenImage } from "@/components/safe-media";
+import { TxGuardError, resolveTradeWrite } from "@/lib/tx-guard";
+import { useOfficialChain } from "@/lib/use-official-chain";
+import { UntrustedText } from "@/components/untrusted-text";
 
 export default function LaunchPage() {
   const router = useRouter();
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, writesEnabled, matched, mismatchMessage, chainId } = useOfficialChain();
   const client = usePublicClient();
   const { data: quotes } = useQuotes();
   const { writeContractAsync, isPending } = useWriteContract();
@@ -70,9 +76,9 @@ export default function LaunchPage() {
         wallet: address,
         ticker,
         mode: mode === "fair" ? "fair" : rewards ? "rewards" : "standard",
-        name,
-        image,
-        description,
+        name: sanitizeTokenName(name),
+        image: sanitizeMediaUrl(image),
+        description: sanitizeDescription(description),
         turnstile: turnstileToken,
         factory: factory.address,
         factoryVersion: 1,
@@ -141,17 +147,44 @@ export default function LaunchPage() {
       setError("Connect a wallet and pick a quote asset.");
       return;
     }
+    if (!writesEnabled) {
+      setError(mismatchMessage);
+      return;
+    }
     try {
-      const params = {
+      const write = resolveTradeWrite({
+        chainId,
+        connected: address,
+        token: selected.token,
+        quote: selected.token,
+        kind: "factory",
+        metadata: { name, image, website: "" },
+      });
+      const safeName = sanitizeTokenName(name);
+      const safeDescription = sanitizeDescription(description);
+      const safeImage = sanitizeMediaUrl(image);
+      const blocked = untrustedMetadataReasons({
         name,
+        description,
+        image,
+        website: "",
+        twitter: "",
+        telegram: "",
+      });
+      if (blocked.length || (image && !safeImage)) {
+        setError("Token identity is treated as untrusted. HTML, javascript:/data: URLs, and off-policy images are rejected.");
+        return;
+      }
+      const params = {
+        name: safeName,
         symbol: symbol.toUpperCase(),
         decimals: 18,
         supply: 0n,
         quote: selected.token,
         fdvQuoteRaw: 0n,
         devBuyQuote: parseUnitsSafe(devBuy || "0", selected.decimals),
-        image,
-        description,
+        image: safeImage,
+        description: safeDescription,
         website: "",
         twitter: "",
         telegram: "",
@@ -164,19 +197,19 @@ export default function LaunchPage() {
             address: selected.token,
             abi: erc20.abi,
             functionName: "allowance",
-            args: [address, factory.address],
+            args: [write.recipient, write.to],
           })) as bigint;
           if (allowance < params.devBuyQuote) {
             const ah = await writeContractAsync({
               address: selected.token,
               abi: erc20.abi,
               functionName: "approve",
-              args: [factory.address, params.devBuyQuote],
+              args: [write.to, params.devBuyQuote],
             });
             await waitForTransactionReceipt(client, { hash: ah });
           }
           const hash = await writeContractAsync({
-            address: factory.address,
+            address: write.to,
             abi: launchAbi,
             functionName: "launchAndBuy",
             args: [params, rewards, 1n, priced.auth, priced.signature],
@@ -184,7 +217,7 @@ export default function LaunchPage() {
           await waitForTransactionReceipt(client, { hash });
         } else if (rewards) {
           const hash = await writeContractAsync({
-            address: factory.address,
+            address: write.to,
             abi: launchAbi,
             functionName: "instantLaunch",
             args: [params, priced.auth, priced.signature],
@@ -192,7 +225,7 @@ export default function LaunchPage() {
           await waitForTransactionReceipt(client, { hash });
         } else {
           const hash = await writeContractAsync({
-            address: factory.address,
+            address: write.to,
             abi: launchAbi,
             functionName: "launchStandard",
             args: [params, priced.auth, priced.signature],
@@ -202,12 +235,12 @@ export default function LaunchPage() {
         router.push("/");
       } else {
         const hash = await writeContractAsync({
-          address: factory.address,
+          address: write.to,
           abi: launchAbi,
           functionName: "createFairLaunch",
           args: [
             {
-              name,
+              name: safeName,
               symbol: priced.ticker,
               decimals: 18,
               supply: 0n,
@@ -215,8 +248,8 @@ export default function LaunchPage() {
               duration: BigInt(Math.floor(Number(durationMin) * 60)),
               auctionBps: 0,
               minRaise: 0n,
-              image,
-              description,
+              image: safeImage,
+              description: safeDescription,
               website: "",
               twitter: "",
               telegram: "",
@@ -229,7 +262,7 @@ export default function LaunchPage() {
         router.push("/");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Launch failed");
+      setError(e instanceof TxGuardError || e instanceof Error ? e.message : "Launch failed");
     }
   }
 
@@ -240,13 +273,13 @@ export default function LaunchPage() {
       <p className="mt-1 text-[13px] text-zinc-400">
         You pick image, name, ticker, description, quote, and Standard vs Rewards. Protocol owns supply, curve, FDV,
         and fees. Same Instant config for every launch.{" "}
-        <a href="/docs/creators" className="text-cyan-200 underline">
+        <Link href="/docs/creators" className="text-cyan-200 underline">
           Creator docs
-        </a>
+        </Link>
         {" · "}
-        <a href="/docs/tickers" className="text-cyan-200 underline">
+        <Link href="/docs/tickers" className="text-cyan-200 underline">
           Ticker rules
-        </a>
+        </Link>
       </p>
 
       <Card className="mt-4 space-y-3 p-4">
@@ -293,17 +326,35 @@ export default function LaunchPage() {
                 const res = await fetch(`${INDEXER_URL}/upload`, { method: "POST", body: file });
                 const body = (await res.json()) as { publicUrl?: string; uri?: string; error?: string };
                 if (!res.ok) throw new Error(body.error ?? "upload failed");
-                setImage(body.publicUrl ?? body.uri ?? "");
+                const next = sanitizeMediaUrl(body.publicUrl ?? body.uri ?? "");
+                if (!next) throw new Error("upload returned a URL the launchpad will not render");
+                setImage(next);
               } catch (err) {
                 setError(err instanceof Error ? err.message : "upload failed — no base64 onchain");
               }
             }}
           />
-          <Input id="launch-image" name="image" placeholder="or paste image URL" value={image.startsWith("data:") ? "" : image} onChange={(e) => setImage(e.target.value)} />
-          {image && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt="" className="mt-2 h-16 w-16 rounded-lg object-cover" />
-          )}
+          <Input
+            id="launch-image"
+            name="image"
+            placeholder="or paste first-party /m/…webp URL"
+            value={image.startsWith("data:") ? "" : image}
+            onChange={(e) => {
+              const next = e.target.value;
+              if (!next) {
+                setImage("");
+                return;
+              }
+              const safe = sanitizeMediaUrl(next);
+              if (!safe) {
+                setError("Image URL must be a REACTOR media path (/m/<id>.webp). javascript/data/remote hosts are rejected.");
+                return;
+              }
+              setError(null);
+              setImage(safe);
+            }}
+          />
+          {image ? <SafeTokenImage src={image} className="mt-2 h-16 w-16 rounded-lg object-cover" /> : null}
         </div>
         <div>
           <label htmlFor="launch-description" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-500">
@@ -434,9 +485,18 @@ export default function LaunchPage() {
         )}
       </Card>
 
-      {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
-      <Button className="mt-4 w-full" onClick={submit} disabled={isPending || !isConnected || !name || !symbol || !quote}>
-        {isPending ? "Signing…" : path === "instant" ? "Launch Instant" : "Open Fair Launch"}
+      {error && (
+        <UntrustedText as="p" field="toast" className="mt-3 text-sm text-red-300">
+          {error}
+        </UntrustedText>
+      )}
+      {!matched && isConnected && (
+        <UntrustedText as="p" field="toast" className="mt-3 text-sm text-red-300">
+          {mismatchMessage}
+        </UntrustedText>
+      )}
+      <Button className="mt-4 w-full" onClick={submit} disabled={isPending || !writesEnabled || !name || !symbol || !quote}>
+        {!matched ? "Wrong network" : isPending ? "Signing…" : path === "instant" ? "Launch Instant" : "Open Fair Launch"}
       </Button>
     </div>
   );

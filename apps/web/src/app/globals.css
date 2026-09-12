@@ -56,6 +56,20 @@ body {
   }
 }
 
+.untrusted-text {
+  unicode-bidi: isolate;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.untrusted-text-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .docs-prose h1 {
   font-size: 1.75rem;
   letter-spacing: -0.02em;

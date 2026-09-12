@@ -45,6 +45,8 @@ export function TurnstileWidget({
         script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
         script.async = true;
         script.dataset.reactorTurnstile = "1";
+        const nonce = document.documentElement.dataset.cspNonce;
+        if (nonce) script.setAttribute("nonce", nonce);
         script.onload = mount;
         document.head.appendChild(script);
       } else {

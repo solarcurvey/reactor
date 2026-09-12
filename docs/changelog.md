@@ -39,7 +39,17 @@ External quote USD marks are a configured provider registry with multi-source co
 
 ## [Unreleased]
 
-Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33). Tokenomics **unchanged**. Factory **V1**. No mainnet.
+Public launchpad treats token metadata as untrusted (#41). Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33). Tokenomics **unchanged**. Factory **V1**. No mainnet.
+
+### Security
+
+- Names, tickers, and descriptions are sanitized (no raw HTML). Website / X / Telegram use an `https:` scheme allowlist and host allowlists. Images are first-party `/m/<id>.webp` or `/icons/` only — `javascript:`, `data:`, and arbitrary remote hosts are dropped.
+- Admission **DENYs** HTML names and off-policy URLs before EIP-712. The UI still sanitizes on read.
+- Production security headers include a CSP (`object-src 'none'`, `frame-ancestors 'none'`, tight `img-src`). HSTS only when `REACTOR_ENV=PROD`. Indexer `GET /m/` is nosniff + sandboxed.
+- Production `script-src` is per-request nonce + `strict-dynamic` (middleware). **No `'unsafe-inline'` / `'unsafe-eval'`** on `next start`. Residual `'unsafe-inline'` is `style-src` only (React / `next/font` / Tailwind) — documented in `/docs/web-security`.
+- Wallet writes go through `tx-guard`: official chain required; metadata cannot become `to` / recipient; indexer `tx.to`/`data` is never broadcast.
+- Client-bundle secret sentinel: Keeper / Launch signer / Guardian private keys and private RPC credentials cannot appear as `NEXT_PUBLIC_*` or in `.next/static`.
+- Regression: `untrusted-metadata.test.ts`, `security-headers.test.ts`, `tx-guard.test.ts`, `secret-sentinel.test.ts`, `pnpm test:web-security` (production headers + Playwright XSS corpus). `admission-unit.test.ts`.
 
 ### Added / Changed
 

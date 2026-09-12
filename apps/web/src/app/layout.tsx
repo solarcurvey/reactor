@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -20,9 +21,10 @@ export const metadata: Metadata = {
   description: "Launch markets that pay holders. Official REACTOR pools on Arc.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get("x-nonce") ?? "";
   return (
-    <html lang="en">
+    <html lang="en" data-csp-nonce={nonce}>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
           <NetworkBanner />
