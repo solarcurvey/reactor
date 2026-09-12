@@ -36,7 +36,7 @@ Do not certify. Do not deploy. Do not propose a new curve or fee split.
 | Signed pricing | Unique digest: factory+creator+quote+virtualQuote0+curveConfig+salt+deadline+chain. No `pricingNonce` | `LaunchPricing.t.sol` concurrent + replay |
 | Nested quotes | RoutePlanner max 3; ValuationEngine recursive; cycle reject; only usdPegOne is $1 | `valuation.test.ts`, `NativeQuote.t.sol` |
 | CORE vest / genesis | 1B; 100M vest 30d cliff + 300d linear; 900M locked; never Top-10 | `CoreGenesis.t.sol`, `CoreLiquiditySim.t.sol` |
-| Indexer / Top-10 | `block.timestamp` only for onchain/windowed marks; durable poolId→token; event writes + cursor one transaction; append-only `(chain_id, tx, log_index, event_kind)` + address (`indexer_event_journal`, schema v8). `external_price_marks.kind` is schema **v9** (after v8). Offchain ms columns are `BIGINT` (schema v6) — Postgres INTEGER overflows `Date.now()` | `indexer.persist.test.ts`, `tick-atomic.test.ts`, `schema.test.ts`, `pg-ms-timestamps.test.ts`, `Top10Api.t.sol` |
+| Indexer / Top-10 | `block.timestamp` only for onchain/windowed marks; durable poolId→token; event writes + cursor one transaction; append-only `(chain_id, tx, log_index, event_kind)` + address (`indexer_event_journal`, schema v8). `external_price_marks.kind` is schema **v10** (v9 reserved for #23 `current_supply`). Offchain ms columns are `BIGINT` (schema v6) — Postgres INTEGER overflows `Date.now()` | `indexer.persist.test.ts`, `tick-atomic.test.ts`, `schema.test.ts`, `pg-ms-timestamps.test.ts`, `Top10Api.t.sol` |
 | User routes | `UserRouteExecutor` + shared RoutePlanner; bonding nested USDC + graduated v4 | `UserRoute.t.sol` |
 | Routing deltas | `RouteGuard`, `RouteExec`, adapters | `RoutingDeltas.t.sol`, `KeeperMinOut.t.sol` |
 
@@ -155,7 +155,7 @@ Every hop: real balance deltas in and out; next hop uses **actual** out, not ada
 - Graduated only; skip CORE
 - Supply after burns (`totalSupply`)
 - Official 10–15m VWAP/TWAP-like from indexed official trades (**chain `block.timestamp`**, never `Date.now()`)
-- External quote USD: configured provider registry (canonical address) + ≥2 independent HTTP sources where available + median consensus + staleness/deviation + optional Arc executable-market sanity (`fuseExternalUsd6`). Accepted and rejected observations persist in `external_price_marks` (`kind`, schema v9). ValuationService consumes the consensus row only. PROD never uses a static mark. No onchain oracle
+- External quote USD: configured provider registry (canonical address) + ≥2 independent HTTP sources where available + median consensus + staleness/deviation + optional Arc executable-market sanity (`fuseExternalUsd6`). Accepted and rejected observations persist in `external_price_marks` (`kind`, schema v10). ValuationService consumes the consensus row only. PROD never uses a static mark. No onchain oracle
 - Depth 3, cycle set, **$250k** floor
 - Fail-closed **only** for MATERIAL uncertainty (prior ranked, last-good ≥ floor, liquidity, window volume). Thousands of dead low-value graduates with &lt;3 trades do **not** freeze the epoch
 

@@ -13,20 +13,20 @@ function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
 }
 
-assert(SCHEMA_VERSION === 9, "schema version 9 adds external_price_marks.kind after v8 journal / v7 identity / v6 BIGINT");
+assert(SCHEMA_VERSION === 10, "schema version 10 adds external_price_marks.kind; v9 reserved for #23 current_supply");
 assert(MS_TIMESTAMP_COLUMNS.length >= 6, "millisecond timestamp columns listed");
 
 const dir = mkdtempSync(join(tmpdir(), "reactor-prod-"));
 const store = await openStore({ sqlitePath: join(dir, "t.sqlite") });
 const migrated = await store.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
-assert(Number(migrated?.n) === 9, "sqlite migrates to v9");
+assert(Number(migrated?.n) === 10, "sqlite migrates to v10");
 
 for (const t of TABLES) {
   const row = await store.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", t);
   assert(row?.name === t, `missing table ${t}`);
 }
 const markCols = await store.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
-assert(markCols.some((c) => c.name === "kind"), "v9 external_price_marks.kind");
+assert(markCols.some((c) => c.name === "kind"), "v10 external_price_marks.kind");
 
 for (const idx of [
   "idx_claims_identity",
@@ -96,7 +96,7 @@ assert(Number(alert?.ts) >= nowMs, "alerts.ts milliseconds");
 await store.close();
 rmSync(dir, { recursive: true, force: true });
 
-// Preceding production schema is v8 (#27 journal). v9 adds mark kind only.
+// Preceding production schema is v8 (#27 journal). v10 adds mark kind (v9 reserved for #23).
 {
   const upgradeDir = mkdtempSync(join(tmpdir(), "reactor-v8-"));
   const upgradePath = join(upgradeDir, "v8.sqlite");
@@ -122,11 +122,13 @@ rmSync(dir, { recursive: true, force: true });
   seed.close();
 
   const upgraded = await openStore({ sqlitePath: upgradePath });
-  assert((await applyMigrations(upgraded)) === 9, "v8 upgrades to v9");
+  assert((await applyMigrations(upgraded)) === 10, "v8 upgrades to v10");
   const ver = await upgraded.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
-  assert(Number(ver?.n) === 9, "schema_migrations records v9");
+  assert(Number(ver?.n) === 10, "schema_migrations records v10");
+  const skipped = await upgraded.get<{ n: number }>("SELECT COUNT(*) as n FROM schema_migrations WHERE id=9");
+  assert(Number(skipped?.n) === 0, "v9 left unused for #23 current_supply");
   const cols = await upgraded.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
-  assert(cols.some((c) => c.name === "kind"), "v9 adds external_price_marks.kind");
+  assert(cols.some((c) => c.name === "kind"), "v10 adds external_price_marks.kind");
   const fused = await upgraded.get<{ kind: string }>("SELECT kind FROM external_price_marks WHERE source=?", "fused");
   const obs = await upgraded.get<{ kind: string }>("SELECT kind FROM external_price_marks WHERE source=?", "coingecko");
   assert(fused?.kind === "consensus", "legacy fused/consensus/fail/missing backfill to kind=consensus");
