@@ -34,6 +34,7 @@ export type LaunchToken = {
   symbol: string;
   decimals: number;
   supply: bigint;
+  currentSupply?: bigint;
   image: string;
   description: string;
   website: string;
@@ -323,7 +324,8 @@ function marketRowToLaunch(m: Record<string, unknown>): LaunchToken {
     name: String(m.name ?? "Token"),
     symbol: String(m.symbol ?? "TKN"),
     decimals: Number(m.decimals ?? 18),
-    supply: BigInt(String(m.supply || "0")),
+    supply: BigInt(String(m.current_supply || m.supply || "0")),
+    currentSupply: BigInt(String(m.current_supply || m.supply || "0")),
     image: String(m.image ?? ""),
     description: String(m.description ?? ""),
     website: "",

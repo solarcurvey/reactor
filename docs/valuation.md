@@ -11,6 +11,7 @@ One service prices Top-10, the launch signer, and `/markets` USD columns.
 - Cycles throw. Depth > 3 fails closed.
 - **PROD:** static ZEC is forbidden. Set `ZEC_HTTP_URL`. The marks worker writes `external_price_marks`; missing URL records `ok=0`.
 - Signer calls `ValuationService.quoteUsd6` for every quote, including USDC (geometry still applies).
+- **USD market cap / FDV** uses `tokens.current_supply`, which **tracks** remaining onchain `totalSupply()` (not the TokenCreated `tokens.supply` row). Writers: token-level `Transfer(to=0)` / `Burned` via `(chain_id, tx, log_index, event_kind)` in the same `persistTickBatch` transaction as the indexer cursor, plus bounded `totalSupply()` reconcile. Do not claim `current_supply` ≡ `totalSupply()` between reconciles. Protocol burn events are attribution, not a second subtraction. Reconcile can repair `current_supply`; it does not restore skipped journal rows.
 
 ## Worker
 
