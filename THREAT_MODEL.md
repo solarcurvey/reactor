@@ -64,6 +64,7 @@ Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, 
 10. **Flash / sandwich / JIT** on official pools — accepted AMM risk; 0% LP fee reduces JIT incentive.
 11. **Keeper split-brain** — a tick can outlive the ~50s lease (receipt wait 60s; large discovery). Without renew, a standby can acquire and both broadcast. Control: interval renew + pre-send renew of the same fence; lost lease refuses send. Residual: process pause after renew, then send. Not an on-chain fence (architecture frozen).
 12. **Indexer crash window** — ingest used to write events then advance the cursor after the loop. A later #8 path fetched token `Burned` / `Transfer` to zero **after** that cursor commit, so a crash skipped those journal rows on restart (`from = cursor + 1`). `persistTickBatch` now commits protocol rows, token-burn journal / `current_supply` writes, and the cursor together. Residual: post-commit 24h roll / external marks / SSE / bounded `totalSupply()` reconcile can still lag; the indexer is still not onchain truth.
+13. **Stale Top-10 snapshot** — ingest `tick()` used to swallow ranker failure into an alert and leave the last healthy `current` payload. `GET /top10` now refuses snapshots older than 15 minutes and Keeper shares that TTL. Residual: the TTL is offchain policy, not an onchain freshness check.
 
 ## API / indexer controls
 

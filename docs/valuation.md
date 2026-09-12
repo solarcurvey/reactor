@@ -11,7 +11,7 @@ One service prices Top-10, the launch signer, and `/markets` USD columns.
 - Cycles throw. Depth > 3 fails closed.
 - **PROD:** static marks are forbidden. The marks worker is data-driven (canonical token address, then symbol). Missing, stale, or disagreeing sources record `ok=0` and **do not** fall back to a hardcoded dollar.
 - Signer calls `ValuationService.quoteUsd6` for every quote, including USDC (geometry still applies). A failed mark refuses `LaunchAuthorization`.
-- **USD market cap / FDV** uses `tokens.current_supply` (**schema v9**, #23), which **tracks** remaining onchain `totalSupply()` (not the TokenCreated `tokens.supply` row). Writers: token-level `Transfer(to=0)` / `Burned` via `(chain_id, tx, log_index, event_kind)` in the same `persistTickBatch` transaction as the indexer cursor, plus bounded `totalSupply()` reconcile. Do not claim `current_supply` ≡ `totalSupply()` between reconciles. Protocol burn events are attribution, not a second subtraction. Reconcile can repair `current_supply`; it does not restore skipped journal rows. `GET /top10` ranks from the same persisted `current_supply` snapshot (not a live `totalSupply()` RPC during rank).
+- **USD market cap / FDV** uses `tokens.current_supply` (**schema v9**, #23), which **tracks** remaining onchain `totalSupply()` (not the TokenCreated `tokens.supply` row). Writers: token-level `Transfer(to=0)` / `Burned` via `(chain_id, tx, log_index, event_kind)` in the same `persistTickBatch` transaction as the indexer cursor, plus bounded `totalSupply()` reconcile. Do not claim `current_supply` ≡ `totalSupply()` between reconciles. Protocol burn events are attribution, not a second subtraction. Reconcile can repair `current_supply`; it does not restore skipped journal rows. `GET /top10` ranks from the same persisted `current_supply` snapshot (not a live `totalSupply()` RPC during rank). Empty `current_supply` after schema v9 pauses the epoch — no fallback to TokenCreated `tokens.supply`. Liquidity for material-uncertainty is indexed `graduations.quote_lp` / `markets.real_quote`, not a synthetic fraction of last-good mark.
 
 ## Provider registry
 
@@ -47,6 +47,6 @@ This is **offchain trusted computation**, not an onchain ZEC/USD oracle. A compr
 
 ## Top-10
 
-`GET /top10` is the official rank snapshot. It loads graduated markets from Postgres/SQLite, ranks on persisted `current_supply`, and values each quote through this service (including nested ancestry and accepted consensus marks). `GET /valuation?token=` remains the per-asset USD probe.
+`GET /top10` is the official rank snapshot. It loads graduated markets from Postgres/SQLite, ranks on persisted `current_supply`, and values each quote through this service (including nested ancestry and accepted consensus marks). Serve and Keeper share `TOP10_SNAPSHOT_TTL_SEC`. `GET /valuation?token=` remains the per-asset USD probe.
 
-The web app does **not** enumerate Factory tokens or invent a 0.30% quote/USDC pool. Keeper and `/api/reactor/top10` read the same persisted payload. Contracts still check structure only — ranks are not a trustless oracle.
+The web app does **not** enumerate Factory tokens or invent a 0.30% quote/USDC pool. Keeper and `/api/reactor/top10` read the same persisted payload and refuse it when `pauseEpoch` or the snapshot is older than the TTL. Contracts still check structure only — ranks are not a trustless oracle.

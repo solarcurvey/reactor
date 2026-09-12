@@ -36,7 +36,7 @@ Do not certify. Do not deploy. Do not propose a new curve or fee split.
 | Signed pricing | Unique digest: factory+creator+quote+virtualQuote0+curveConfig+salt+deadline+chain. No `pricingNonce` | `LaunchPricing.t.sol` concurrent + replay |
 | Nested quotes | RoutePlanner max 3; ValuationEngine recursive; cycle reject; only usdPegOne is $1 | `valuation.test.ts`, `NativeQuote.t.sol` |
 | CORE vest / genesis | 1B; 100M vest 30d cliff + 300d linear; 900M locked; never Top-10 | `CoreGenesis.t.sol`, `CoreLiquiditySim.t.sol` |
-| Indexer / Top-10 | Indexed markets + ValuationService snapshot (`GET /top10`); no per-request Factory RPC. Event journal schema v8. `tokens.current_supply` is schema **v9** (#23). `external_price_marks.kind` is schema **v10** (#30). Top-10 candidate tables are schema **v11**. Arc sanity mark is on `route_venues.last_price_quote_x18` (column-gated, not a new migration id). Offchain ms columns are `BIGINT` (schema v6) | `top10-rank.test.ts`, `ingest.valuation.test.ts`, `price-marks.test.ts`, `tick-atomic.test.ts`, `schema.test.ts`, `pg-ms-timestamps.test.ts`, `Top10Api.t.sol` |
+| Indexer / Top-10 | Indexed markets + ValuationService snapshot (`GET /top10`); 15m snapshot TTL shared with Keeper; indexed `quote_lp` liquidity; no mint-supply fallback. Event journal schema v8. `tokens.current_supply` is schema **v9** (#23). `external_price_marks.kind` is schema **v10** (#30). Top-10 candidate tables are schema **v11**. Arc sanity mark is on `route_venues.last_price_quote_x18` (column-gated, not a new migration id). Offchain ms columns are `BIGINT` (schema v6) | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts`, `ingest.valuation.test.ts`, `price-marks.test.ts`, `tick-atomic.test.ts`, `schema.test.ts`, `pg-ms-timestamps.test.ts`, `Top10Api.t.sol` |
 | Indexer markets / candles | Keyset cursor matches `sort`; candle gap-fill ≤ `limit` (max 1000); exclusive `before`; `listMarkets` projects `current_supply` | `markets-query.test.ts`, `prices.test.ts` |
 | Public JSON body caps (P1) | Stream 16KiB default / 64KiB hard max on `/quote`, `/launch/admit`, `/launch/authorize` (chunked included; env cannot disable). Upload remains 2MB. | `read-json-body.test.ts` |
 | User routes | `UserRouteExecutor` + shared RoutePlanner; bonding nested USDC + graduated v4 | `UserRoute.t.sol` |
@@ -152,14 +152,16 @@ Every hop: real balance deltas in and out; next hop uses **actual** out, not ada
 
 ## Top-10
 
-`apps/web/src/lib/marketdata.ts` **discovers** factory tokens on-chain (not env JSON):
+Indexer `GET /top10` is the official snapshot (schema v11). Web `/api/reactor/top10` proxies it. `discoverTop10` Factory RPC is removed.
 
 - Graduated only; skip CORE
-- Supply after burns (`totalSupply`). Indexer `/markets` `fdv_usd6` uses `tokens.current_supply` (schema v9 after main/`#27` v8 journal identity; #31/#24/#22/#25/#28/#21 did not consume a schema version), which tracks `totalSupply()` (token `Burned` / Transfer-to-zero via `(chain_id,tx,log_index,event_kind)` in the same `persistTickBatch` transaction as the cursor, plus bounded reconcile, including at head). Not TokenCreated `tokens.supply`, not a protocol-event sum, and not claimed ≡ between reconciles
-- Official 10–15m VWAP/TWAP-like from indexed official trades (**chain `block.timestamp`**, never `Date.now()`)
-- External quote USD: configured provider registry (canonical address) + ≥2 independent HTTP sources where available + median consensus + staleness/deviation + optional Arc executable-market sanity (`fuseExternalUsd6`). Arc sanity reads the verified `route_venues` executable mark (`last_price_quote_x18` or JSON `data.priceQuoteX18`); it does not require a synthetic REACTOR `markets` row. Official Instant Launch pairs may still use `markets.price_quote_x18` when `official_pools` has the pair. Accepted and rejected observations persist in `external_price_marks` (`kind`, schema v10). ValuationService consumes the consensus row only. PROD never uses a static mark. No onchain oracle
+- Supply is persisted `tokens.current_supply` (schema v9). After v9, empty `current_supply` on a graduated non-CORE name **pauses the epoch**. No mint-supply (`tokens.supply`) fallback. Writers remain token `Burned` / Transfer-to-zero via `(chain_id,tx,log_index,event_kind)` in the same `persistTickBatch` transaction as the cursor, plus bounded reconcile, including at head. Not TokenCreated `tokens.supply`, not a protocol-event sum, and not claimed ≡ between reconciles
+- Official 10–15m VWAP/TWAP-like from indexed official trades
+- External quote USD: configured provider registry + consensus (schema v10). ValuationService ancestry only. PROD never uses a static mark. No onchain oracle
+- Indexed liquidity is `graduations.quote_lp` else `markets.real_quote`, valued in USDC. Never `lastGoodMark / 5`. Material-uncertainty liquidity arm is independent of last-good mark
 - Depth 3, cycle set, **$250k** floor
-- Fail-closed **only** for MATERIAL uncertainty (prior ranked, last-good ≥ floor, liquidity, window volume). Thousands of dead low-value graduates with &lt;3 trades do **not** freeze the epoch
+- Fail-closed **only** for MATERIAL uncertainty (prior ranked, last-good ≥ floor, **indexed** liquidity ≥ floor/5, window volume). Thousands of dead low-value graduates with &lt;3 trades do **not** freeze the epoch
+- Snapshot TTL 15 minutes (`TOP10_SNAPSHOT_TTL_SEC`), shared by API serve and Keeper `acceptTop10Snapshot`. Ingest `tick()` persist-on-fail writes a paused row so a stalled refresh cannot leave the last healthy payload
 
 Keeper daemon (`apps/indexer/src/keeper.ts`) polls the API, writes a heartbeat, **logs** intended `submitEpoch` — it does not broadcast in this repo. Independent watchdog (`apps/indexer/src/watchdog.ts`) fail-closes on stale / pause.
 
