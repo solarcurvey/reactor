@@ -9,9 +9,15 @@ import { Input } from "./ui/input";
 import { erc20, router, token as tokenC, curve, userRoute } from "@/lib/contracts";
 import { officialPoolKey, buyZeroForOne } from "@/lib/pool";
 import { formatUnitsSafe, parseUnitsSafe } from "@/lib/utils";
-import type { LaunchToken } from "@/lib/hooks";
+import { useQuotes, type LaunchToken } from "@/lib/hooks";
 import { addresses } from "@/lib/addresses";
 import { INDEXER_URL } from "@/lib/chain";
+import {
+  buildQuoteDenomCatalog,
+  formatOfficialFeeDisclosure,
+  protocolQuoteFallbacks,
+  type TicketFeeLeg,
+} from "@/lib/fee-legs";
 
 const QUOTE_TTL_MS = 30_000;
 
@@ -25,52 +31,37 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   const [slippage, setSlippage] = useState("1");
   const [quotedOut, setQuotedOut] = useState<bigint | null>(null);
   const [quotedAt, setQuotedAt] = useState<number>(0);
-  const [quoteNotional, setQuoteNotional] = useState<bigint | null>(null);
   const [minQuoteOut, setMinQuoteOut] = useState<bigint | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState<string | null>(null);
   const [liveHops, setLiveHops] = useState<
     { adapter: `0x${string}`; tokenIn: `0x${string}`; tokenOut: `0x${string}`; minOut: bigint; data: `0x${string}` }[]
   >([]);
-  const [feeLegs, setFeeLegs] = useState<
-    Array<{
-      reactorOfficial: boolean;
-      protocolFeeBps: number;
-      venue: string;
-      tokenIn?: string;
-      tokenOut?: string;
-      notionalQuote?: string;
-      holders?: string;
-      flywheel?: string;
-      core?: string;
-      feeExempt?: boolean;
-    }>
-  >([]);
+  const [feeLegs, setFeeLegs] = useState<TicketFeeLeg[]>([]);
   const [aggregateImpactBps, setAggregateImpactBps] = useState(0);
   const [reactorFeeCount, setReactorFeeCount] = useState(0);
   const [, setQuoteTx] = useState<{ to: string; data: `0x${string}`; functionName: string } | null>(null);
+  const { data: quotes } = useQuotes();
 
   const quoteDec = t.quoteDecimals ?? 18;
   const usdcRoute = Boolean(payUsdc && t.quote.toLowerCase() !== addresses.USDC.toLowerCase() && userRoute.address);
   const inDec = side === "buy" ? (usdcRoute ? 6 : quoteDec) : t.decimals;
   const parsed = parseUnitsSafe(amount, inDec);
 
-  const officialLegs = feeLegs.filter((f) => f.reactorOfficial && !f.feeExempt);
-  const split = {
-    holders: officialLegs.reduce((s, f) => s + BigInt(f.holders ?? "0"), 0n),
-    flywheel: officialLegs.reduce((s, f) => s + BigInt(f.flywheel ?? "0"), 0n),
-    core: officialLegs.reduce((s, f) => s + BigInt(f.core ?? "0"), 0n),
-    fee: officialLegs.reduce(
-      (s, f) => s + BigInt(f.holders ?? "0") + BigInt(f.flywheel ?? "0") + BigInt(f.core ?? "0"),
-      0n,
-    ),
-  };
+  const feeView = formatOfficialFeeDisclosure(
+    feeLegs,
+    buildQuoteDenomCatalog({
+      quotes: quotes ?? [],
+      terminal: { token: t.quote, symbol: t.quoteSymbol, decimals: quoteDec },
+      extras: protocolQuoteFallbacks(),
+    }),
+    { side, reactorFeeCount, aggregateImpactBps },
+  );
 
   async function refreshQuote() {
     setError(null);
     if (!address || !client || parsed === 0n) {
       setQuotedOut(null);
-      setQuoteNotional(null);
       setMinQuoteOut(null);
       setFeeLegs([]);
       setAggregateImpactBps(0);
@@ -98,18 +89,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         minOut?: string;
         minQuoteOut?: string;
         hops?: typeof liveHops;
-        feeLegs?: Array<{
-          reactorOfficial: boolean;
-          protocolFeeBps: number;
-          venue: string;
-          tokenIn?: string;
-          tokenOut?: string;
-          notionalQuote?: string;
-          holders?: string;
-          flywheel?: string;
-          core?: string;
-          feeExempt?: boolean;
-        }>;
+        feeLegs?: TicketFeeLeg[];
         aggregateProtocolImpactBps?: number;
         reactorFeeCount?: number;
         tx?: { to: string; data: `0x${string}`; functionName: string };
@@ -124,8 +104,6 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       setAggregateImpactBps(q.aggregateProtocolImpactBps ?? 0);
       setReactorFeeCount(q.reactorFeeCount ?? q.feeLegs?.filter((f) => f.reactorOfficial && !f.feeExempt).length ?? 0);
       setQuoteTx(q.tx ?? null);
-      const notion = (q.feeLegs ?? []).find((f) => f.reactorOfficial && !f.feeExempt)?.notionalQuote;
-      setQuoteNotional(notion ? BigInt(notion) : side === "buy" && !usdcRoute ? parsed : null);
       // First-leg floor is quote units from the atomic preview — never tokenIn / minOut.
       if (q.minQuoteOut) setMinQuoteOut(BigInt(q.minQuoteOut));
       else if (side === "sell" && q.minOut) setMinQuoteOut(BigInt(q.minOut));
@@ -279,17 +257,16 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         placeholder="0.0"
       />
       <div className="mt-3 space-y-1 text-xs text-zinc-400">
-        {officialLegs.length > 0 ? (
-          <p>
-            Quote ticket fees ({reactorFeeCount} official leg{reactorFeeCount === 1 ? "" : "s"}
-            {aggregateImpactBps > 0 ? ` · ${aggregateImpactBps / 100}% compound` : ""}):{" "}
-            {formatUnitsSafe(split.holders, quoteDec, 6)} Rewards/Standard · {formatUnitsSafe(split.flywheel, quoteDec, 6)}{" "}
-            Top-10 · {formatUnitsSafe(split.core, quoteDec, 6)} CORE
-            {quoteNotional !== null && officialLegs.length === 1
-              ? ` · notional ${formatUnitsSafe(quoteNotional, quoteDec, 6)} ${t.quoteSymbol}`
-              : ""}
-            {usdcRoute && officialLegs.length > 1 ? " — each official hop, not 3.5% of USDC in" : ""}
-          </p>
+        {feeView.officialCount > 0 ? (
+          <>
+            <p>{feeView.headline}</p>
+            {feeView.legs.map((leg, i) => (
+              <p key={`${leg.quoteToken}-${leg.hopLabel}-${i}`}>{leg.line}</p>
+            ))}
+            {usdcRoute && feeView.officialCount > 1 ? (
+              <p>Each official hop charges 3.5% in that hop’s quote — not 3.5% of USDC in.</p>
+            ) : null}
+          </>
         ) : side === "buy" ? (
           <p>Official 3.5% (2 / 1 / 0.5) is taken on each official REACTOR quote notional after Quote.</p>
         ) : (
@@ -313,18 +290,10 @@ export function TradePanel({ t }: { t: LaunchToken }) {
             Route {liveHops.length ? liveHops.map((h) => `${h.tokenIn.slice(0, 6)}→${h.tokenOut.slice(0, 6)}`).join(" · ") : "quote API — no wallet hop sim"}
           </p>
         )}
-        {feeLegs.length > 0 && (
+        {feeView.officialCount > 1 && (
           <p className="text-[11px] text-amber-100/90">
-            REACTOR fee legs:{" "}
-            {officialLegs
-              .map(
-                (f) =>
-                  `${f.venue} ${f.protocolFeeBps / 100}%${f.tokenIn && f.tokenOut ? ` ${f.tokenIn.slice(0, 6)}→${f.tokenOut.slice(0, 6)}` : ""}`,
-              )
-              .join(" + ") || "none"}
-            {officialLegs.length > 1
-              ? ` — nested official hops each charge 3.5% (compound ${aggregateImpactBps / 100}% before slippage)`
-              : ""}
+            Nested official hops each charge 3.5% in that hop’s quote (compound {aggregateImpactBps / 100}% before
+            slippage). Aggregate is bps only — quote amounts from different assets are not added.
           </p>
         )}
         {quotedOut !== null && (

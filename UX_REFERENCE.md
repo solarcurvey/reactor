@@ -21,7 +21,7 @@ Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy,
 ## Mobile 390
 
 - Single column. Ticket stacks under chart. Filters wrap. Cards stay tappable.
-- Trade ticket shows backend `feeLegs[]` (each official 3.5% on the scored winner) and compound impact. Routed SELL uses ticket `minQuoteOut` (quote units), not tokenIn.
+- Trade ticket shows backend `feeLegs[]` (each official 3.5% on the scored winner) **per hop quote + decimals**, plus compound `aggregateProtocolImpactBps`. Do not sum ZEC and ZCAT raw fee amounts. Routed SELL uses ticket `minQuoteOut` (quote units), not tokenIn.
 
 ## REACTOR mapping
 

@@ -219,6 +219,7 @@ pnpm --filter indexer watchdog
 | 44 | Public JSON POSTs reject oversized / chunked bodies (413); env cannot raise past 64KiB hard max | `read-json-body.test.ts`, `limited-json.test.ts` |
 | 45 | Routed SELL `minQuoteOut` is first-leg quoteOut from `splitPreviewRoute` | `quote-sell-floors.test.ts`, `sell-floors.ts` |
 | 46 | Nested official fee legs from scored winner + compound 688 bps; maintenance `exemptOfficialLegs[]` | `quote.test.ts`, `quote-api.test.ts`, `quote-integrity.test.ts` |
+| 47 | Trade ticket does not sum nested fee amounts across quote tokens/decimals (ZEC-8 vs ZCAT-18) | `apps/web/src/lib/fee-legs.test.ts` |
 
 ## Arc smoke
 

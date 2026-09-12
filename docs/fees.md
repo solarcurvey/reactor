@@ -22,6 +22,8 @@ Path: **USDC → ZEC → ZCAT → CAT**
 
 `feeLegs[]` has **two** official entries. `reactorFeeCount = 2`. `totalProtocolFeeBps = 700` (350 + 350). Sequential takes compound: `1 − (1 − 0.035)² = 0.068775` → `aggregateProtocolImpactBps = 688` (**6.88%** before slippage). The UI must render these ticket fields — it must not reconstruct 3.5% from a single notional.
 
+The two official legs are **different quote assets** (ZEC-8 and ZCAT-18). The trade ticket formats **each** charged leg with that hop’s quote token and decimals. It must not add `holders` / `flywheel` / `core` raw amounts across legs and then scale the sum with the terminal market’s `quoteDecimals`. The only denomination-independent aggregate is `aggregateProtocolImpactBps` (688).
+
 The matching **SELL** (CAT → ZCAT → ZEC → USDC) also reports two official 3.5% legs (CAT→ZCAT and ZCAT→ZEC). ZEC→USDC stays hookless.
 
 Fair auction: **0%** during the sale. 3.5% starts after one migration.

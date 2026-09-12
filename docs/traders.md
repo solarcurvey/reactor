@@ -10,7 +10,7 @@ Official REACTOR pools are Uniswap v4 with a **0% LP fee**. You pay a **3.5% quo
 2. The indexer plans ≤8 candidates (≤3 hops, no cycles).
 3. Each candidate is one **`UserRouteQuoter` `eth_call`** with state overrides. The indexer does not stitch per-hop sims that would need intermediate wallet balances.
 4. The winner is `pickBest` on the scored previews — not independently “max raw `amountOut`”. Hop `kind` is preserved: `OFFICIAL_REACTOR_V4` / `EXTERNAL_V4_HOOKLESS` / `BONDING_CURVE`. Hops, `amountOut`, kinds, `minOut`s, `feeLegs[]`, and the terminal official/bonding result are **one** candidate. `PreviewRoute` arrays are `plannedHops + 1`.
-5. Nested official legs appear in `feeLegs[]`. A routed SELL ticket’s `minQuoteOut` is slipped first-leg **quote** out, not tokenIn. A failed preview is **unavailable** — never `minOut` 0 or 1.
+5. Nested official legs appear in `feeLegs[]`. Each charged leg is shown in **that hop’s quote** (ZEC vs ZCAT are not added). Compound impact is `aggregateProtocolImpactBps` (6.88% for two 3.5% hops). A routed SELL ticket’s `minQuoteOut` is slipped first-leg **quote** out, not tokenIn. A failed preview is **unavailable** — never `minOut` 0 or 1.
 
 Submit the ticket’s `tx.to` + `tx.data`. Apply your own slippage on the returned `amountOut`. Do not invent hops.
 

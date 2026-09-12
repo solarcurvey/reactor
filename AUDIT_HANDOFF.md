@@ -252,7 +252,7 @@ forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0.1:8545 --broadc
 | Signed `virtualQuote0` initializes InstantCurve | Yes — Factory passes verified auth; **usdPegOne only** unsigned |
 | USD-equivalent geometry USDC/ZEC/WBTC/native | `LaunchPricing.t.sol` |
 | Protocol nested settle fee-exempt | `ProtocolV4Adapter` + `ProtocolSettlement.t.sol` |
-| User hops still pay 3.5% | same. Nested official hops disclosed from the **scored winner** + terminal (`feeLegs[]`, two 3.5% legs compound 6.88%). Protocol edges are `exemptOfficialLegs[]`. Issue #5 remains open. |
+| User hops still pay 3.5% | same. Nested official hops disclosed from the **scored winner** + terminal (`feeLegs[]`, two 3.5% legs compound 6.88%). Protocol edges are `exemptOfficialLegs[]`. Trade UI formats each charged leg in that hop’s quote decimals and never sums ZEC+ZCAT raw amounts. Issue #5 remains open. |
 | UserRoute bonding + graduated USDC | `UserRoute.t.sol` |
 | No `Guardian.setHook` | Removed; adapters hookless + official only |
 | Top-10 10–15m VWAP, fail-closed unvalued | `marketdata.ts` / `top10.ts` |

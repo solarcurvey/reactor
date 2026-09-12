@@ -39,6 +39,6 @@ Helpers consume `POST /quote`:
 - Use returned `tx.to` / `tx.data` / `amountOut`. Hops, `amountOut`, and `minOut`s are one candidate.
 - Apply slippage locally. Refuse `minOut` ≤ 1.
 - On SELL, `minQuoteOut` is the first official/bonding quote floor from the same selected preview; `minOut` is the final USDC floor. Do not treat `amountIn` as `minQuoteOut`.
-- Preserve hop `kind`, `feeLegs[]`, and `aggregateProtocolImpactBps` in the UI. Those fields belong to the scored winner, not a higher-raw-output loser. Do not recompute official 3.5% from a single notional. Protocol tickets expose `exemptOfficialLegs[]`.
+- Preserve hop `kind`, `feeLegs[]`, and `aggregateProtocolImpactBps` in the UI. Those fields belong to the scored winner, not a higher-raw-output loser. Do not recompute official 3.5% from a single notional. Render each charged fee leg in **that hop’s quote asset and decimals**. Do not sum `holders` / `flywheel` / `core` across different quote tokens. When denoms differ, the only combined figure is `aggregateProtocolImpactBps`. Protocol tickets expose `exemptOfficialLegs[]`.
 
 `@reactor/core` exports `planCandidates`, `applyMinOuts`, `ValuationService`, `evaluateAdmission`, `fairCurveConfig`, `launchConfigHash`.
