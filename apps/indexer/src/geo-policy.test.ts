@@ -112,6 +112,9 @@ assert(productionHardGatesApply(prodEnv), "prod env");
   assert(d.decision === "ALLOW" && d.reason === "ALLOW_JURISDICTION_NOT_LISTED", "clear SY geo is not blanket-denied");
   assert(d.matched === undefined, "SY has no deny match");
   assert(d.country === "SY", "SY country preserved");
+  const sy = PRODUCTION_GEO_POLICY_V1.programNotes?.find((n) => n.iso2 === "SY");
+  assert(sy?.status === "not_comprehensive", "SY remaining program is not comprehensive");
+  assert(sy?.note.includes("#61") && sy.note.includes("#62"), "list-based Syrian screening stays #61 + #62");
 }
 
 {

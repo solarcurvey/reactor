@@ -33,7 +33,7 @@ const prodLike: GeoDenyPolicy = {
       effectiveDate: "2025-07-01",
       citation: "E.O. 14312; 31 CFR part 542 removed",
       url: "https://ofac.treasury.gov/faqs/1220",
-      note: "List-based/targeted only. Not a geo deny.",
+      note: "List-based/targeted only (#61 exact-list). Not a geo deny.",
     },
   ],
   jurisdictions: [
@@ -81,7 +81,9 @@ for (const iso of ["CU", "IR", "KP"]) {
   const d = evaluateGeoPolicy(createFixtureClaim({ country: "SY" }), prodLike);
   assert(d.decision === "ALLOW" && d.reason === "ALLOW_JURISDICTION_NOT_LISTED", "SY not blanket-denied");
   assert(d.matched === undefined, "SY has no jurisdiction match");
-  assert(prodLike.programNotes?.some((n) => n.iso2 === "SY" && n.status === "not_comprehensive"), "SY program note");
+  const sy = prodLike.programNotes?.find((n) => n.iso2 === "SY");
+  assert(sy?.status === "not_comprehensive", "SY program note");
+  assert(sy?.note.includes("#61"), "list-based Syrian screening is #61, not geo-deny");
 }
 
 {
