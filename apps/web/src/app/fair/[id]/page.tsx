@@ -21,7 +21,7 @@ export default function FairPage() {
   const { id } = useParams<{ id: string }>();
   const fairId = BigInt(id);
   const router = useRouter();
-  const { address, isConnected, writesEnabled, matched, mismatchMessage, chainId } = useOfficialChain();
+  const { address, writesEnabled, matched, mismatchMessage, chainId } = useOfficialChain();
   const client = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
   const { data: tokens } = useLaunchTokens();

@@ -129,11 +129,11 @@ export default function TokenPage() {
               {[...(tape ?? [])].slice(-24).reverse().map((s, i) => (
                 <li key={`${s.t}-${i}`}>
                   <UntrustedText field="activity">
-                    {sanitizeDisplayText(s.source ?? "trade", 32)}
+                    {sanitizeDisplayText("source" in s && s.source ? String(s.source) : "trade", 32)}
                   </UntrustedText>{" "}
                   · {formatUnitsSafe(BigInt(s.notional || "0"), t.quoteDecimals ?? 18, 3)}{" "}
                   {t.quoteSymbol}
-                  {s.px && s.px !== "0" ? ` · ${formatUnitsSafe(BigInt(s.px), 18, 6)}` : ""}
+                  {"px" in s && s.px && s.px !== "0" ? ` · ${formatUnitsSafe(BigInt(s.px), 18, 6)}` : ""}
                 </li>
               ))}
             </ul>

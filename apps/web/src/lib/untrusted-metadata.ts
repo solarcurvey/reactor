@@ -22,4 +22,4 @@ export {
   sanitizeWebsiteUrl,
   tokenPath,
   untrustedMetadataReasons,
-} from "../../../../packages/reactor/src/untrusted-metadata.ts";
+} from "../../../../packages/reactor/src/untrusted-metadata";

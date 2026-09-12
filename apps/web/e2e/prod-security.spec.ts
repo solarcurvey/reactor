@@ -72,7 +72,7 @@ test.describe("production headers + XSS corpus", () => {
     await expect(page.getByRole("heading", { name: "XSSCat" })).toBeVisible();
     await expect(page.locator("#tape")).toBeVisible();
     await expect(page.locator("#tape")).not.toContainText("<img");
-    await expect(page.locator('[data-untrusted="activity"]')).toContainText("tape");
+    await expect(page.locator('#tape [data-untrusted="activity"]').filter({ hasText: "tape" })).toHaveCount(1);
     await expect(page.locator('a[href^="javascript:"]')).toHaveCount(0);
     await assertNoXss(page);
 
@@ -93,9 +93,9 @@ test.describe("production headers + XSS corpus", () => {
 
     await page.goto("/reactor");
     await expect(page.getByRole("heading", { name: /Top-10 flywheel/i })).toBeVisible();
-    await expect(page.locator('[data-untrusted="activity"]')).toContainText("FlywheelAccrued");
+    await expect(page.locator('[data-untrusted="activity"]').filter({ hasText: "FlywheelAccrued" })).toHaveCount(1);
     await expect(page.locator("text=<script>")).toHaveCount(0);
-    await expect(page.getByText("$XSS")).toBeVisible();
+    await expect(page.locator('[data-untrusted="ticker"]').filter({ hasText: /WINDOWXSS1/ })).toHaveCount(1);
     await assertNoXss(page);
 
     await page.goto("/launch");

@@ -86,7 +86,8 @@ export function assertWalletRecipient(connected: unknown): `0x${string}` {
  * Indexer quote `tx.to` / `tx.data` are never broadcast.
  * Callers must build calldata from official ABIs + local args.
  */
-export function discardIndexerBroadcastTx(_tx: { to?: string; data?: string } | null | undefined): null {
+export function discardIndexerBroadcastTx(tx: { to?: string; data?: string } | null | undefined): null {
+  void tx;
   return null;
 }
 

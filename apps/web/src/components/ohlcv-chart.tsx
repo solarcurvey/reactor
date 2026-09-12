@@ -10,11 +10,11 @@ export function OhlcvChart({ candles }: { candles: Candle[] }) {
     const el = ref.current;
     if (!el) return;
     let disposed = false;
-    let chart: { remove: () => void; addSeries: (type: unknown, opts: Record<string, unknown>) => { setData: (d: unknown[]) => void } } | undefined;
+    let chart: { remove: () => void } | undefined;
     (async () => {
       const lc = await import("lightweight-charts");
       if (disposed || !ref.current) return;
-      chart = lc.createChart(ref.current, {
+      const created = lc.createChart(ref.current, {
         height: 320,
         autoSize: true,
         layout: { background: { color: "transparent" }, textColor: "#a1a1aa" },
@@ -22,7 +22,8 @@ export function OhlcvChart({ candles }: { candles: Candle[] }) {
         rightPriceScale: { borderVisible: false },
         timeScale: { borderVisible: false },
       });
-      const series = chart.addSeries(lc.CandlestickSeries, {
+      chart = created;
+      const series = created.addSeries(lc.CandlestickSeries, {
         upColor: "#7ee8ff",
         downColor: "#f43f5e",
         borderVisible: false,
@@ -32,7 +33,7 @@ export function OhlcvChart({ candles }: { candles: Candle[] }) {
       series.setData(
         candles
           .map((c) => ({
-            time: c.t as number,
+            time: c.t as import("lightweight-charts").UTCTimestamp,
             open: Number(c.o) / 1e18,
             high: Number(c.h) / 1e18,
             low: Number(c.l) / 1e18,
