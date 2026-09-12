@@ -33,7 +33,14 @@ External quote USD marks are a configured provider registry with multi-source co
 
 ## [Unreleased]
 
-Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33). Tokenomics **unchanged**. Factory **V1**. No mainnet.
+Public launchpad treats token metadata as untrusted (#41). Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33). Tokenomics **unchanged**. Factory **V1**. No mainnet.
+
+### Security
+
+- Names, tickers, and descriptions are sanitized (no raw HTML). Website / X / Telegram use an `https:` scheme allowlist and host allowlists. Images are first-party `/m/<id>.webp` or `/icons/` only — `javascript:`, `data:`, and arbitrary remote hosts are dropped.
+- Admission **DENYs** HTML names and off-policy URLs before EIP-712. The UI still sanitizes on read.
+- Production security headers include a CSP (`object-src 'none'`, `frame-ancestors 'none'`, tight `img-src`). HSTS only when `REACTOR_ENV=PROD`. Indexer `GET /m/` is nosniff + sandboxed.
+- Regression: `untrusted-metadata.test.ts`, `security-headers.test.ts`, `admission-unit.test.ts`.
 
 ### Added / Changed
 

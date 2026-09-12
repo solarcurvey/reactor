@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { parseUnitsSafe, formatUnitsSafe } from "@/lib/utils";
 import { unwrapFair, useLaunchTokens } from "@/lib/hooks";
+import { tokenPath } from "@/lib/untrusted-metadata";
 import { FIXTURE_FAIR, REVIEW_FIXTURES } from "@/lib/review-fixtures";
 
 export default function FairPage() {
@@ -92,7 +93,7 @@ export default function FairPage() {
       });
       await waitForTransactionReceipt(client, { hash: tx });
       refetch();
-      if (launch) router.push(`/token/${launch.token}`);
+      if (launch) router.push(tokenPath(launch.token));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Finalize failed");
     }
@@ -152,7 +153,7 @@ export default function FairPage() {
             Claim tokens / refund
           </Button>
           {launch?.marketLive && (
-            <Button variant="outline" onClick={() => router.push(`/token/${launch.token}`)}>
+            <Button variant="outline" onClick={() => router.push(tokenPath(launch.token))}>
               Trade official pool
             </Button>
           )}

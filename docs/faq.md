@@ -16,6 +16,10 @@
 
 **Why does a sell have two mins?** `minQuoteOut` is the least quote you accept from the official/bonding first leg. `minOut` is the least USDC (or same quote, if you sell direct) you accept at the end. Different units.
 
+**Why is my token image missing?** The UI only renders first-party `/m/<id>.webp` (or `/icons/`). `javascript:`, `data:`, and random `https://` hosts are dropped. Initials show instead.
+
+**Why did admission DENY my name?** HTML tags and dangerous URL schemes in identity fields are hard-denied. That is not a Turnstile CHALLENGE.
+
 **Why did Arc ignore 8 confirmations?** Arc BFT is final on commit. Default lag is 0.
 
 **When do the bottom-right burn toasts show?** Only after the indexer commits a CORE buy+burn (`BuybackExecuted` / `COREBurned`) or a Top-10 `Top10Buy`. Connecting does not dump the SSE replay buffer. A reconnect still delivers events that landed while you were disconnected, exactly once. Epoch submit and Standard SelfBurn do not toast. Hover or focus pauses auto-dismiss.

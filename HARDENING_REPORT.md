@@ -172,6 +172,18 @@ Local Anvil redeploy (hardening bytecode; **not** Arc Testnet):
 
 Always re-read `factory.hook()` after bytecode changes.
 
+## P1 web metadata / CSP (this amendment)
+
+| Item | Status | Proof |
+| --- | --- | --- |
+| Untrusted name/ticker/description rendered as HTML | **FIXED** | Strip tags/bidi/controls. No `dangerouslySetInnerHTML`. `untrusted-metadata.test.ts` |
+| `javascript:` / `data:` website, social, image | **FIXED** | Scheme allowlist + host allowlist. Admission **DENY**. UI sanitizes on read |
+| Arbitrary remote images / SVG XSS | **FIXED** | Media allowlist `/m/<id>.webp` + `/icons/`. `SafeTokenImage` + `referrerPolicy=no-referrer` |
+| Missing production CSP | **FIXED** | `launchpadSecurityHeaders()` — tight `img-src`, `object-src 'none'`, `frame-ancestors 'none'`. HSTS only `REACTOR_ENV=PROD` |
+| Media GET sniffable as HTML | **FIXED** | `/m/` nosniff + `default-src 'none'; sandbox` |
+
+Economics / 3.5% / Factory V1 / no mainnet: unchanged.
+
 ## P1 API body limits (this amendment)
 
 | Item | Status | Proof |

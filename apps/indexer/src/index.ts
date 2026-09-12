@@ -315,6 +315,10 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       return;
     }
     res.setHeader("Content-Type", file.type);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.setHeader("Cache-Control", "public, max-age=86400");
     res.end(file.buf);
     return;

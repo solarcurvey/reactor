@@ -54,5 +54,6 @@ See [Trust](/docs/trust) for the rest of the top 10.
 - Indexer prices and charts are not onchain truth. Event rows and the ingest cursor commit together; a crash does not persist one without the other.
 - Quote tickets are **one `UserRouteQuoter` eth_call** per candidate. The selected path, `amountOut`, hop kinds, `minOut`s, `feeLegs[]`, and terminal official/bonding result are the **same** `pickBest` winner. `PreviewRoute` is `plannedHops + 1`. Nested official 3.5% legs compound to 6.88% for two hops. `minOut` is never 0 or 1. SELL uses two floors from that preview: `minQuoteOut` (first-leg quote) and `minOut` (final USDC).
 - Arc finality is deterministic BFT — no eth-8 lag. Native gas is USDC-18; protocol USDC is 6 decimals.
+- Token names / tickers / descriptions / URLs / images are **untrusted** in the public UI. No raw HTML. [Browser security](/docs/web-security).
 
-Continue: [curve math](/docs/curve) · [nested fees](/docs/fees) · [Guardian](/docs/guardian) · [Keeper](/docs/keeper) · [tickers](/docs/tickers) · [admission](/docs/admission)
+Continue: [curve math](/docs/curve) · [nested fees](/docs/fees) · [Guardian](/docs/guardian) · [Keeper](/docs/keeper) · [tickers](/docs/tickers) · [admission](/docs/admission) · [browser security](/docs/web-security)

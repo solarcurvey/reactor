@@ -40,6 +40,7 @@ Do not certify. Do not deploy. Do not propose a new curve or fee split.
 | Indexer markets / candles | Keyset cursor matches `sort`; candle gap-fill ≤ `limit` (max 1000); exclusive `before`; `listMarkets` projects `current_supply` | `markets-query.test.ts`, `prices.test.ts` |
 | Public JSON body caps (P1) | Stream 16KiB default / 64KiB hard max on `/quote`, `/launch/admit`, `/launch/authorize` (chunked included; env cannot disable). Upload remains 2MB. | `read-json-body.test.ts` |
 | Live buy+burn toasts | SSE after persist commit. First `hello.head` skips history; reconnect `?after=` must not raise cutoff. Dedupe `(chainId, tx, logIndex, eventKind)` survives dismiss. Hover/focus pause; safe-area; reduced-motion. Visible CI gate `live-toasts-ui`. #38 stays open until post-merge verify. | `live-toasts.test.ts`, `e2e/live-toasts.spec.ts`, `.github/workflows/live-toasts.yml` |
+| Untrusted token metadata / CSP (P1) | Public UI never renders creator identity as HTML. URL scheme + media allowlists. Admission DENYs `javascript:` / `data:` / HTML names. Production CSP + headers. | `untrusted-metadata.test.ts`, `security-headers.test.ts`, `docs/web-security.md` |
 | User routes | `UserRouteExecutor` + shared RoutePlanner; bonding nested USDC + graduated v4 | `UserRoute.t.sol` |
 | Routing deltas | `RouteGuard`, `RouteExec`, adapters | `RoutingDeltas.t.sol`, `KeeperMinOut.t.sol` |
 

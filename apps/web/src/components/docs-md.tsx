@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { slugify } from "@/lib/docs-nav";
+import { SafeDocLink } from "./safe-link";
 
 function inline(text: string) {
   const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g);
@@ -11,9 +12,9 @@ function inline(text: string) {
     const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(p);
     if (link) {
       return (
-        <a key={i} href={link[2]} className="text-cyan-200 underline underline-offset-2">
+        <SafeDocLink key={i} href={link[2]!} className="text-cyan-200 underline underline-offset-2">
           {link[1]}
-        </a>
+        </SafeDocLink>
       );
     }
     return <span key={i}>{p}</span>;

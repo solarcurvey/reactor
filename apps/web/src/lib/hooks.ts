@@ -8,6 +8,18 @@ import { factory, registry, token, erc20, buyback, core, curve } from "./contrac
 import { CATEGORY_LABELS } from "./addresses";
 import { INDEXER_URL } from "./chain";
 import { FIXTURE_TOKENS, REVIEW_FIXTURES } from "./review-fixtures";
+import { sanitizeAddress, sanitizeLaunchFields } from "./untrusted-metadata";
+
+function cleanLaunch(t: LaunchToken): LaunchToken {
+  const cleaned = sanitizeLaunchFields(t);
+  const token = (sanitizeAddress(cleaned.token) || sanitizeAddress(t.token) || "") as `0x${string}`;
+  return {
+    ...t,
+    ...cleaned,
+    token,
+    symbol: cleaned.symbol || t.symbol,
+  };
+}
 
 export type QuoteAsset = {
   token: `0x${string}`;
@@ -40,6 +52,7 @@ export type LaunchToken = {
   website: string;
   twitter: string;
   telegram: string;
+  ticker?: string;
   quoteSymbol?: string;
   quoteDecimals?: number;
   lifetimeRewards?: bigint;
@@ -232,8 +245,8 @@ async function readTokens(client: NonNullable<ReturnType<typeof usePublicClient>
       curve: curveAddr,
     });
   }
-  const out = tokens.reverse();
-  if (out.length === 0) return FIXTURE_TOKENS;
+  const out = tokens.reverse().map(cleanLaunch).filter((t) => sanitizeAddress(t.token));
+  if (out.length === 0) return FIXTURE_TOKENS.map(cleanLaunch);
   return out;
 }
 
@@ -313,7 +326,7 @@ export function useQuotes() {
 }
 
 function marketRowToLaunch(m: Record<string, unknown>): LaunchToken {
-  return {
+  return cleanLaunch({
     token: String(m.token ?? m.address) as `0x${string}`,
     quote: String(m.quote ?? "0x") as `0x${string}`,
     creator: String(m.creator ?? "0x") as `0x${string}`,
@@ -331,6 +344,7 @@ function marketRowToLaunch(m: Record<string, unknown>): LaunchToken {
     website: "",
     twitter: "",
     telegram: "",
+    ticker: String(m.ticker ?? m.symbol ?? ""),
     quoteSymbol: String(m.quote_symbol ?? m.quoteSymbol ?? ""),
     quoteDecimals: Number(m.quote_decimals ?? m.quoteDecimals ?? 18),
     lifetimeRewards: BigInt(String(m.lifetime_rewards || "0")),
@@ -344,7 +358,7 @@ function marketRowToLaunch(m: Record<string, unknown>): LaunchToken {
     priceQuoteX18: String(m.price_quote_x18 ?? "0"),
     fdvUsd6: String(m.fdv_usd6 ?? "0"),
     volume24hUsd6: String(m.volume_24h_usd6 ?? "0"),
-  };
+  });
 }
 
 export function useLaunchTokens() {
@@ -354,7 +368,7 @@ export function useLaunchTokens() {
       const res = await fetch(`${INDEXER_URL}/markets?limit=80`).catch(() => null);
       if (res?.ok) {
         const body = (await res.json()) as { items?: Record<string, unknown>[] };
-        const items = (body.items ?? []).map(marketRowToLaunch);
+        const items = (body.items ?? []).map(marketRowToLaunch).filter((t) => sanitizeAddress(t.token));
         if (REVIEW_FIXTURES) {
           const fixturesByAddr = new Map(FIXTURE_TOKENS.map((t) => [t.token.toLowerCase(), t]));
           const merged = items.map((t) => {
@@ -364,7 +378,7 @@ export function useLaunchTokens() {
             const emptyVol = !t.volume24hUsd6 || t.volume24hUsd6 === "0";
             const emptyFdv = !t.fdvUsd6 || t.fdvUsd6 === "0";
             const emptyRewards = !t.lifetimeRewards || t.lifetimeRewards === 0n;
-            return {
+            return cleanLaunch({
               ...t,
               name: t.name && t.name !== "Token" ? t.name : f.name,
               symbol: t.symbol && t.symbol !== "TKN" ? t.symbol : f.symbol,
@@ -372,20 +386,23 @@ export function useLaunchTokens() {
               quoteDecimals: t.quoteDecimals || f.quoteDecimals,
               image: t.image || f.image,
               description: t.description || f.description,
+              website: t.website || f.website,
+              twitter: t.twitter || f.twitter,
+              telegram: t.telegram || f.telegram,
               priceQuoteX18: emptyPx ? f.priceQuoteX18 : t.priceQuoteX18,
               fdvUsd6: emptyFdv ? f.fdvUsd6 : t.fdvUsd6,
               volume24hUsd6: emptyVol ? f.volume24hUsd6 : t.volume24hUsd6,
               lifetimeRewards: emptyRewards ? f.lifetimeRewards : t.lifetimeRewards,
               bonding: t.bonding || f.bonding,
               bondingBps: t.bondingBps || f.bondingBps,
-            };
+            });
           });
           const seen = new Set(merged.map((t) => t.token.toLowerCase()));
-          return [...merged, ...FIXTURE_TOKENS.filter((t) => !seen.has(t.token.toLowerCase()))];
+          return [...merged, ...FIXTURE_TOKENS.filter((t) => !seen.has(t.token.toLowerCase())).map(cleanLaunch)];
         }
         if (items.length) return items;
       }
-      if (REVIEW_FIXTURES) return FIXTURE_TOKENS;
+      if (REVIEW_FIXTURES) return FIXTURE_TOKENS.map(cleanLaunch);
       return [] as LaunchToken[];
     },
     refetchInterval: 8_000,

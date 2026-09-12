@@ -39,6 +39,8 @@ On success the ticker takes a **24h global lock**. A second launch of the same t
 
 Metadata (image, description, socials) is frozen at launch. No post-launch identity edit.
 
+The launchpad treats that identity as **untrusted**. Names and descriptions are text (tags stripped). Website / X / Telegram render only on an allowlisted `https:` host. Images must be the upload path `/m/<id>.webp` (or a first-party icon). `javascript:`, `data:`, and raw HTML are rejected at admission and again in the UI. See [Browser security](/docs/web-security).
+
 ## After launch
 
 Instant: bonding → ready → frozen → graduate → locked official v4 (0% LP). Holders earn the quote you picked from trade #1 (Rewards) or the 2% later market-buys and burns (Standard). Same 1% Top-10 + 0.5% CORE.

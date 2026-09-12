@@ -12,6 +12,8 @@ import { factory, erc20, launchAbi } from "@/lib/contracts";
 import { INDEXER_URL } from "@/lib/chain";
 import { parseUnitsSafe } from "@/lib/utils";
 import { TurnstileWidget, turnstileSiteKey } from "@/components/turnstile";
+import { sanitizeDescription, sanitizeMediaUrl, sanitizeTokenName, untrustedMetadataReasons } from "@/lib/untrusted-metadata";
+import { SafeTokenImage } from "@/components/safe-media";
 
 export default function LaunchPage() {
   const router = useRouter();
@@ -70,9 +72,9 @@ export default function LaunchPage() {
         wallet: address,
         ticker,
         mode: mode === "fair" ? "fair" : rewards ? "rewards" : "standard",
-        name,
-        image,
-        description,
+        name: sanitizeTokenName(name),
+        image: sanitizeMediaUrl(image),
+        description: sanitizeDescription(description),
         turnstile: turnstileToken,
         factory: factory.address,
         factoryVersion: 1,
@@ -142,16 +144,31 @@ export default function LaunchPage() {
       return;
     }
     try {
-      const params = {
+      const safeName = sanitizeTokenName(name);
+      const safeDescription = sanitizeDescription(description);
+      const safeImage = sanitizeMediaUrl(image);
+      const blocked = untrustedMetadataReasons({
         name,
+        description,
+        image,
+        website: "",
+        twitter: "",
+        telegram: "",
+      });
+      if (blocked.length || (image && !safeImage)) {
+        setError("Token identity is treated as untrusted. HTML, javascript:/data: URLs, and off-policy images are rejected.");
+        return;
+      }
+      const params = {
+        name: safeName,
         symbol: symbol.toUpperCase(),
         decimals: 18,
         supply: 0n,
         quote: selected.token,
         fdvQuoteRaw: 0n,
         devBuyQuote: parseUnitsSafe(devBuy || "0", selected.decimals),
-        image,
-        description,
+        image: safeImage,
+        description: safeDescription,
         website: "",
         twitter: "",
         telegram: "",
@@ -207,7 +224,7 @@ export default function LaunchPage() {
           functionName: "createFairLaunch",
           args: [
             {
-              name,
+              name: safeName,
               symbol: priced.ticker,
               decimals: 18,
               supply: 0n,
@@ -215,8 +232,8 @@ export default function LaunchPage() {
               duration: BigInt(Math.floor(Number(durationMin) * 60)),
               auctionBps: 0,
               minRaise: 0n,
-              image,
-              description,
+              image: safeImage,
+              description: safeDescription,
               website: "",
               twitter: "",
               telegram: "",
@@ -293,17 +310,35 @@ export default function LaunchPage() {
                 const res = await fetch(`${INDEXER_URL}/upload`, { method: "POST", body: file });
                 const body = (await res.json()) as { publicUrl?: string; uri?: string; error?: string };
                 if (!res.ok) throw new Error(body.error ?? "upload failed");
-                setImage(body.publicUrl ?? body.uri ?? "");
+                const next = sanitizeMediaUrl(body.publicUrl ?? body.uri ?? "");
+                if (!next) throw new Error("upload returned a URL the launchpad will not render");
+                setImage(next);
               } catch (err) {
                 setError(err instanceof Error ? err.message : "upload failed — no base64 onchain");
               }
             }}
           />
-          <Input id="launch-image" name="image" placeholder="or paste image URL" value={image.startsWith("data:") ? "" : image} onChange={(e) => setImage(e.target.value)} />
-          {image && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt="" className="mt-2 h-16 w-16 rounded-lg object-cover" />
-          )}
+          <Input
+            id="launch-image"
+            name="image"
+            placeholder="or paste first-party /m/…webp URL"
+            value={image.startsWith("data:") ? "" : image}
+            onChange={(e) => {
+              const next = e.target.value;
+              if (!next) {
+                setImage("");
+                return;
+              }
+              const safe = sanitizeMediaUrl(next);
+              if (!safe) {
+                setError("Image URL must be a REACTOR media path (/m/<id>.webp). javascript/data/remote hosts are rejected.");
+                return;
+              }
+              setError(null);
+              setImage(safe);
+            }}
+          />
+          {image ? <SafeTokenImage src={image} className="mt-2 h-16 w-16 rounded-lg object-cover" /> : null}
         </div>
         <div>
           <label htmlFor="launch-description" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-500">

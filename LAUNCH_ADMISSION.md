@@ -26,7 +26,7 @@ usdPegOne quotes still need the signature. `virtualQuote0` must match protocol g
 
 ## Offchain signals → ALLOW / CHALLENGE / DENY
 
-Ticker, quote, factory, metadata, wallet, session, IP, ASN, client, Cloudflare Turnstile widget + `siteverify`, global signed-auth token-bucket, funding-parent heuristic (network /16+ASN and/or first USDC funder, bounded lookback), image-hash.
+Ticker, quote, factory, metadata, wallet, session, IP, ASN, client, Cloudflare Turnstile widget + `siteverify`, global signed-auth token-bucket, funding-parent heuristic (network /16+ASN and/or first USDC funder, bounded lookback), image-hash. Creator image / website / X / Telegram must pass the shared URL allowlist (`packages/reactor/src/untrusted-metadata.ts`). HTML names and `javascript:` / `data:` media are **DENY**.
 
 **Production hard gates:** outside `REACTOR_ENV=LOCAL`, missing Turnstile secret/site key, `SIGNER_INLINE`, or an Anvil `#0` signer key refuses start and launch.
 

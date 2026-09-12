@@ -6,7 +6,7 @@
 
 ## Flow
 
-1. **Admission** — ticker, reserved list, factory, quote, metadata, **real Cloudflare Turnstile**, wallet/session/IP rates, image-hash, funding-cluster, global issuance.
+1. **Admission** — ticker, reserved list, factory, quote, metadata, **real Cloudflare Turnstile**, wallet/session/IP rates, image-hash, funding-cluster, global issuance. Creator image / website / X / Telegram URLs are scheme-allowlisted; HTML names and `javascript:` / `data:` media **DENY** (not CHALLENGE).
 2. **CHALLENGE** returns 403, no receipt. The launch page renders the Turnstile widget, collects a real token, and re-admits. ELEVATED/ATTACK require Turnstile; they do **not** loop CHALLENGE after a valid token if the request is under rate + bucket limits.
 3. **ALLOW** issues a short-lived HMAC receipt that includes `launchConfigHash` (creator, ticker, name, metadata, quote, mode, factory, Factory version, curve/config).
 4. Isolated signer requires a durable store. If Postgres/SQLite cannot be opened, signing returns **503** (`SIGNER_STORE_UNAVAILABLE`) and does **not** mint. There is no in-memory fallback that skips consume.

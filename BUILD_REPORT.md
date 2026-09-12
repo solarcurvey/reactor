@@ -1,3 +1,34 @@
+# BUILD REPORT — Untrusted token metadata / CSP (#41)
+
+**Status:** Rebased onto latest `origin/main` `5fba655` (#43 live CORE/Top-10 toasts after #53/#33/#30). Issue **#41 stays open**.  
+**Not audited. Not mainnet.**  
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Public launchpad treats creator name/ticker/description/URLs/images as untrusted. No raw HTML. URL scheme + media allowlists. Production CSP / security headers. Admission DENY for `javascript:` / `data:` / HTML names. Addresses #41. |
+| Indexer / lib | `untrusted-metadata.test.ts` + `security-headers.test.ts` + `admission-unit.test.ts` + `pnpm docs:check` |
+| Foundry | Not re-run this pass (web/admission only) |
+| Mainnet | **Blocked** |
+
+## Closed this run (#41)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Raw HTML / XSS via token identity | **Yes** | Strip + no `dangerouslySetInnerHTML`. Lock in `untrusted-metadata.test.ts` |
+| `javascript:` / `data:` links and images | **Yes** | Scheme allowlist. Admission DENY. UI sanitizes on read |
+| Arbitrary remote / SVG media | **Yes** | `/m/<id>.webp` + `/icons/` only. `SafeTokenImage` |
+| Production CSP + headers | **Yes** | `launchpadSecurityHeaders()`. HSTS only `REACTOR_ENV=PROD` |
+| Docs | **Yes** | `/docs/web-security`, trust, media, admission, creators, traders, FAQ, THREAT_MODEL, HARDENING_REPORT, AUDIT_HANDOFF |
+
+---
+
+# Prior — merged #43 Live CORE / Top-10 buy+burn toasts (Refs #38)
+
 # BUILD REPORT — Live CORE / Top-10 buy+burn toasts (Refs #38)
 
 **Status:** Rebased onto latest `origin/main` `c2b84ff` (#53 Top-10 fail-closed after #33). Issue **#38 stays open** — use `Refs #38`, do not auto-close.  
@@ -32,7 +63,9 @@
 
 ---
 
-# Prior — Top-10 fail-closed gaps after #33 (Refs #10)
+# Prior — merged #53 Top-10 fail-closed gaps after #33 (Refs #10)
+
+# BUILD REPORT — Top-10 fail-closed gaps after #33 (Refs #10)
 
 **Status:** Fresh branch off latest `origin/main` `0c30029` (PR **#33** merged). Issue **#10 stays open** — use `Refs #10`, do not auto-close.  
 **Not audited. Not mainnet.**  

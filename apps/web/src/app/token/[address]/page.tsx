@@ -10,6 +10,8 @@ import { RewardsModule, TradePanel } from "@/components/trade-panel";
 import { useCandles, useCoreStats, useSwapSeries, useTokenByAddress } from "@/lib/hooks";
 import { explorerAddress, formatUnitsSafe, shortAddress } from "@/lib/utils";
 import { addresses } from "@/lib/addresses";
+import { quotePath } from "@/lib/untrusted-metadata";
+import { SafeExternalLink } from "@/components/safe-link";
 
 const INTERVALS = [
   { id: "1m", sec: 60 },
@@ -55,7 +57,7 @@ export default function TokenPage() {
           <h1 className="text-2xl font-semibold">{t.name}</h1>
           <span className="font-mono text-sm text-zinc-500">${t.symbol}</span>
           <Link
-            href={`/quote/${t.quoteSymbol ?? "x"}`}
+            href={quotePath(t.quoteSymbol ?? "x")}
             className="rounded-full bg-cyan-300/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cyan-100"
           >
             {t.rewardsMode === false ? "BUY+BURN" : `EARNS ${t.quoteSymbol}`}
@@ -158,6 +160,19 @@ export default function TokenPage() {
       <div className="mt-4 grid gap-3 lg:grid-cols-[1.35fr_0.85fr]">
         <div>
           <p className="text-[13px] leading-5 text-zinc-400">{t.description || "No description."}</p>
+          {(t.website || t.twitter || t.telegram) && (
+            <div className="mt-3 flex flex-wrap gap-3 text-[12px]">
+              <SafeExternalLink href={t.website} className="text-cyan-200 underline underline-offset-2">
+                Website
+              </SafeExternalLink>
+              <SafeExternalLink href={t.twitter} className="text-cyan-200 underline underline-offset-2">
+                X
+              </SafeExternalLink>
+              <SafeExternalLink href={t.telegram} className="text-cyan-200 underline underline-offset-2">
+                Telegram
+              </SafeExternalLink>
+            </div>
+          )}
           <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[12px] sm:grid-cols-3">
             <Meta label="Token" value={shortAddress(t.token)} href={explorerAddress(t.token)} />
             <Meta label="Quote" value={`${t.quoteSymbol} ${shortAddress(t.quote)}`} href={explorerAddress(t.quote)} />
@@ -185,7 +200,7 @@ function Meta({ label, value, href }: { label: string; value: string; href?: str
     <div>
       <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
       {href ? (
-        <a className="font-mono text-cyan-100 underline-offset-2 hover:underline" href={href} target="_blank" rel="noreferrer">
+        <a className="font-mono text-cyan-100 underline-offset-2 hover:underline" href={href} target="_blank" rel="noopener noreferrer">
           {value}
         </a>
       ) : (

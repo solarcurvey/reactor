@@ -1,3 +1,5 @@
+import { untrustedMetadataReasons } from "./untrusted-metadata.ts";
+
 export type AdmissionDecision = "ALLOW" | "CHALLENGE" | "DENY";
 export type IssuanceLevel = "NORMAL" | "ELEVATED" | "ATTACK";
 
@@ -5,7 +7,15 @@ export type AdmissionSignals = {
   ticker: string;
   quote?: string;
   factory?: string;
-  metadata?: { name?: string; description?: string; imageHash?: string };
+  metadata?: {
+    name?: string;
+    description?: string;
+    imageHash?: string;
+    image?: string;
+    website?: string;
+    twitter?: string;
+    telegram?: string;
+  };
   wallet?: string;
   session?: string;
   ip?: string;
@@ -65,6 +75,7 @@ export function evaluateAdmission(signals: AdmissionSignals, level: IssuanceLeve
   if (signals.quote && !/^0x[0-9a-fA-F]{40}$/.test(signals.quote)) reasons.push("quote");
   if (signals.factory && !/^0x[0-9a-fA-F]{40}$/.test(signals.factory)) reasons.push("factory");
   if (!signals.metadata?.name || signals.metadata.name.trim().length < 2) reasons.push("name");
+  reasons.push(...untrustedMetadataReasons(signals.metadata));
 
   const turnstileRequired = signals.turnstileRequired === true || level !== "NORMAL";
   if (turnstileRequired && signals.turnstileOk !== true) {
@@ -81,11 +92,21 @@ export function evaluateAdmission(signals: AdmissionSignals, level: IssuanceLeve
     reasons.push("funding-cluster");
   }
 
+  const metadataDeny = reasons.some(
+    (r) =>
+      r === "name-html" ||
+      r === "description-scheme" ||
+      r === "image-url" ||
+      r === "website-url" ||
+      r === "twitter-url" ||
+      r === "telegram-url",
+  );
   const hardDeny =
     reasons.includes("ticker required") ||
     reasons.includes("issuance throttle") ||
     reasons.includes("quote") ||
     reasons.includes("factory") ||
+    metadataDeny ||
     (level === "ATTACK" && reasons.includes("funding-cluster"));
 
   if (hardDeny) {

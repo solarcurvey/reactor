@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useLaunchTokens } from "@/lib/hooks";
 import { formatUnitsSafe } from "@/lib/utils";
+import { tokenPath } from "@/lib/untrusted-metadata";
 
 export default function SearchPage() {
   const { data, isLoading, isError } = useLaunchTokens();
@@ -60,7 +61,7 @@ export default function SearchPage() {
       <ul className="mt-4 divide-y divide-white/8 rounded-2xl border border-white/8">
         {items.map((t) => (
           <li key={t.token}>
-            <Link href={`/token/${t.token}`} className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.03]">
+            <Link href={tokenPath(t.token)} className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.03]">
               <span>
                 <span className="font-medium">{t.name}</span>
                 <span className="ml-2 font-mono text-[12px] text-zinc-500">${t.symbol}</span>

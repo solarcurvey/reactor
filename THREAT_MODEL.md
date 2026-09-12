@@ -66,6 +66,15 @@ Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, 
 12. **Indexer crash window** — ingest used to write events then advance the cursor after the loop. A later #8 path fetched token `Burned` / `Transfer` to zero **after** that cursor commit, so a crash skipped those journal rows on restart (`from = cursor + 1`). `persistTickBatch` now commits protocol rows, token-burn journal / `current_supply` writes, and the cursor together. Residual: post-commit 24h roll / external marks / SSE / bounded `totalSupply()` reconcile can still lag; the indexer is still not onchain truth.
 13. **Stale Top-10 snapshot** — ingest `tick()` used to swallow ranker failure into an alert and leave the last healthy `current` payload. `GET /top10` now refuses snapshots older than 15 minutes and Keeper shares that TTL. Residual: the TTL is offchain policy, not an onchain freshness check.
 
+## Public UI / browser controls
+
+- Creator name, ticker, description, website, X, Telegram, and image are **untrusted**. The launchpad never uses `dangerouslySetInnerHTML`. Text is stripped of tags / bidi / controls before display.
+- URL scheme allowlist: `https:` (loopback `http:` only). Reject `javascript:`, `data:`, `vbscript:`, `file:`, `blob:`, protocol-relative, userinfo.
+- Social hosts are allowlisted (`x.com` / `twitter.com`, `t.me`). Images are first-party `/m/<id>.webp` or `/icons/…` — not arbitrary remote HTTPS (SVG XSS / tracking).
+- Production security headers include CSP (`object-src 'none'`, `frame-ancestors 'none'`, tight `img-src`), COOP, nosniff, DENY frames. HSTS only when `REACTOR_ENV=PROD`.
+- Admission DENYs the same payloads before EIP-712. The UI still sanitizes on read (hostile or historical onchain rows).
+- Residual: phishing via a valid `https://` website that looks official; CSP `script-src` still includes `'unsafe-inline'` for Next.js + Turnstile.
+
 ## API / indexer controls
 
 - Public JSON POSTs (`/quote`, `/launch/admit`, `/launch/authorize`) reject bodies over the JSON cap with **413** (default **16KiB**, hard max **64KiB**). `JSON_BODY_LIMIT_BYTES` cannot raise the cap past the hard max. Enforcement is on the stream: declared `Content-Length` and chunked bodies with no length. The request is destroyed at the first overflowing byte so the process cannot buffer an unbounded JSON POST.
