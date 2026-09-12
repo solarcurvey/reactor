@@ -215,6 +215,7 @@ pnpm --filter indexer watchdog
 | 39 | Selected route + atomic preview/minOuts/terminal from the same candidate; PreviewRoute is hops+1 (BUY append / SELL prepend) | `quote-integrity.test.ts`, `quote-select.ts`, `UserRoute.t.sol` `test_nested_previewSell_hops_plus_terminal` |
 | 40 | Keeper lease renew + fence: long tick cannot overlap; stale fence cannot send | `keeper.lease.test.ts` |
 | 41 | Two Postgres workers: one winner, renew vs overlap, expiry/crash takeover, stale fence cannot send | `keeper.lease.pg.test.ts` (`test:pg-lease`, CI `keeper-lease-pg`) |
+| 42 | `external_price_marks.kind` is schema v10 (not v7); real post-#27 v8 DBs ALTER + backfill; v9 left unused for #23 | `schema.test.ts`, `pg-ms-timestamps.test.ts` |
 
 ## Arc smoke
 

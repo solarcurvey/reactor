@@ -11,7 +11,7 @@ import { openStore } from "./db.ts";
 import { admit, consumeIssuanceToken, consumeReceipt, issueReceipt, persistReceipt } from "./admission.ts";
 import { raiseAlert } from "./alerts.ts";
 import { saveJob, withLeaderLock } from "./keeper-jobs.ts";
-import { applyMigrations, MS_TIMESTAMP_COLUMNS, SCHEMA_VERSION } from "./migrations.ts";
+import { applyMigrations, migrationApplied, MS_TIMESTAMP_COLUMNS, SCHEMA_VERSION } from "./migrations.ts";
 import { TABLES } from "./schema.ts";
 
 const url = process.env.DATABASE_URL ?? "";
@@ -152,35 +152,46 @@ try {
   assert(row.job_ts === "1700000444", "keeper_operations.ts preserved");
   assert(row.alert_ts === "1700000555", "alerts.ts preserved");
 
-  // --- v8 production marks (no kind) upgrade to v9 ---
+  // --- Actual preceding production schema is main v8 (#27 journal). Pin a real install. ---
   await resetPublic(admin);
+  const storeV8 = await openStore({ databaseUrl: url });
+  assert((await applyMigrations(storeV8)) === SCHEMA_VERSION, "fresh install reaches SCHEMA_VERSION");
+  const journal = await admin.query<{ n: string }>(
+    "SELECT COUNT(*)::text AS n FROM information_schema.tables WHERE table_schema='public' AND table_name='indexer_event_journal'",
+  );
+  assert(journal.rows[0]?.n === "1", "post-#27 journal exists before pin");
+  await admin.query("ALTER TABLE external_price_marks DROP COLUMN kind");
+  await admin.query("DELETE FROM schema_migrations WHERE id >= 9");
   await admin.query(`
-    CREATE TABLE schema_migrations (id INTEGER PRIMARY KEY, applied_ts BIGINT NOT NULL);
-    CREATE TABLE external_price_marks (
-      id BIGSERIAL PRIMARY KEY, token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT
-    );
-    CREATE UNIQUE INDEX idx_external_marks_unique ON external_price_marks(token, source, ts);
-    INSERT INTO schema_migrations(id, applied_ts) VALUES
-      (1, 1700000000),(2, 1700000000),(3, 1700000000),(4, 1700000000),
-      (5, 1700000000),(6, 1700000000),(7, 1700000000),(8, 1700000000);
     INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason)
       VALUES ('0xzec', 'ZEC', 'fused', '42000000', 1700000100, 1, ''),
              ('0xzec', 'ZEC', 'coingecko', '41900000', 1700000100, 1, '');
   `);
-  const storeV8 = await openStore({ databaseUrl: url });
-  assert((await applyMigrations(storeV8)) === SCHEMA_VERSION, `v8 upgrades to v${SCHEMA_VERSION}`);
+  const pinned = await admin.query<{ n: string }>("SELECT COALESCE(MAX(id),0)::text AS n FROM schema_migrations");
+  assert(pinned.rows[0]?.n === "8", `pinned post-#27 schema is ${pinned.rows[0]?.n}, expected 8`);
+  assert(!(await migrationApplied(storeV8, 9)), "pinned v8 has no v9 row");
+  assert(!(await migrationApplied(storeV8, 10)), "pinned v8 has no v10 row");
+  const preKind = await admin.query<{ n: string }>(
+    "SELECT COUNT(*)::text AS n FROM information_schema.columns WHERE table_schema='public' AND table_name='external_price_marks' AND column_name='kind'",
+  );
+  assert(preKind.rows[0]?.n === "0", "pinned v8 production marks have no kind");
+  assert((await applyMigrations(storeV8)) === SCHEMA_VERSION, `real v8 upgrades to v${SCHEMA_VERSION}`);
   const kindCol = await admin.query<{ data_type: string }>(
     "SELECT data_type FROM information_schema.columns WHERE table_schema='public' AND table_name='external_price_marks' AND column_name='kind'",
   );
   assert(kindCol.rows[0]?.data_type === "text", "v10 adds external_price_marks.kind");
-  const skippedV9 = await admin.query<{ n: string }>("SELECT COUNT(*)::text AS n FROM schema_migrations WHERE id=9");
-  assert(skippedV9.rows[0]?.n === "0", "v9 left unused for #23 current_supply");
+  assert(await migrationApplied(storeV8, 10), "schema_migrations records v10");
+  assert(!(await migrationApplied(storeV8, 9)), "v9 left unused for #23 current_supply");
   const kinds = await admin.query<{ source: string; kind: string }>(
     "SELECT source, kind FROM external_price_marks ORDER BY source",
   );
   const bySource = Object.fromEntries(kinds.rows.map((r) => [r.source, r.kind]));
   assert(bySource.fused === "consensus", "legacy fused backfills to kind=consensus");
   assert(bySource.coingecko === "observation", "provider rows default to kind=observation");
+  await admin.query("ALTER TABLE tokens ADD COLUMN current_supply TEXT");
+  await admin.query("INSERT INTO schema_migrations(id, applied_ts) VALUES (9, 1700000000)");
+  assert(await migrationApplied(storeV8, 9), "v9 remains insertable after v10");
+  assert(await migrationApplied(storeV8, 10), "v10 row survives a later v9 insert");
   await storeV8.close();
 
   // --- Fresh schema + live Date.now() paths ---

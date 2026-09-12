@@ -1,13 +1,12 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import { openStore } from "./db.ts";
 import { consumeIssuanceToken } from "./admission.ts";
 import { raiseAlert } from "./alerts.ts";
 import { saveJob } from "./keeper-jobs.ts";
 import { recordTrade, upsertMarket, upsertToken } from "./ingest.ts";
-import { applyMigrations, MS_TIMESTAMP_COLUMNS, SCHEMA_VERSION, TABLES } from "./schema.ts";
+import { applyMigrations, migrationApplied, MS_TIMESTAMP_COLUMNS, SCHEMA_VERSION, TABLES } from "./schema.ts";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -96,43 +95,69 @@ assert(Number(alert?.ts) >= nowMs, "alerts.ts milliseconds");
 await store.close();
 rmSync(dir, { recursive: true, force: true });
 
-// Preceding production schema is v8 (#27 journal). v10 adds mark kind (v9 reserved for #23).
+// Actual preceding production schema is main v8 (#27 journal). Pin a real install back to v8,
+// then prove v10 kind + backfill. v9 is left unused so #23 can still insert current_supply.
 {
   const upgradeDir = mkdtempSync(join(tmpdir(), "reactor-v8-"));
   const upgradePath = join(upgradeDir, "v8.sqlite");
-  const seed = new DatabaseSync(upgradePath);
-  seed.exec(`
-    CREATE TABLE schema_migrations (id INTEGER PRIMARY KEY, applied_ts INTEGER NOT NULL);
-    CREATE TABLE external_price_marks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT
-    );
-    CREATE UNIQUE INDEX idx_external_marks_unique ON external_price_marks(token, source, ts);
-  `);
-  const insertMig = seed.prepare("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)");
-  for (let id = 1; id <= 8; id++) insertMig.run(id, 1_700_000_000);
-  seed
-    .prepare("INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason) VALUES(?,?,?,?,?,?,?)")
-    .run("0xzec", "ZEC", "fused", "42000000", 1_700_000_100, 1, "");
-  seed
-    .prepare("INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason) VALUES(?,?,?,?,?,?,?)")
-    .run("0xzec", "ZEC", "coingecko", "41900000", 1_700_000_100, 1, "");
-  const v8Cols = seed.prepare("PRAGMA table_info(external_price_marks)").all() as Array<{ name: string }>;
-  assert(!v8Cols.some((c) => c.name === "kind"), "v8 production marks have no kind");
-  seed.close();
-
   const upgraded = await openStore({ sqlitePath: upgradePath });
-  assert((await applyMigrations(upgraded)) === 10, "v8 upgrades to v10");
-  const ver = await upgraded.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
-  assert(Number(ver?.n) === 10, "schema_migrations records v10");
-  const skipped = await upgraded.get<{ n: number }>("SELECT COUNT(*) as n FROM schema_migrations WHERE id=9");
-  assert(Number(skipped?.n) === 0, "v9 left unused for #23 current_supply");
+  assert((await applyMigrations(upgraded)) === 10, "fresh install reaches v10");
+  const journal = await upgraded.get<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='indexer_event_journal'",
+  );
+  assert(journal?.name === "indexer_event_journal", "post-#27 journal exists before pin");
+  const identity = await upgraded.get<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_selfburn_identity'",
+  );
+  assert(identity?.name === "idx_selfburn_identity", "post-#27 identity index exists before pin");
+  await upgraded.exec("ALTER TABLE external_price_marks DROP COLUMN kind");
+  await upgraded.run("DELETE FROM schema_migrations WHERE id >= 9");
+  await upgraded.run(
+    "INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason) VALUES(?,?,?,?,?,?,?)",
+    "0xzec",
+    "ZEC",
+    "fused",
+    "42000000",
+    1_700_000_100,
+    1,
+    "",
+  );
+  await upgraded.run(
+    "INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason) VALUES(?,?,?,?,?,?,?)",
+    "0xzec",
+    "ZEC",
+    "coingecko",
+    "41900000",
+    1_700_000_100,
+    1,
+    "",
+  );
+  const pinned = await upgraded.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
+  assert(Number(pinned?.n) === 8, `pinned post-#27 schema is ${pinned?.n}, expected 8`);
+  assert(!(await migrationApplied(upgraded, 9)), "pinned v8 has no v9 row");
+  assert(!(await migrationApplied(upgraded, 10)), "pinned v8 has no v10 row");
+  const preCols = await upgraded.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
+  assert(!preCols.some((c) => c.name === "kind"), "pinned v8 production marks have no kind");
+  const tokenCols = await upgraded.all<{ name: string }>("PRAGMA table_info(tokens)");
+  assert(!tokenCols.some((c) => c.name === "current_supply"), "pinned v8 tokens has no current_supply");
+
+  assert((await applyMigrations(upgraded)) === 10, "real v8 upgrades to v10");
+  assert(await migrationApplied(upgraded, 10), "schema_migrations records v10");
+  assert(!(await migrationApplied(upgraded, 9)), "v9 left unused for #23 current_supply");
   const cols = await upgraded.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
   assert(cols.some((c) => c.name === "kind"), "v10 adds external_price_marks.kind");
   const fused = await upgraded.get<{ kind: string }>("SELECT kind FROM external_price_marks WHERE source=?", "fused");
   const obs = await upgraded.get<{ kind: string }>("SELECT kind FROM external_price_marks WHERE source=?", "coingecko");
   assert(fused?.kind === "consensus", "legacy fused/consensus/fail/missing backfill to kind=consensus");
   assert(obs?.kind === "observation", "provider rows default to kind=observation");
+
+  // #23 can still fill the reserved v9 slot after this branch lands (existence, not MAX < 9).
+  await upgraded.exec("ALTER TABLE tokens ADD COLUMN current_supply TEXT");
+  await upgraded.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 9, 1_700_000_000);
+  assert(await migrationApplied(upgraded, 9), "v9 remains insertable after v10");
+  assert(await migrationApplied(upgraded, 10), "v10 row survives a later v9 insert");
+  const afterKind = await upgraded.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
+  assert(afterKind.some((c) => c.name === "kind"), "kind column survives a later v9 insert");
   await upgraded.close();
   rmSync(upgradeDir, { recursive: true, force: true });
 }

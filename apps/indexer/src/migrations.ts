@@ -481,16 +481,24 @@ export async function applyMigrations(store: Store): Promise<number> {
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 8, Math.floor(Date.now() / 1000));
     current = 8;
   }
-  // v9 is reserved for tokens.current_supply (PR #23, not on main). Kind is v10 so those trains do not collide.
-  if (current < 10) {
+  // v9 is reserved for tokens.current_supply (PR #23, not on main). Kind is the next unused
+  // id after that train (v10). Apply v10 by row existence — not MAX(id) — so a later #23
+  // can still insert id=9 with `NOT EXISTS` even if this branch lands first.
+  if (!(await migrationApplied(store, 10))) {
     await store.exec("ALTER TABLE external_price_marks ADD COLUMN kind TEXT DEFAULT 'observation'").catch(() => undefined);
     await store.exec(
       "UPDATE external_price_marks SET kind='consensus' WHERE source IN ('consensus','fused','fail','missing') AND (kind IS NULL OR kind='observation')",
     ).catch(() => undefined);
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 10, Math.floor(Date.now() / 1000));
-    current = 10;
   }
-  return current;
+  const latest = await store.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
+  return Number(latest?.n ?? 0);
+}
+
+/** True when `schema_migrations` already has this id. Used so v10 does not depend on MAX(id). */
+export async function migrationApplied(store: Store, id: number): Promise<boolean> {
+  const row = await store.get<{ n: number }>("SELECT COUNT(*) as n FROM schema_migrations WHERE id=?", id);
+  return Number(row?.n ?? 0) > 0;
 }
 
 function postgres(sql: string): string {

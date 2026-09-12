@@ -27,7 +27,7 @@ Guardian-added external quotes are scheduled automatically from `quote_assets`. 
 | Arc venue sanity | 400 bps | Applied only when a verified `route_venues` / official pool vs USDC exists and has an executable mark. |
 | Accepted mark freshness | 180s | ValuationService treats older consensus as `externalStale`. |
 
-Accepted and rejected observations plus the `kind=consensus` row are persisted for `/pricing/health` and the watchdog. Schema **v10** adds `external_price_marks.kind` (v8 production DBs `ALTER` + backfill; v9 reserved for #23 `current_supply`).
+Accepted and rejected observations plus the `kind=consensus` row are persisted for `/pricing/health` and the watchdog. Schema **v10** adds `external_price_marks.kind` (real post-#27 v8 DBs `ALTER` + backfill; v9 reserved for #23 `current_supply`).
 
 ## Worker
 
