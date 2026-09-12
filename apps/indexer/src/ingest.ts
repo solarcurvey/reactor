@@ -1,10 +1,17 @@
 import type { Store } from "./db.ts";
-import { applyTradeToCandle, CANDLE_INTERVALS, priceQuoteX18 } from "../../../packages/reactor/src/prices.ts";
-import { journalEvent } from "./event-identity.ts";
+import {
+  applyTradeToCandle,
+  CANDLE_INTERVALS,
+  burnAdjustedSupply,
+  fdvUsd6,
+  priceQuoteX18,
+} from "../../../packages/reactor/src/prices.ts";
+import { EVENT_IDENTITY_CONFLICT, insertLogOnce, journalEvent } from "./event-identity.ts";
 import { isUniqueViolation } from "./unique.ts";
 import { loadValuationService } from "./valuation-store.ts";
 
 export type SsePublisher = { publish(ev: { type: string; data: unknown }): void };
+export type TotalSupplyReader = (token: string) => Promise<bigint | null>;
 
 const INTERVALS = Object.values(CANDLE_INTERVALS);
 
@@ -20,6 +27,7 @@ export async function upsertToken(
     mode?: number;
     rewardsMode?: boolean;
     supply?: string;
+    currentSupply?: string;
     ticker?: string;
     factoryVersion?: number;
     block?: number;
@@ -27,10 +35,20 @@ export async function upsertToken(
     ts?: number;
   },
 ) {
+  const initial = row.supply ?? "";
+  const current = row.currentSupply ?? initial;
   await store.run(
-    `INSERT INTO tokens(address,symbol,name,decimals,creator,quote,mode,rewards_mode,supply,ticker,factory_version,created_block,created_tx,created_ts)
-     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-     ON CONFLICT(address) DO UPDATE SET symbol=COALESCE(excluded.symbol,tokens.symbol), quote=COALESCE(excluded.quote,tokens.quote), ticker=COALESCE(NULLIF(excluded.ticker,''),tokens.ticker)`,
+    `INSERT INTO tokens(address,symbol,name,decimals,creator,quote,mode,rewards_mode,supply,current_supply,ticker,factory_version,created_block,created_tx,created_ts)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+     ON CONFLICT(address) DO UPDATE SET
+       symbol=COALESCE(excluded.symbol,tokens.symbol),
+       quote=COALESCE(excluded.quote,tokens.quote),
+       ticker=COALESCE(NULLIF(excluded.ticker,''),tokens.ticker),
+       supply=COALESCE(NULLIF(excluded.supply,''),tokens.supply),
+       current_supply=CASE
+         WHEN tokens.current_supply IS NULL OR tokens.current_supply='' THEN COALESCE(NULLIF(excluded.current_supply,''), NULLIF(excluded.supply,''), tokens.supply)
+         ELSE tokens.current_supply
+       END`,
     row.address.toLowerCase(),
     row.symbol ?? "",
     row.name ?? "",
@@ -39,13 +57,176 @@ export async function upsertToken(
     (row.quote ?? "").toLowerCase(),
     row.mode ?? 0,
     row.rewardsMode === false ? 0 : 1,
-    row.supply ?? "",
+    initial,
+    current,
     row.ticker ?? row.symbol ?? "",
     row.factoryVersion ?? 1,
     row.block ?? 0,
     row.tx ?? "",
     row.ts ?? 0,
   );
+}
+
+function parseRaw(v: string | undefined): bigint {
+  try {
+    return BigInt(String(v || "0").split(".")[0] ?? "0");
+  } catch {
+    return 0n;
+  }
+}
+
+/** Stored remaining-supply snapshot. Never TokenCreated minus SelfBurn/Top10/COREBurned. */
+export async function currentSupplyRaw(store: Store, token: string): Promise<bigint> {
+  const tok = await store.get<{ supply: string; current_supply: string }>(
+    "SELECT supply, current_supply FROM tokens WHERE address=?",
+    token.toLowerCase(),
+  );
+  const current = parseRaw(tok?.current_supply);
+  if (current > 0n || (tok?.current_supply !== undefined && tok.current_supply !== "" && tok.current_supply !== null)) {
+    return parseRaw(tok?.current_supply);
+  }
+  return parseRaw(tok?.supply);
+}
+
+/** Authoritative writer: onchain `totalSupply()` wins over event attribution. */
+export async function applyOnchainTotalSupply(store: Store, token: string, totalSupply: bigint): Promise<bigint> {
+  const addr = token.toLowerCase();
+  const existing = await store.get<{ address: string }>("SELECT address FROM tokens WHERE address=?", addr);
+  if (!existing) {
+    await upsertToken(store, { address: addr, supply: totalSupply.toString(), currentSupply: totalSupply.toString() });
+  }
+  await store.run("UPDATE tokens SET current_supply=? WHERE address=?", totalSupply.toString(), addr);
+  return totalSupply;
+}
+
+/**
+ * Token-level `Burned` / `Transfer` to zero. Deduped by canonical
+ * `(chain_id, tx, log_index, event_kind)` — Transfer and Burned in one tx are two logs.
+ * Protocol SelfBurn/Top10 are attribution only and do not write current_supply.
+ * Multiple same-tx burns are corrected by `totalSupply()` reconcile.
+ */
+export async function applyTokenLevelBurn(
+  store: Store,
+  row: {
+    token: string;
+    burned: string;
+    block: number;
+    tx: string;
+    ts: number;
+    account?: string;
+    chainId: number;
+    logIndex: number;
+    eventKind: string;
+  },
+): Promise<boolean> {
+  const token = row.token.toLowerCase();
+  const eventKind = row.eventKind;
+  const claimed = await journalEvent(store, {
+    chainId: row.chainId,
+    tx: row.tx,
+    logIndex: row.logIndex,
+    eventKind,
+    address: token,
+    block: row.block,
+    ts: row.ts,
+  });
+  const inserted = await insertLogOnce(
+    store,
+    `INSERT INTO selfburn(token,quote,amount,burned,kind,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+     ${EVENT_IDENTITY_CONFLICT}`,
+    token,
+    "",
+    row.account ?? "0",
+    row.burned,
+    eventKind,
+    row.block,
+    row.tx,
+    row.ts,
+    row.chainId,
+    row.logIndex,
+    eventKind,
+  );
+  if (!claimed && !inserted) return false;
+  const remaining = burnAdjustedSupply(await currentSupplyRaw(store, token), parseRaw(row.burned));
+  await store.run("UPDATE tokens SET current_supply=? WHERE address=?", remaining.toString(), token);
+  return true;
+}
+
+/** Attribution only. Never writes current_supply. */
+export async function persistSupplyBurn(
+  store: Store,
+  row: {
+    token: string;
+    quote?: string;
+    amount?: string;
+    burned: string;
+    kind: string;
+    block: number;
+    tx: string;
+    ts: number;
+    chainId?: number;
+    logIndex?: number;
+  },
+): Promise<boolean> {
+  const chainId = row.chainId ?? 0;
+  const logIndex = row.logIndex ?? 0;
+  const token = row.token.toLowerCase();
+  const claimed = await journalEvent(store, {
+    chainId,
+    tx: row.tx,
+    logIndex,
+    eventKind: row.kind,
+    address: token,
+    block: row.block,
+    ts: row.ts,
+  });
+  const inserted = await insertLogOnce(
+    store,
+    `INSERT INTO selfburn(token,quote,amount,burned,kind,block,tx,ts,chain_id,log_index,event_kind) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+     ${EVENT_IDENTITY_CONFLICT}`,
+    token,
+    (row.quote ?? "").toLowerCase(),
+    row.amount ?? "0",
+    row.burned,
+    row.kind,
+    row.block,
+    row.tx,
+    row.ts,
+    chainId,
+    logIndex,
+    row.kind,
+  );
+  return claimed || inserted;
+}
+
+/** Bounded totalSupply() backfill. Priority tokens (CORE, just-burned) plus a rotating page. */
+export async function reconcileCurrentSupplies(
+  store: Store,
+  readTotalSupply: TotalSupplyReader,
+  opts?: { limit?: number; after?: string; priority?: string[] },
+): Promise<{ reconciled: number; nextCursor: string }> {
+  const limit = Math.max(1, Math.min(200, opts?.limit ?? 40));
+  const after = (opts?.after ?? "").toLowerCase();
+  const page = await store.all<{ address: string }>(
+    after
+      ? "SELECT address FROM tokens WHERE address > ? ORDER BY address ASC LIMIT ?"
+      : "SELECT address FROM tokens ORDER BY address ASC LIMIT ?",
+    ...(after ? [after, limit] : [limit]),
+  );
+  const want = new Set<string>();
+  for (const p of opts?.priority ?? []) {
+    if (p) want.add(p.toLowerCase());
+  }
+  for (const r of page) want.add(r.address.toLowerCase());
+  let reconciled = 0;
+  for (const addr of want) {
+    const onchain = await readTotalSupply(addr);
+    if (onchain === null || onchain === undefined) continue;
+    await applyOnchainTotalSupply(store, addr, onchain);
+    reconciled += 1;
+  }
+  const nextCursor = page.length < limit ? "" : (page[page.length - 1]?.address ?? "");
+  return { reconciled, nextCursor };
 }
 
 export async function upsertMarket(
@@ -276,7 +457,7 @@ function numericSum(sqlDialect: "sqlite" | "postgres"): string {
     : "COALESCE(SUM(CAST(notional_quote AS NUMERIC)),0)";
 }
 
-async function rollOneMarket(store: Store, token: string, nowTs: number) {
+export async function rollOneMarket(store: Store, token: string, nowTs: number) {
   const since = nowTs - 86_400;
   const agg = await store.get<{ n: number; vol: string }>(
     `SELECT COUNT(*) as n, ${numericSum(store.dialect)} as vol
@@ -294,7 +475,10 @@ async function rollOneMarket(store: Store, token: string, nowTs: number) {
     "SELECT price_quote_x18, quote FROM markets WHERE token=?",
     token,
   );
-  const tok = await store.get<{ supply: string }>("SELECT supply FROM tokens WHERE address=?", token);
+  const tok = await store.get<{ supply: string; decimals: number }>(
+    "SELECT supply, decimals FROM tokens WHERE address=?",
+    token,
+  );
   const qdec = await store.get<{ decimals: number }>("SELECT decimals FROM quote_assets WHERE token=?", mkt?.quote ?? "");
   const price = last?.price_quote_x18 && last.price_quote_x18 !== "0"
     ? last.price_quote_x18
@@ -315,10 +499,13 @@ async function rollOneMarket(store: Store, token: string, nowTs: number) {
       const vol = BigInt(String(agg?.vol ?? "0").split(".")[0] ?? "0");
       volUsd6 = ((vol * quoteUsd.usd6) / 10n ** BigInt(dec)).toString();
     }
-    const supply = BigInt(tok?.supply || "0");
-    const px = BigInt(price || "0");
-    fdv = supply > 0n && tokenUsd.ok ? ((supply * tokenUsd.usd6) / 10n ** 18n).toString() : "0";
-    void px;
+    // Read-only: writers are applyTokenLevelBurn / applyOnchainTotalSupply only.
+    const remaining = await currentSupplyRaw(store, token);
+    const tokenDecimals = Number(tok?.decimals ?? 18);
+    const quoteUsd6 = quoteUsd.ok ? quoteUsd.usd6 : 0n;
+    fdv = remaining > 0n && quoteUsd6 > 0n
+      ? fdvUsd6(BigInt(price || "0"), remaining, tokenDecimals, quoteUsd6).toString()
+      : "0";
   } catch {
     fdv = "0";
   }

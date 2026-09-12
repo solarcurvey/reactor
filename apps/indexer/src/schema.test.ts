@@ -6,19 +6,19 @@ import { consumeIssuanceToken } from "./admission.ts";
 import { raiseAlert } from "./alerts.ts";
 import { saveJob } from "./keeper-jobs.ts";
 import { recordTrade, upsertMarket, upsertToken } from "./ingest.ts";
-import { MS_TIMESTAMP_COLUMNS, SCHEMA_VERSION, TABLES } from "./schema.ts";
+import { applyMigrations, MS_TIMESTAMP_COLUMNS, SCHEMA_VERSION, TABLES } from "./schema.ts";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
 }
 
-assert(SCHEMA_VERSION === 8, "schema version 8 adds journal + event_kind identity after v7 (chain,tx,log) and v6 BIGINT");
+assert(SCHEMA_VERSION === 9, "schema version 9 adds current_supply after v8 journal identity");
 assert(MS_TIMESTAMP_COLUMNS.length >= 6, "millisecond timestamp columns listed");
 
 const dir = mkdtempSync(join(tmpdir(), "reactor-prod-"));
 const store = await openStore({ sqlitePath: join(dir, "t.sqlite") });
 const migrated = await store.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
-assert(Number(migrated?.n) === 8, "sqlite migrates to v8");
+assert(Number(migrated?.n) === 9, "sqlite migrates to v9");
 
 for (const t of TABLES) {
   const row = await store.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", t);
@@ -48,7 +48,15 @@ assert(
   ["chain_id", "tx", "log_index", "event_kind", "address"].every((c) => journalCols.some((col) => col.name === c)),
   "journal has canonical identity columns",
 );
+const tokenCols = await store.all<{ name: string }>("PRAGMA table_info(tokens)");
+assert(tokenCols.some((c) => c.name === "current_supply"), "tokens.current_supply on fresh v9");
 
+await upsertToken(store, { address: "0xabc", symbol: "CAT", quote: "0xzec", supply: (10n ** 27n).toString(), ts: 100 });
+const seeded = await store.get<{ supply: string; current_supply: string }>(
+  "SELECT supply, current_supply FROM tokens WHERE address=?",
+  "0xabc",
+);
+assert(seeded?.supply === (10n ** 27n).toString() && seeded.current_supply === seeded.supply, "current_supply seeded from mint");
 await upsertToken(store, { address: "0xabc", symbol: "CAT", quote: "0xzec", ts: 100 });
 await upsertMarket(store, { token: "0xabc", quote: "0xzec", stage: "bonding", ts: 100 });
 await recordTrade(store, undefined, {
@@ -91,5 +99,62 @@ const alert = await store.get<{ ts: number }>("SELECT ts FROM alerts WHERE code=
 assert(Number(alert?.ts) >= nowMs, "alerts.ts milliseconds");
 
 await store.close();
+
+{
+  // Real v8 DB: journal identity present, tokens.current_supply absent.
+  const v8dir = mkdtempSync(join(tmpdir(), "reactor-v8-"));
+  const v8 = await openStore({ sqlitePath: join(v8dir, "v8.sqlite") });
+  await v8.exec("DROP TABLE IF EXISTS tokens");
+  await v8.exec(`
+    CREATE TABLE tokens (
+      address TEXT PRIMARY KEY,
+      symbol TEXT,
+      name TEXT,
+      decimals INTEGER,
+      creator TEXT,
+      quote TEXT,
+      mode INTEGER,
+      rewards_mode INTEGER,
+      supply TEXT,
+      ticker TEXT,
+      factory_version INTEGER,
+      created_block INTEGER,
+      created_tx TEXT,
+      created_ts INTEGER
+    )
+  `);
+  await v8.run(
+    `INSERT INTO tokens(address,symbol,name,decimals,creator,quote,mode,rewards_mode,supply,ticker,factory_version,created_block,created_tx,created_ts)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    "0xdead",
+    "OLD",
+    "Old",
+    18,
+    "",
+    "",
+    0,
+    1,
+    (10n ** 27n).toString(),
+    "OLD",
+    1,
+    0,
+    "",
+    0,
+  );
+  await v8.run("DELETE FROM schema_migrations");
+  await v8.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 8, 1_700_000_000);
+  const ver = await applyMigrations(v8);
+  assert(ver === 9, `v8 DB migrated to ${ver}, expected 9`);
+  const cols = await v8.all<{ name: string }>("PRAGMA table_info(tokens)");
+  assert(cols.some((c) => c.name === "current_supply"), "v9 adds current_supply onto a real v8 tokens table");
+  const backfilled = await v8.get<{ current_supply: string; supply: string }>(
+    "SELECT current_supply, supply FROM tokens WHERE address=?",
+    "0xdead",
+  );
+  assert(backfilled?.current_supply === backfilled?.supply && backfilled?.supply === (10n ** 27n).toString(), "v9 backfills current_supply from supply");
+  await v8.close();
+  rmSync(v8dir, { recursive: true, force: true });
+}
+
 rmSync(dir, { recursive: true, force: true });
 console.log("schema/store tests ok");

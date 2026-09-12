@@ -66,6 +66,27 @@ export function fdvUsd6(priceQuoteX18: bigint, supplyRaw: bigint, tokenDecimals:
   return (priceQuoteX18 * supplyRaw * quoteUsd6) / (X18 * one);
 }
 
+/**
+ * Remaining raw supply after `burn()`. First arg is the last snapshot (or TokenCreated mint),
+ * not a protocol-event sum. Destroyed tokens are not unissued.
+ */
+export function burnAdjustedSupply(fromSupplyRaw: bigint, burnedRaw: bigint): bigint {
+  if (fromSupplyRaw <= 0n) return 0n;
+  if (burnedRaw <= 0n) return fromSupplyRaw;
+  return burnedRaw >= fromSupplyRaw ? 0n : fromSupplyRaw - burnedRaw;
+}
+
+/** USD-6 market cap / FDV on remaining supply. Same number: V1 mints the full cap at launch. */
+export function fdvUsd6BurnAdjusted(
+  priceQuoteX18: bigint,
+  initialSupplyRaw: bigint,
+  burnedRaw: bigint,
+  tokenDecimals: number,
+  quoteUsd6: bigint,
+): bigint {
+  return fdvUsd6(priceQuoteX18, burnAdjustedSupply(initialSupplyRaw, burnedRaw), tokenDecimals, quoteUsd6);
+}
+
 export function bucketTs(ts: number, intervalSec: number): number {
   return Math.floor(ts / intervalSec) * intervalSec;
 }
