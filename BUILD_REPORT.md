@@ -1,3 +1,39 @@
+# BUILD REPORT — Repo publicization inventory + public-fork CI harden (Refs #72)
+
+**Status:** PR for issue **#72**. Issue **#72 stays open** until founder AC verify (email rewrite decision, optional branch prune, re-scan before visibility). Do not `Fixes #72`.  
+**Not audited. Not mainnet.**  
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
+**Visibility was NOT changed. History was NOT rewritten.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Inventory reachable refs / emails / secrets; harden Actions for a possible future public repo; write the operator checklist. Separate from product mainnet readiness. |
+| Workflows | Additive: `permissions: contents: read` + `persist-credentials: false` on `docs-sync.yml` / `live-toasts.yml` / `keeper-lease-pg.yml`. No trigger / concurrency rewrite (#69 owns that). |
+| Invariant test | `scripts/ci-public-harden.test.ts` inside `pnpm test:lib` |
+| Docs | `/docs/publicization` + nav, policy, trust, FAQ, glossary, CONTRIBUTING, TESTING, THREAT_MODEL, AUDIT_HANDOFF |
+| Mainnet | **Blocked** |
+| #69 | Open PR #73. Hardening is additive and must survive the `ci.yml` fold. |
+
+## Closed this run (#72 ACs that can land in a PR — issue stays open)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Reachable-ref inventory + prune recommendations | **Yes (docs)** | `/docs/publicization` — 25 `cursor/*` heads. Only `cursor/keeper-lease-ci-flake-fb1f` is merge-empty and not an open-PR head. **Not deleted** (conservative). |
+| Full-history secret scan | **Yes** | gitleaks 8.24.3 + trufflehog 3.88.29 over `--all`. 0 live credentials. Fixtures classified. `.gitleaks.toml` allowlist. |
+| Commit-author email inventory | **Yes** | 55 `main` commits carry a personal Gmail `Co-authored-by` trailer. No Author/Committer personal mailbox. Rewrite **not** executed. |
+| Public-fork Actions harden | **Yes** | Least-privilege permissions, `persist-credentials: false`, no `pull_request_target`, no secrets. Compatible with #69. |
+| Operator checklist | **Yes** | `/docs/publicization` — email gate, prune list, re-scan, Actions, “do not publicize without founder instruction”. |
+| Visibility / history rewrite | **Not done (by design)** | FOUNDER DECISION GATE for Davis. |
+| Close #72 | **No** | Stays open. |
+
+---
+
+# Prior — Untrusted token metadata / CSP (#41)
+
 # BUILD REPORT — Untrusted token metadata / CSP (#41)
 
 **Status:** Same PR **#47** / same branch `cursor/harden-untrusted-metadata-csp-6228`, rebased onto latest `origin/main` `5fba655` (#43 live CORE/Top-10 toasts after #53/#33/#30). Independent audit kept #41 open; this HEAD keeps the AC gaps closed on that PR (no duplicate). Issue **#41 stays open** until merge + post-merge verify.

@@ -23,6 +23,7 @@
 | CORE | Protocol token (`CoreToken`). Never Top-10 |
 | Factory V1 | Immutable on-chain factory label. Not protocol semver |
 | Protocol 0.3.2 | This software + docs release |
+| Repo publicization | Operator checklist to maybe make the GitHub repo public later. Not mainnet readiness. Do not flip visibility without founder instruction. |
 | Millisecond columns | `Date.now()` wall clock: admission hits, issuance `updated_ms`, leader lease, Keeper jobs, alerts. Postgres `BIGINT` (schema v6) |
 | Unix-seconds columns | `Date.now()/1000` or `block.timestamp`: trades, ticker lock, receipt expiry |
 | Arc gas USDC | Native 18-decimal gas unit |

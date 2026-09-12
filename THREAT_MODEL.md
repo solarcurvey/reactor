@@ -83,6 +83,12 @@ Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, 
 - The public Next BFF `/api/launch-pricing` applies the same 16KiB default / 64KiB hard max before proxying.
 - Rate limits (quote / upload / pricing) are separate. Body caps + RPM are not a complete L7 DoS proof.
 
+## Repository / GitHub Actions (not custody)
+
+- Workflows are test-only today: `permissions: contents: read`, `actions/checkout` `persist-credentials: false`, no `pull_request_target`, no `${{ secrets.* }}`. Fork PR code must not receive repository secrets or a writable token. Compatible with #69 concurrency / staging when workflows fold into `ci.yml`.
+- Residual: making the repository public publishes git history (including `Co-authored-by` personal-mailbox trailers until a founder-approved rewrite) and every open draft PR. Operator checklist: `docs/publicization.md`. Agents must not flip visibility or rewrite history.
+- Full-history gitleaks / trufflehog on 2026-09-12 found **no live credentials** (Ethereum addresses, Anvil `#0`, dummy JWT/DSN/URL fixtures only). Re-scan immediately before any visibility change.
+
 ## Explicit non-goals
 
 We do not prevent external pools, creator dumping after a paid buy, or social-engineering of the registry admin.

@@ -14,7 +14,7 @@
     "size:guard": "tsx scripts/size-guard.ts",
     "arc:factory-attempt": "tsx scripts/arc-factory-deploy.ts",
     "safe:genesis": "tsx scripts/safe-genesis-builder.ts",
-    "test:lib": "pnpm --filter indexer test && tsx apps/web/src/lib/top10.test.ts && tsx apps/web/src/lib/marketdata.test.ts && tsx apps/web/src/lib/limited-json.test.ts && tsx apps/web/src/lib/fee-legs.test.ts && tsx apps/web/src/lib/live-toasts.test.ts && tsx apps/web/src/lib/security-headers.test.ts && tsx apps/web/src/lib/tx-guard.test.ts && tsx apps/web/src/lib/secret-sentinel.test.ts && tsx packages/reactor/src/untrusted-metadata.test.ts && tsx scripts/sync-docs.ts check",
+    "test:lib": "pnpm --filter indexer test && tsx apps/web/src/lib/top10.test.ts && tsx apps/web/src/lib/marketdata.test.ts && tsx apps/web/src/lib/limited-json.test.ts && tsx apps/web/src/lib/fee-legs.test.ts && tsx apps/web/src/lib/live-toasts.test.ts && tsx apps/web/src/lib/security-headers.test.ts && tsx apps/web/src/lib/tx-guard.test.ts && tsx apps/web/src/lib/secret-sentinel.test.ts && tsx packages/reactor/src/untrusted-metadata.test.ts && tsx scripts/ci-public-harden.test.ts && tsx scripts/sync-docs.ts check",
     "test:web-security": "tsx apps/web/src/lib/secret-sentinel.test.ts && tsx apps/web/src/lib/tx-guard.test.ts && tsx apps/web/src/lib/security-headers.test.ts && NEXT_PUBLIC_REVIEW_FIXTURES=1 pnpm --filter web build && tsx scripts/scan-client-bundle.ts && pnpm --filter web exec playwright test -c playwright.prod-security.config.ts",
     "signer": "pnpm --filter indexer signer"
   },

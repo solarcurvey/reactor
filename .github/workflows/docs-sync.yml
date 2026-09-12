@@ -4,11 +4,21 @@ on:
   push:
   pull_request:
 
+# Public-fork hardening (Refs #72). Compatible with #69 three-tier CI:
+# keep contents:read + persist-credentials:false when folding into ci.yml.
+# No pull_request_target. No secrets in this test-only workflow.
+permissions:
+  contents: read
+
 jobs:
   constants-version-deployments:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
           version: 10.14.0
@@ -24,8 +34,12 @@ jobs:
 
   web-production-security:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
           version: 10.14.0
@@ -41,6 +55,8 @@ jobs:
 
   postgres-ms-timestamps:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     services:
       postgres:
         image: postgres:16-alpine
@@ -59,6 +75,8 @@ jobs:
       DATABASE_URL: postgres://reactor:reactor@127.0.0.1:5432/reactor
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
           version: 10.14.0

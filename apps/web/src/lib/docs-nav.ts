@@ -29,6 +29,7 @@ export const DOCS: { slug: string; title: string; group: string; file: string }[
   { slug: "policy", title: "Docs policy", group: "Reference", file: "policy.md" },
   { slug: "faq", title: "FAQ", group: "Reference", file: "faq.md" },
   { slug: "glossary", title: "Glossary", group: "Reference", file: "glossary.md" },
+  { slug: "publicization", title: "Repo publicization", group: "Reference", file: "publicization.md" },
 ];
 
 export function slugify(s: string): string {
