@@ -146,6 +146,7 @@ contract InstantLaunchModule {
         if (auctionBps != ReactorConstants.DEFAULT_AUCTION_BPS) revert AuctionBpsLocked();
         ticker = Ticker.normalize(p.symbol);
         uint8 qdec = IERC20MinimalExt(p.quote).decimals();
+        bytes32 fairCfg = LaunchAuthorization.fairCurveConfig(supply, dec, duration, auctionBps, p.minRaise);
         digest_ = LaunchAuthorization.verify(
             auth,
             authDomain,
@@ -156,7 +157,7 @@ contract InstantLaunchModule {
                 quote: p.quote,
                 quoteDecimals: qdec,
                 mode: LaunchAuthorization.MODE_FAIR,
-                curveConfig: LaunchAuthorization.FAIR_V1,
+                curveConfig: fairCfg,
                 ticker: ticker,
                 name: p.name,
                 metadataHash: LaunchAuthorization.hashMetadata(p.image, p.description, p.website, p.twitter, p.telegram)

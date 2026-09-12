@@ -26,6 +26,7 @@ export type QuoteHop = Hop & {
   gasEstimate: number;
   reliabilityBps: number;
   feeExempt: boolean;
+  kind?: string;
 };
 
 export type QuoteRequest = {

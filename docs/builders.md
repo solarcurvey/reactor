@@ -1,37 +1,36 @@
-# For builders
+# Build a terminal
 
-Third-party terminals should use the public indexer + `@reactor/sdk`. Do not embed Keeper or Launch Signer keys.
+Integrate as a client, not a fork. Protocol **0.3.0**. Factory **V1**.
+
+## Integration order
+
+1. **Discover** — `GET /markets` (keyset + NUMERIC sorts). Do not scrape factory logs in the UI process.
+2. **Quote** — `POST /quote`. Use the ticket. One `UserRouteQuoter` call per candidate. Do not invent hops. Do not set `minOut` to 0 or 1.
+3. **Launch** — `POST /launch/authorize` (admission + ALLOW receipt + isolated sign). `@reactor/sdk` `authorize` does this. Never call the isolated signer from a public host.
+4. **Media** — `POST /upload` (stream 2MB, sharp, SigV4 remote). No base64 onchain.
+5. **Live** — `GET /stream` SSE for tape / board invalidation.
+
+## Proven venues only
+
+| Kind | Meaning | 3.5% |
+| --- | --- | --- |
+| `OFFICIAL_REACTOR_V4` | Official hook pool | Yes |
+| `EXTERNAL_V4_HOOKLESS` | Hookless external v4 | No |
+| `BONDING_CURVE` | Instant curve | Yes, on executed quote |
+
+Maintenance (Keeper) uses a **separate** fee-exempt planner (`planFeeExemptRoute` + ProtocolV4Adapter). Do not reuse the user quoter for vault jobs.
+
+## LaunchAuthorization
+
+EIP-712 binds factory, Factory version, creator, quote, mode, ticker, name, metadata hash, `virtualQuote0`, `curveConfig`, `authId`, deadline, chain. `verifyingContract` is the **TickerRegistry**.
+
+Fair hashes resolved sale params. Instant keeps `INSTANT_CURVE_V1`. Receipt `launchConfigHash` must match or the signer burns the receipt and refuses.
 
 ## Packages
 
-- `@reactor/sdk` — `ReactorClient` (markets, ticker, admit, authorize, SSE)
-- `@reactor/core` — valuation, routes, prices, ticker normalize, admission helpers
-
-Normalize tickers with `normalizeTicker` — same rules as `Ticker.sol`.
-
-## Endpoints
-
-| Method | Path | Notes |
+| Package | Version | Role |
 | --- | --- | --- |
-| GET | `/markets` | SQL pagination, `q`, `stage`, `quote`, `sort`, `limit`, `offset` |
-| GET | `/ticker/:ticker` | Lock / reserved / token |
-| POST | `/launch/admit` | ALLOW / CHALLENGE / DENY (no signature) |
-| POST | `/launch/authorize` | Admission then isolated sign. CHALLENGE ≠ ALLOW |
-| POST | `/quote` | Exact RouteGraph edges; never invented 0.30% |
-| GET | `/candles/:token` | Continuous OHLCV |
-| GET | `/stream` | SSE |
-| GET | `/health` | Lag + dialect |
+| `@reactor/core` | 0.3.0 | Constants, routes, valuation, admission helpers |
+| `@reactor/sdk` | 0.3.0 | `ReactorClient.authorize`, quote ticket helpers |
 
-Partner key: `x-partner-key`. Ops: `x-ops-token` (not on public nav).
-
-## Events
-
-Index both `OfficialPoolCreated` forms (factory: token/poolId/mode; hook: poolId/token/quote), `LaunchAuthorized`, `TickerClaimed`. Identity key for trades: `chainId + txHash + logIndex`.
-
-## Deployments and versions
-
-Protocol release is semver in `docs/version.json` (now **0.2.0**). Factory **V1** is immutable and is not that number. See [versioning](/docs/versioning) and [deployments](/docs/deployments).
-
-Factory V1 deploys as two contracts: `ReactorFactory` + `InstantLaunchModule` (no proxy). Both must stay under EIP-170. See `pnpm size:guard` and `BUILD_REPORT.md`.
-
-Production accepts **verified** Arc v4 addresses only — do not hardcode a PoolManager until it is verified on that chain. Mainnet (5042) is disabled. Never invent mainnet addresses.
+See [API](/docs/api), [SDK](/docs/sdk), [Examples](/docs/examples), [Quoting](/docs/quoting), [Events](/docs/events).

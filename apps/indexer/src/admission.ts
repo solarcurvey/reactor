@@ -4,10 +4,24 @@ import type { Store } from "./db.ts";
 import {
   evaluateAdmission,
   issuanceFromCounts,
+  ISSUANCE_CAP,
   type AdmissionDecision,
   type IssuanceLevel,
 } from "../../../packages/reactor/src/admission.ts";
 import { isReservedTicker, normalizeTicker, tryNormalizeTicker } from "../../../packages/reactor/src/ticker.ts";
+import {
+  INSTANT_CURVE_V1,
+  authMode,
+  fairCurveConfig,
+  hashMetadata,
+  launchConfigHash,
+  resolveFairParams,
+} from "../../../packages/reactor/src/launch-auth.ts";
+import { redisConsumeToken } from "./redis-bucket.ts";
+import deployment from "./deployment.json" with { type: "json" };
+
+const DEFAULT_FACTORY = ((deployment as { addresses?: Record<string, string> }).addresses?.ReactorFactory ??
+  "0x0000000000000000000000000000000000000000").toLowerCase();
 
 const WINDOW_MS = 60 * 60 * 1000;
 const RECEIPT_TTL_SEC = 5 * 60;
@@ -16,6 +30,7 @@ export type AdmitInput = {
   ticker?: string;
   quote?: string;
   factory?: string;
+  factoryVersion?: number;
   name?: string;
   description?: string;
   image?: string;
@@ -29,6 +44,12 @@ export type AdmitInput = {
   asn?: string;
   client?: string;
   turnstile?: string;
+  mode?: string;
+  supply?: string | number;
+  decimals?: number;
+  duration?: number;
+  auctionBps?: number;
+  minRaise?: string | number;
 };
 
 export type AdmitResult = {
@@ -39,6 +60,7 @@ export type AdmitResult = {
   challenge?: string;
   receipt?: string;
   receiptId?: string;
+  launchConfigHash?: string;
 };
 
 function localEnv(): boolean {
@@ -52,14 +74,18 @@ function hmacSecret(): string {
   throw new Error("ADMISSION_HMAC_SECRET required");
 }
 
-export async function issuanceLevel(store: Store): Promise<IssuanceLevel> {
+export async function signedAuthCount(store: Store): Promise<number> {
   const hourAgo = Date.now() - WINDOW_MS;
   const row = await store.get<{ n: number }>(
     "SELECT COUNT(*) as n FROM admission_hits WHERE key=? AND ts>=?",
-    "global:allow",
+    "global:signed-auth",
     hourAgo,
   );
-  const computed = issuanceFromCounts(Number(row?.n ?? 0), process.env.ISSUANCE_LEVEL);
+  return Number(row?.n ?? 0);
+}
+
+export async function issuanceLevel(store: Store): Promise<IssuanceLevel> {
+  const computed = issuanceFromCounts(await signedAuthCount(store), process.env.ISSUANCE_LEVEL);
   await store.run(
     "INSERT INTO issuance_state(k,v,ts) VALUES(?,?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v, ts=excluded.ts",
     "level",
@@ -75,6 +101,46 @@ async function hit(store: Store, key: string): Promise<number> {
   await store.run("INSERT INTO admission_hits(key, ts) VALUES(?,?)", key, now);
   const row = await store.get<{ n: number }>("SELECT COUNT(*) as n FROM admission_hits WHERE key=? AND ts>=?", key, now - WINDOW_MS);
   return Number(row?.n ?? 0);
+}
+
+export async function peekIssuanceTokens(store: Store, level: IssuanceLevel): Promise<number> {
+  const cap = ISSUANCE_CAP[level];
+  const now = Date.now();
+  const row = await store.get<{ tokens: string; updated_ms: number }>("SELECT tokens, updated_ms FROM issuance_bucket WHERE k=?", "global");
+  if (!row) return cap;
+  const tokens = Number(row.tokens);
+  const updated = Number(row.updated_ms);
+  return Math.min(cap, tokens + ((now - updated) * cap) / WINDOW_MS);
+}
+
+/** Atomic token-bucket consume. Counts a signed LaunchAuthorization. */
+export async function consumeIssuanceToken(store: Store): Promise<{ ok: boolean; level: IssuanceLevel; signed: number }> {
+  const redis = await redisConsumeToken(ISSUANCE_CAP.NORMAL, WINDOW_MS);
+  return store.transaction(async (tx) => {
+    const level = await issuanceLevel(tx);
+    const cap = ISSUANCE_CAP[level];
+    const now = Date.now();
+    const row = await tx.get<{ tokens: string; updated_ms: number; signed_count: number }>(
+      "SELECT tokens, updated_ms, signed_count FROM issuance_bucket WHERE k=?",
+      "global",
+    );
+    let tokens = row ? Number(row.tokens) : cap;
+    const updated = row ? Number(row.updated_ms) : now;
+    const signed = row ? Number(row.signed_count) : 0;
+    tokens = Math.min(cap, tokens + ((now - updated) * cap) / WINDOW_MS);
+    if (redis === false || tokens < 1) return { ok: false, level, signed };
+    tokens -= 1;
+    await tx.run(
+      `INSERT INTO issuance_bucket(k,tokens,updated_ms,signed_count) VALUES(?,?,?,?)
+       ON CONFLICT(k) DO UPDATE SET tokens=excluded.tokens, updated_ms=excluded.updated_ms, signed_count=excluded.signed_count`,
+      "global",
+      String(tokens),
+      now,
+      signed + 1,
+    );
+    await tx.run("INSERT INTO admission_hits(key, ts) VALUES(?,?)", "global:signed-auth", now);
+    return { ok: true, level, signed: signed + 1 };
+  });
 }
 
 export async function verifyTurnstile(token: string | undefined, ip: string): Promise<{ ok: boolean; wired: boolean }> {
@@ -94,11 +160,93 @@ export async function verifyTurnstile(token: string | undefined, ip: string): Pr
   }
 }
 
-export function fundingCluster(wallet?: string, asn?: string, ip?: string): string {
+/** Network-rename heuristic: ASN + IPv4 /16. Not KYC. */
+export function networkCluster(asn?: string, ip?: string): string {
+  const v4 = (ip ?? "").split(".").slice(0, 2).join(".");
+  return createHash("sha256").update(`net|${asn ?? ""}|${v4}`).digest("hex").slice(0, 16);
+}
+
+/** Lightweight onchain funder: first USDC Transfer `from` in a bounded lookback. Not chain-analysis. */
+export async function onchainFunderSignal(wallet?: string): Promise<string | undefined> {
+  if (!wallet || !/^0x[0-9a-fA-F]{40}$/.test(wallet)) return undefined;
+  const rpc = process.env.RPC_URL ?? process.env.NEXT_PUBLIC_RPC_URL;
+  const usdc = process.env.USDC_ADDRESS;
+  if (!rpc || !usdc) return undefined;
+  try {
+    const topicTo = `0x${wallet.slice(2).toLowerCase().padStart(64, "0")}`;
+    const res = await fetch(rpc, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "eth_getLogs",
+        params: [
+          {
+            address: usdc,
+            topics: ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", null, topicTo],
+            fromBlock: "earliest",
+            toBlock: "latest",
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(4_000),
+    });
+    const j = (await res.json()) as { result?: Array<{ topics?: string[] }> };
+    const first = j.result?.[0];
+    const from = first?.topics?.[1];
+    if (!from) return undefined;
+    return `0x${from.slice(26).toLowerCase()}`;
+  } catch {
+    return undefined;
+  }
+}
+
+export function fundingCluster(wallet?: string, asn?: string, ip?: string, funder?: string): string {
+  if (funder) {
+    return createHash("sha256").update(`funder|${funder.toLowerCase()}`).digest("hex").slice(0, 16);
+  }
   return createHash("sha256")
-    .update(`${(wallet ?? "").toLowerCase()}|${asn ?? ""}|${(ip ?? "").split(".").slice(0, 2).join(".")}`)
+    .update(`wallet|${(wallet ?? "").toLowerCase()}|${networkCluster(asn, ip)}`)
     .digest("hex")
     .slice(0, 16);
+}
+
+export function identityCurveConfig(input: AdmitInput): `0x${string}` {
+  const path = input.mode === "fair" ? "fair" : input.mode === "standard" ? "standard" : "rewards";
+  if (path === "fair") {
+    const p = resolveFairParams({
+      supply: input.supply,
+      decimals: input.decimals,
+      duration: input.duration,
+      auctionBps: input.auctionBps,
+      minRaise: input.minRaise,
+    });
+    return fairCurveConfig(p.supply, p.decimals, p.duration, p.auctionBps, p.minRaise);
+  }
+  return INSTANT_CURVE_V1;
+}
+
+export function computeLaunchConfigHash(input: AdmitInput, ticker: string): `0x${string}` {
+  const path = input.mode === "fair" ? "fair" : input.mode === "standard" ? "standard" : "rewards";
+  const metadataHash = hashMetadata(
+    input.image ?? "",
+    input.description ?? "",
+    input.website ?? "",
+    input.twitter ?? "",
+    input.telegram ?? "",
+  );
+  return launchConfigHash({
+    creator: (input.wallet ?? "0x0000000000000000000000000000000000000000").toLowerCase(),
+    ticker,
+    name: input.name ?? ticker,
+    metadataHash,
+    quote: (input.quote ?? "0x0000000000000000000000000000000000000000").toLowerCase(),
+    mode: authMode(path),
+    factory: (input.factory ?? DEFAULT_FACTORY).toLowerCase(),
+    factoryVersion: input.factoryVersion ?? 1,
+    curveConfig: identityCurveConfig(input),
+  });
 }
 
 export function issueReceipt(payload: Record<string, unknown>): { receipt: string; id: string } {
@@ -128,26 +276,34 @@ export function verifyReceipt(receipt: string): Record<string, unknown> | null {
 
 export async function consumeReceipt(store: Store, id: string): Promise<boolean> {
   const now = Math.floor(Date.now() / 1000);
-  const row = await store.get<{ consumed: number; expires: number }>(
-    "SELECT consumed, expires FROM admission_receipts WHERE id=?",
-    id,
-  );
-  if (row && Number(row.consumed) === 1) return false;
-  if (row && Number(row.expires) > 0 && Number(row.expires) < now) return false;
-  if (!row) {
-    await store.run(
-      `INSERT INTO admission_receipts(id, hmac, payload, consumed, expires, ts) VALUES(?,?,?,?,?,?)`,
+  if (store.dialect === "postgres") {
+    const row = await store.get<{ id: string }>(
+      "UPDATE admission_receipts SET consumed=1 WHERE id=? AND consumed=0 AND (expires=0 OR expires>=?) RETURNING id",
       id,
-      "",
-      "consume",
-      1,
-      now + RECEIPT_TTL_SEC,
       now,
     );
-    return true;
+    return Boolean(row?.id);
   }
-  await store.run("UPDATE admission_receipts SET consumed=1 WHERE id=? AND consumed=0", id);
-  return true;
+  return store.transaction(async (tx) => {
+    const r = await tx.runChanges(
+      "UPDATE admission_receipts SET consumed=1 WHERE id=? AND consumed=0 AND (expires=0 OR expires>=?)",
+      id,
+      now,
+    );
+    return r.changes === 1;
+  });
+}
+
+export async function persistReceipt(store: Store, issued: { id: string; receipt: string }, payload: unknown, expires: number) {
+  await store.run(
+    `INSERT INTO admission_receipts(id, hmac, payload, consumed, expires, ts) VALUES(?,?,?,?,?,?)`,
+    issued.id,
+    issued.receipt,
+    JSON.stringify(payload),
+    0,
+    expires,
+    Math.floor(Date.now() / 1000),
+  );
 }
 
 export async function admit(store: Store, input: AdmitInput): Promise<AdmitResult> {
@@ -169,7 +325,6 @@ export async function admit(store: Store, input: AdmitInput): Promise<AdmitResul
   const ipHits = await hit(store, `ip:${input.ip ?? "x"}`);
   const walHits = await hit(store, `w:${(input.wallet ?? "x").toLowerCase()}`);
   const sessHits = await hit(store, `s:${input.session ?? input.client ?? "anon"}`);
-  const clientHits = await hit(store, `c:${input.client ?? input.ip ?? "x"}`);
   const imgHits = input.imageHash ? await hit(store, `img:${input.imageHash}`) : 0;
   if (input.imageHash) {
     await store.run(
@@ -179,8 +334,11 @@ export async function admit(store: Store, input: AdmitInput): Promise<AdmitResul
       Math.floor(Date.now() / 1000),
     );
   }
-  const cluster = fundingCluster(input.wallet, input.asn, input.ip);
+  const funder = await onchainFunderSignal(input.wallet);
+  const cluster = fundingCluster(input.wallet, input.asn, input.ip, funder);
   const clusterHits = await hit(store, `cluster:${cluster}`);
+  const signed = await signedAuthCount(store);
+  const tokens = await peekIssuanceTokens(store, level);
 
   const ev = evaluateAdmission(
     {
@@ -197,11 +355,12 @@ export async function admit(store: Store, input: AdmitInput): Promise<AdmitResul
       turnstileRequired: turnstile.wired || process.env.TURNSTILE_REQUIRED === "1",
       fundedCluster: cluster,
       clusterLaunches: clusterHits,
-      recentLaunches: Math.max(ipHits, walHits, clientHits),
+      recentSignedAuths: signed,
       imageHashRepeats: imgHits,
       sessionHits: sessHits,
       ipHits,
       walletHits: walHits,
+      issuanceTokens: tokens,
     },
     level,
   );
@@ -221,28 +380,32 @@ export async function admit(store: Store, input: AdmitInput): Promise<AdmitResul
 
   let receipt: string | undefined;
   let receiptId: string | undefined;
+  let cfgHash: string | undefined;
   if (ev.decision === "ALLOW") {
-    await hit(store, "global:allow");
+    cfgHash = computeLaunchConfigHash(input, parsed.ticker);
     const issued = issueReceipt({
       decision: "ALLOW",
       ticker: parsed.ticker,
       quote: (input.quote ?? "").toLowerCase(),
       factory: (input.factory ?? "").toLowerCase(),
+      factoryVersion: input.factoryVersion ?? 1,
       creator: (input.wallet ?? "").toLowerCase(),
       name: input.name ?? "",
       imageHash: input.imageHash ?? "",
+      mode: input.mode ?? "rewards",
+      curveConfig: identityCurveConfig(input),
+      launchConfigHash: cfgHash,
       cluster,
+      funder: funder ?? "",
+      networkCluster: networkCluster(input.asn, input.ip),
     });
     receipt = issued.receipt;
     receiptId = issued.id;
-    await store.run(
-      `INSERT INTO admission_receipts(id, hmac, payload, consumed, expires, ts) VALUES(?,?,?,?,?,?)`,
-      issued.id,
-      issued.receipt,
-      JSON.stringify({ ticker: parsed.ticker, wallet: input.wallet, quote: input.quote }),
-      0,
+    await persistReceipt(
+      store,
+      issued,
+      { ticker: parsed.ticker, wallet: input.wallet, quote: input.quote, launchConfigHash: cfgHash },
       Math.floor(Date.now() / 1000) + RECEIPT_TTL_SEC,
-      Math.floor(Date.now() / 1000),
     );
   }
 
@@ -258,7 +421,7 @@ export async function admit(store: Store, input: AdmitInput): Promise<AdmitResul
     Math.floor(Date.now() / 1000),
   );
 
-  return { ...ev, ticker: parsed.ticker, challenge: ev.challenge, receipt, receiptId };
+  return { ...ev, ticker: parsed.ticker, challenge: ev.challenge, receipt, receiptId, launchConfigHash: cfgHash };
 }
 
 export function imageHash(buf: Buffer): string {

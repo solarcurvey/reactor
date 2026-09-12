@@ -23,6 +23,7 @@
 | `UniswapV4Adapter` | No | Transient hop | User hops; fees apply; hookless or official REACTOR hook only |
 | `ProtocolV4Adapter` | No | Transient hop | Protocol vaults only; `protocolSwap` fee-exempt; not Keeper EOA, not UserRoute |
 | `UserRouteExecutor` | No | Transient user funds | USDC↔token official-leg router; not a protocol vault |
+| `UserRouteQuoter` | No | Transient (eth_call) | Whole-route preview; always reverts `PreviewRoute` |
 | `ReactorFactory` | No | Transient quote during Dev Buy / fair bids | Instant + Batch Fair bookkeeping, ticker claim, curve open, fair bid/finalize |
 | `InstantLaunchModule` | No | None | `new ReactorToken` + EIP-712 verify + official-pool open. Not a proxy. Factory-bound. |
 | `FairClaimVault` | No | Unclaimed auction tokens + their quote slice | O(1) eligible holder for Batch Fair |

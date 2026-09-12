@@ -1,25 +1,13 @@
 # Curve math
 
-Instant uses frozen virtual-reserve geometry. Creators do not pick FDV.
+Instant bonding constants are protocol-owned. See `CURVE_DESIGN.md`.
 
-## Virtual quote₀
+- Inventory 79.31% / locked v4 20.69%
+- Start FDV ~$5k USDC-equivalent (`virtualQuote0` from ValuationService)
+- Ready freeze: no buy/sell until `graduate`
+- Oversized terminal: clip + refund unexecuted + unearned fee
+- Dev Buy ≤5% token-out, full 3.5%
 
-usdPegOne (canonical USDC) uses protocol USDC-6 start:
+Creators cannot change supply, decimals, or the curve. Fair duration/minRaise are signed, not free-form after auth.
 
-`virtualQuote0 = f(DEFAULT_SUPPLY, quoteDecimals)`
-
-Non-$1 quotes use a signed `virtualQuote0` so a $50 ZEC and a $60k WBTC open at the same **USD** start FDV. EURC is a stablecoin category and is **not** $1.
-
-Worked example (same $150 buy, exact USD match):
-
-| Quote | USD/unit | Quote in | Token out |
-| --- | --- | --- | --- |
-| USDC-6 | $1 | 150e6 | ≈ same |
-| ZEC-8 | $50 | 3e8 | ≈ same |
-| WBTC-8 | $60,000 | 250,000 | ≈ same |
-
-See `LaunchPricing.t.sol` `test_usdEquivalentGeometry_usdcZecWbtcNative` and `CURVE_DESIGN.md`.
-
-## Graduation
-
-When real quote hits the target, buys/sells freeze (`ready`). `graduate()` locks reserved tokens + economic quote as full-range official v4. Ready-state fees apply only to executed gross quote. Oversized terminal clips and refunds unexecuted input.
+`docs:check` fails if supply / Dev Buy / fee copy drifts.

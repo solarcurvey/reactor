@@ -1,29 +1,48 @@
-# For creators
+# Launch a token
 
-> Protocol **0.2.0**. You pick image, name, ticker, description, quote, Standard vs Rewards, optional Dev Buy (5% token-out). Protocol owns 1B / 18 supply, curve, FDV, and 3.5% fees.
+> Protocol **0.3.0**. You pick identity and quote. Protocol owns supply, curve, FDV, and fees.
 
-## Ticker
+Creators do **not** set starting FDV, total supply, or the 3.5% split. Instant uses one protocol curve. Fair uses protocol defaults hashed into the signature.
 
-Canonical: uppercase `A–Z0–9`, max 10. No Unicode. Reserved: CORE, REACTOR, USDC, ZEC, WBTC, EURC.
+## What you choose
 
-A successful launch locks that ticker **globally for 24 hours**. Failed or expired authorization does **not** squat. Permanent lock is Guardian judgment on a **REACTOR-native** token from an authorized factory with a matching ticker. Reserved names use a separate `reserveTicker`. Both are irreversible. See [Ticker Registry](/docs/tickers).
+| Field | Instant | Fair |
+| --- | --- | --- |
+| Image, name, ticker, description | Yes | Yes |
+| Quote asset | Yes (USDC, ZEC, WBTC, …) | Yes |
+| Standard vs Rewards | Yes | Rewards after the sale |
+| Optional Dev Buy | ≤5% token-out, full 3.5% | No |
+| Auction length | — | Minutes (protocol defaults fill the rest) |
 
-## Authorization
+Supply is **1B / 18**. Instant: 79.31% on the bonding curve, 20.69% locked v4 at graduation. Fair: pro-rata timed sale, **0% during the sale**, 50/50 locked at clear.
 
-Public path: `POST /launch/authorize`.
+## Admission is mandatory
 
-1. Admission (ticker / factory / quote / metadata / Turnstile / rates / funding-cluster).
-2. ALLOW → HMAC receipt. CHALLENGE ≠ ALLOW — complete Turnstile. DENY stops.
-3. Isolated signer (loopback + receipt). Not a public signer.
-4. EIP-712 binds creator, factory, Factory **V1**, ticker, **name**, **metadata hash**, quote, mode, `virtualQuote0`, curve hash, expiry, chain, `authId`.
+Every launch, including USDC, goes through `POST /launch/authorize`:
 
-Identity is frozen at launch. Creators cannot edit name/ticker/metadata after `metaFrozen`.
+1. The launch page renders a **real Cloudflare Turnstile** widget (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`). There is no `window.turnstileToken` stub.
+2. Admission returns **ALLOW**, **CHALLENGE**, or **DENY**. CHALLENGE is **not** a signature.
+3. On CHALLENGE, solve the widget and retry. ELEVATED / ATTACK still **ALLOW** after a real token if you are under rate + issuance limits. They do not loop forever.
+4. ALLOW carries `launchConfigHash` (creator, ticker, name, metadata, quote, mode, factory, Factory V1, curve/config).
+5. The isolated signer consumes the receipt **once** and checks the hash. Then EIP-712.
 
-No KYC. A refundable bond is **not collected** (FUTURE).
+Turnstile `siteverify` runs when `TURNSTILE_SECRET` is set. LOCAL bypass only if the secret is unset and `TURNSTILE_REQUIRED !== 1`.
 
-## Instant vs Batch Fair
+## Instant vs Fair binding
 
-- **Instant:** curve opens immediately. Optional atomic Dev Buy (full 3.5%, 5% token-out cap). Anyone may `graduate()` once ready — reserved 20.69% + real curve quote lock as full-range v4 forever.
-- **Batch Fair:** pro-rata timed sale, 0% during bids, then one finalize to official liquidity.
+- **Instant** `curveConfig` is `INSTANT_CURVE_V1`. Same geometry every time.
+- **Fair** `curveConfig` is `keccak256(abi.encode(supply, decimals, duration, auctionBps, minRaise))` after protocol defaults. `FAIR_V1` is an identifier only — a signature that still hashes `FAIR_V1` reverts `WrongParams`.
 
-You cannot set FDV, supply, or fees. Those knobs are not in the product.
+## Tickers
+
+On success the ticker takes a **24h global lock**. A second launch of the same ticker waits until that lock expires. Guardian can `permanentlyLockTicker` only for a REACTOR-native token that matches the ticker — **not** while a *different* token still holds the 24h lock. Reserved names (`CORE`, `USDC`, …) are a separate list.
+
+Metadata (image, description, socials) is frozen at launch. No post-launch identity edit.
+
+## After launch
+
+Instant: bonding → ready → frozen → graduate → locked official v4 (0% LP). Holders earn the quote you picked from trade #1 (Rewards) or the 2% later market-buys and burns (Standard). Same 1% Top-10 + 0.5% CORE.
+
+Fair: pro-rata bids during the window. Clearing price opens the official pool.
+
+See [Admission](/docs/admission), [Tickers](/docs/tickers), [Curve](/docs/curve), [Fees](/docs/fees).

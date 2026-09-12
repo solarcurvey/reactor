@@ -1,6 +1,6 @@
 import type { Store } from "./db.ts";
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 const V1_TABLES = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -297,6 +297,30 @@ export async function applyMigrations(store: Store): Promise<number> {
     await store.exec(ddl);
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 4, Math.floor(Date.now() / 1000));
     current = 4;
+  }
+  if (current < 5) {
+    await store.exec(`
+      CREATE TABLE IF NOT EXISTS issuance_bucket (
+        k TEXT PRIMARY KEY,
+        tokens TEXT NOT NULL,
+        updated_ms INTEGER NOT NULL,
+        signed_count INTEGER NOT NULL
+      );
+    `);
+    for (const stmt of [
+      "ALTER TABLE trades ADD COLUMN rolled INTEGER DEFAULT 0",
+      "ALTER TABLE trades ADD COLUMN notional_usd6 TEXT DEFAULT '0'",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_claims_unique ON claims(tx, token, account, amount)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_selfburn_unique ON selfburn(tx, token, kind)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_flywheel_unique ON flywheel(tx, quote, kind)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_core_buybacks_unique ON core_buybacks(tx, quote)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_reward_events_unique ON reward_events(tx, token, amount)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_external_marks_unique ON external_price_marks(token, source, ts)",
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 5, Math.floor(Date.now() / 1000));
+    current = 5;
   }
   return current;
 }

@@ -1,81 +1,61 @@
-# BUILD REPORT — Protocol 0.2.0 P0 correctness + Arc deployability
+# BUILD REPORT — Protocol 0.3.0 correctness
 
-**Status:** Continue on existing REACTOR Origin repo. Parent `d3081d1`. Local Anvil 5042002 + Arc Public Testnet probe only.  
-**Not audited. Not mainnet. Arc Public Testnet Factory create not claimed.**  
+**Status:** Continue on existing REACTOR Origin repo. Parent `879c2b8` (protocol 0.2.0, Factory V1). Local Anvil 5042002 + Arc Public Testnet probe only.  
+**Not audited. Not mainnet. Arc Public Testnet Factory create not claimed unless an explorer hash exists.**  
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
 ## This HEAD
 
 | Item | Value |
 | --- | --- |
-| Branch | `cursor/p0-admission-arc-docs-9bf9` |
-| Parent | `d3081d1` |
-| Protocol release | **0.2.0** (`docs/version.json`) |
+| Protocol release | **0.3.0** (`docs/version.json`) |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
-| Intent | P0 admission, full EIP-712 identity, Factory EIP-170 split, RouteGraph quotes, indexer/keeper, docs + UI |
+| Intent | Admission integrity, UserRouteQuoter, indexer 24h/USD/keyset, ValuationService, SigV4, Arc BFT finality, docs + UI |
+| Foundry | **325 passed**, 1 skipped (parent 0.2.0 recorded 321) |
+| Indexer / lib | `pnpm --filter indexer test` + web top10/marketdata **ok** |
+| Playwright smoke | **5/5** after traders H1 restore |
+| Review shots | Regenerated `review/*-{1440,390}.png` this commit (token-bonding left stale — `BONDING_TOKEN` unset) |
 | Mainnet | **Blocked** |
 
-## EIP-170 sizes (`forge build --sizes`, optimizer 200, via_IR)
+## EIP-170 sizes
 
-| Contract | Creation (bytes) | Runtime (bytes) | EIP-170 24576 | Margin gate (≤23552) |
-| --- | ---: | ---: | --- | --- |
-| ReactorFactory | 25409 | **23280** | under | pass |
-| InstantLaunchModule | 17627 | 17037 | under | pass |
-| InstantCurve | 19644 | 18960 | under | pass |
-| ReactorHook | 11813 | 10952 | under | pass |
-| TickerRegistry | 5655 | 4760 | under | pass |
+Measured with `forge build --sizes` + `pnpm size:guard` (limit 24,576 − 1,024 = **23,552**).
 
-Arc / Ethereum runtime limit treated as **24,576**. CI `pnpm size:guard` fails if Factory runtime exceeds 24,576 − 1,024.
+| Contract | Runtime (bytes) | Creation | Gate |
+| --- | ---: | ---: | --- |
+| ReactorFactory | **23,286** | 25,415 | ≤ 23,552 **pass** (was 23,280 at 0.2.0; +6 from `registerNative` no longer try/catch) |
+| InstantLaunchModule | 17,092 | 17,682 | under EIP-170 |
+| InstantCurve | 18,960 | 19,644 | under |
+| ReactorHook | 10,952 | 11,813 | under |
+| TickerRegistry | 4,827 | 5,722 | under |
+| UserRouteQuoter | 8,559 | 8,899 | new module — not Factory |
 
-Split (no proxies): `InstantLaunchModule` holds `new ReactorToken`, EIP-712 `LaunchAuthorization.verify`, and official-pool open. Factory still `claimOnLaunch`s, opens InstantCurve, pulls Dev Buy, and owns fair bid/claim storage.
+Factory **stays V1**. New logic is in InstantLaunchModule, TickerRegistry, UserRouteQuoter, libraries, and the backend.
 
-## Arc Public Testnet deploy attempt
+## P0 landings (0.3.0)
 
-Script: `pnpm arc:factory-attempt` → `deployments/arc-factory-attempt.json`.
+**Admission.** Real Turnstile widget + `siteverify`. ELEVATED/ATTACK solved challenge → ALLOW under limits (table-driven). Signed-auth token-bucket (SQL atomic, optional Redis). `launchConfigHash` on ALLOW; signer match required. Atomic receipt consume + concurrent test. Honest funding-cluster (network /16+ASN, optional first USDC funder). No KYC.
 
-- RPC: `https://rpc.testnet.arc.io` (chain **5042002** expected).
-- Exact Factory creation bytecode + dummy constructor args.
-- `eth_estimateGas` recorded (success or error).
-- `eth_sendRawTransaction` **not** sent (no `ARC_TESTNET_PK`).
-- **`claimed: false`**. Do not treat this as a live Factory on Arc.
-- Mainnet 5042 blocked.
+**Fair / ticker.** Fair `curveConfig` hashes supply/decimals/duration/auctionBps/minRaise. Instant stays `INSTANT_CURVE_V1`. `permanentlyLockTicker` reverts if another token holds the 24h lock.
 
-## P0 landings
+**Quotes.** `UserRouteQuoter` one eth_call whole-route preview. Edge kinds through plan/sim/response. Multi-candidate by real `amountOut`. Nested fee legs. Separate fee-exempt maintenance path. Never minOut 0/1 on a successful ticket.
 
-**A. Launch admission.** Public `POST /launch/authorize` → durable admission (Postgres/SQLite) → ALLOW receipt → isolated signer. CHALLENGE ≠ ALLOW. Direct signer without receipt fails. Real Turnstile when `TURNSTILE_SECRET` is set. LOCAL bypass only if secret unset and `TURNSTILE_REQUIRED !== 1`.
+**Indexer / Keeper.** Atomic lease (`UPDATE…RETURNING` / txn). Store transactions. Only 23505/UNIQUE as duplicate. 24h NUMERIC, latest-by-ts, ValuationService USD, 24h USD volume, incremental + expire. Candles `limit/before/after`. Bounded tape. Keyset pagination. NUMERIC sorts.
 
-**B. EIP-712 identity.** Signed: factory, Factory version, creator, quote, decimals, mode, ticker, name, metadata hash, virtualQuote0, curve, authId, deadline, chain. Metadata frozen at launch (`metaFrozen`). `permanentlyLockTicker` requires a REACTOR-native authorized-factory token with matching ticker; `reserveTicker` is separate; both irreversible.
-
-**C. Factory EIP-170.** Measured, split, CI guard, Arc probe. See table.
-
-**D. Quotes.** Simulate exact RouteGraph edges (`OFFICIAL_REACTOR_V4` / `EXTERNAL_V4_HOOKLESS` / `BONDING_CURVE`). Nested fees per REACTOR leg. ≤3 hops. Sim fail → unavailable. Never `minOut` 0/1.
-
-**E. Indexer.** Rich `OfficialPoolCreated` UPSERT, transactional idempotence, 24h aggregations, SQL pagination/search, `ARC_FINALITY_CONFIRMATIONS` (default 8).
-
-**F. Keeper.** Single lease leadership (not mixed with advisory). Canonical `ValuationService`. No silent static ZEC in prod (`ZEC_HTTP_URL` required). R2/S3 fail-closed in prod. Safe genesis Batch A → verify → Batch B T0. `CoreToken` naming. SSE.
-
-## Docs / UI
-
-Deep `/docs` corpus (Trader / Creator / Builder / Protocol / Reference), How REACTOR Works, trust top-10, Guardian/Keeper, admission, routes, examples, `llms.txt`, version badges, `docs:check`. UI: home search, `/search`, launch ticker + challenge, Lightweight Charts, tape, contextual docs, Ops token gate in prod.
-
-## Tests
-
-| Suite | Result |
-| --- | --- |
-| `pnpm size:guard` | green (Factory 23280 ≤ 23552) |
-| `pnpm docs:check` | required green this pass |
-| Indexer unit (admission, launch-auth, persist) | required green |
-| Foundry | **321 pass** after identity-helper fix (was 318 + 3 WrongName/Mode/Metadata) |
-| Playwright / visual 1440/390 | after preview |
+**Valuation / media / Safe / Arc.** One ValuationService. `external_price_marks` worker. No static ZEC in PROD. Signer uses ValuationService. Sharp explicit. Stream 2MB. SigV4 PUT. Safe Transaction Builder JSON. `registerNative` not silent. Arc USDC 18/6. Finality default 0. Broadcast if `ARC_TESTNET_PK`, else honest blocker.
 
 ## Honest gaps
 
 - Not audited. No public mainnet addresses.
-- Arc Factory **not claimed** — estimate/RPC only unless an explorer hash exists in `deployments/arc-factory-attempt.json`.
-- Top-10 ranks remain an offchain API (trust assumption #1).
+- Arc Factory **not claimed** without an explorer hash in `deployments/arc-factory-attempt.json`. This environment has **no `ARC_TESTNET_PK`** — `pnpm arc:factory-attempt` records RPC liveness + sizes only.
+- Top-10 ranks remain an offchain API.
 - LOCAL Turnstile bypass when secret unset.
-- LOCAL inline signer (`SIGNER_INLINE`) unless set to `0`. Isolated signer process still exists for prod-shaped runs.
-- Funding-cluster signals are practical heuristics, not a full chain-analysis product.
-- `setMetadata` removed — identity is frozen at launch; no post-launch creator edit path.
+- LOCAL inline signer unless `SIGNER_INLINE=0`.
+- Funding-cluster is a heuristic (ASN + /16 + optional first-USDC-funder), not chain analysis.
+- `UserRouteQuoter` preview needs token balances (eth_call / state override) — same as any swap sim. Probe hops still use minOut=1 **inside** the revert-preview, not as a user ticket floor.
+- If `UserRouteQuoter` is not deployed, indexer falls back to one `UserRouteExecutor` `simulateContract` per candidate (still one call; hop kinds then default).
+- Safe Builder JSON is a template until genesis env addresses are filled.
+- `sharp` native install may need `pnpm approve-builds` on a fresh host.
+- Factory runtime **23,286** is 6 bytes above the 0.2.0 figure of 23,280. Still under the 23,552 CI gate.
 
 Mainnet blocked pending Codex + audits + KMS/Safe rehearsal.

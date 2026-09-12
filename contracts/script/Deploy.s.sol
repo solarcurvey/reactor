@@ -33,6 +33,7 @@ import {UniswapV4Adapter} from "../src/adapters/UniswapV4Adapter.sol";
 import {ProtocolV4Adapter} from "../src/adapters/ProtocolV4Adapter.sol";
 import {RoutingRegistry} from "../src/RoutingRegistry.sol";
 import {UserRouteExecutor} from "../src/UserRouteExecutor.sol";
+import {UserRouteQuoter} from "../src/UserRouteQuoter.sol";
 import {CoreVesting} from "../src/CoreVesting.sol";
 import {CoreLiquidityVault} from "../src/CoreLiquidityVault.sol";
 import {CoreBuybackExecutor} from "../src/CoreBuybackExecutor.sol";
@@ -64,6 +65,7 @@ contract Deploy is Script {
         ProtocolV4Adapter protocolAdapter;
         RoutingRegistry routes;
         UserRouteExecutor userRouter;
+        UserRouteQuoter userQuoter;
         CoreVesting vesting;
         CoreLiquidityVault coreLp;
         CoreBuybackExecutor coreBuyback;
@@ -206,6 +208,7 @@ contract Deploy is Script {
         a.router.sealProtocolVaults();
         a.userRouter =
             new UserRouteExecutor(a.auth, a.hook, IReactorSwapper(address(a.router)), a.curve, address(a.usdc));
+        a.userQuoter = new UserRouteQuoter(a.auth, a.hook, IReactorSwapper(address(a.router)), a.curve, address(a.usdc));
         a.curve.bindRouteExecutor(address(a.userRouter));
         _verifyGenesis(a);
         _tinyBuyback(a);
@@ -266,6 +269,7 @@ contract Deploy is Script {
         );
         a.userRouter =
             new UserRouteExecutor(a.auth, a.hook, IReactorSwapper(address(a.router)), a.curve, address(a.usdc));
+        a.userQuoter = new UserRouteQuoter(a.auth, a.hook, IReactorSwapper(address(a.router)), a.curve, address(a.usdc));
         require(a.auth.launchesPaused(), "LAUNCHES_MUST_STAY_PAUSED");
         require(a.curve.routeExecutor() == address(0), "EXECUTOR_MUST_WAIT_FOR_SAFE");
         require(a.core.balanceOf(a.auth.guardian()) == 0, "GUARDIAN_CORE");
@@ -350,6 +354,7 @@ contract Deploy is Script {
         console2.log("V4Adapter", address(a.v4Adapter));
         console2.log("ProtocolV4Adapter", address(a.protocolAdapter));
         console2.log("UserRouteExecutor", address(a.userRouter));
+        console2.log("UserRouteQuoter", address(a.userQuoter));
         console2.log("CoreVesting", address(a.vesting));
         console2.log("CoreLiquidityVault", address(a.coreLp));
         console2.log("CoreBuybackExecutor", address(a.coreBuyback));
@@ -393,6 +398,7 @@ contract Deploy is Script {
             _kv("ProtocolV4Adapter", address(a.protocolAdapter)),
             _kv("RoutingRegistry", address(a.routes)),
             _kv("UserRouteExecutor", address(a.userRouter)),
+            _kv("UserRouteQuoter", address(a.userQuoter)),
             _kv("CoreVesting", address(a.vesting)),
             _kv("CoreLiquidityVault", address(a.coreLp)),
             _kv("CoreBuybackExecutor", address(a.coreBuyback)),

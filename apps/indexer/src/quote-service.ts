@@ -1,4 +1,4 @@
-import { encodeFunctionData, parseAbi, type PublicClient } from "viem";
+import { decodeErrorResult, encodeFunctionData, keccak256, parseAbi, toBytes, type PublicClient } from "viem";
 import type { Store } from "./db.ts";
 import { loadEdges, loadQuoteMetas, planFeeExemptRoute } from "./route-graph.ts";
 import { decodeAbiParameters } from "viem";
@@ -30,6 +30,77 @@ const userAbi = parseAbi([
   "function buy(address token, uint256 amountIn, (address adapter,address tokenIn,address tokenOut,uint256 minOut,bytes data)[] hops, uint256 minOut, uint256 deadline) returns (uint256)",
   "function sell(address token, uint256 amountIn, (address adapter,address tokenIn,address tokenOut,uint256 minOut,bytes data)[] hops, uint256 minQuoteOut, uint256 minOut, uint256 deadline) returns (uint256)",
 ]);
+const quoterAbi = parseAbi([
+  "error PreviewRoute(uint256 amountOut, uint256[] hopOuts, bytes32[] kinds)",
+  "function previewBuy(address token, uint256 usdcIn, (address adapter,address tokenIn,address tokenOut,uint256 minOut,bytes data)[] hops)",
+  "function previewSell(address token, uint256 tokenIn, (address adapter,address tokenIn,address tokenOut,uint256 minOut,bytes data)[] hops)",
+]);
+
+const KIND_NAME: Record<string, string> = {
+  [keccak256(toBytes("OFFICIAL_REACTOR_V4"))]: VENUE.OFFICIAL_REACTOR_V4,
+  [keccak256(toBytes("EXTERNAL_V4_HOOKLESS"))]: VENUE.EXTERNAL_V4_HOOKLESS,
+  [keccak256(toBytes("BONDING_CURVE"))]: VENUE.BONDING_CURVE,
+};
+
+function kindName(k: `0x${string}` | string): string {
+  return KIND_NAME[k.toLowerCase()] ?? KIND_NAME[k] ?? VENUE.EXTERNAL_V4_HOOKLESS;
+}
+
+function extractRevertData(err: unknown): `0x${string}` | undefined {
+  const e = err as { data?: { data?: string } | string; cause?: { data?: { data?: string } | string }; raw?: string };
+  const cands = [e.data, e.cause?.data, e.raw];
+  for (const c of cands) {
+    if (typeof c === "string" && c.startsWith("0x") && c.length > 10) return c as `0x${string}`;
+    if (c && typeof c === "object" && typeof (c as { data?: string }).data === "string") {
+      const d = (c as { data: string }).data;
+      if (d.startsWith("0x")) return d as `0x${string}`;
+    }
+  }
+  return undefined;
+}
+
+async function previewWholeRoute(
+  ctx: QuoteCtx,
+  side: "BUY" | "SELL",
+  token: `0x${string}`,
+  amountIn: bigint,
+  hops: Hop[],
+  account: `0x${string}`,
+): Promise<{ amountOut: bigint; hopOuts: bigint[]; kinds: string[] }> {
+  const quoter = ctx.addresses.UserRouteQuoter as `0x${string}` | undefined;
+  const executor = ctx.addresses.UserRouteExecutor as `0x${string}` | undefined;
+  if (quoter) {
+    const data = encodeFunctionData({
+      abi: quoterAbi,
+      functionName: side === "BUY" ? "previewBuy" : "previewSell",
+      args: [token, amountIn, hops],
+    });
+    try {
+      await ctx.client.call({ to: quoter, data, account });
+      throw new Error("UserRouteQuoter preview did not revert");
+    } catch (e) {
+      const raw = extractRevertData(e);
+      if (!raw) throw e;
+      const decoded = decodeErrorResult({ abi: quoterAbi, data: raw });
+      if (decoded.errorName !== "PreviewRoute") throw e;
+      const [amountOut, hopOuts, kinds] = decoded.args as [bigint, bigint[], `0x${string}`[]];
+      return { amountOut, hopOuts, kinds: kinds.map(kindName) };
+    }
+  }
+  if (!executor) throw new Error("UserRouteQuoter/Executor missing");
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 120);
+  const sim = await ctx.client.simulateContract({
+    address: executor,
+    abi: userAbi,
+    functionName: side === "BUY" ? "buy" : "sell",
+    args:
+      side === "BUY"
+        ? [token, amountIn, hops, 1n, deadline]
+        : [token, amountIn, hops, 1n, 1n, deadline],
+    account,
+  });
+  return { amountOut: sim.result as bigint, hopOuts: [], kinds: hops.map(() => VENUE.EXTERNAL_V4_HOOKLESS) };
+}
 
 export type QuoteCtx = {
   store: Store;
@@ -151,6 +222,7 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
           ? req.tokenIn.toLowerCase() === usdc && market && market.quote.toLowerCase() !== usdc
           : req.tokenOut.toLowerCase() === usdc && market && market.quote.toLowerCase() !== usdc;
       let plannedHops: Hop[] = [];
+      let atomicPreviewed = false;
       if (payingUsdc && userRoute) {
         const edges = await loadEdges(ctx.store, "user");
         const metas = await loadQuoteMetas(ctx.store);
@@ -159,17 +231,57 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
         const dst = req.kind === "BUY" ? market!.quote : req.tokenOut;
         const candidates = planCandidates(src, dst, edges, metas, { protocol: false, adapters, maxCandidates: 8 });
         const scored = [];
+        let bestPreview: { amountOut: bigint; hopOuts: bigint[]; kinds: string[] } | undefined;
         for (const c of candidates) {
           if (c.hops.length > 3) continue;
-          scored.push(scoreRoute(c, { amountOut: 1_000_000n - BigInt(c.hops.length), impactBps: c.hops.length * 10, gasEstimate: c.hops.length * 90_000, reliabilityBps: 9_000 - c.hops.length * 200 }));
+          try {
+            const previewed = await previewWholeRoute(
+              ctx,
+              req.kind,
+              req.token as `0x${string}`,
+              amountIn,
+              c.hops,
+              account,
+            );
+            if (previewed.amountOut <= 1n) continue;
+            scored.push(
+              scoreRoute(c, {
+                amountOut: previewed.amountOut,
+                impactBps: c.hops.length * 10,
+                gasEstimate: c.hops.length * 90_000,
+                reliabilityBps: 9_000 - c.hops.length * 200,
+              }),
+            );
+            if (!bestPreview || previewed.amountOut > bestPreview.amountOut) bestPreview = previewed;
+          } catch {
+            /* candidate unavailable */
+          }
         }
         const planned = pickBest(scored);
         plannedHops = planned.hops;
         path = planned.path;
+        if (bestPreview && payingUsdc) {
+          atomicPreviewed = true;
+          amountOut = bestPreview.amountOut;
+          for (let i = 0; i < plannedHops.length; i++) {
+            const out = bestPreview.hopOuts[i] ?? 0n;
+            hops.push({
+              ...plannedHops[i]!,
+              minOut: 0n,
+              amountIn: i === 0 ? amountIn.toString() : (bestPreview.hopOuts[i - 1] ?? 0n).toString(),
+              amountOut: out.toString(),
+              impactBps: 0,
+              gasEstimate: 90_000,
+              reliabilityBps: 8_500,
+              feeExempt: false,
+              kind: bestPreview.kinds[i] ?? VENUE.EXTERNAL_V4_HOOKLESS,
+            });
+          }
+        }
       }
 
       let cursor = amountIn;
-      if (req.kind === "SELL") {
+      if (req.kind === "SELL" && !atomicPreviewed) {
         if (bonding && curve && req.token) {
           const sim = await ctx.client.simulateContract({
             address: curve,
@@ -186,7 +298,7 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
         }
       }
 
-      for (const h of plannedHops) {
+      for (const h of atomicPreviewed ? [] : plannedHops) {
         const key = decodeEdgeKey(h.data);
         let out: bigint;
         try {
@@ -208,7 +320,7 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
         cursor = out;
       }
 
-      if (req.kind === "BUY") {
+      if (req.kind === "BUY" && !atomicPreviewed) {
         const quoteIn = plannedHops.length ? cursor : amountIn;
         if (bonding && curve && req.token) {
           const sim = await ctx.client.simulateContract({
@@ -228,10 +340,25 @@ export async function buildQuote(ctx: QuoteCtx, req: QuoteRequest, rid = request
           to = payingUsdc && userRoute ? userRoute : addrs.ReactorRouter;
           functionName = payingUsdc ? "buy" : "swap";
         }
-      } else {
+      } else if (req.kind === "SELL" && !atomicPreviewed) {
         amountOut = cursor;
         functionName = payingUsdc && userRoute ? "sell" : bonding ? "sell" : "swap";
         to = payingUsdc && userRoute ? userRoute : bonding && curve ? curve : addrs.ReactorRouter;
+      } else if (atomicPreviewed) {
+        functionName = req.kind === "BUY" ? "buy" : "sell";
+        to = userRoute ?? addrs.ReactorRouter;
+        const venue = bonding ? "InstantCurve" : "official-v4";
+        if (req.token && market) {
+          feeLegs.push(
+            feeLeg(
+              venue,
+              req.kind === "BUY" ? market.quote : req.token,
+              req.kind === "BUY" ? req.token : market.quote,
+              amountIn,
+              !feeExempt,
+            ),
+          );
+        }
       }
 
       const slipBps = BigInt(Math.max(1, slip));
@@ -346,6 +473,7 @@ async function buildMaintenanceQuote(
       gasEstimate: 90_000,
       reliabilityBps: 8_500,
       feeExempt: true,
+      kind: official ? VENUE.OFFICIAL_REACTOR_V4 : VENUE.EXTERNAL_V4_HOOKLESS,
     });
     if (out > 1n) cursor = out;
   }

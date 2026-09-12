@@ -32,3 +32,33 @@ body {
 ::selection {
   background: rgba(126, 232, 255, 0.28);
 }
+
+.docs-prose h1 {
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.docs-prose h2 {
+  margin-top: 1.75rem;
+  font-size: 1.15rem;
+  color: #f4f7fb;
+}
+
+.docs-prose h3 {
+  margin-top: 1.25rem;
+  font-size: 0.95rem;
+  color: #d4d4d8;
+}
+
+.docs-prose code {
+  border-radius: 0.35rem;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.1rem 0.35rem;
+  font-size: 0.8em;
+}
+
+.docs-prose pre code {
+  background: transparent;
+  padding: 0;
+}

@@ -22,6 +22,8 @@ Source: [docs.arc.io/arc/references/rpc-endpoints](https://docs.arc.io/arc/refer
 
 Gas: minimum `maxFeePerGas` 20 gwei. Base fee paid to beneficiary (no ETH-style burn).
 
+**Finality:** Arc is Malachite BFT — final on commit, no confirmation window, no reorgs ([docs](https://docs.arc.io/arc/concepts/deterministic-finality)). Indexer default `ARC_FINALITY_CONFIRMATIONS=0`. The Ethereum-style 8-block lag is dropped.
+
 Buyback **testnet** safety constants are in `ReactorConstants` (300 bps impact, 20% chunk, 10% reserve, 1500 bps ref deviation, 5 min cooldown). See `ECONOMICS.md`.
 
 This environment does **not** automatically have a dedicated funded Arc Testnet key. If no key + faucet funds exist, **do not fabricate explorer evidence**.

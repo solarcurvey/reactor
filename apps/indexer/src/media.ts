@@ -1,6 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync, writeFileSync, existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
+import sharp from "sharp";
+import { s3PutSigV4 } from "./s3-sigv4.ts";
 
 const MAX_BYTES = 2 * 1024 * 1024;
 const MAX_DIM = 2048;
@@ -56,21 +58,14 @@ export class ObjectStore {
   async put(buf: Buffer, contentType: string): Promise<StoredMedia> {
     const v = validateImage(buf);
     if (!v.ok) throw new Error(v.reason);
-    let out = buf;
-    let type = contentType;
-    try {
-      const sharp = (await import("sharp")).default;
-      out = await sharp(buf).rotate().resize(TARGET, TARGET, { fit: "cover" }).webp({ quality: 82 }).toBuffer();
-      type = "image/webp";
-    } catch {
-      if (v.kind === "webp") type = "image/webp";
-    }
+    const out = await sharp(buf).rotate().resize(TARGET, TARGET, { fit: "cover" }).webp({ quality: 82 }).toBuffer();
+    const type = "image/webp";
     const id = createHash("sha256").update(out).digest("hex").slice(0, 20);
-    const ext = type === "image/webp" ? "webp" : v.kind === "png" ? "png" : "jpg";
-    const path = join(this.root, `${id}.${ext}`);
+    const path = join(this.root, `${id}.webp`);
     if (!existsSync(path)) writeFileSync(path, out);
     await this.maybeRemote(id, out, type);
-    return { id, uri: `/m/${id}.${ext}`, contentType: type, bytes: out.length };
+    void contentType;
+    return { id, uri: `/m/${id}.webp`, contentType: type, bytes: out.length };
   }
 
   get(name: string): { buf: Buffer; type: string } | null {
@@ -95,16 +90,17 @@ export class ObjectStore {
       if (prod) throw new Error("R2/S3 credentials missing — media fail-closed");
       return;
     }
-    const url = `${endpoint.replace(/\/$/, "")}/${bucket}/${id}`;
-    const res = await fetch(url, {
-      method: "PUT",
-      headers: { "content-type": type, "x-amz-acl": "public-read" },
-      body: new Uint8Array(buf),
-      signal: AbortSignal.timeout(8_000),
+    const put = await s3PutSigV4({
+      endpoint,
+      bucket,
+      key: id,
+      body: buf,
+      contentType: type,
+      accessKey: keyId,
+      secretKey: secret,
     });
-    if (!res.ok) {
-      if (prod) throw new Error(`R2/S3 upload failed ${res.status} — media fail-closed`);
-      throw new Error(`R2/S3 upload failed ${res.status}`);
+    if (put.status < 200 || put.status >= 300) {
+      throw new Error(`R2/S3 SigV4 upload failed ${put.status}${prod ? " — media fail-closed" : ""}`);
     }
     void dirname;
     void randomBytes;

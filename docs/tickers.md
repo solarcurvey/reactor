@@ -1,38 +1,25 @@
 # Ticker registry
 
-> Global identity. Not owned by one factory. Survives Factory V1 / V2 / ….
+Global `TickerRegistry`. Survives Factory versions. `verifyingContract` for LaunchAuthorization EIP-712.
 
-See also the protocol note `TICKER_REGISTRY.md`.
+## Normalize
 
-## Canonical form
+ASCII uppercase alphanumeric, length 1–10. `Ticker.normalize`. Spaces, hyphens, and non-ASCII revert `BadTicker`.
 
-Shared by `Ticker.sol`, `@reactor/sdk`, the indexer, and the launch UI. Invalid input is **rejected**, not rewritten.
+## Reserved vs locked
 
-| Rule | Value |
-| --- | --- |
-| Alphabet | ASCII `A–Z` / `0–9` after uppercase fold |
-| Length | 1–10 |
-| Rejected | Unicode, whitespace, punctuation, confusables |
+| Kind | How | Token |
+| --- | --- | --- |
+| Reserved | `reserveTicker` (Guardian) | `address(0)` + permanent |
+| 24h lock | Successful launch `claimOnLaunch` | The launched token |
+| Permanent | `permanentlyLockTicker(ticker, token)` | Must be REACTOR-native, matching ticker |
 
-`zcat` → `ZCAT`. `zc at`, `ZC-AT`, `ZÇAT`, empty, and 11+ characters revert.
+Default reserved set: `CORE`, `REACTOR`, `USDC`, `ZEC`, `WBTC`, `EURC`. Reserved names are **not** the same as a permanent lock of a live market.
 
-## Locks
+## 24h lock
 
-| Event | Onchain effect |
-| --- | --- |
-| Successful launch | 24h **global** lock across quotes, factories, and modes |
-| Failed / expired auth | **No squat.** Digest is not consumed. Ticker stays free. |
-| `permanentlyLockTicker(ticker, token)` | Guardian-only, one-way. REACTOR-native token from an authorized factory with matching ticker. **not** an mcap oracle |
-| `reserveTicker(ticker)` | Guardian-only reserved name (no token). Separate from launched-token locks. |
+A successful Instant or Fair launch locks the ticker for 24 hours globally. A failed or expired authorization does **not** squat. After expiry, another token may claim the same ticker.
 
-Reserved at genesis (permanent, no launch token): `CORE`, `REACTOR`, `USDC`, `ZEC`, `WBTC`, `EURC`.
+`permanentlyLockTicker` **reverts** (`TickerUnavailable`) if a **different** token still holds that active 24h lock. After expiry, Guardian may lock the current native token. Repeat lock on the same token reverts `TickerPermanent`. Wrong ticker → `TickerMismatch`. Non-native after expiry → `NotReactorNative`. `token == 0` is `ReservedSeparate`.
 
-After 24 hours the ticker may be used again unless Guardian permanently locked it. Two live tokens can share a ticker only after the lock expires — the UI and `GET /ticker/:ticker` show the latest claim.
-
-## Lookups
-
-- Contract: `TickerRegistry.status(ticker)` → canonical, record, `isAvailable`, reserved
-- API: `GET /ticker/MOON`
-- SDK: `client.ticker("moon")`
-
-Factory version of the claiming factory is persisted on the token forever (`tokenFactoryVersion`). Deprecating a factory stops **new** launches only.
+See `TICKER_REGISTRY.md`, [Admission](/docs/admission).

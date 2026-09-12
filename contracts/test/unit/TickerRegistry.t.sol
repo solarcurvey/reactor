@@ -117,10 +117,23 @@ contract TickerRegistryTest is Base {
         auth.permanentlyLockTicker("LOCK", token);
     }
 
+    function test_97_permanent_lock_reverts_if_another_token_holds_24h_lock() public {
+        (address first,) = _instant(_usdc("SWAP"));
+        vm.warp(block.timestamp + 24 hours + 1);
+        (address second,) = _instant(_usdc("SWAP"));
+        assertTrue(first != second);
+        vm.expectRevert(TickerRegistry.TickerUnavailable.selector);
+        auth.permanentlyLockTicker("SWAP", first);
+        auth.permanentlyLockTicker("SWAP", second);
+    }
+
     function test_97_permanent_lock_requires_reactor_native_matching_ticker() public {
         (address token,) = _instant(_usdc("NATV"));
         vm.expectRevert(TickerRegistry.ReservedSeparate.selector);
         auth.permanentlyLockTicker("NATV", address(0));
+        vm.expectRevert(TickerRegistry.TickerUnavailable.selector);
+        auth.permanentlyLockTicker("NATV", alice);
+        vm.warp(block.timestamp + 24 hours + 1);
         vm.expectRevert(TickerRegistry.NotReactorNative.selector);
         auth.permanentlyLockTicker("NATV", alice);
         vm.expectRevert(TickerRegistry.TickerMismatch.selector);

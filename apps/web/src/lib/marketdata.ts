@@ -229,6 +229,19 @@ async function quoteToUsd6(
   const q = quote.toLowerCase();
   const hit = cache.get(q);
   if (hit) return hit;
+  try {
+    const res = await fetch(`${INDEXER_URL}/valuation?token=${quote}`);
+    if (res.ok) {
+      const body = (await res.json()) as { ok?: boolean; usd6?: string };
+      if (body.ok && body.usd6 && BigInt(body.usd6) > 0n) {
+        const v = { usd6: BigInt(body.usd6), ok: true };
+        cache.set(q, v);
+        return v;
+      }
+    }
+  } catch {
+    /* fall through to on-chain */
+  }
   if (q === addresses.USDC.toLowerCase()) {
     const v = { usd6: 1_000_000n, ok: true };
     cache.set(q, v);

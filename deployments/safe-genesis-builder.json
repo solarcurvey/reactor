@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "chainId": "5042002",
+  "createdAt": 0,
+  "meta": {
+    "name": "REACTOR Safe Genesis",
+    "description": "Template. Fill addresses via `pnpm exec tsx scripts/safe-genesis-builder.ts`. Deployer ≠ Guardian Safe. Batch A while paused → VerifyGenesis → Batch B T0.",
+    "txBuilderVersion": "1.16.5"
+  },
+  "transactions": [],
+  "note": "Do not execute with placeholder addresses. Regenerated when EXPECTED_SAFE and contract env are set."
+}

@@ -29,6 +29,7 @@ export type Deployment = {
     SelfBurnVault?: `0x${string}`;
     Guardian?: `0x${string}`;
     UserRouteExecutor?: `0x${string}`;
+    UserRouteQuoter?: `0x${string}`;
     V4Adapter?: `0x${string}`;
     ProtocolV4Adapter?: `0x${string}`;
     RoutingRegistry?: `0x${string}`;

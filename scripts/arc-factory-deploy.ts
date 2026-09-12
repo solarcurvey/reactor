@@ -1,11 +1,13 @@
 #!/usr/bin/env npx tsx
 /**
  * Attempt a real Arc Public Testnet create of exact Factory bytecode.
- * Records tx or error. Never claims success without an explorer hash.
- * Mainnet 5042 is blocked.
+ * Broadcasts only when ARC_TESTNET_PK is set and runtime ≤ EIP-170.
+ * Never claims success without an explorer hash. Mainnet 5042 is blocked.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { createWalletClient, http, defineChain } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 const root = join(import.meta.dirname, "..");
 const RPC = process.env.ARC_TESTNET_RPC ?? "https://rpc.testnet.arc.io";
@@ -17,6 +19,9 @@ const out: Record<string, unknown> = {
   chainWanted: 5042002,
   eip170: 24576,
   claimed: false,
+  nativeGas: { symbol: "USDC", decimals: 18, note: "Arc native gas is USDC-18 internally" },
+  usdcErc20: { address: "0x3600000000000000000000000000000000000000", decimals: 6 },
+  finality: "deterministic BFT — no eth-8 confirmation lag (docs.arc.io/arc/concepts/deterministic-finality)",
 };
 
 async function rpc(method: string, params: unknown[] = []) {
@@ -31,7 +36,6 @@ async function rpc(method: string, params: unknown[] = []) {
   return j.result;
 }
 
-/** ABI-encode 7 constructor addresses (hook, router, vault, registry, core, auth, tickers). */
 function dummyCtor() {
   const one = "0000000000000000000000000000000000000000000000000000000000000001";
   return "0x" + one.repeat(7);
@@ -46,6 +50,12 @@ async function main() {
     if (chainId === 5042) throw new Error("mainnet blocked");
     if (!existsSync(artifact)) {
       out.error = "Factory artifact missing — run forge build --sizes";
+      out.blocker = [
+        "cd contracts && forge build --sizes",
+        "export ARC_TESTNET_PK=0x… (Circle-faucet funded)",
+        "pnpm arc:factory-attempt",
+        "confirm tx on https://testnet.arcscan.app",
+      ];
     } else {
       const j = JSON.parse(readFileSync(artifact, "utf8")) as {
         bytecode?: { object?: string };
@@ -62,19 +72,50 @@ async function main() {
         out.head = latest;
         const gas = await rpc("eth_estimateGas", [{ from: "0x0000000000000000000000000000000000000001", data }]);
         out.estimateGas = gas;
-        out.estimateNote = "estimate succeeded with dummy ctor args — still not a broadcast create";
+        out.estimateNote = "estimate succeeded with dummy ctor args";
       } catch (e) {
         out.estimateError = e instanceof Error ? e.message : String(e);
       }
-      const pk = process.env.ARC_TESTNET_PK ?? process.env.DEPLOYER_PK ?? "";
+      const pk = process.env.ARC_TESTNET_PK ?? "";
       if (!pk || pk.length < 10) {
         out.error =
           "no ARC_TESTNET_PK — eth_sendRawTransaction not attempted. RPC live + estimate recorded. Not claimed.";
+        out.blocker = [
+          "Fund an EOA from https://faucet.circle.com on Arc Public Testnet (5042002)",
+          "export ARC_TESTNET_PK=0x… (never commit)",
+          "export ARC_TESTNET_RPC=https://rpc.testnet.arc.io",
+          "pnpm arc:factory-attempt",
+          "Require an explorer hash on https://testnet.arcscan.app before claiming",
+          "Mainnet 5042 remains blocked",
+        ];
       } else if (Number(out.runtimeBytes) > 24576) {
         out.error = `runtime ${out.runtimeBytes} > EIP-170 24576 — create would fail on Arc. Not sent.`;
+      } else if (chainId !== 5042002) {
+        out.error = `unexpected chain ${chainId} — not Arc Public Testnet`;
       } else {
-        out.error =
-          "funded-key path reserved: this environment does not assemble a signed legacy create without a dedicated deployer. Record sizes + RPC liveness only.";
+        const account = privateKeyToAccount(pk as `0x${string}`);
+        const chain = defineChain({
+          id: 5042002,
+          name: "Arc Public Testnet",
+          nativeCurrency: { name: "USD Coin", symbol: "USDC", decimals: 18 },
+          rpcUrls: { default: { http: [RPC] } },
+        });
+        const wallet = createWalletClient({ account, chain, transport: http(RPC) });
+        try {
+          const hash = await wallet.sendTransaction({
+            data: data as `0x${string}`,
+            gas: 8_000_000n,
+            maxFeePerGas: 20_000_000_000n,
+            maxPriorityFeePerGas: 1_000_000_000n,
+          });
+          out.txHash = hash;
+          out.explorer = `https://testnet.arcscan.app/tx/${hash}`;
+          out.claimed = false;
+          out.note = "Broadcast submitted. claimed stays false until you confirm the explorer receipt.";
+        } catch (e) {
+          out.error = e instanceof Error ? e.message : String(e);
+          out.broadcastAttempted = true;
+        }
       }
     }
   } catch (e) {

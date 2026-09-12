@@ -11,6 +11,7 @@ import { useQuotes } from "@/lib/hooks";
 import { factory, erc20, launchAbi } from "@/lib/contracts";
 import { INDEXER_URL } from "@/lib/chain";
 import { parseUnitsSafe } from "@/lib/utils";
+import { TurnstileWidget, turnstileSiteKey } from "@/components/turnstile";
 
 export default function LaunchPage() {
   const router = useRouter();
@@ -29,6 +30,9 @@ export default function LaunchPage() {
   const [durationMin, setDurationMin] = useState("45");
   const [error, setError] = useState<string | null>(null);
   const [tickerStatus, setTickerStatus] = useState<string>("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [needsChallenge, setNeedsChallenge] = useState(false);
+  const siteKey = turnstileSiteKey();
 
   const selected = quotes?.find((q) => q.token.toLowerCase() === quote.toLowerCase());
 
@@ -69,7 +73,14 @@ export default function LaunchPage() {
         name,
         image,
         description,
-        turnstile: typeof window !== "undefined" ? (window as unknown as { turnstileToken?: string }).turnstileToken : "",
+        turnstile: turnstileToken,
+        factory: factory.address,
+        factoryVersion: 1,
+        duration: path === "fair" ? Math.floor(Number(durationMin) * 60) : undefined,
+        supply: 0,
+        decimals: 18,
+        auctionBps: 0,
+        minRaise: 0,
       }),
     });
     const body = (await res.json()) as {
@@ -97,7 +108,8 @@ export default function LaunchPage() {
       error?: string;
     };
     if (body.decision === "CHALLENGE") {
-      throw new Error(body.error ?? "Complete the launch challenge (Turnstile) — CHALLENGE is not ALLOW.");
+      setNeedsChallenge(true);
+      throw new Error(body.error ?? "Complete the Cloudflare Turnstile challenge, then retry. CHALLENGE is not ALLOW.");
     }
     if (!res.ok || !body.auth || !body.signature) {
       throw new Error(body.error ?? body.reasons?.join(", ") ?? "Launch authorization unavailable");
@@ -223,7 +235,7 @@ export default function LaunchPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/80">Instant · bonding → v4</p>
+      <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/80">Instant · bonding → v4 · Factory V1</p>
       <h1 className="mt-1 text-2xl font-semibold">Ignite a market</h1>
       <p className="mt-1 text-[13px] text-zinc-400">
         You pick image, name, ticker, description, quote, and Standard vs Rewards. Protocol owns supply, curve, FDV,
@@ -401,8 +413,25 @@ export default function LaunchPage() {
 
         <div className="rounded-xl border border-white/8 bg-black/20 p-3 text-[12px] text-zinc-400">
           Protocol: 1B / 18 dec · 79.31% curve · 20.69% locked v4 at graduation · ~$5k USDC start FDV · 3.5% from trade
-          #1. No creator FDV, supply, or fee knobs.
+          #1. No creator FDV, supply, or fee knobs. Fair LaunchAuthorization binds supply / decimals / duration /
+          auctionBps / minRaise.
         </div>
+        {(needsChallenge || siteKey) && (
+          <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-3">
+            <p className="text-[12px] text-cyan-100">
+              {needsChallenge
+                ? "Admission returned CHALLENGE. Solve Turnstile, then launch again — a solved challenge can ALLOW under limits."
+                : "Cloudflare Turnstile is required when the launch signer is wired."}
+            </p>
+            {siteKey ? (
+              <TurnstileWidget siteKey={siteKey} onToken={setTurnstileToken} />
+            ) : (
+              <p className="mt-2 text-[11px] text-zinc-500">
+                LOCAL: no site key — backend bypasses Turnstile unless TURNSTILE_REQUIRED=1.
+              </p>
+            )}
+          </div>
+        )}
       </Card>
 
       {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
