@@ -108,14 +108,77 @@ export function applyTradeToCandle(prev: Ohlcv | undefined, ts: number, interval
   return next;
 }
 
-/** Fill missing buckets with last close so charts stay continuous across curve→v4. */
-export function fillContinuous(candles: Ohlcv[], intervalSec: number, fromTs: number, toTs: number): Ohlcv[] {
-  if (candles.length === 0) return [];
+/** Hard cap matches `GET /candles` max `limit`. Never materialize a year of 1m buckets. */
+export const MAX_CANDLE_FILL_BUCKETS = 1_000;
+
+/**
+ * Last stored bucket with `t < before` — same exclusivity as SQL `t < before`.
+ * Aligned `before=300` on 60s candles yields 240, not 300.
+ */
+export function exclusiveBeforeBucket(before: number, intervalSec: number): number {
+  const b = bucketTs(before, intervalSec);
+  return before === b ? b - intervalSec : b;
+}
+
+/**
+ * Last `limit` buckets ending at the last bucket **strictly before** `before`,
+ * or the current `now` bucket when `before` is omitted. Always ≤ max `limit`.
+ * `after` is exclusive (`t > after`), matching SQL.
+ */
+export function boundedCandleWindow(opts: {
+  intervalSec: number;
+  limit: number;
+  nowTs: number;
+  before?: number | null;
+  after?: number | null;
+}): { fromTs: number; toTs: number; maxBuckets: number } {
+  const intervalSec = opts.intervalSec > 0 ? opts.intervalSec : 60;
+  const maxBuckets = Math.min(MAX_CANDLE_FILL_BUCKETS, Math.max(1, Math.floor(Number(opts.limit) || 1)));
+  const rawBefore = opts.before != null && Number.isFinite(Number(opts.before)) ? Number(opts.before) : null;
+  // Never `bucketTs(before)`: that equals `before` when aligned and fillContinuous is inclusive.
+  const toTs = rawBefore != null ? exclusiveBeforeBucket(rawBefore, intervalSec) : bucketTs(opts.nowTs, intervalSec);
+  if (rawBefore != null && toTs >= rawBefore) {
+    throw new Error(`candle window toTs=${toTs} must be < exclusive before=${rawBefore}`);
+  }
+  let fromTs = toTs - (maxBuckets - 1) * intervalSec;
+  if (opts.after != null && Number.isFinite(Number(opts.after))) {
+    fromTs = Math.max(fromTs, bucketTs(Number(opts.after), intervalSec) + intervalSec);
+  }
+  return { fromTs, toTs, maxBuckets };
+}
+
+/**
+ * Fill missing buckets with last close so charts stay continuous across curve→v4.
+ * If `[fromTs, toTs]` would exceed `maxBuckets`, keep the **most recent** window (DoS bound).
+ *
+ * `endExclusive` matches SQL `t < before`: aligned `toTs=300` on 60s includes 240, not 300.
+ * Default is inclusive so existing closed-range fills (`from=0, to=120` → three buckets) stay valid.
+ */
+export function fillContinuous(
+  candles: Ohlcv[],
+  intervalSec: number,
+  fromTs: number,
+  toTs: number,
+  maxBuckets: number = MAX_CANDLE_FILL_BUCKETS,
+  endExclusive: boolean = false,
+): Ohlcv[] {
+  if (candles.length === 0 || intervalSec <= 0) return [];
+  const cap = Math.min(MAX_CANDLE_FILL_BUCKETS, Math.max(1, Math.floor(maxBuckets)));
   const byT = new Map(candles.map((c) => [c.t, c]));
-  const start = bucketTs(fromTs, intervalSec);
-  const end = bucketTs(toTs, intervalSec);
+  let start = bucketTs(fromTs, intervalSec);
+  const end = endExclusive ? exclusiveBeforeBucket(toTs, intervalSec) : bucketTs(toTs, intervalSec);
+  if (end < start) return [];
+  const span = Math.floor((end - start) / intervalSec) + 1;
+  if (span > cap) {
+    start = end - (cap - 1) * intervalSec;
+  }
+  const sorted = [...candles].sort((a, b) => a.t - b.t);
+  let last = sorted[0]!;
+  for (const c of sorted) {
+    if (c.t <= start) last = c;
+    else break;
+  }
   const out: Ohlcv[] = [];
-  let last = candles[0]!;
   for (let t = start; t <= end; t += intervalSec) {
     const hit = byT.get(t);
     if (hit) {
@@ -126,4 +189,21 @@ export function fillContinuous(candles: Ohlcv[], intervalSec: number, fromTs: nu
     }
   }
   return out;
+}
+
+/** Compose the request window + bounded fill. Empty store → empty series (no synthetic history). */
+export function fillCandlesForRequest(
+  rows: Ohlcv[],
+  intervalSec: number,
+  limit: number,
+  nowTs: number,
+  before?: number | null,
+  after?: number | null,
+): Ohlcv[] {
+  if (rows.length === 0) return [];
+  const { fromTs, toTs, maxBuckets } = boundedCandleWindow({ intervalSec, limit, nowTs, before, after });
+  if (before != null && Number.isFinite(Number(before))) {
+    return fillContinuous(rows, intervalSec, fromTs, Number(before), maxBuckets, true);
+  }
+  return fillContinuous(rows, intervalSec, fromTs, toTs, maxBuckets, false);
 }

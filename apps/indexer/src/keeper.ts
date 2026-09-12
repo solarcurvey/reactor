@@ -14,7 +14,14 @@ import { hostname } from "node:os";
 import deployment from "./deployment.json" with { type: "json" };
 import { type QuoteMeta, type Hop } from "../../../packages/reactor/src/routes.ts";
 import { openStore, type Store } from "./db.ts";
-import { assertKeySeparation, saveJob } from "./keeper-jobs.ts";
+import {
+  assertKeySeparation,
+  saveJob,
+  withLeaderLock,
+  withBroadcastFence,
+  LeaderLeaseLostError,
+  type LeaderLease,
+} from "./keeper-jobs.ts";
 import { planFeeExemptRoute, syncOfficialFactoryVenues } from "./route-graph.ts";
 
 /**
@@ -31,6 +38,7 @@ const HEARTBEAT = process.env.KEEPER_HEARTBEAT ?? new URL("../data/keeper-heartb
 const STATE = process.env.KEEPER_STATE ?? new URL("../data/keeper-state.json", import.meta.url).pathname;
 const OWNER = `${hostname()}:${process.pid}`;
 let jobStore: Store | undefined;
+let activeLease: LeaderLease | undefined;
 const INTERVAL = Number(process.env.KEEPER_INTERVAL_MS ?? 60_000);
 const LOCAL_CHAIN = 5042002;
 const MAINNET_CHAIN = 5042;
@@ -240,8 +248,12 @@ async function submitOnce(state: KeeperState, id: string, send: () => Promise<He
   }
   let hash: Hex;
   try {
-    hash = await send();
+    hash =
+      jobStore && activeLease
+        ? await withBroadcastFence(jobStore, activeLease, send)
+        : await send();
   } catch (e) {
+    if (e instanceof LeaderLeaseLostError) throw e;
     const failed: JobState = { status: "failed", ts: Date.now(), note: String(e) };
     state.jobs[id] = failed;
     await saveState(state);
@@ -448,14 +460,29 @@ async function tick() {
     writeBeat({ ok: false, reason: "mainnet disabled" });
     throw new Error("mainnet disabled");
   }
-  if (jobStore) {
-    const locked = await jobStore.tryAdvisoryLock("reactor-keeper", OWNER, 50_000);
-    if (!locked) {
-      writeBeat({ ok: true, reason: "standby — not leader", chainId });
-      return;
+  const runAsLeader = async (lease?: LeaderLease) => {
+    const prevLease = activeLease;
+    activeLease = lease;
+    try {
+      await tickBody(chainId);
+    } finally {
+      activeLease = prevLease;
     }
+  };
+  if (!jobStore) {
+    await runAsLeader(undefined);
+    return;
   }
-  try {
+  const held = await withLeaderLock(jobStore, OWNER, async (lease) => {
+    await runAsLeader(lease);
+    return true;
+  });
+  if (!held) {
+    writeBeat({ ok: true, reason: "standby — not leader", chainId });
+  }
+}
+
+async function tickBody(chainId: number) {
   const state = await loadState();
   const flywheel = addrs.FlywheelVault as `0x${string}` | undefined;
   const selfBurn = addrs.SelfBurnVault as `0x${string}` | undefined;
@@ -810,17 +837,19 @@ async function tick() {
     submitted,
     jobs,
   });
-  } finally {
-    if (jobStore) await jobStore.releaseLock("reactor-keeper", OWNER).catch(() => undefined);
-  }
 }
 
 async function loop() {
   try {
     await tick();
   } catch (e) {
-    console.error("keeper tick failed (fail closed)", e);
-    writeBeat({ ok: false, pauseEpoch: true, submitted: false, reason: String(e) });
+    if (e instanceof LeaderLeaseLostError) {
+      console.error("keeper lost leadership mid-tick — refuse further broadcast", e);
+      writeBeat({ ok: true, pauseEpoch: false, submitted: false, reason: e.message });
+    } else {
+      console.error("keeper tick failed (fail closed)", e);
+      writeBeat({ ok: false, pauseEpoch: true, submitted: false, reason: String(e) });
+    }
   }
   if (process.env.KEEPER_ONCE === "1") return;
   setTimeout(loop, INTERVAL);

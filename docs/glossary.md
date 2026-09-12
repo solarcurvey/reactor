@@ -19,7 +19,7 @@
 | UserRouteQuoter | Whole-route `eth_call` preview; always reverts `PreviewRoute` |
 | UserRouteExecutor | User nested USDC path. Not a vault |
 | Guardian | Only privileged security authority |
-| Keeper | Designated maintenance. One atomic lease |
+| Keeper | Designated maintenance. One atomic lease (renew + fence) |
 | CORE | Protocol token (`CoreToken`). Never Top-10 |
 | Factory V1 | Immutable on-chain factory label. Not protocol semver |
 | Protocol 0.3.2 | This software + docs release |

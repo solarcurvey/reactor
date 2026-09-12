@@ -1,6 +1,6 @@
 # BUILD REPORT — Protocol 0.3.3 Top-10 ValuationService
 
-**Status:** Continue on existing REACTOR Origin repo. Rebased onto latest `main` (`53330db`, `#21` quote-ticket atomicity) and stacked on `#23` (`57c140b`, persisted `current_supply` v9) + `#30` (`ad5292b`, consensus marks, `kind` = v10). This PR does **not** invent `current_supply`.
+**Status:** Continue on existing REACTOR Origin repo. Rebased onto latest `main` (`59478f2`, `#22` markets keyset + candle bounds) and stacked on current `#23` (`b615387`, persisted `current_supply` v9) + `#30` (`25633b1`, consensus marks, `kind` = v10). This PR does **not** invent `current_supply`.
 
 **Not audited. Not mainnet.**  
 **Economics / 3.5% / curve / Keeper routing / Factory V1 constants: unchanged.**
@@ -13,18 +13,21 @@
 
 | Item | Value |
 | --- | --- |
-| Protocol release | **0.3.3** (`docs/version.json`) — main `#21` + #27 journal + #23 `current_supply` + #30 consensus + #10 Top-10 |
+| Protocol release | **0.3.3** (`docs/version.json`) — main `#22` + #27 journal + #23 `current_supply` + #30 consensus + #10 Top-10 |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
-| Intent | Replace web `discoverTop10` RPC fanout with canonical indexer ValuationService snapshot (issue #10). Rank from persisted `#23` `current_supply` reconciled to `totalSupply()`. Consume #30 consensus marks (`ad5292b`, kind = v10, v9 reserved). |
+| Intent | Replace web `discoverTop10` RPC fanout with canonical indexer ValuationService snapshot (issue #10). Rank from persisted `#23` `current_supply` reconciled to `totalSupply()`. Consume #30 consensus marks (`25633b1`, kind = v10, v9 reserved). |
 | Foundry | Unchanged from 0.3.1 (**326 passed**) plus main `#21` UserRoute preview asserts — this PR does not edit contracts |
-| Indexer / lib | `pnpm --filter indexer test` includes `top10-rank.test.ts` + `ingest.valuation.test.ts` + `price-marks.test.ts` + `pricing.test.ts` + `quote-integrity.test.ts` + `tick-atomic.test.ts` + `pnpm docs:check` |
+| Indexer / lib | `pnpm --filter indexer test` includes `top10-rank.test.ts` + `ingest.valuation.test.ts` + `price-marks.test.ts` + `pricing.test.ts` + `markets-query.test.ts` + `quote-integrity.test.ts` + `tick-atomic.test.ts` + `pnpm docs:check` |
 | Mainnet | **Blocked** |
 
 ## Closed this pass (already on parent)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
-| Selected route and atomic preview/`minOut`s from the same candidate (#21) | **Yes** | On latest `main` `53330db`. `quote-select.ts` + `quote-integrity.test.ts`. Preserved on this stack. |
+| Selected route and atomic preview/`minOut`s from the same candidate (#21) | **Yes** | On `main` after `#21`. `quote-select.ts` + `quote-integrity.test.ts`. Preserved on this stack. |
+| SELL floors on shared preview (#28) | **Yes** | On `main`. `quote-sell-floors.test.ts`. |
+| Keeper lease fencing (#25) | **Yes** | On `main`. `keeper.lease.test.ts`. |
+| Markets keyset + candle bounds (#22) | **Yes** | On `main` `59478f2`. `markets-query.ts` + `markets-query.test.ts` + bounded `fillCandlesForRequest`. `GET /markets` still selects `current_supply`. |
 | `tick()` wrote events then `setState` cursor after the loop | **Yes** | `persistTickBatch` — one `BEGIN` / `BEGIN IMMEDIATE` for log-derived rows + `indexer_state.block` / `block_hash`. RPC (logs, timestamps, head hash) first. SSE after commit. |
 | Crash after some events / before cursor | **Yes** | Injected crash on `indexer_state` or mid-batch write rolls both back. SQLite + Postgres in `tick-atomic.test.ts`; Postgres also in `pg-smoke.ts`. |
 | Reorg rewind `block` then `block_hash` split | **Yes** | `rewindIndexerCursor` is one transaction. Crash on the second write leaves the previous pair. |
@@ -59,7 +62,7 @@ Honesty: 0.3.0 docs already said “Store work uses real transactions.” That w
 | Independent Codex / professional audit | Not performed. Do not claim audited. |
 | Top-10 as onchain oracle | Frozen offchain by design. External USD marks are the same trust class. |
 | Arc Factory claimed | No funded `ARC_TESTNET_PK` in this environment. |
-| #23 / #30 not on main yet | Both tips are still based on `b4bf25d` (pre-`#21`). This stack merged `53330db` and consumes those branch tips (`57c140b`, `ad5292b`). Land **#23** (`current_supply` = v9) then **#30** (`kind` = v10) then rebase **this PR last**. Do not merge #23/#30 from here. Keep #10 open. |
+| #23 / #30 not on main yet | Both tips are still based on `788ba84` (missing `#22`). This stack merged `59478f2` and consumes those branch tips (`b615387`, `25633b1`). Land **#23** (`current_supply` = v9) then **#30** (`kind` = v10) then rebase **this PR last**. Do not merge #23/#30 from here. Keep #10 open. |
 
 ## EIP-170 sizes
 

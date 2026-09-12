@@ -12,7 +12,8 @@ import { loadValuationService } from "./valuation-store.ts";
 import { populateExternalPriceMarks } from "./price-marks.ts";
 import { coreAddressesFromDeployment, failClosedTop10, readTop10Epoch, refreshTop10Epoch } from "./top10-rank.ts";
 import { buildQuote } from "./quote-service.ts";
-import { fillContinuous, CANDLE_INTERVALS } from "../../../packages/reactor/src/prices.ts";
+import { fillCandlesForRequest, CANDLE_INTERVALS } from "../../../packages/reactor/src/prices.ts";
+import { listMarkets } from "./markets-query.ts";
 import { raiseAlert, recentAlerts } from "./alerts.ts";
 import type { ValuationService } from "../../../packages/reactor/src/valuation.ts";
 import { persistTickBatch, persistTokenBurnLogs, rewindIndexerCursor } from "./tick-persist.ts";
@@ -295,61 +296,24 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     return;
   }
   if (url.pathname === "/markets") {
-    const q = url.searchParams.get("q")?.toLowerCase() ?? "";
-    const stage = url.searchParams.get("stage") ?? "";
-    const quote = url.searchParams.get("quote")?.toLowerCase() ?? "";
-    const sort = url.searchParams.get("sort") ?? "new";
-    const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 40)));
-    const cursorTs = url.searchParams.get("cursor_ts");
-    const cursorToken = url.searchParams.get("cursor_token")?.toLowerCase() ?? "";
-    const offset = cursorTs == null ? Math.max(0, Number(url.searchParams.get("offset") ?? 0)) : 0;
-    const like = `%${q}%`;
-    const stageSql = stage === "bonding" ? "bonding" : stage === "v4" || stage === "trending" ? "v4" : "";
-    const order =
-      sort === "vol"
-        ? "CAST(m.volume_24h_usd6 AS NUMERIC) DESC, m.token DESC"
-        : sort === "price"
-          ? "CAST(m.price_usd6 AS NUMERIC) DESC, m.token DESC"
-          : "m.updated_ts DESC, m.token DESC";
-    const keyset =
-      cursorTs != null
-        ? sort === "vol"
-          ? " AND (CAST(m.volume_24h_usd6 AS NUMERIC), m.token) < (CAST(? AS NUMERIC), ?)"
-          : " AND (m.updated_ts, m.token) < (?, ?)"
-        : "";
-    const where = `WHERE (?='' OR lower(COALESCE(t.symbol,'')) LIKE ? OR lower(COALESCE(t.name,'')) LIKE ? OR m.token LIKE ? OR lower(COALESCE(t.ticker,'')) LIKE ?)
-      AND (?='' OR m.stage=?)
-      AND (?='' OR m.quote=?)${keyset}`;
-    const params: unknown[] = [q, like, like, like, like, stageSql, stageSql, quote, quote];
-    if (cursorTs != null) params.push(cursorTs, cursorToken);
-    const total = await store.get<{ n: number }>(
-      `SELECT COUNT(*) as n FROM markets m LEFT JOIN tokens t ON t.address=m.token ${where.replace(keyset, "")}`,
-      q, like, like, like, like, stageSql, stageSql, quote, quote,
-    );
-    const items = await store.all<Record<string, unknown>>(
-      `SELECT m.token,m.quote,m.pool_id,m.stage,m.market_live,m.fair_id,m.bonding_bps,m.real_quote,m.grad_target,m.price_quote_x18,m.price_usd6,m.fdv_usd6,m.volume_24h_quote,m.volume_24h_usd6,m.trades_24h,m.lifetime_rewards,m.image,m.description,m.updated_ts,
-              t.symbol,t.name,t.decimals,t.creator,t.ticker,t.factory_version,t.rewards_mode,t.supply,t.current_supply,
-              q.symbol as quote_symbol, q.decimals as quote_decimals
-       FROM markets m
-       LEFT JOIN tokens t ON t.address=m.token
-       LEFT JOIN quote_assets q ON q.token=m.quote
-       ${where}
-       ORDER BY ${order}
-       LIMIT ?${cursorTs == null && offset ? " OFFSET ?" : ""}`,
-      ...params,
-      limit,
-      ...(cursorTs == null && offset ? [offset] : []),
-    );
-    const last = items[items.length - 1];
+    const page = await listMarkets(store, {
+      q: url.searchParams.get("q") ?? "",
+      stage: url.searchParams.get("stage") ?? "",
+      quote: url.searchParams.get("quote") ?? "",
+      sort: url.searchParams.get("sort"),
+      limit: Number(url.searchParams.get("limit") ?? 40),
+      cursorTs: url.searchParams.get("cursor_ts"),
+      cursorToken: url.searchParams.get("cursor_token") ?? "",
+      offset: Number(url.searchParams.get("offset") ?? 0),
+    });
     json(
       res,
       200,
       {
-        items,
-        total: Number(total?.n ?? 0),
-        next_cursor: last
-          ? { cursor_ts: sort === "vol" ? String(last.volume_24h_usd6 ?? "0") : String(last.updated_ts ?? 0), cursor_token: String(last.token ?? "") }
-          : null,
+        items: page.items,
+        total: page.total,
+        sort: page.sort,
+        next_cursor: page.next_cursor,
         request_id: rid,
       },
       rid,
@@ -450,8 +414,15 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     );
     rows.reverse();
     const now = Math.floor(Date.now() / 1000);
-    const filled = rows.length ? fillContinuous(rows, sec, rows[0]!.t, Math.max(rows[rows.length - 1]!.t, now)) : [];
-    json(res, 200, { interval, sec, limit, before, after, candles: filled.slice(-limit), chainTime: true, request_id: rid }, rid);
+    const filled = fillCandlesForRequest(
+      rows,
+      sec,
+      limit,
+      now,
+      before != null ? Number(before) : null,
+      after != null ? Number(after) : null,
+    );
+    json(res, 200, { interval, sec, limit, before, after, candles: filled, chainTime: true, request_id: rid }, rid);
     return;
   }
   const swapMatch = url.pathname.match(/^\/swaps\/(0x[a-fA-F0-9]{40})$/);

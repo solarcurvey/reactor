@@ -19,6 +19,8 @@ Indexer Top-10 / web ranker / keeper / valuation / indexer schema (no per-reques
 ```bash
 pnpm --filter indexer test
 # tick-atomic.test.ts: SQLite always; Postgres when DATABASE_URL or compose :54329 is up (REQUIRE_PG=1 to fail if missing)
+# two Keeper workers on real Postgres (CI job keeper-lease-pg; docker compose postgres :54329)
+# DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg-lease
 npx --yes tsx apps/web/src/lib/top10.test.ts
 npx --yes tsx apps/web/src/lib/marketdata.test.ts
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
@@ -26,7 +28,7 @@ pnpm --filter web test          # Playwright smoke + interactive
 # Real Postgres (docker compose postgres on :54329, or local 5432)
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
-# CI: .github/workflows/docs-sync.yml job postgres-ms-timestamps
+# CI: .github/workflows/docs-sync.yml job postgres-ms-timestamps (includes test:pg-lease)
 ```
 
 `pnpm docs:check` (and `.github/workflows/docs-sync.yml`) **must fail** when generated constants, `docs/version.json`, Factory labels, or deployment tables have drifted from Solidity/config. Do not edit generated `docs/versioning.md` / `docs/deployments.md` / `docs/changelog.md` by hand — run `pnpm docs:gen`.
@@ -94,6 +96,7 @@ Every row is implemented in-repo. Re-run the matching file after any curve / fee
 | 28.xx | CORE genesis 35 cases | `test/unit/CoreGenesis.t.sol` |
 | 29.xx | CORE stateful invariants | `test/invariant/CoreInvariant.t.sol` |
 | 39.32 | UserRoute `minQuoteOut` + `minFinalOut` + deadline; sandwich reverts; not a vault | `UserRoute.t.sol` |
+| 39.32b | Quote API SELL `minQuoteOut` from `splitPreviewRoute` terminal (6/8/18, bonding/graduated/nested); calldata matches; preview fail → no ticket | `quote-sell-floors.test.ts` |
 | 39.33 | Top-10 structural: no CORE, no dupes, ≤10, weights 100% | `Top10Security.t.sol`, `Top10Api.t.sol` |
 | 39.34 | Fee 3.5% → 2/1/0.5 | `FeeInvariant.t.sol` |
 | 39.35 | No transfer tax | `Token.t.sol` |
@@ -212,6 +215,10 @@ pnpm --filter indexer watchdog
 | 37 | R2/S3 object key equals public `/m/<id>.webp`; mock GET returns the object; PROD upload failure returns no StoredMedia | `media-r2.test.ts` |
 | 38 | Indexer event writes + cursor atomic; log identity `(chain_id, tx, log_index, event_kind)` (schema v8 journal) | `tick-atomic.test.ts` (SQLite + Postgres), `pg-smoke.ts` |
 | 39 | Selected route + atomic preview/minOuts/terminal from the same candidate; PreviewRoute is hops+1 (BUY append / SELL prepend) | `quote-integrity.test.ts`, `quote-select.ts`, `UserRoute.t.sol` `test_nested_previewSell_hops_plus_terminal` |
+| 40 | Keeper lease renew + fence: long tick cannot overlap; stale fence cannot send | `keeper.lease.test.ts` |
+| 41 | Two Postgres workers: one winner, renew vs overlap, expiry/crash takeover, stale fence cannot send | `keeper.lease.pg.test.ts` (`test:pg-lease`, CI `keeper-lease-pg`) |
+| 42 | Markets keyset cursor matches `sort` (`new`/`vol`/`price`); insert-ahead no dupes | `markets-query.test.ts` |
+| 43 | Candle gap-fill bounded; exclusive aligned `before` | `packages/reactor/src/prices.test.ts` |
 
 ## Arc smoke
 

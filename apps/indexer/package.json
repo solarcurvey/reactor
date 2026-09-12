@@ -8,7 +8,7 @@
     "start": "tsx src/index.ts",
     "demo": "tsx src/e2e-current-architecture.ts",
     "e2e": "tsx src/e2e-current-architecture.ts",
-    "test": "KEEPER_TEST=1 tsx src/keeper.minout.test.ts && tsx src/indexer.persist.test.ts && tsx src/tick-atomic.test.ts && tsx src/schema.test.ts && tsx src/ingest.valuation.test.ts && tsx src/quote-api.test.ts && tsx src/quote-integrity.test.ts && tsx src/quote-overrides.test.ts && tsx src/prod-gates.test.ts && tsx src/sharp-check.test.ts && tsx src/media-r2.test.ts && tsx src/admission.test.ts && tsx src/pricing-signer-store.test.ts && tsx ../../packages/reactor/src/routes.test.ts && tsx ../../packages/reactor/src/valuation.test.ts && tsx ../../packages/reactor/src/pricing.test.ts && tsx ../../packages/reactor/src/prices.test.ts && tsx ../../packages/reactor/src/ticker.test.ts && tsx ../../packages/reactor/src/top10.test.ts && tsx src/top10-rank.test.ts && tsx src/price-marks.test.ts && tsx src/launch-auth.test.ts && tsx ../../packages/reactor/src/admission-unit.test.ts && tsx ../../scripts/safe-genesis-builder.test.ts",
+    "test": "KEEPER_TEST=1 tsx src/keeper.minout.test.ts && KEEPER_TEST=1 tsx src/keeper.lease.test.ts && tsx src/indexer.persist.test.ts && tsx src/tick-atomic.test.ts && tsx src/schema.test.ts && tsx src/markets-query.test.ts && tsx src/ingest.valuation.test.ts && tsx src/quote-api.test.ts && tsx src/quote-integrity.test.ts && tsx src/quote-overrides.test.ts && tsx src/quote-sell-floors.test.ts && tsx src/prod-gates.test.ts && tsx src/sharp-check.test.ts && tsx src/media-r2.test.ts && tsx src/admission.test.ts && tsx src/pricing-signer-store.test.ts && tsx ../../packages/reactor/src/routes.test.ts && tsx ../../packages/reactor/src/valuation.test.ts && tsx ../../packages/reactor/src/pricing.test.ts && tsx ../../packages/reactor/src/prices.test.ts && tsx ../../packages/reactor/src/ticker.test.ts && tsx ../../packages/reactor/src/top10.test.ts && tsx src/top10-rank.test.ts && tsx src/price-marks.test.ts && tsx src/launch-auth.test.ts && tsx ../../packages/reactor/src/admission-unit.test.ts && tsx ../../scripts/safe-genesis-builder.test.ts",
     "keeper": "tsx src/keeper.ts",
     "keeper:once": "KEEPER_ONCE=1 tsx src/keeper.ts",
     "signer": "REACTOR_ENV=LOCAL tsx src/pricing-signer.ts",
@@ -17,7 +17,8 @@
     "seed-bonding": "tsx src/seed-bonding.ts",
     "seed-review": "tsx src/seed-review.ts",
     "pg-smoke": "tsx src/pg-smoke.ts",
-    "test:pg": "tsx src/pg-ms-timestamps.test.ts"
+    "test:pg": "tsx src/pg-ms-timestamps.test.ts",
+    "test:pg-lease": "tsx src/keeper.lease.pg.test.ts"
   },
   "dependencies": {
     "viem": "^2.56.3",

@@ -37,6 +37,7 @@ Do not certify. Do not deploy. Do not propose a new curve or fee split.
 | Nested quotes | RoutePlanner max 3; ValuationEngine recursive; cycle reject; only usdPegOne is $1 | `valuation.test.ts`, `NativeQuote.t.sol` |
 | CORE vest / genesis | 1B; 100M vest 30d cliff + 300d linear; 900M locked; never Top-10 | `CoreGenesis.t.sol`, `CoreLiquiditySim.t.sol` |
 | Indexer / Top-10 | Indexed markets + ValuationService snapshot; no per-request Factory RPC. Event journal schema v8. `tokens.current_supply` is schema v9. `external_price_marks.kind` is schema v10 (#30 reserves v9). Top-10 candidate tables are schema v11. Offchain ms columns are `BIGINT` (schema v6) | `top10-rank.test.ts`, `ingest.valuation.test.ts`, `price-marks.test.ts`, `tick-atomic.test.ts`, `pg-ms-timestamps.test.ts`, `Top10Api.t.sol` |
+| Indexer markets / candles | Keyset cursor matches `sort`; candle gap-fill ≤ `limit` (max 1000); exclusive `before` | `markets-query.test.ts`, `prices.test.ts` |
 | User routes | `UserRouteExecutor` + shared RoutePlanner; bonding nested USDC + graduated v4. Quote ticket hops/`minOut`s/terminal bind to one `pickBest` candidate (`PreviewRoute` is hops+1) | `UserRoute.t.sol`, `quote-integrity.test.ts` |
 | Routing deltas | `RouteGuard`, `RouteExec`, adapters | `RoutingDeltas.t.sol`, `KeeperMinOut.t.sol` |
 
@@ -189,7 +190,7 @@ There is no Ownable, admin, bootstrap, or first-caller-wins `bindFactory`.
 ## Limitations
 
 - Official router is exact-in first. Exact-out exists at the hook but is less tested in the UI.
-- UserRoute `sell` takes caller `minQuoteOut` on the official first-leg and `minFinalOut` on the USDC exit. Intermediate hop floors are caller-supplied (`RouteExec` rejects 0). Sandwich of the official pool reverts when those floors are set from a quote (`UserRoute.t.sol`).
+- UserRoute `sell` takes caller `minQuoteOut` on the official first-leg and `minFinalOut` on the USDC exit. Intermediate hop floors are caller-supplied (`RouteExec` rejects 0). Sandwich of the official pool reverts when those floors are set from a quote (`UserRoute.t.sol`). The quote API derives both floors from the same selected `PreviewedRoute` (`splitPreviewRoute.terminalOut` → `minQuoteOut`, final USDC → `minFinalOut`) — never from `tokenIn` (`quote-sell-floors.test.ts`).
 - `POST /quote` tickets take hops, `amountOut`, hop kinds, hop `minOut`s, and the terminal official/bonding result from **one** selected candidate. `PreviewRoute` is `plannedHops + 1` (BUY appends the market leg; SELL prepends it). The indexer must not pair a max-`finalOut` preview with a differently scored path (`quote-integrity.test.ts`).
 - `launchAndBuy` unsigned path still uses internal curve `minOut=1` then checks the user `minOut` after.
 - No TWAP on buyback; Keeper sets slippage.
@@ -197,6 +198,7 @@ There is no Ownable, admin, bootstrap, or first-caller-wins `bindFactory`.
 - Instant is not Uniswap InstantLaunchStrategy (ADR-001).
 - Local demo uses mock USDC-6, not Arc native gas USDC.
 - Keeper daemon submits `submitEpoch` on local Anvil 5042002 when the API is confident (Anvil #0 key). Other chains refuse broadcast unless `KEEPER_PRIVATE_KEY` is set. Watchdog reads heartbeat **and** on-chain `epochFinalized`.
+- Leadership lease TTL (~50s) is shorter than possible tick work. The leader renews `lease_until` and fences send on acquire-generation `ts`. A lost fence refuses broadcast (split-brain). Not an on-chain fence. Two independent Postgres workers: `test:pg-lease`.
 
 ## Invariants (test-backed)
 

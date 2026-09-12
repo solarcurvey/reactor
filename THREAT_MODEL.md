@@ -22,6 +22,7 @@ Hostile-reader notes for Codex / external review. **Not an audit.**
 | Malicious quote | Fee-on-transfer, rebase, 6-vs-18 confusion |
 | Compromised Guardian | Halt launches/trading/Keeper; quarantine quotes; disable adapters. Cannot withdraw LP or redirect pots. |
 | Compromised Keeper | Waste a pot on a bad route/`minOut` within hop/bucket bounds. Cannot config, withdraw, or change fees. |
+| Overlapping Keepers | Two daemons both believing they are leader after a ~50s lease expires mid-tick. Mitigated by renew + fence; residual TOCTOU between last renew and RPC send. |
 | Compromised registry admin | Retired — quotes are Guardian (external) or factory-native. |
 | PoolManager (Uniswap) | Trusted v4 singleton; BUSL; not our code |
 
@@ -43,6 +44,7 @@ Hostile-reader notes for Codex / external review. **Not an audit.**
 12. **Binds are Guardian-only + freeze**, not first-caller-wins and not Ownable/bootstrap.
 8. **Guardian cannot** withdraw, mint, change fee BPS, set Top-10, or take fee exemption as a wallet. See `GUARDIAN_MODEL.md`.
 9. **FoT / rebase quotes:** `creditRewards` / vault `accrue` measure actual received; shortfall reverts. Rebasing quotes are unsupported (document + do not register).
+16. **Keeper lease fence** — one `leader_locks` row; live leader renews `lease_until` without changing acquire `ts`; send is refused if renew fails. See `KEEPER_MODEL.md` and `/docs/keeper`.
 
 ## Offchain indexer (not custody)
 
@@ -60,7 +62,8 @@ Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, 
 8. **Arc dual-decimal USDC** — mixing `address.balance` (18) with `USDC.balanceOf` (6) by 1e12. Contracts use the ERC-20 interface only.
 9. **Arc value-transfer rules** — native send to `address(0)` reverts; blocklisted index-1 test address reverts. Vaults never burn native USDC to zero.
 10. **Flash / sandwich / JIT** on official pools — accepted AMM risk; 0% LP fee reduces JIT incentive.
-11. **Indexer crash window** — ingest used to write events then advance the cursor after the loop. A crash left events without a cursor (replay skipped derived rows on UNIQUE) or, if the hash RPC failed after writes, the same partial state. `persistTickBatch` now commits events + cursor together. Residual: post-commit 24h roll / external marks / SSE can still lag; the indexer is still not onchain truth.
+11. **Keeper split-brain** — a tick can outlive the ~50s lease (receipt wait 60s; large discovery). Without renew, a standby can acquire and both broadcast. Control: interval renew + pre-send renew of the same fence; lost lease refuses send. Residual: process pause after renew, then send. Not an on-chain fence (architecture frozen).
+12. **Indexer crash window** — ingest used to write events then advance the cursor after the loop. A crash left events without a cursor (replay skipped derived rows on UNIQUE) or, if the hash RPC failed after writes, the same partial state. `persistTickBatch` now commits events + cursor together. Residual: post-commit 24h roll / external marks / SSE can still lag; the indexer is still not onchain truth.
 
 ## Explicit non-goals
 

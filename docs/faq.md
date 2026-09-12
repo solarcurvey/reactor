@@ -12,7 +12,9 @@
 
 **Why is EURC not $1?** Only `usdPegOne` assets are. Guardian sets that flag. Category.Stablecoins is not $1.
 
-**Why is my route unavailable?** Preview failed or `amountOut`/`minOut` is dust. The API will not ship minOut 0/1.
+**Why is my route unavailable?** Preview failed or `amountOut`/`minOut` is dust. The API will not ship minOut 0/1. A SELL preview that cannot produce first-leg quoteOut is also unavailable — the API will not invent `minQuoteOut` from your token size.
+
+**Why does a sell have two mins?** `minQuoteOut` is the least quote you accept from the official/bonding first leg. `minOut` is the least USDC (or same quote, if you sell direct) you accept at the end. Different units.
 
 **Why did Arc ignore 8 confirmations?** Arc BFT is final on commit. Default lag is 0.
 

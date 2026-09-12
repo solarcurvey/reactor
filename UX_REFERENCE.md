@@ -14,6 +14,7 @@ Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy,
 
 - Filters are chips, not a settings panel.
 - Quote is a first-class identity (`EARNS ZEC`, not “paired with”).
+- Sell ticket shows **two** mins: first-leg quote floor and final USDC floor (different units).
 - Ranked rail shows #1–#10 and distance-to-#11.
 - Activity is a feed with explorer links, not RPC-polled tables.
 
