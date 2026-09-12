@@ -2,19 +2,24 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openStore } from "./db.ts";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import {
   allowFixtureSanctionsRefresh,
   applySanctionsOpsGate,
   createSanctionsOps,
+  extractWallet,
   handleSanctionsOpsRequest,
   isProtectedWritePath,
   protectedAction,
   recoverOfficialSubject,
   sanctionsHealthBody,
+  walletProofChainId,
+  walletProofSecret,
 } from "./sanctions-ops.ts";
 import { fixtureRefreshPayload } from "../../../packages/reactor/src/sanctions-ops.ts";
 import { hashWallet } from "../../../packages/reactor/src/sanctions-audit.ts";
 import { OPERATOR_POLICY_ID } from "../../../packages/reactor/src/sanctions-policy.ts";
+import { issueWalletProofChallenge } from "../../../packages/reactor/src/wallet-proof.ts";
 import { recentAlerts } from "./alerts.ts";
 
 function assert(cond: unknown, msg: string): asserts cond {
@@ -31,6 +36,11 @@ const t0 = Date.parse("2026-09-12T00:00:00.000Z");
   assert(!isProtectedWritePath("GET", "/markets"), "public GET is not gated");
   assert(!isProtectedWritePath("GET", "/health"), "liveness is not gated");
   assert(protectedAction("/launch/admit") === "launch.admit", "admit action");
+  assert(extractWallet({ headers: {}, body: { wallet: LISTED } }) === undefined, "extractWallet ignores body.wallet");
+  assert(
+    extractWallet({ headers: { "x-reactor-wallet": LISTED }, body: { creator: LISTED } }) === undefined,
+    "extractWallet ignores header/creator claims",
+  );
 }
 
 {
@@ -134,7 +144,8 @@ const t0 = Date.parse("2026-09-12T00:00:00.000Z");
     body: { wallet: LISTED, creator: LISTED },
   });
   assert(recovered.address === undefined, "claimed wallets are not recovered identity");
-  assert(recovered.reason === "wallet_missing", "missing #62 plugin is wallet_missing");
+  assert(recovered.reason === "wallet_missing", "claimed wallets without proof are wallet_missing");
+  assert(recovered.source === "wallet-proof" || recovered.source === "operator-policy", "identity source is #68 interface");
 
   const claimedOnly = await applySanctionsOpsGate({
     ops,
@@ -158,6 +169,37 @@ const t0 = Date.parse("2026-09-12T00:00:00.000Z");
   assert(recoveredClear.ok, "test-injected recovered clear wallet is not gated by claimed listed wallet");
   assert(recoveredClear.audit.subject === hashWallet(WALLET), "logged subject is recovered");
   assert(recoveredClear.ignored.includes("body.creator"), "creator claim ignored");
+
+  const env = { REACTOR_ENV: "LOCAL", ADMISSION_HMAC_SECRET: "test-operator-policy-hmac-secret" } as NodeJS.ProcessEnv;
+  const signer = privateKeyToAccount(generatePrivateKey());
+  const issued = issueWalletProofChallenge({
+    chainId: walletProofChainId(env),
+    secret: walletProofSecret(env),
+  });
+  const signature = await signer.signMessage({ message: issued.message });
+  const proof = await recoverOfficialSubject({
+    headers: {
+      "x-reactor-wallet": LISTED,
+      "x-reactor-wallet-proof": JSON.stringify({ token: issued.token, signature }),
+    },
+    body: { wallet: LISTED, creator: LISTED },
+    env,
+  });
+  assert(proof.address === signer.address.toLowerCase(), "verified subject is recovered signer, not claimed wallet");
+  assert(proof.address !== LISTED, "listed spoof is not the recovered subject");
+
+  const gatedProof = await applySanctionsOpsGate({
+    ops,
+    action: "quote",
+    headers: {
+      "x-reactor-wallet": LISTED,
+      "x-reactor-wallet-proof": JSON.stringify({ token: issued.token, signature }),
+    },
+    body: { wallet: LISTED },
+    env,
+  });
+  assert(gatedProof.ok, "recovered clear signer is allowed despite claimed listed wallet");
+  assert(gatedProof.audit.subject === hashWallet(signer.address), "audit subject is recovered signer");
 
   rmSync(dir, { recursive: true, force: true });
 }

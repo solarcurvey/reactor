@@ -20,6 +20,7 @@ import {
 } from "../../../packages/reactor/src/sanctions-ops.ts";
 import type { CoarsePolicyAction } from "../../../packages/reactor/src/sanctions-audit.ts";
 import { OPERATOR_POLICY_ID, type OperatorPolicyDecision } from "../../../packages/reactor/src/sanctions-policy.ts";
+import { readWalletProofParts, recoverWalletProof } from "../../../packages/reactor/src/wallet-proof.ts";
 import { raiseAlert } from "./alerts.ts";
 import type { Store } from "./db.ts";
 import { logLine } from "./obs.ts";
@@ -33,6 +34,35 @@ export const SANCTIONS_OPS_PROTECTED = [
 ] as const;
 
 export type HeaderMap = Record<string, string | string[] | undefined>;
+
+function header(headers: HeaderMap, name: string): string {
+  const v = headers[name] ?? headers[name.toLowerCase()];
+  if (Array.isArray(v)) return String(v[0] ?? "").trim();
+  return v == null ? "" : String(v).trim();
+}
+
+/**
+ * @deprecated Client-supplied wallet is not authority (same as #68 `extractSubjectWallet`).
+ * Always returns `undefined`. Use `recoverOfficialSubject`.
+ */
+export function extractWallet(_input: { headers: HeaderMap; body?: Record<string, unknown> }): string | undefined {
+  void _input;
+  return undefined;
+}
+
+/** Same HMAC selection as #68 `walletProofSecret`. */
+export function walletProofSecret(env: NodeJS.ProcessEnv = process.env): string {
+  const s = env.OPERATOR_POLICY_HMAC_SECRET?.trim() || env.ADMISSION_HMAC_SECRET?.trim() || "";
+  if (s.length >= 16) return s;
+  if (!productionHardGatesApply(env)) return "local-operator-policy-hmac-do-not-use-in-prod";
+  return "";
+}
+
+/** Same chain selection as #68 `walletProofChainId`. */
+export function walletProofChainId(env: NodeJS.ProcessEnv = process.env): number {
+  const n = Number(env.CHAIN_ID ?? env.NEXT_PUBLIC_CHAIN_ID ?? 5042002);
+  return Number.isInteger(n) && n > 0 ? n : 5042002;
+}
 
 function resolveInject(env: NodeJS.ProcessEnv): FailureInject {
   const raw = (env.SANCTIONS_INJECT ?? "none").toLowerCase();
@@ -84,22 +114,49 @@ async function loadOperatorPolicyPlugin(): Promise<OfficialPolicyPlugin | null> 
   }
 }
 
-/** Canonical subject is #62 recovered EIP-191 proof. Claimed wallets are ignored. */
+async function recoverWalletProofSubject(input: {
+  headers: HeaderMap;
+  body?: Record<string, unknown>;
+  env?: NodeJS.ProcessEnv;
+}): Promise<{ address?: string; reason?: string }> {
+  const env = input.env ?? process.env;
+  const secret = walletProofSecret(env);
+  if (!secret) return { reason: "wallet_missing" };
+  const parts = readWalletProofParts({
+    headerProof: header(input.headers, "x-reactor-wallet-proof"),
+    body: input.body,
+  });
+  if (!parts) return { reason: "wallet_missing" };
+  const recovered = await recoverWalletProof({
+    token: parts.token,
+    signature: parts.signature,
+    secret,
+    expectedChainId: walletProofChainId(env),
+  });
+  if (!recovered.ok) return { reason: recovered.reason };
+  return { address: recovered.address };
+}
+
+/**
+ * Canonical subject is the #68/#62 recovered EIP-191 signer.
+ * Prefer `operator-policy.ts` when present; otherwise the shared wallet-proof interface.
+ * Claimed body/header wallets are never identity.
+ */
 export async function recoverOfficialSubject(input: {
   headers: HeaderMap;
   body?: Record<string, unknown>;
   env?: NodeJS.ProcessEnv;
-}): Promise<{ address?: string; reason?: string; source: "operator-policy" | "none" }> {
+}): Promise<{ address?: string; reason?: string; source: "operator-policy" | "wallet-proof" }> {
   const plugin = await loadOperatorPolicyPlugin();
-  if (typeof plugin?.recoverSubjectWallet !== "function") {
-    return { source: "none", reason: "wallet_missing" };
+  if (typeof plugin?.recoverSubjectWallet === "function") {
+    const recovered = await plugin.recoverSubjectWallet({
+      headers: input.headers,
+      body: input.body,
+      env: input.env,
+    });
+    return { ...recovered, source: "operator-policy" };
   }
-  const recovered = await plugin.recoverSubjectWallet({
-    headers: input.headers,
-    body: input.body,
-    env: input.env,
-  });
-  return { ...recovered, source: "operator-policy" };
+  return { ...(await recoverWalletProofSubject(input)), source: "wallet-proof" };
 }
 
 function opsOwnedFailClosed(reason: string): boolean {
@@ -124,9 +181,11 @@ export async function applySanctionsOpsGate(input: {
   env?: NodeJS.ProcessEnv;
 }): Promise<ReturnType<SanctionsOps["gateProtectedWrite"]>> {
   const plugin = await loadOperatorPolicyPlugin();
-  const recovered = typeof plugin?.recoverSubjectWallet === "function"
-    ? await plugin.recoverSubjectWallet({ headers: input.headers, body: input.body, env: input.env })
-    : { address: undefined, reason: "wallet_missing" };
+  const recovered = await recoverOfficialSubject({
+    headers: input.headers,
+    body: input.body,
+    env: input.env,
+  });
 
   let official: Awaited<ReturnType<NonNullable<OfficialPolicyPlugin["gateProtectedWrite"]>>> | null = null;
   if (typeof plugin?.gateProtectedWrite === "function") {

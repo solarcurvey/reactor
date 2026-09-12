@@ -29,7 +29,7 @@
 | Runbook linked from incident-response | **Yes** | `docs/incident-response.md` → `docs/sanctions-runbook.md` |
 | No automated complaint override | **Yes** | `NO_AUTOMATED_OVERRIDE`; explicit review is queued, not applied |
 | Close #64 | **No** | Stays open until independent audit + post-merge verify |
-| Claimed-wallet spoof cannot gate/log identity | **Yes** | Recovered-only `resolveGatedSubject` / `applySanctionsOpsGate`. Spoofed `body.wallet` / `x-reactor-wallet` ignored; not `DENY_ADDRESS_BLOCKED` |
+| Claimed-wallet spoof cannot gate/log identity | **Yes** | `extractWallet()` is a no-op (same as #68 `extractSubjectWallet`). Subject is #68 `wallet-proof` / `recoverOfficialSubject`. Spoofed `body.wallet` / `x-reactor-wallet` ignored; not `DENY_ADDRESS_BLOCKED` |
 | Fixture fallback LOCAL/test-only | **Yes** | `allowFixtureSanctionsRefresh` uses `productionHardGatesApply`. STAGING/TESTNET/PROD/PRODUCTION refuse fixtures even with `SANCTIONS_FIXTURE=1` |
 
 ---
