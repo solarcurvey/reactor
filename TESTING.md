@@ -27,8 +27,8 @@ npx --yes tsx apps/web/src/lib/top10.test.ts
 npx --yes tsx apps/web/src/lib/marketdata.test.ts
 npx --yes tsx apps/web/src/lib/live-toasts.test.ts
 npx --yes tsx apps/web/src/lib/indexed.test.ts
-pnpm test:page-budget         # same as page-budget.test.ts; visible fast CI job page-budget
-# CI: .github/workflows/ci.yml job page-budget (fast tier; every PR including drafts).
+pnpm test:page-budget         # same as page-budget.test.ts; required always-on CI job page-budget
+# CI: .github/workflows/ci.yml job page-budget (required; every PR including drafts; ci-ok requires it).
 # #73 should absorb this as a fast job — do not add a second push+pull_request file.
 npx --yes tsx apps/web/src/lib/security-headers.test.ts
 npx --yes tsx apps/web/src/lib/tx-guard.test.ts
@@ -252,7 +252,7 @@ pnpm --filter indexer watchdog
 | 52 | Multicall3 probed then verified; missing/failed multicall falls back to parallel `readContract` | `packages/reactor/src/rpc-batch.test.ts` |
 | 53 | `GET /markets/:token` + `GET /page/token/:token` aggregate market/candles/swaps; invalid token rejected | `page-reads.test.ts`, `markets-query.test.ts` |
 | 54 | Search/query path + quote-asset / market row mapping | `apps/web/src/lib/indexed.test.ts` |
-| 55 | Page request/RPC budgets on 4k seeded markets; abort obsolete loads; SSE patches without invalidate; no refetch-on-focus. Visible fast CI job `page-budget` in #73’s `.github/workflows/ci.yml` | `apps/web/src/lib/page-budget.test.ts`, `.github/workflows/ci.yml` |
+| 55 | Page request/RPC budgets on 4k seeded markets; abort obsolete loads; SSE patches without invalidate; no refetch-on-focus. Required always-on CI job `page-budget` (`ci-ok` requires success) | `apps/web/src/lib/page-budget.test.ts`, `.github/workflows/ci.yml` |
 
 ## Arc smoke
 

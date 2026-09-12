@@ -11,7 +11,7 @@
 | Factory | **V1** — unchanged |
 | Intent | Machine-checkable page request/RPC budgets on a 4k-market seed; abort obsolete search/filter/token/account/route loads; SSE patches without board refetch storms; explicit no-refetch-on-focus for expensive reads. Frozen economics unchanged. |
 | Foundry | Unchanged this pass (offchain read-path only). |
-| Indexer / lib | `page-budget.test.ts` in `pnpm test:lib` (also `test:ci-cost` + `ci-public-harden` from #73) **and** visible fast GitHub job `page-budget` in #73’s three-tier `.github/workflows/ci.yml` (every PR, including drafts; not a docs-sync-style `push`+`pull_request` pair). 4,000 seeded markets, abort, SSE patch, focus policy. Plus `rpc-batch.test.ts`, `page-reads.test.ts`, `markets-query.test.ts`, `indexed.test.ts`. `BatchClient` method signatures accept viem `PublicClient` so `next build` (`web-production-security`) typechecks. |
+| Indexer / lib | `page-budget.test.ts` in `pnpm test:lib` (also `test:ci-cost` + `ci-public-harden` from #73) **and** required always-on GitHub job `page-budget` in `.github/workflows/ci.yml` (every PR, including drafts; `ci-ok` requires success; not a docs-sync-style `push`+`pull_request` pair). 4,000 seeded markets, abort, SSE patch, focus policy. Plus `rpc-batch.test.ts`, `page-reads.test.ts`, `markets-query.test.ts`, `indexed.test.ts`. `BatchClient` method signatures accept viem `PublicClient` so `next build` (`web-production-security`) typechecks. |
 | Review shots | **Not regenerated** (no chrome/tokenomics change) |
 | Mainnet | **Blocked** |
 
@@ -26,7 +26,7 @@
 | Batch independent reads | **Yes** | `readContractsBatched` probe; Keeper `listFactoryTokens`; route-graph two-wave; rewards `pendingRewards` |
 | Arc Multicall3 not assumed | **Yes** | Bytecode + one successful `multicall`, else `Promise.all`. `rpc-batch.test.ts` |
 | Quote freshness / fail-closed | **Yes** | `POST /quote` still uncached; `QUOTE_TTL_MS = 30_000`; quoting.md + trade-panel unchanged |
-| Page-level budget CI on large seed | **Yes** | `page-budget.test.ts` — N=500 and N=4,000 same HTTP/RPC waves. Home/search/token/Launch/Rewards/REACTOR/CORE/quote/wallet. Visible job `page-budget` in `.github/workflows/ci.yml`. |
+| Page-level budget CI on large seed | **Yes** | `page-budget.test.ts` — N=500 and N=4,000 same HTTP/RPC waves. Home/search/token/Launch/Rewards/REACTOR/CORE/quote/wallet. Required always-on job `page-budget` in `.github/workflows/ci.yml` (`ci-ok` requires success). |
 | Cancel obsolete requests | **Yes** | TanStack `{ signal }` through `fetchIndexerJson` (rethrows `AbortError`). Rapid search/filter/token/account/route abort. |
 | SSE no refetch storm | **Yes** | `applyLiveEventToClient` patches only; 50 trades → 0 `invalidateQueries`. |
 | Refetch-on-focus policy | **Yes** | `EXPENSIVE_REFETCH_ON_FOCUS = false`; source-scanned on hooks / CORE / REACTOR. |

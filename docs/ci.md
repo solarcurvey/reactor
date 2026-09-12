@@ -65,7 +65,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | `web-production-security` | full / main | `pnpm test:web-security` (production Next + live headers + bundle sentinel + XSS corpus) |
 | `live-toasts-ui` | full / main | `pnpm test:live-toasts` identity + Playwright |
 | `postgres-ms-timestamps` | full / main | `test:pg` + `test:pg-lease` (two-worker) + `pg-smoke` |
-| `ci-ok` | full / main | All of the above full jobs `== success` |
+| `ci-ok` | full / main | All of the above full jobs **and** `page-budget` `== success` |
 
 `keeper-lease-pg` / `two-worker-postgres` is **folded** into `postgres-ms-timestamps` (`test:pg-lease` still runs). Do not add a second Postgres lease workflow.
 
@@ -79,13 +79,13 @@ Open product issues keep their acceptance commands. Attach new heavy jobs to **t
 | #15 / #35 (PR #44) | Production browser + wallet E2E | Add a full-only job (`pnpm test:e2e:release` when that script exists). |
 | #15 / #36 (PR #49) | Visual / a11y / failure-injection | Full-only job (`pnpm --filter web test:qa` when present). |
 | #15 / #18 | Production-readiness parent | Same full-tier rule. Do not move those commands to optional / `continue-on-error`. |
-| #37 (PR #50) | RPC page-budget | Fast job `page-budget` (`pnpm test:page-budget`) plus the same file in `test:lib`. Cheap SQLite unit — not a full-only heavy gate. |
+| #37 (PR #50) | RPC page-budget | **Required** always-on job `page-budget` (`pnpm test:page-budget`) plus the same file in `test:lib`. Also required by `ci-ok`. Cheap SQLite unit — not a full-only heavy gate. |
 | #39 (PR #46) | Observability | Full-only `obs-ui` job. |
 | #38 | Live toasts | `live-toasts-ui` (full). Units also run in `test:lib` on the fast gate. |
 | #41 / TESTING row 51 | Hostile metadata / CSP | Cheap units in `test:lib`; production build + Playwright corpus in `web-production-security`. |
 | #35–#41 / #51 / #60 | Existing test requirements | Unchanged in substance. Reachable via `TESTING.md` commands and the full gate. |
 
-Recommended required checks (branch protection): **`constants-version-deployments`** (always present) and **`ci-ok`** (present on merge-candidate + main). Do not require a check that the fast tier skips.
+Recommended required checks (branch protection): **`constants-version-deployments`** (always present), **`page-budget`** (always present — #37 4k-market HTTP/RPC budgets), and **`ci-ok`** (present on merge-candidate + main; requires `page-budget` success). Do not require a check that the fast tier skips.
 
 ## Manual full suite (billing-safe)
 
@@ -109,7 +109,7 @@ Draft feature-branch SHA, no `ci-full` label — the common Cursor agent loop.
 | --- | --- | --- |
 | Events | `push` (every branch) **and** `pull_request` | `pull_request` only |
 | Workflow runs | 6 (`docs-sync` + `live-toasts-ui` + `keeper-lease-pg`) × 2 | **1** (`ci`) |
-| Jobs | **10 jobs** (5 per event: docs-check/indexer, production Next + Playwright, Postgres, live-toasts Playwright, second Postgres lease) | **1–2 jobs** (`constants-version-deployments`, plus `foundry-targeted` only if Solidity changed) |
+| Jobs | **10 jobs** (5 per event: docs-check/indexer, production Next + Playwright, Postgres, live-toasts Playwright, second Postgres lease) | **2–3 jobs** (`constants-version-deployments`, required `page-budget`, plus `foundry-targeted` only if Solidity changed) |
 | Production `next build` | 2× | 0 |
 | Playwright installs | 4× | 0 |
 | Postgres two-worker | 4× (`postgres-ms-timestamps` + `keeper-lease-pg`, each event) | 0 |

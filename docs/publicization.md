@@ -172,7 +172,7 @@ On rewritten `main` (via merged #74; single `.github/workflows/ci.yml` after the
 
 #69 (open PR #73) folded `docs-sync.yml` / `live-toasts.yml` / `keeper-lease-pg.yml` into `.github/workflows/ci.yml` and **kept** `contents: read` plus `persist-credentials: false` on every checkout (including `decide-tier`). Do not re-introduce feature-branch `push` + `pull_request` pairs. Concurrency cancel on PRs / SHA-keyed main must stay.
 
-#37 (open PR #50) absorbed `page-budget` as a **fast** job in the merged #73 three-tier `.github/workflows/ci.yml` (every PR, including drafts). The file is also in `pnpm test:lib`. Do not add a second `push` + `pull_request` workflow for RPC budgets.
+#37 (open PR #50) makes `page-budget` a **required** always-on job in `.github/workflows/ci.yml` (every PR, including drafts; `ci-ok` requires success). The file is also in `pnpm test:lib`. Do not add a second `push` + `pull_request` workflow for RPC budgets.
 
 GitHub Settings (operator, not this PR): before publicizing, set “Approval for running workflows from outside collaborators” to require approval for first-time / all outside forks. Do not enable “Send write tokens to workflows from pull requests.”
 

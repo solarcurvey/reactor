@@ -107,8 +107,9 @@ jobs:
       - name: Unit + docs:check + cheap security + CI-cost invariants
         run: pnpm test:lib
 
-  # Visible #37 page-budget gate. Cheap (SQLite seed + unit asserts).
-  # Fast tier — every PR including drafts. File also stays in pnpm test:lib.
+  # Required #37 page-budget gate. Cheap (SQLite seed + unit asserts).
+  # Always-on fast job (no `if:` skip). Also listed in ci-ok (skipped ≠ pass).
+  # File stays in pnpm test:lib.
   page-budget:
     name: page-budget
     needs: decide
@@ -278,6 +279,7 @@ jobs:
     needs:
       - decide
       - constants-version-deployments
+      - page-budget
       - solidity
       - web-production-security
       - live-toasts-ui
@@ -290,12 +292,14 @@ jobs:
           set -euo pipefail
           echo "decide=${{ needs.decide.result }}"
           echo "constants-version-deployments=${{ needs.constants-version-deployments.result }}"
+          echo "page-budget=${{ needs.page-budget.result }}"
           echo "solidity=${{ needs.solidity.result }}"
           echo "web-production-security=${{ needs.web-production-security.result }}"
           echo "live-toasts-ui=${{ needs.live-toasts-ui.result }}"
           echo "postgres-ms-timestamps=${{ needs.postgres-ms-timestamps.result }}"
           test "${{ needs.decide.result }}" = success
           test "${{ needs.constants-version-deployments.result }}" = success
+          test "${{ needs.page-budget.result }}" = success
           test "${{ needs.solidity.result }}" = success
           test "${{ needs.web-production-security.result }}" = success
           test "${{ needs.live-toasts-ui.result }}" = success

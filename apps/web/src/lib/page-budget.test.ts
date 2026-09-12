@@ -525,6 +525,8 @@ async function main() {
     {
       const ciYml = readFileSync(new URL("../../../../.github/workflows/ci.yml", import.meta.url), "utf8");
       const trigger = ciYml.split("jobs:")[0] ?? "";
+      const after = ciYml.split(/^  page-budget:\s*$/m)[1] ?? "";
+      const pageJob = after.split(/^  [a-z][\w-]*:\s*$/m)[0] ?? "";
       assert(/name:\s*page-budget/.test(ciYml), "visible GitHub job page-budget");
       assert(ciYml.includes("test:page-budget") || ciYml.includes("page-budget.test.ts"), "job runs this file");
       assert(trigger.includes("pull_request"), "page-budget runs on pull_request");
@@ -532,6 +534,14 @@ async function main() {
         !/on:\s*\n\s+push:\s*\n\s+pull_request:/.test(trigger),
         "do not copy docs-sync push+pull_request pair (Refs #69/#73)",
       );
+      assert(!/^\s+if:/m.test(pageJob), "page-budget must not skip (required on every PR)");
+      assert(ciYml.includes("needs.page-budget.result"), "ci-ok requires page-budget (skipped ≠ pass)");
+      const home = readFileSync(join(libDir, "../app/page.tsx"), "utf8");
+      const search = readFileSync(join(libDir, "../app/search/page.tsx"), "utf8");
+      assert(!home.includes("usePublicClient"), "home must not poll the chain");
+      assert(!home.includes("useReadContract"), "home cards are indexed rows");
+      assert(!search.includes("usePublicClient"), "search must not poll the chain");
+      assert(!search.includes("useReadContract"), "search cards are indexed rows");
     }
 
     console.log(
