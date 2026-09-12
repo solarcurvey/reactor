@@ -91,12 +91,13 @@ Founder (Davis) decided Support purge/GC of pre-rewrite dangling SHAs is **not r
 
 ## Branch inventory
 
-After prune: **`main` + 16 open-PR `cursor/*` heads + tag `v0.3.1`.** No leftover merged/superseded `cursor/*` heads.
+After prune: **`main` + 17 open-PR `cursor/*` heads + tag `v0.3.1`.** No leftover merged/superseded `cursor/*` heads.
 
 ### Active open PR heads — keep
 
 | Branch | PR | State |
 | --- | --- | --- |
+| `cursor/publicization-residual-docs-7459` | #77 | Open — founder residual / AC1 docs (this PR) |
 | `cursor/ci-cost-cut-7753` | #73 | Open (ready) — #69 CI cost |
 | `cursor/fix-live-toasts-import-e635` | #58 | Open |
 | `cursor/restricted-access-ux-f91b` | #75 | Draft — Refs #65 |
@@ -198,7 +199,7 @@ Support purge/GC is listed under [Accepted residuals / non-blocking](#accepted-r
 
 ### Advertised-ref check (2026-09-12 founder follow-up)
 
-Checked tip commit **author / committer / message** on `origin/main` `0bd9b82`, tag `v0.3.1` `d60d315`, and every then-open PR head (#75, #73, #70, #68, #67, #66, #58, #54, #52, #50, #49, #48, #46, #45, #44, #42). Full history reachable from those advertised refs was also scanned.
+Checked tip commit **author / committer / message** on `origin/main` `0bd9b82`, tag `v0.3.1` `d60d315`, and every then-open PR head (#77, #75, #73, #70, #68, #67, #66, #58, #54, #52, #50, #49, #48, #46, #45, #44, #42). Full history reachable from those advertised refs was also scanned.
 
 | Check | Result |
 | --- | --- |

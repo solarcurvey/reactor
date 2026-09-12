@@ -14,7 +14,7 @@ Founder (Davis): Support purge/GC of pre-rewrite dangling SHAs is **not required
 | Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
 | Intent | Move Support purge/GC under accepted residuals / non-blocking. AC1 is email scrubbed from **advertised** refs only. |
-| Advertised-ref check | `main` `0bd9b82`, tag `v0.3.1`, 16 open PR tips: no personal gmail/hotmail/icloud in tip author/committer/message or advertised history |
+| Advertised-ref check | `main` `0bd9b82`, tag `v0.3.1`, 17 open PR tips (incl. this branch): no personal gmail/hotmail/icloud in tip author/committer/message or advertised history |
 | Secret scan | Last post-rewrite gitleaks/trufflehog: **0 live credentials**. Not re-run this pass (tools absent). GitHub secret-scanning API 403. |
 | Workflows | Unchanged vs #74: `contents: read` + `persist-credentials: false`. No `pull_request_target`. |
 | Docs | `/docs/publicization`, `AUDIT_HANDOFF.md`, `THREAT_MODEL.md`, changelog |
