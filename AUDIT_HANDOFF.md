@@ -36,7 +36,7 @@ Do not certify. Do not deploy. Do not propose a new curve or fee split.
 | Signed pricing | Unique digest: factory+creator+quote+virtualQuote0+curveConfig+salt+deadline+chain. No `pricingNonce` | `LaunchPricing.t.sol` concurrent + replay |
 | Nested quotes | RoutePlanner max 3; ValuationEngine recursive; cycle reject; only usdPegOne is $1 | `valuation.test.ts`, `NativeQuote.t.sol` |
 | CORE vest / genesis | 1B; 100M vest 30d cliff + 300d linear; 900M locked; never Top-10 | `CoreGenesis.t.sol`, `CoreLiquiditySim.t.sol` |
-| Indexer / Top-10 | `block.timestamp` only for onchain/windowed marks; durable poolId→token; event writes + cursor one transaction; append-only `(chain_id, tx, log_index, event_kind)` + address (`indexer_event_journal`, schema v8). Offchain ms columns are `BIGINT` (schema v6) — Postgres INTEGER overflows `Date.now()` | `indexer.persist.test.ts`, `tick-atomic.test.ts`, `pg-ms-timestamps.test.ts`, `Top10Api.t.sol` |
+| Indexer / Top-10 | `block.timestamp` only for onchain/windowed marks; durable poolId→token; event writes (including token burn journal / `current_supply`) + cursor one transaction; append-only `(chain_id, tx, log_index, event_kind)` + address (`indexer_event_journal`, schema v8; `current_supply` is schema v9). Offchain ms columns are `BIGINT` (schema v6) — Postgres INTEGER overflows `Date.now()` | `indexer.persist.test.ts`, `tick-atomic.test.ts`, `pg-ms-timestamps.test.ts`, `Top10Api.t.sol` |
 | User routes | `UserRouteExecutor` + shared RoutePlanner; bonding nested USDC + graduated v4 | `UserRoute.t.sol` |
 | Routing deltas | `RouteGuard`, `RouteExec`, adapters | `RoutingDeltas.t.sol`, `KeeperMinOut.t.sol` |
 
@@ -153,7 +153,7 @@ Every hop: real balance deltas in and out; next hop uses **actual** out, not ada
 `apps/web/src/lib/marketdata.ts` **discovers** factory tokens on-chain (not env JSON):
 
 - Graduated only; skip CORE
-- Supply after burns (`totalSupply`). Indexer `/markets` `fdv_usd6` uses `tokens.current_supply` (schema v9 after main/`#27` v8 journal identity; #21/#28/#25 did not consume a schema version), which tracks `totalSupply()` (token `Burned` / Transfer-to-zero via `(chain_id,tx,log_index,event_kind)` + bounded reconcile, including at head). Not TokenCreated `tokens.supply`, not a protocol-event sum, and not claimed ≡ between reconciles
+- Supply after burns (`totalSupply`). Indexer `/markets` `fdv_usd6` uses `tokens.current_supply` (schema v9 after main/`#27` v8 journal identity; #21/#28/#25 did not consume a schema version), which tracks `totalSupply()` (token `Burned` / Transfer-to-zero via `(chain_id,tx,log_index,event_kind)` in the same `persistTickBatch` transaction as the cursor, plus bounded reconcile, including at head). Not TokenCreated `tokens.supply`, not a protocol-event sum, and not claimed ≡ between reconciles
 - Official 10–15m VWAP/TWAP-like from indexed official trades (**chain `block.timestamp`**, never `Date.now()`)
 - External quote USD: offchain multi-source + Arc sanity + staleness/deviation (`fuseExternalUsd6`). No onchain oracle
 - Depth 3, cycle set, **$250k** floor

@@ -202,6 +202,92 @@ for (const [table, column] of [
   assert(Number(rewardN?.n ?? 0) === 2, "pg reward_events share claim identity");
   const journalN = await store.get<{ n: string }>("SELECT COUNT(*)::text AS n FROM indexer_event_journal WHERE tx=?", claimTx);
   assert(Number(journalN?.n ?? 0) === 2, "pg journal two RewardClaimed identities");
+
+  const burnTok = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+  const burnTx = "0xpgburncursortx00000000000000000000000000000000000000000000000001";
+  const burnSupply = "1000000000000000000000000000";
+  const holderBurn = "40000000000000000000000000";
+  await persistTickBatch(store, {
+    logs: [
+      {
+        eventName: "TokenCreated",
+        args: { token: burnTok, creator: quote, name: "BRN", symbol: "BRN", supply: burnSupply },
+        address: proto,
+        blockNumber: 9n,
+        transactionHash: "0xpgburnseed0000000000000000000000000000000000000000000000000001",
+        logIndex: 0,
+      },
+    ],
+    timestamps,
+    cursorBlock: "9",
+    cursorHash: "0xpghash",
+    ctx,
+  });
+  const burnLogs = [
+    {
+      eventName: "Transfer",
+      args: { from: quote, to: "0x0000000000000000000000000000000000000000", amount: holderBurn },
+      address: burnTok,
+      blockNumber: 9n,
+      transactionHash: burnTx,
+      logIndex: 20,
+    },
+    {
+      eventName: "Burned",
+      args: { account: quote, amount: holderBurn },
+      address: burnTok,
+      blockNumber: 9n,
+      transactionHash: burnTx,
+      logIndex: 21,
+    },
+  ];
+  let burnCrashed = false;
+  try {
+    await persistTickBatch(crashOnCursor(store), {
+      logs: [],
+      burnLogs,
+      timestamps,
+      cursorBlock: "9000010",
+      cursorHash: "0xpghash-burn-crash",
+      ctx,
+    });
+  } catch (e) {
+    burnCrashed = String(e).includes("injected crash");
+  }
+  assert(burnCrashed, "pg burn+cursor crash injected");
+  assert((await getState(store, "block")) === "9", "pg burn crash did not advance cursor");
+  const burnJournalCrash = await store.get<{ n: string }>(
+    "SELECT COUNT(*)::text AS n FROM indexer_event_journal WHERE tx=? AND event_kind IN ('Transfer','Burned')",
+    burnTx,
+  );
+  assert(Number(burnJournalCrash?.n ?? 0) === 0, "pg burn crash dropped journal with cursor");
+  await persistTickBatch(store, {
+    logs: [],
+    burnLogs,
+    timestamps,
+    cursorBlock: "10",
+    cursorHash: "0xpghash-burn",
+    ctx,
+  });
+  assert((await getState(store, "block")) === "10", "pg burn retry commits cursor");
+  const burnJournalOk = await store.get<{ n: string }>(
+    "SELECT COUNT(*)::text AS n FROM indexer_event_journal WHERE tx=? AND event_kind IN ('Transfer','Burned')",
+    burnTx,
+  );
+  assert(Number(burnJournalOk?.n ?? 0) === 2, "pg burn journal committed with cursor");
+  await persistTickBatch(store, {
+    logs: [],
+    burnLogs: [],
+    timestamps,
+    cursorBlock: "11",
+    cursorHash: "0xpghash-burn-next",
+    ctx,
+  });
+  const burnJournalRestart = await store.get<{ n: string }>(
+    "SELECT COUNT(*)::text AS n FROM indexer_event_journal WHERE tx=? AND event_kind IN ('Transfer','Burned')",
+    burnTx,
+  );
+  assert(Number(burnJournalRestart?.n ?? 0) === 2, "pg restart from cursor+1 cannot drop burn journal");
 }
 await store.close();
 console.log("postgres smoke ok");

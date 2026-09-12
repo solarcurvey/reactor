@@ -6,7 +6,7 @@
 
 ## Amendment — `tokens.current_supply` schema v9
 
-`GET /markets` `fdv_usd6` uses `tokens.current_supply` (**schema v9**, next free after main/`#27` v8 journal identity; #21/#28/#25 did not consume a schema version). Column **tracks** remaining `totalSupply()` — not TokenCreated `tokens.supply`, not a protocol-event sum, not claimed ≡. Public `burn()` is `Transfer` to zero and/or `Burned` via canonical `(chain_id, tx, log_index, event_kind)`. Protocol SelfBurn/Top10/COREBurned are attribution only. Bounded `totalSupply()` reconcile runs every tick including at head (corrects missed / same-tx Transfer+Burned). Migration tests start from a real post-#27 v8 DB (full journal identity, then strip only `current_supply`). Architecture and tokenomics unchanged. No mainnet. Leave #8 open.
+`GET /markets` `fdv_usd6` uses `tokens.current_supply` (**schema v9**, next free after main/`#27` v8 journal identity; #21/#28/#25 did not consume a schema version). Column **tracks** remaining `totalSupply()` — not TokenCreated `tokens.supply`, not a protocol-event sum, not claimed ≡. Public `burn()` is `Transfer` to zero and/or `Burned` via canonical `(chain_id, tx, log_index, event_kind)`. Those token-level burn writes share the `persistTickBatch` transaction with `indexer_state` (no post-cursor `persistTokenBurnLogs` window). Protocol SelfBurn/Top10/COREBurned are attribution only. Bounded `totalSupply()` reconcile runs every tick including at head (corrects missed / same-tx Transfer+Burned; it does not restore skipped journal rows). Migration tests start from a real post-#27 v8 DB (full journal identity, then strip only `current_supply`). Architecture and tokenomics unchanged. No mainnet. Leave #8 open.
 
 ## This HEAD
 
@@ -14,7 +14,7 @@
 | --- | --- |
 | Protocol release | **0.3.2** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
-| Intent | Burn-adjusted `/markets` FDV (`Addresses #8`). Schema v9 after main v8. Canonical burn identity. Bounded `totalSupply()` reconcile. |
+| Intent | Burn-adjusted `/markets` FDV (`Addresses #8`). Schema v9 after main v8. Canonical burn identity in the same `persistTickBatch` transaction as the cursor. Bounded `totalSupply()` reconcile. |
 | Indexer / lib | `ingest.valuation.test.ts` + `schema.test.ts` + `quote-integrity.test.ts` + `quote-sell-floors.test.ts` + `keeper.lease.test.ts` + `tick-atomic.test.ts` + `pnpm --filter indexer test` |
 | Foundry | Not re-run this pass. Last recorded **326 passed**, 1 skipped on 0.3.1 |
 | Mainnet | **Blocked** |
@@ -81,7 +81,7 @@ Issue #6: a ~50s `leader_locks` TTL is shorter than possible tick work (`waitFor
 | --- | --- |
 | Protocol release | **0.3.2** (`docs/version.json`) — not bumped this rebase (indexer durability on top of #19/#20/#26) |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
-| Intent | P1 indexer: event writes + cursor advance are one transaction; append-only `(chain_id, tx, log_index, event_kind)` + address journal (issue #7; leave open until merged+verified) |
+| Intent | P1 indexer: event writes (including token burn journal) + cursor advance are one transaction; append-only `(chain_id, tx, log_index, event_kind)` + address journal (issue #8 crash window; leave #8 open) |
 | Foundry | Not re-run this pass. Last recorded **326 passed**, 1 skipped on 0.3.1 |
 | Indexer / lib | `tick-atomic.test.ts` SQLite + Postgres; `pnpm --filter indexer test` (includes `pricing-signer-store.test.ts` + `media-r2.test.ts`); `pnpm docs:check` |
 | Review shots | **Not regenerated** this pass (no UI change) |
@@ -91,7 +91,7 @@ Issue #6: a ~50s `leader_locks` TTL is shorter than possible tick work (`waitFor
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
-| `tick()` wrote events then `setState` cursor after the loop | **Yes** | `persistTickBatch` — one `BEGIN` / `BEGIN IMMEDIATE` for log-derived rows + `indexer_state.block` / `block_hash`. RPC (logs, timestamps, head hash) first. SSE after commit. |
+| `tick()` wrote events then `setState` cursor after the loop | **Yes** | `persistTickBatch` — one `BEGIN` / `BEGIN IMMEDIATE` for protocol rows, token `Burned` / `Transfer` to zero, and `indexer_state.block` / `block_hash`. RPC (logs, timestamps, head hash) first. SSE after commit. |
 | Crash after some events / before cursor | **Yes** | Injected crash on `indexer_state` or mid-batch write rolls both back. SQLite + Postgres in `tick-atomic.test.ts`; Postgres also in `pg-smoke.ts`. |
 | Reorg rewind `block` then `block_hash` split | **Yes** | `rewindIndexerCursor` is one transaction. Crash on the second write leaves the previous pair. |
 | Postgres UNIQUE inside the tick transaction | **Yes** | Statement `SAVEPOINT` so caught `23505` does not abort the batch. Replay of the same logs stays idempotent. After `ROLLBACK TO SAVEPOINT`, the savepoint is `RELEASE`d. Prefer `ON CONFLICT DO NOTHING` on log identity. |

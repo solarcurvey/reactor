@@ -62,7 +62,7 @@ Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, 
 9. **Arc value-transfer rules** — native send to `address(0)` reverts; blocklisted index-1 test address reverts. Vaults never burn native USDC to zero.
 10. **Flash / sandwich / JIT** on official pools — accepted AMM risk; 0% LP fee reduces JIT incentive.
 11. **Keeper split-brain** — a tick can outlive the ~50s lease (receipt wait 60s; large discovery). Without renew, a standby can acquire and both broadcast. Control: interval renew + pre-send renew of the same fence; lost lease refuses send. Residual: process pause after renew, then send. Not an on-chain fence (architecture frozen).
-12. **Indexer crash window** — ingest used to write events then advance the cursor after the loop. A crash left events without a cursor (replay skipped derived rows on UNIQUE) or, if the hash RPC failed after writes, the same partial state. `persistTickBatch` now commits events + cursor together. Residual: post-commit 24h roll / external marks / SSE can still lag; the indexer is still not onchain truth.
+12. **Indexer crash window** — ingest used to write events then advance the cursor after the loop. A later #8 path fetched token `Burned` / `Transfer` to zero **after** that cursor commit, so a crash skipped those journal rows on restart (`from = cursor + 1`). `persistTickBatch` now commits protocol rows, token-burn journal / `current_supply` writes, and the cursor together. Residual: post-commit 24h roll / external marks / SSE / bounded `totalSupply()` reconcile can still lag; the indexer is still not onchain truth.
 
 ## Explicit non-goals
 
