@@ -44,8 +44,8 @@ Receipt consume is atomic. Concurrent consume: one winner. A receipt without a d
 
 | Route | Who |
 | --- | --- |
-| `POST /launch/admit` | Public + partner (`x-partner-key`) — decision only |
-| `POST /launch/authorize` | Public — admission then isolated sign |
+| `POST /launch/admit` | Public + partner (`x-partner-key`) — decision only. JSON **16KiB** default / **64KiB** hard max (chunked included). |
+| `POST /launch/authorize` | Public — admission then isolated sign. Same JSON cap. |
 | Isolated signer `:43149` | Receipt or internal token. Not public. |
 | `GET /ticker/:ticker` | Anyone |
 | `@reactor/sdk` `ReactorClient.authorize` | Third-party terminals |

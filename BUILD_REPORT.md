@@ -1,6 +1,8 @@
-# BUILD REPORT — Issue #4 SELL floors on shared #21 preview
+# BUILD REPORT — Issue #13 public JSON body limits
 
-**Status:** On main @ `d084c47` (#28). SELL floors consume the shared selected `PreviewedRoute` / `splitPreviewRoute`. No second candidate/preview implementation.  
+# BUILD REPORT — Issue #4 SELL floors on shared #21 preview (parent)
+
+**Status:** Parent `59478f2` (#22 markets keyset on #25). SELL floors consume the shared selected `PreviewedRoute` / `splitPreviewRoute`. No second candidate/preview implementation.  
 **Not audited. Not mainnet.**  
 **Architecture / economics unchanged.**
 
@@ -10,9 +12,28 @@ Quote API SELL tickets take `minQuoteOut` from `assembleAtomicTicket.terminalMin
 
 # BUILD REPORT — Protocol 0.3.2
 
-**Status:** Keeper lease fencing rebased onto main @ `d084c47` (#28 SELL floors, after #21 route integrity and #27 atomic ingest). Dual-Postgres two-worker proof + CI kept. Issue **#6 stays open**.  
+**Status:** Keeper lease fencing on main @ `59478f2` (#22 on #25, after #28 SELL floors, #21 route integrity and #27 atomic ingest). Dual-Postgres two-worker proof + CI kept. Issue **#6 stays open**.  
 **Not audited. Not mainnet.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## This PR (P1 public JSON body limits)
+
+**Issue:** [#13](https://github.com/solarcurvey/reactor/issues/13) — public JSON POSTs could buffer unbounded bodies.  
+**Economics / architecture / Factory V1 / mainnet: unchanged.** Rebased onto main after #19 / #20 / #26 / #27 / #21 / #28 / #25 / #22.
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| Stream cap on public JSON POSTs | **Yes** | 16KiB default / 64KiB hard max (`JSON_BODY_LIMIT_BYTES` cannot exceed hard max). `/quote`, `/launch/admit`, `/launch/authorize` |
+| Chunked Transfer-Encoding | **Yes** | Cap is byte-count on the stream, not Content-Length alone |
+| 413 + destroy | **Yes** | `BodyTooLargeError`; socket destroyed at first overflowing byte |
+| Next BFF + isolated signer | **Yes** | Same 16KiB cap; signer stays fail-closed on missing store (#26) |
+| Upload | Unchanged | Still 2MB stream; #20 key = `/m/<id>.webp` |
+| Regression tests | **Yes** | `apps/indexer/src/read-json-body.test.ts`, `apps/web/src/lib/limited-json.test.ts` |
+| Docs | **Yes** | `/docs/api`, `/docs/builders`, `/docs/trust`, `/docs/admission`, `THREAT_MODEL.md`, `AUDIT_HANDOFF.md` |
+
+**Status:** Continue on existing REACTOR Origin repo. Parent `59478f2` (#22 on #25/#28/#21/#27/#26/#20/#19). Local Anvil 5042002 + Arc Public Testnet probe only.  
+**Not audited. Not mainnet. Arc Public Testnet Factory create not claimed unless an explorer hash exists.**  
+**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
 ## This PR (Keeper lease fencing)
 
@@ -33,9 +54,9 @@ Issue #6: a ~50s `leader_locks` TTL is shorter than possible tick work (`waitFor
 | --- | --- |
 | Protocol release | **0.3.2** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
-| Intent | Issue #6 Keeper lease fencing on current main (after #28). Issue **#6 stays open**. |
-| Indexer / lib | `keeper.lease.test.ts` + `test:pg-lease`; `quote-sell-floors.test.ts` (#28) + `quote-integrity.test.ts` (#21) + `tick-atomic.test.ts` (#27); `pnpm --filter indexer test` |
-| Foundry | `UserRoute.t.sol` previewBuy/previewSell decode `hopOuts.length == hops.length + 1` (from #21 on main) |
+| Intent | P1 public JSON body limits (issue #13): 16KiB default / 64KiB hard max; 413/400. Parent includes #22 markets keyset, #25 lease fencing, #28 SELL floors, #21 route integrity, #27 atomic indexer. |
+| Indexer / lib | `read-json-body.test.ts` + `markets-query.test.ts` (#22) + `keeper.lease.test.ts` + `test:pg-lease`; `quote-sell-floors.test.ts` (#28) + `quote-integrity.test.ts` (#21) + `tick-atomic.test.ts` (#27); `pnpm --filter indexer test` |
+| Foundry | `UserRoute.t.sol` previewBuy/previewSell decode `hopOuts.length == hops.length + 1` (from #21 on main; not re-run this pass) |
 | Mainnet | **Blocked** |
 
 ## Closed on main (#21)

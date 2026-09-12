@@ -14,6 +14,16 @@ Versioning: [Semantic Versioning](https://semver.org/) for the **protocol releas
 - Git tag: `vMAJOR.MINOR.PATCH` (see [Versioning](docs/versioning.md) and `CONTRIBUTING.md`)
 - Factory **V1 stays V1 forever**. A new fee split or curve is Factory V2, not a protocol patch.
 
+## [Unreleased]
+
+API availability hardening. Tokenomics **unchanged**. Factory **V1**. No mainnet.
+
+### Added / Changed
+
+- Public JSON POSTs (`/quote`, `/launch/admit`, `/launch/authorize`) stream-cap request bodies at **16KiB** default / **64KiB** hard max (`JSON_BODY_LIMIT_BYTES`). Env cannot raise the cap past 64KiB. The cap applies to `Content-Length` and to chunked `Transfer-Encoding`. Oversize is **413**; the socket is destroyed so the process never buffers an unbounded JSON body.
+- The public Next BFF `POST /api/launch-pricing` applies the same cap before proxying. The isolated signer uses the same reader as defense in depth.
+- Regression tests cover Content-Length oversize, chunked oversize, slow chunked writes, and an absurd `JSON_BODY_LIMIT_BYTES` that still clamps to 64KiB.
+
 ## [0.3.2] - 2026-09-12
 
 Postgres millisecond timestamps, media key/URL alignment, and signer fail-closed. Tokenomics **unchanged**. Factory **V1**.
