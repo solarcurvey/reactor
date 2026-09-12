@@ -59,7 +59,7 @@ Guardrails:
 
 Daemon: `apps/indexer/src/keeper.ts` — SelfBurn, Flywheel settle, CORE settle, epoch publish, Top-10 exec, CORE burn, optional graduate assist. Simulate → minOut → submit → receipt → reconcile. Idempotent job IDs. Modes `DRY_RUN` / `LOCAL` / `ARC_TESTNET`. Mainnet 5042 disabled. Ambiguous RPC does not double-exec.
 
-Leadership is a single `leader_locks` lease (not `pg_advisory_lock`). Default TTL is ~50s and **shorter than possible tick work**, so a live leader must renew `lease_until` (default every 15s, and immediately before each broadcast) while keeping the acquire-generation fence (`ts`) fixed. A standby that acquires after expiry gets a new fence; the previous owner cannot renew or send. That is the split-brain fence — see `/docs/keeper` Operations. `apps/indexer/src/watchdog.ts` is an independent fail-closed process.
+Leadership is a single `leader_locks` lease (not `pg_advisory_lock`). Default TTL is ~50s and **shorter than possible tick work**, so a live leader must renew `lease_until` (default every 15s, and immediately before each broadcast) while keeping the acquire-generation fence (`ts`) fixed. A standby that acquires after expiry gets a new fence; the previous owner cannot renew or send. That is the split-brain fence — see `/docs/keeper` Operations. Production concurrency is proven with **two independent Postgres pools** (`test:pg-lease`). `apps/indexer/src/watchdog.ts` is an independent fail-closed process.
 
 Leadership is one `leader_locks` row. `ts` and `lease_until` are wall-clock **milliseconds** (`Date.now()` + TTL), `BIGINT` on Postgres. Job `keeper_operations.ts` is the same unit. Do not store unix seconds in those columns.
 

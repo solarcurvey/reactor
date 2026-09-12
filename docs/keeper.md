@@ -19,6 +19,7 @@ If renew fails (expiry without renewal, or another owner stole after expiry) the
 | Lost lease mid-tick | Fail closed for further jobs. Heartbeat reason `leader lease lost — refuse broadcast`. Not a protocol pause. |
 | Release | `DELETE … owner AND ts=fence` so a stale finally cannot drop a newer generation. |
 | Watchdog | Independent process. Separate keys. Checks heartbeat + on-chain epoch, not this lease row. |
+| Two workers | Production proof is **two independent Postgres pools**, not one SQLite `Store`. `pnpm --filter indexer test:pg-lease` (CI job `keeper-lease-pg`). Simultaneous acquire has one winner; a renewing leader cannot be overlapped; expiry/crash lets the standby take a new fence; the stale generation cannot renew, drop the new row, or send. |
 
 `leader_locks.ts`, `leader_locks.lease_until`, and `keeper_operations.ts` are **milliseconds** (`Date.now()` / `Date.now() + ttlMs`), `BIGINT` on Postgres. On-chain Keeper work still uses `block.timestamp` seconds. A 32-bit INTEGER column overflows today's `Date.now()` (~1.8e12).
 

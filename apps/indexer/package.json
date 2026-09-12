@@ -17,7 +17,8 @@
     "seed-bonding": "tsx src/seed-bonding.ts",
     "seed-review": "tsx src/seed-review.ts",
     "pg-smoke": "tsx src/pg-smoke.ts",
-    "test:pg": "tsx src/pg-ms-timestamps.test.ts"
+    "test:pg": "tsx src/pg-ms-timestamps.test.ts",
+    "test:pg-lease": "tsx src/keeper.lease.pg.test.ts"
   },
   "dependencies": {
     "viem": "^2.56.3",
