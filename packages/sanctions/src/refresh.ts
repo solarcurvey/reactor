@@ -1,4 +1,5 @@
 import { fetchOfficialSource, type FetchOfficialOpts } from "./fetch.ts";
+import { sha256Hex } from "./hash.ts";
 import { extractPublishDate, extractRecordCount, mergeParseResults, parseOfacXml } from "./parse.ts";
 import { DEFAULT_REFRESH_SOURCE_IDS, officialSourceById, type OfficialSource } from "./sources.ts";
 import { type ActivateResult, type ActivateValidation, type SanctionsStore } from "./store.ts";
@@ -52,7 +53,7 @@ export async function refreshSanctions(store: SanctionsStore, opts: RefreshOpts 
               url: source.url,
               format: source.format,
               retrievedAt,
-              contentHash: (await import("./hash.ts")).sha256Hex(injected),
+              contentHash: sha256Hex(injected),
               byteLength: Buffer.byteLength(injected),
               httpStatus: 200,
             } satisfies SourceFetchMeta,

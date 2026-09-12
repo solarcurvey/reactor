@@ -1,4 +1,4 @@
-import { candidateKeys, extractOfacTicker, familyFromTicker, canonicalKey } from "./normalize.ts";
+import { extractOfacTicker, familyFromTicker, canonicalKey } from "./normalize.ts";
 import type { AddressFamily, OfficialSourceFormat, ParseResult, ParseWarning, SanctionedAddress } from "./types.ts";
 
 function decodeBasicEntities(s: string): string {
@@ -12,10 +12,6 @@ function decodeBasicEntities(s: string): string {
 
 function stripComments(xml: string): string {
   return xml.replace(/<!--[\s\S]*?-->/g, "");
-}
-
-function localTag(name: string): string {
-  return name.includes(":") ? name.slice(name.indexOf(":") + 1) : name;
 }
 
 function firstTagText(xml: string, localName: string): string | undefined {
@@ -299,8 +295,3 @@ export function mergeParseResults(parts: ParseResult[]): ParseResult {
   };
 }
 
-export function lookupKey(raw: string, family?: AddressFamily): string[] {
-  return candidateKeys(raw, family);
-}
-
-void localTag;
