@@ -8,17 +8,18 @@ Any change to the following **must** update the corresponding docs **in the same
 
 | If you change… | You must update… |
 | --- | --- |
-| Contracts / ABI / events | `AUDIT_HANDOFF.md`, `/docs` events/api, `ARCHITECTURE.md` as needed |
-| Tokenomics / fees / supply / Dev Buy / curve | `ECONOMICS.md`, `CURVE_DESIGN.md`, `/docs/fees`, `/docs/curve`, `/docs/index`, `docs:check` still green |
+| Contracts / ABI / events | `AUDIT_HANDOFF.md`, `/docs` events/api, `/docs/architecture`, `ARCHITECTURE.md` as needed |
+| Tokenomics / fees / supply / Dev Buy / curve | `ECONOMICS.md`, `CURVE_DESIGN.md`, `/docs/economics`, `/docs/fees`, `/docs/curve`, `/docs/lifecycle`, `/docs/index`, `docs:check` still green |
 | Factory behavior or versioning | `FACTORY_VERSIONING.md`, `/docs/versioning`, `docs/version.json` factory fields **only if** Solidity `FACTORY_VERSION` changed (a new factory, not a protocol patch) |
-| Guardian / Keeper powers | `GUARDIAN_MODEL.md`, `KEEPER_MODEL.md`, `PRIVILEGE_MAP.md`, `/docs/guardian` |
-| Routing / adapters / minOut | `ARCHITECTURE.md`, `KEEPER_MODEL.md`, `/docs` builders/fees |
-| Launch admission / signer / ticker rules | `LAUNCH_ADMISSION.md`, `TICKER_REGISTRY.md`, `/docs/tickers`, `/docs/creators` |
+| Guardian / Keeper powers | `GUARDIAN_MODEL.md`, `KEEPER_MODEL.md`, `PRIVILEGE_MAP.md`, `/docs/guardian`, `/docs/keeper`, `/docs/security` |
+| Routing / adapters / minOut | `ARCHITECTURE.md`, `KEEPER_MODEL.md`, `/docs` builders/fees/routes/quoting |
+| Launch admission / signer / ticker rules | `LAUNCH_ADMISSION.md`, `TICKER_REGISTRY.md`, `/docs/tickers`, `/docs/admission`, `/docs/creators` |
 | Operator sanctions/geo policy / write-path enforcement | `/docs/operator-policy`, `/docs/trust`, `/docs/api`, `LAUNCH_ADMISSION.md` (`GET /operator-policy/status` for #65) |
-| API behavior | `/docs/api`, `/docs/builders` |
+| API behavior | `/docs/api`, `/docs/builders`, `/docs/examples` |
 | SDK interfaces | `/docs/sdk`, `packages/sdk` |
 | CORE genesis / vest / book | `CORE_GENESIS.md`, `CORE_LIQUIDITY_DESIGN.md`, `/docs/core` |
-| Backend trust assumptions | `THREAT_MODEL.md`, `/docs/index` (Trust), `AUDIT_HANDOFF.md` |
+| Rewards / SelfBurn eligibility | `ECONOMICS.md`, `/docs/rewards`, `/docs/fees` |
+| Backend trust assumptions | `THREAT_MODEL.md`, `/docs/trust`, `/docs/security`, `/docs/index`, `AUDIT_HANDOFF.md` |
 | Exact official-list screening / OFAC ingest | `SANCTIONS.md`, `/docs/sanctions`, `/docs/api`, `/docs/trust` |
 | Geo / jurisdiction policy | `/docs/geo-policy`, `THREAT_MODEL.md`, `/docs/trust`, versioned `apps/indexer/config/geo-policy-us-comprehensive.v*.json` (source + effective date). No UI country lists. |
 | User-facing behavior | matching `/docs` audience page + `UX_REFERENCE.md` if UX |
@@ -77,7 +78,8 @@ See `AGENTS.md`. Security > cleverness. Do not change tokenomics to make a test 
 ```bash
 pnpm docs:check          # version + constants + deployments
 pnpm docs:links          # in-repo docs slugs + relative files (no network)
-pnpm test:lib            # indexer + web unit + #61 sanctions fixtures + docs:check + docs:links + safe-genesis + page-budget + CI-cost + public-fork harden
+tsx apps/web/src/lib/docs-pages.test.ts  # handbook nav + llms.txt twins
+pnpm test:lib            # indexer + web unit + #61 sanctions fixtures + docs-pages + docs:check + docs:links + safe-genesis + page-budget + CI-cost + public-fork harden
 pnpm test:ci-cost        # workflow inventory / no duplicate push+PR / fail-safe paths
 pnpm test:web-unit       # web lib unit (also in test:lib)
 pnpm --filter web test:qa  # visual / a11y / failure-injection (CI ci.yml job web-qa, full/main)

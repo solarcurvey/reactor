@@ -1,6 +1,8 @@
 # Build a terminal
 
-Integrate as a client, not a fork. Protocol **0.3.4**. Factory **V1**.
+> Integrate as a client, not a fork. Protocol **{{protocolVersion}}**. Factory **{{factoryVersionLabel}}**. Not audited.
+
+Talk to the public indexer. Do not scrape Factory logs in the UI process. Do not call the isolated Launch Signer from a public host. Do not invent hops, official 0.30% pools, or `minOut` 0/1.
 
 ## Integration order
 
@@ -18,7 +20,7 @@ Integrate as a client, not a fork. Protocol **0.3.4**. Factory **V1**.
 | `EXTERNAL_V4_HOOKLESS` | Hookless external v4 | No |
 | `BONDING_CURVE` | Instant curve | Yes, on executed quote |
 
-Maintenance (Keeper) uses a **separate** fee-exempt planner (`planFeeExemptRoute` + ProtocolV4Adapter). Do not reuse the user quoter for vault jobs.
+The planner does **not** recreate a generic 0.30% hookless pool. Maintenance (Keeper) uses a **separate** fee-exempt planner (`planFeeExemptRoute` + ProtocolV4Adapter). Do not reuse the user quoter for vault jobs.
 
 ## LaunchAuthorization
 
@@ -26,22 +28,36 @@ EIP-712 binds factory, Factory version, creator, quote, mode, ticker, name, meta
 
 Fair hashes resolved sale params. Instant keeps `INSTANT_CURVE_V1`. Receipt `launchConfigHash` must match or the signer burns the receipt and refuses.
 
+TTL is **30 minutes**. Replay is digest-level (`TickerRegistry.usedAuthorization`). No serial quote nonce. Concurrent same-quote launches use unique `authId`.
+
+CHALLENGE ≠ ALLOW. `@reactor/sdk` `ReactorClient.authorize` posts the public indexer route only.
+
 ## Packages
 
 | Package | Version | Role |
 | --- | --- | --- |
-| `@reactor/core` | 0.3.4 | Constants, routes, valuation, admission helpers |
-| `@reactor/sdk` | 0.3.4 | `ReactorClient.authorize`, quote ticket helpers |
-| `@reactor/sanctions` | 0.3.4 | Exact official-list digital-currency address `screen()` (not compliance; not hop attribution) |
+| `@reactor/core` | {{coreVersion}} | Constants, routes, valuation, admission helpers, `MaintenanceJob` |
+| `@reactor/sdk` | {{sdkVersion}} | `ReactorClient` (`baseUrl`): `authorize`, `admit`, `markets`, `ticker`, `stream` |
+| `@reactor/sanctions` | {{protocolVersion}} | Exact official-list digital-currency address `screen()` (not compliance; not hop attribution) |
 
-Exact-address screening: `GET /sanctions/screen` returns `blocked` / `clear` / `unavailable` plus dataset version. Treat `unavailable` as fail-closed, never as clear. This is **not** a policy gate yet ([Address screening](/docs/sanctions)).
+`@reactor/core` exports `planCandidates`, `pickBest`, `applyMinOuts`, `ValuationService`, `consensusUsd6`, `launchBlockedByValuation`, `evaluateAdmission`, `fairCurveConfig`, `launchConfigHash`, `INSTANT_CURVE_V1`. External USD is a configured provider registry + consensus — not a separate ZEC pricer.
 
-`@reactor/sdk` does **not** evaluate geo policy. Jurisdiction decisions are server-side (`evaluateRequestGeo`). Do not copy ISO deny lists into a terminal. See [Geo policy](/docs/geo-policy). Write-path enforcement is [Operator policy](/docs/operator-policy).
+`ReactorClient` takes `{ baseUrl, apiKey? }`. `apiKey` is the partner `x-partner-key` on `/launch/admit` only. There is no `indexer` constructor field.
 
 Protected write routes (`POST /quote`, `/upload`, `/launch/*`) fail closed on a stale or missing official-list snapshot. `GET /markets` and other public reads are not gated. See [Sanctions ops](/docs/sanctions-ops).
 Hosted write assistance (`POST /quote`, `/launch/authorize`, `/upload`) may return `deny` / `unavailable` with a public `reason`. Send `x-reactor-wallet-proof` from `GET /operator-policy/challenge` (EIP-191). Do not send browser country / IP / “clear” / claimed-wallet flags as authority. Do not expect the UI to hide `GET /markets`. See [Restricted access](/docs/restricted-access).
 
-See [API](/docs/api), [SDK](/docs/sdk), [Examples](/docs/examples), [Quoting](/docs/quoting), [Events](/docs/events), [UI QA](/docs/qa), [Operator policy](/docs/operator-policy).
+## Client rules that will get you rekt
+
+- Do not stitch a fatter raw `amountOut` onto a differently scored path.
+- Do not format `holders + flywheel + core` across different quote decimals.
+- Do not treat indexer `fdv_usd6` as onchain truth. It uses burn-adjusted `current_supply` (tracks `totalSupply()`, not ≡).
+- Do not claim Top-10 is a trustless oracle.
+- Do not ship `minOut` 0 or 1 “to be safe.” The API will not.
+
+Exact-address screening: `GET /sanctions/screen` returns `blocked` / `clear` / `unavailable` plus dataset version. Treat `unavailable` as fail-closed, never as clear. [Address screening](/docs/sanctions). `@reactor/sdk` does **not** evaluate geo policy. Jurisdiction decisions are server-side. Do not copy ISO deny lists into a terminal. See [Geo policy](/docs/geo-policy). Write-path enforcement is [Operator policy](/docs/operator-policy). Protected write routes (`POST /quote`, `/upload`, `/launch/*`) fail closed on a stale or missing official-list snapshot. `GET /markets` and other public reads are not gated. See [Sanctions ops](/docs/sanctions-ops).
+
+See [API](/docs/api), [SDK](/docs/sdk), [Examples](/docs/examples), [Quoting](/docs/quoting), [Events](/docs/events), [Markets](/docs/markets), [Observability](/docs/observability), [UI QA](/docs/qa), [Operator policy](/docs/operator-policy).
 
 ## Production UI release gate
 

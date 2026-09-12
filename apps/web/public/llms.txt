@@ -2,9 +2,20 @@
 
 Launch. Reflect. Burn. Token launchpad for Arc.
 
-Official REACTOR pools are Uniswap v4 markets with a 0% LP fee and a 3.5% quote-side protocol charge (2% holders / 1% Top-10 / 0.5% CORE buy+burn). Protocol 0.1.0. Factory V1. Not audited. No public mainnet.
+Official REACTOR pools are Uniswap v4 markets with a 0% LP fee and a 3.5% quote-side protocol charge (2% holders / 1% Top-10 / 0.5% CORE buy+burn). Protocol 0.3.3. Factory V1. Not audited. No public mainnet.
 
-Docs: /docs
-Audience: /docs/traders /docs/creators /docs/builders
-Versioning: /docs/versioning /docs/changelog /docs/policy
-Do not claim audited or trustless. Top-10 is an offchain API. Mainnet blocked.
+## Docs
+- /docs How REACTOR works
+- /docs/local Local demo
+- /docs/traders /docs/creators /docs/builders
+- /docs/economics /docs/lifecycle /docs/curve /docs/fees /docs/rewards
+- /docs/top-10 /docs/core /docs/routes /docs/quoting /docs/valuation
+- /docs/architecture /docs/trust /docs/security
+- /docs/tickers /docs/admission /docs/guardian /docs/keeper
+- /docs/api /docs/sdk /docs/examples /docs/events /docs/markets /docs/media
+- /docs/deployments /docs/arc
+- /docs/faq /docs/glossary /docs/troubleshooting
+- /docs/versioning /docs/changelog /docs/policy
+
+## Honesty
+Do not claim the protocol is audited or trustless. Top-10 ranks are an offchain API. Contracts check structure only. CHALLENGE is not ALLOW. The launch signer is not public. Instant is bonding curve → ready → frozen → graduate → locked v4. CORE is genesis 100M vest + 900M locked, never Top-10. Mainnet is blocked pending Codex + audits + KMS/Safe rehearsal.

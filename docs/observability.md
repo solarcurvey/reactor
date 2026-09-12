@@ -1,6 +1,6 @@
 # Observability
 
-> Protocol **0.3.4**. Frontend ops only. Economics, Factory V1, and on-chain architecture are unchanged. Not audited. No public mainnet.
+> Protocol **{{protocolVersion}}**. Frontend ops only. Economics, Factory {{factoryVersionLabel}}, and on-chain architecture are unchanged. Not audited. No public mainnet.
 
 Production web emits **failure telemetry** (not a product analytics warehouse), **core-page Web Vitals**, and **error boundaries** so a single route cannot white-screen the app.
 

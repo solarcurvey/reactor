@@ -1,18 +1,22 @@
 # FAQ
 
-**Is this audited?** No.
+> Protocol **{{protocolVersion}}**. Factory **{{factoryVersionLabel}}**. Not audited. No public mainnet.
 
-**Mainnet?** Blocked. Chain 5042 is disabled in Keeper and deploy scripts.
+**Is this audited?** No. Do not claim it is.
 
-**Is Factory V1 the protocol version?** No. Protocol is semver (`0.3.4`). Factory V1 stays V1 forever.
+**Mainnet?** Blocked. Chain 5042 is disabled in Keeper and deploy scripts. Do not invent mainnet addresses.
+
+**Is Factory V1 the protocol version?** No. Protocol is semver (`{{protocolVersion}}` in `docs/version.json`). Factory **{{factoryVersionLabel}} stays {{factoryVersionLabel}} forever**. A different 3.5% split is Factory V2.
 
 **Why did a page say it broke?** App and route error boundaries catch render failures. Other routes keep working. Release SHA and a `ref {traceId} · chain {chainId}` line are on the screen for operators. See [Observability](/docs/observability).
 
 **Do you send my wallet seed to Sentry?** No. Telemetry redacts keys, mnemonics, signatures, Turnstile tokens, and cookies. 32-byte hex is truncated. The BFF drops residual secrets. DSN is optional.
 
-**Why do I see Turnstile?** Admission. CHALLENGE is not a signature. Solve it and retry.
+**What is frozen?** Official LP fee **0%**, protocol charge **3.5%** (**2% holders / 1% / 0.5%**), launch supply **1B / 18**, Dev Buy cap **5%**, ticker lock **24h**, Instant 79.31 / 20.69, CORE 100M vest + 900M locked. Creators have no supply/FDV/fee knobs.
 
-**Why did Fair launch revert WrongParams?** The signature must hash the resolved supply/decimals/duration/auctionBps/minRaise. Instant still uses `INSTANT_CURVE_V1`.
+**Why do I see Turnstile?** Admission. CHALLENGE is not a signature. Solve it and retry. ELEVATED/ATTACK can ALLOW after a real token if you are under limits.
+
+**Why did Fair launch revert WrongParams?** The signature must hash the resolved supply/decimals/duration/auctionBps/minRaise. Instant still uses `INSTANT_CURVE_V1`. `FAIR_V1` is an identifier only.
 
 **Why is EURC not $1?** Only `usdPegOne` assets are. Guardian sets that flag. Category.Stablecoins is not $1.
 
@@ -38,9 +42,19 @@
 
 **Why did Arc ignore 8 confirmations?** Arc BFT is final on commit. Default lag is 0.
 
+**Why can't I buy when the curve says ready?** Instant is frozen until `graduate`. No buys or sells in that window.
+
+**Where does the 2% go if I am the first buyer?** SelfBurn. Rewards `eligibleSupply==0` is not a first-holder rebate.
+
+**Does CORE rank in Top-10?** No. Never. Official CORE book is 2.5% burn + 1% flywheel.
+
+**Are Top-10 ranks trustless?** No. Offchain API (`GET /top10`, schema v11). Contracts check structure only. The web app proxies the indexer snapshot; it does not walk Factory logs.
+
 **When do the bottom-right burn toasts show?** Only after the indexer commits a CORE buy+burn (`BuybackExecuted` / `COREBurned`) or a Top-10 `Top10Buy`. Connecting does not dump the SSE replay buffer. A reconnect still delivers events that landed while you were disconnected, exactly once. Epoch submit and Standard SelfBurn do not toast. Hover or focus pauses auto-dismiss.
 
-**Where is the Safe JSON?** `deployments/safe-genesis-builder.json`. Deployer ≠ Guardian. Fill env and regenerate.
+**Where is the Safe JSON?** `deployments/safe-genesis-builder.json`. Deployer ≠ Guardian. Fill env and regenerate (`pnpm safe:genesis`).
+
+**Can I change the 3.5% split?** No. Different split = V2 factory deploy.
 
 **Are you OFAC compliant?** No such claim. `GET /sanctions/screen` is exact official-list address matching only (Treasury/OFAC XML) — not hop / cluster / exposure analytics. `unavailable` is not `clear`. Operated write assistance is gated by [operator policy](/docs/operator-policy) using that lookup, trusted geo, and the 7-day freshness SLA. Public contracts remain callable onchain. See [Address screening](/docs/sanctions), [Sanctions ops](/docs/sanctions-ops), and [Restricted access](/docs/restricted-access).
 
@@ -57,3 +71,5 @@
 **Why was my launch or quote refused with a compliance-unavailable error?** REACTOR-operated writes fail closed when the official-list snapshot is missing or older than the 7-day SLA, or when operated write assistance is emergency-disabled. That is not an onchain revert. See [Sanctions ops](/docs/sanctions-ops). A complaint does not auto-clear a deny.
 
 **Where is the sanctions runbook?** [Sanctions runbook](/docs/sanctions-runbook), linked from [Incident response](/docs/incident-response).
+
+See [Troubleshooting](/docs/troubleshooting), [Glossary](/docs/glossary), [Trust](/docs/trust), [Observability](/docs/observability), [CI and cost](/docs/ci).

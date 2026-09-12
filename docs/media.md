@@ -1,6 +1,10 @@
 # Media uploads
 
-`POST /upload` on the indexer. Operator policy runs first (recovered wallet proof + trusted geo) — a denied request never returns a stored `uri`. See [Operator policy](/docs/operator-policy).
+> `POST /upload` on the indexer. Stream cap **2MB**. sharp is required. No base64 onchain. Operator policy runs first (recovered wallet proof + trusted geo) — a denied request never returns a stored `uri`. See [Operator policy](/docs/operator-policy).
+
+Launch images are resized WebP. The onchain metadata hash covers the stored public URL, then freezes. See [Creators](/docs/creators).
+
+## Pipeline
 
 - Stream cap **2MB** — the request is destroyed if the body exceeds the limit.
 - Magic-byte type check (JPEG / PNG / WebP / GIF) and dimension bounds.
@@ -18,7 +22,7 @@ When `MEDIA_CDN_BASE` is set, `publicUrl` is `MEDIA_CDN_BASE` + `uri` (no extra 
 
 `mediaObjectKey(id)` and `mediaPublicUri(id)` are the single source of truth. `assertMediaKeyMatchesPublicUri` refuses a remote key that would 404 behind the returned URL. The mock SigV4 fixture stores the PUT body under that key and a subsequent GET of `m/<id>.webp` must return the same bytes and `image/webp`. A PROD remote PUT failure throws and returns no `StoredMedia` (no dead public URL).
 
-No base64 onchain. The launch form posts the file and stores the returned URL.
+No base64 onchain. The launch form posts the file and stores the returned URL. Metadata is frozen at launch — there is no post-launch image edit.
 
 ## Browser rendering (untrusted)
 
@@ -32,4 +36,4 @@ Rejected: `javascript:`, `data:` (including SVG), `blob:`, `file:`, protocol-rel
 
 `GET /m/<id>.webp` is `image/webp` + `X-Content-Type-Options: nosniff` + `Content-Security-Policy: default-src 'none'; sandbox`.
 
-See [Browser security](/docs/web-security).
+See [Browser security](/docs/web-security), [API](/docs/api), [Admission](/docs/admission).

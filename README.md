@@ -67,7 +67,7 @@ Addresses land in `deployments/local.json` after the demo script.
 
 We **do not claim Arc Testnet success** unless transactions appear on [testnet.arcscan.app](https://testnet.arcscan.app).
 
-In-app docs: [`/docs`](http://127.0.0.1:43147/docs) (sidebar, search, TOC). Source: `docs/`. `llms.txt` at `/llms.txt`.
+In-app handbook: [`/docs`](http://127.0.0.1:43147/docs) (sidebar search, TOC, prev/next). Source: `docs/`. `llms.txt` at `/llms.txt`.
 
 ```bash
 pnpm docs:check          # fail on fee / supply / Dev Buy / ticker lock / factory / version / deployment drift
@@ -97,6 +97,7 @@ GitHub Actions is three-tier (fast PR / full merge-candidate / main). Docs-only 
 | `CONTRIBUTING.md` | Docs-mandatory policy + release/tag rules |
 | `CHANGELOG.md` | Production protocol releases (baseline 0.1.0) |
 | `docs/version.json` | Protocol semver source of truth |
+| `/docs` handbook | GitBook-style in-app pages (`docs/*.md`) |
 | `FACTORY_VERSIONING.md` | Immutable factories; new launches only |
 | `LAUNCH_ADMISSION.md` | EIP-712 + Turnstile + throttle |
 | `docs/operator-policy.md` | Server-side sanctions/geo gate on operated write paths (#62) |

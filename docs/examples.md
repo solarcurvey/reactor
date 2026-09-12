@@ -1,6 +1,6 @@
 # Examples
 
-Local indexer: `http://127.0.0.1:43148`. Replace `0x…` with a factory launch.
+> Local indexer: `http://127.0.0.1:43148`. Replace `0x…` with a factory launch. Not audited.
 
 ## Quote a USDC buy
 
@@ -49,10 +49,32 @@ curl -s 'http://127.0.0.1:43148/swaps/0x…?limit=200&before_id=0'
 
 Gap-fill is bounded to `limit` (max 1000) buckets. `before` / `after` are exclusive on `t` (aligned `before` does not emit that bucket). Historical `before` does not extend to now. `before_id` on swaps.
 
-## Valuation
+## Valuation and pricing health
 
 ```bash
 curl -s 'http://127.0.0.1:43148/valuation?token=0x…'
+curl -s 'http://127.0.0.1:43148/pricing/health'
+curl -s 'http://127.0.0.1:43148/top10'
 ```
 
-One ValuationService. EURC is not $1 unless `usdPegOne`. PROD refuses a static mark. `/pricing/health` lists per-asset consensus and rejected observations.
+One ValuationService. EURC is not $1 unless `usdPegOne`. PROD refuses a static mark. `/pricing/health` lists per-asset consensus and rejected observations. `GET /top10` is the official rank snapshot (schema v11). The web app proxies it.
+
+## SDK authorize
+
+```ts
+import { ReactorClient } from "@reactor/sdk";
+
+const client = new ReactorClient({ baseUrl: "http://127.0.0.1:43148" });
+const page = await client.markets({ sort: "vol", limit: 20 });
+const out = await client.authorize({
+  ticker: "CAT",
+  name: "Cat",
+  quote: "0x…",
+  factory: "0x…",
+  wallet: "0x…",
+  mode: "rewards",
+  turnstile: realWidgetToken,
+});
+```
+
+See [SDK](/docs/sdk), [API](/docs/api), [Quoting](/docs/quoting).

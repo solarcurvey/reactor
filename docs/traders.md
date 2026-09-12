@@ -4,6 +4,22 @@
 
 Official REACTOR pools are Uniswap v4 with a **0% LP fee**. You pay a **3.5% quote-side** hook charge: **2% holders / 1% Top-10 / 0.5% CORE**. Transfer has **zero tax**.
 
+You do not pick the fee. You do not pick the curve. You pick a token, a side, an exact input, and slippage. The UI (or your bot) must use a `POST /quote` ticket. Do not invent hops.
+
+## What you pay
+
+On an official hop the hook takes **3.5% of that hop’s quote notional** (executed gross). It is not an LP fee and not a token-level sell tax.
+
+| Slice | Where it goes |
+| --- | --- |
+| 2.00% | Holders in the **same quote** (Rewards) or SelfBurn (Standard, or Rewards when `eligibleSupply==0`) |
+| 1.00% | Top-10 flywheel |
+| 0.50% | CORE buy+burn |
+
+A nested path can charge 3.5% on **each** official hop. Two official hops compound to **6.88%** before slippage (`aggregateProtocolImpactBps = 688`). Hookless external hops are not a REACTOR charge. See [Nested fees](/docs/fees).
+
+Fair auction bids charge **0%**. The 3.5% starts after one migration onto the official pool.
+
 ## How a trade is quoted
 
 1. The UI (or your bot) calls `POST /quote` with token, side, `amountIn`, slippage, and a recovered-wallet proof (`x-reactor-wallet-proof`). The ticket `recipient` is rebound to that recovered signer. REACTOR-operated quote assistance is [policy-gated](/docs/operator-policy) (recovered wallet + trusted geo) before a ticket is returned. Public board `GET`s are not.
@@ -31,6 +47,18 @@ Names, tickers, descriptions, and images on the board are **untrusted creator st
 
 `POST /quote` is hosted write assistance. When the server policy decision is deny or unavailable (including a stale or missing official-list snapshot under the 7-day SLA), the ticket is not returned and the Confirm / Quote buttons stay disabled **before** a wallet prompt. The board, charts, and tape remain readable. See [Restricted access](/docs/restricted-access) and [Sanctions ops](/docs/sanctions-ops).
 
+## Instant vs graduated vs Fair
+
+| Stage | Where you trade | 3.5% |
+| --- | --- | --- |
+| Instant bonding (not `ready`) | `InstantCurve` | Yes, on executed quote |
+| Instant `ready` / frozen | **No buys or sells** until `graduate` | Terminal fees already taken on executed gross only |
+| Graduated official v4 | Hooked 0% LP pool | Yes, quote-side hook |
+| Fair auction window | Factory bids | **0%** |
+| Fair after finalize | Official hooked pool | 3.5% |
+
+When Instant is `ready`, the curve is frozen. Wait for `graduate`. Do not expect a buy or sell to go through.
+
 ## When a service is down
 
 The UI **fails visible**. It does not invent a quote ticket or pretend the board is empty when the indexer is unreachable.
@@ -57,12 +85,28 @@ Review / Playwright can force those banners with `?inject=` (indexer, rpc, quote
 | Tape | `GET /swaps/:token?limit=&before_id=` (bounded) |
 | Live | `GET /stream` SSE. Bottom-right toasts fire only after the indexer commits a CORE `BuybackExecuted` / `COREBurned` or a Top-10 `Top10Buy` — not on pending txs, not on epoch submit, not on Standard SelfBurn. Dedupe is `(chainId, tx, logIndex, eventKind)`. Hover/focus pauses dismiss. |
 
+Indexer numbers can lag or be wrong. Balances and fees are onchain. See [Markets API](/docs/markets) and [Trust](/docs/trust).
+
 ## Rewards
 
 Holder rewards are **same-quote**, no staking. Claim on the token page. When Rewards `eligibleSupply==0`, the 2% goes to SelfBurn (not the first remaining holder).
 
-CORE never ranks in Top-10. Ranks are an **offchain API** — contracts check structure only. See [Trust](/docs/trust).
+Past rewards persist across transfers. A new holder does not inherit the previous accumulator. See [Rewards](/docs/rewards).
 
 If a page fails to render, the **error boundary** keeps the rest of the app (nav, other routes). No funds move from that screen. Quote / trade / launch errors show a short `ref` operators can match to backend logs. See [Observability](/docs/observability).
 
-Continue: [Quoter](/docs/quoting) · [Fees](/docs/fees) · [Markets API](/docs/markets) · [Valuation](/docs/valuation).
+## Top-10 and CORE
+
+CORE never ranks in Top-10. Ranks are an **offchain API** (`GET /top10` — ValuationService + persisted `current_supply`, schema **v11**). Contracts check structure only. THE REACTOR UI (`/reactor`) proxies that snapshot plus onchain epoch events. Treat that board as trusted computation, not an oracle. Not a Factory RPC.
+
+See [Top-10](/docs/top-10), [CORE](/docs/core), [Trust](/docs/trust).
+
+## Honest trader limits
+
+- Exact-out exists at the hook but is less tested in the UI. Tickets are exact-in.
+- External / hookless pools of the same token may exist. They do not pay REACTOR economics.
+- Sandwich / JIT on a 0% LP pool is accepted AMM risk. Set slippage you can live with.
+- A `POST /quote` JSON body over **16KiB** (hard max **64KiB**) is **413**.
+- If a page fails to render, the **error boundary** keeps the rest of the app (nav, other routes). No funds move from that screen. See [Observability](/docs/observability).
+
+Continue: [Quoter](/docs/quoting) · [Fees](/docs/fees) · [Lifecycle](/docs/lifecycle) · [Troubleshooting](/docs/troubleshooting).
