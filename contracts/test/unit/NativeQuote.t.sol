@@ -45,8 +45,12 @@ contract NativeQuoteTest is Base {
             twitter: "",
             telegram: ""
         });
-        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuthFor(
-            alice, "CHL", parent, factory.expectedVirtualQuote0(parent), LaunchAuthorization.INSTANT_CURVE_V1
+        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuthIdentity(
+            alice,
+            cp,
+            factory.expectedVirtualQuote0(parent),
+            LaunchAuthorization.INSTANT_CURVE_V1,
+            LaunchAuthorization.MODE_REWARDS
         );
         vm.prank(alice);
         (address child,) = factory.instantLaunch(cp, a, sig);

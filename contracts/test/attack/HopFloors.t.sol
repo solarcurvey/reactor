@@ -68,8 +68,8 @@ contract HopFloorsTest is Base {
             twitter: "",
             telegram: ""
         });
-        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuthFor(
-            alice, "CAT", zcat, factory.expectedVirtualQuote0(zcat), LaunchAuthorization.INSTANT_CURVE_V1
+        (LaunchAuthorization.Auth memory a, bytes memory sig) = _launchAuthIdentity(
+            alice, cp, factory.expectedVirtualQuote0(zcat), LaunchAuthorization.INSTANT_CURVE_V1, LaunchAuthorization.MODE_REWARDS
         );
         vm.prank(alice);
         (address cat,) = factory.instantLaunch(cp, a, sig);
