@@ -101,28 +101,19 @@ assert(Number(alert?.ts) >= nowMs, "alerts.ts milliseconds");
 await store.close();
 
 {
-  // Real v8 DB: journal identity present, tokens.current_supply absent.
+  // Real post-#27 DB: full v8 journal identity, then strip only v9 current_supply.
   const v8dir = mkdtempSync(join(tmpdir(), "reactor-v8-"));
   const v8 = await openStore({ sqlitePath: join(v8dir, "v8.sqlite") });
-  await v8.exec("DROP TABLE IF EXISTS tokens");
-  await v8.exec(`
-    CREATE TABLE tokens (
-      address TEXT PRIMARY KEY,
-      symbol TEXT,
-      name TEXT,
-      decimals INTEGER,
-      creator TEXT,
-      quote TEXT,
-      mode INTEGER,
-      rewards_mode INTEGER,
-      supply TEXT,
-      ticker TEXT,
-      factory_version INTEGER,
-      created_block INTEGER,
-      created_tx TEXT,
-      created_ts INTEGER
-    )
-  `);
+  const journal = await v8.get<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='indexer_event_journal'",
+  );
+  assert(journal?.name === "indexer_event_journal", "post-#27 journal exists before pin");
+  const identity = await v8.get<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_selfburn_identity'",
+  );
+  assert(identity?.name === "idx_selfburn_identity", "post-#27 identity index exists before pin");
+  await v8.exec("ALTER TABLE tokens DROP COLUMN current_supply");
+  await v8.run("DELETE FROM schema_migrations WHERE id >= 9");
   await v8.run(
     `INSERT INTO tokens(address,symbol,name,decimals,creator,quote,mode,rewards_mode,supply,ticker,factory_version,created_block,created_tx,created_ts)
      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
@@ -141,12 +132,14 @@ await store.close();
     "",
     0,
   );
-  await v8.run("DELETE FROM schema_migrations");
-  await v8.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 8, 1_700_000_000);
+  const pinned = await v8.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
+  assert(Number(pinned?.n) === 8, `pinned post-#27 schema is ${pinned?.n}, expected 8`);
+  const preCols = await v8.all<{ name: string }>("PRAGMA table_info(tokens)");
+  assert(!preCols.some((c) => c.name === "current_supply"), "pinned v8 tokens has no current_supply");
   const ver = await applyMigrations(v8);
   assert(ver === 9, `v8 DB migrated to ${ver}, expected 9`);
   const cols = await v8.all<{ name: string }>("PRAGMA table_info(tokens)");
-  assert(cols.some((c) => c.name === "current_supply"), "v9 adds current_supply onto a real v8 tokens table");
+  assert(cols.some((c) => c.name === "current_supply"), "v9 adds current_supply onto a real post-#27 tokens table");
   const backfilled = await v8.get<{ current_supply: string; supply: string }>(
     "SELECT current_supply, supply FROM tokens WHERE address=?",
     "0xdead",
