@@ -10,6 +10,6 @@
 | `EXTERNAL_V4_HOOKLESS` | Proven external v4 pool (fee/hooks from stored key) |
 | `BONDING_CURVE` | InstantCurve buy/sell |
 
-The planner does **not** recreate a generic 0.30% hookless pool. Multi-candidate search ≤ 3 hops; the ticket uses the best **real `amountOut`**. Hops, `amountOut`, hop kinds, hop `minOut`s, and the terminal official/bonding leg are taken from **one** candidate — never a max-`finalOut` preview stitched onto a differently scored path. `UserRouteQuoter` returns `hopOuts`/`kinds` of length `plannedHops + 1` (terminal market leg). Maintenance uses a **separate** fee-exempt planner. Sim fail → unavailable. Never maintenance `minOut` 0/1.
+The planner does **not** recreate a generic 0.30% hookless pool. Multi-candidate search ≤ 3 hops; the ticket uses the best **real `amountOut`**. Hops, `amountOut`, hop kinds, hop `minOut`s, and the terminal official/bonding leg are taken from **one** candidate — never a max-`finalOut` preview stitched onto a differently scored path. `UserRouteQuoter` returns `hopOuts`/`kinds` of length `plannedHops + 1` (terminal market leg). On SELL, `minQuoteOut` is the slipped terminal quoteOut and `minFinalOut` is the slipped final USDC. Maintenance uses a **separate** fee-exempt planner. Sim fail → unavailable. Never maintenance `minOut` 0/1.
 
 See [Atomic quoter](/docs/quoting).

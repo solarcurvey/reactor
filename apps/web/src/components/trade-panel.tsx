@@ -69,6 +69,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         reason?: string;
         amountOut?: string;
         minOut?: string;
+        minQuoteOut?: string;
         hops?: typeof liveHops;
         feeLegs?: Array<{ reactorOfficial: boolean; protocolFeeBps: number; venue: string; notionalQuote?: string }>;
         tx?: { to: string; data: `0x${string}`; functionName: string };
@@ -83,7 +84,9 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       setQuoteTx(q.tx ?? null);
       const notion = q.feeLegs?.find((f) => f.reactorOfficial)?.notionalQuote;
       setQuoteNotional(notion ? BigInt(notion) : side === "buy" && !usdcRoute ? parsed : null);
-      if (q.minOut) setMinQuoteOut(BigInt(q.minOut));
+      if (q.minQuoteOut) setMinQuoteOut(BigInt(q.minQuoteOut));
+      else if (side === "sell" && q.minOut) setMinQuoteOut(BigInt(q.minOut));
+      else setMinQuoteOut(null);
     } catch (e) {
       setQuotedOut(null);
       setError(e instanceof Error ? e.message : "Quote failed. Size may be larger than remaining depth.");
@@ -121,10 +124,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       }
       const bonding = Boolean(t.bonding && t.curve && !t.marketLive);
       const hops = liveHops;
-      const firstMin =
-        side === "sell"
-          ? ((minQuoteOut ?? 0n) * (10_000n - slipBps)) / 10_000n
-          : minOut;
+      const firstMin = side === "sell" ? (minQuoteOut ?? minOut) : minOut;
       if (side === "sell" && usdcRoute && (firstMin === 0n || firstMin === 1n)) {
         setError("minQuoteOut is dust. Increase size.");
         return;
@@ -242,9 +242,10 @@ export function TradePanel({ t }: { t: LaunchToken }) {
           </p>
         ) : (
           <p>
-            First leg min is {t.quoteSymbol}
-            {minQuoteOut !== null ? ` (${formatUnitsSafe(minQuoteOut, quoteDec, 6)})` : ""}; final min is{" "}
-            {usdcRoute ? "USDC" : t.quoteSymbol}. 3.5% (2/1/0.5) comes out of the quote leg.
+            Two sell floors: first-leg min is {t.quoteSymbol}
+            {minQuoteOut !== null ? ` (${formatUnitsSafe(minQuoteOut, quoteDec, 6)})` : ""} — not your token
+            size; final min is {usdcRoute ? "USDC" : t.quoteSymbol}. 3.5% (2/1/0.5) comes out of the quote
+            leg.
           </p>
         )}
         <p>
