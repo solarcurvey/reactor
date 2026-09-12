@@ -1,6 +1,6 @@
 # BUILD REPORT — Issue #16 Arc Public Testnet rehearsal
 
-**Status:** Rebased onto `origin/main` `789eb5c` (#46 observability after #75 / #44 / #70 / #79 / #68 / #67 / #66 / #49 / #42 / #50 / #58 / #73). Protocol **0.3.4**. Factory **V1** unchanged. **#16 stays open.**
+**Status:** Rebased onto `origin/main` `789eb5c` (#46 observability after #75 / #44 / #70 / #79 / #68 / #67 / #66 / #49 / #42 / #50 / #58 / #73). Protocol **0.3.4**. Factory **V1** unchanged. **#16 stays open.** Production-shaped `pnpm arc:wallet-harness` matches the Next `POST /quote` body and can Fair-authorize; live hashes go in `deployments/arc-testnet-journey.json` — do not invent them.
 **Not audited. Not mainnet.**
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
@@ -20,7 +20,7 @@
 | Workflows | Inherited merged **#46** / **#75** / **#44** / **#70** / **#79** / **#68** / **#67** / **#66** / **#49** / **#42** / **#50** / **#73** `.github/workflows/ci.yml` (three-tier + page-budget + `web-qa` + `e2e-release-gate` + `obs-ui` + `docs:links` + sanctions/geo/operator-policy/restricted-access fixtures). Prefer main for CI. Do not rewrite decide-tier. Actions billing empty-step failures are not AC failures. |
 | Mainnet | **Blocked** |
 
-Keep **#16 open** until Instant + Fair explorer AC are human-confirmed. Production Next/indexer/Turnstile authorize path was **not** the smoke signer (Guardian EOA signed LaunchAuthorization directly).
+Keep **#16 open** until Instant + Fair explorer AC are human-confirmed. Guardian-signed Factory smoke (`pnpm arc:smoke`) is recorded. The Next-shaped path is `POST /launch/authorize` → `launchStandard` / `createFairLaunch` → `POST /quote` → `UserRouteExecutor` (`pnpm arc:wallet-harness`). Full PROD still needs Turnstile + isolated signer ≠ deployer.
 
 ---
 

@@ -5,6 +5,7 @@ import {
   claimDecision,
   faucetBlockerSummary,
   isAnvil0Key,
+  productionQuoteBody,
   redactSecrets,
   refuseMainnet,
   ANVIL0_PK,
@@ -69,5 +70,21 @@ const attempts: FaucetAttempt[] = [
 ];
 assert.match(faucetBlockerSummary(attempts), /RECAPTCHA_ERROR/);
 assert.doesNotMatch(faucetBlockerSummary(attempts), /dripped|success/i);
+
+const buyBody = productionQuoteBody({
+  side: "BUY",
+  token: "0x62A7aDF0deb2c1918603e9834dD9ACe07CDA2f87",
+  usdc: "0x44CBe037ABFA8696E4466cA9D278Dbbe44B932dC",
+  amountIn: "1000000",
+  slippageBps: 100,
+  recipient: "0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E",
+});
+assert.equal(buyBody.kind, "BUY");
+assert.equal(buyBody.tokenIn.toLowerCase(), "0x44cbe037abfa8696e4466ca9d278dbbe44b932dc");
+assert.equal(buyBody.tokenOut, buyBody.token);
+const sellBody = productionQuoteBody({ ...buyBody, side: "SELL", token: buyBody.token, usdc: buyBody.tokenIn, amountIn: "2", slippageBps: 100, recipient: buyBody.recipient });
+assert.equal(sellBody.kind, "SELL");
+assert.equal(sellBody.tokenIn, buyBody.token);
+assert.equal(sellBody.tokenOut.toLowerCase(), buyBody.tokenIn.toLowerCase());
 
 console.log("arc-testnet-lib tests ok");

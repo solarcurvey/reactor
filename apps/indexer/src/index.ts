@@ -194,6 +194,11 @@ async function tick(store: Store) {
     }
   }
   let from = last > 0n ? last + 1n : 0n;
+  // Optional catch-up window (Arc Testnet rehearsal). Do not scan genesis on a public RPC.
+  if (from === 0n) {
+    const start = process.env.INDEXER_START_BLOCK?.trim();
+    if (start && /^\d+$/.test(start)) from = BigInt(start);
+  }
   const burnedThisTick = new Set<string>();
   const createdThisTick = new Set<string>();
   const coreAddr = String(addrs.CoreToken ?? addrs.TestCORE ?? "").toLowerCase();

@@ -68,6 +68,35 @@ export function isAnvil0Key(pk: string | undefined): boolean {
   return Boolean(pk && pk.toLowerCase() === ANVIL0_PK);
 }
 
+/** Same POST /quote body as `apps/web/src/components/trade-panel.tsx`. */
+export function productionQuoteBody(input: {
+  side: "BUY" | "SELL";
+  token: string;
+  usdc: string;
+  amountIn: string;
+  slippageBps: number;
+  recipient: string;
+}): {
+  kind: "BUY" | "SELL";
+  token: string;
+  tokenIn: string;
+  tokenOut: string;
+  amountIn: string;
+  slippageBps: number;
+  recipient: string;
+} {
+  const buy = input.side === "BUY";
+  return {
+    kind: input.side,
+    token: input.token,
+    tokenIn: buy ? input.usdc : input.token,
+    tokenOut: buy ? input.token : input.usdc,
+    amountIn: input.amountIn,
+    slippageBps: Math.max(1, input.slippageBps),
+    recipient: input.recipient,
+  };
+}
+
 export function claimDecision(input: ClaimInput): ClaimDecision {
   refuseMainnet(input.chainId);
   if (input.chainId !== ARC_TESTNET_CHAIN_ID) {
