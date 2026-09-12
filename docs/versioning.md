@@ -2,15 +2,15 @@
 
 # Versioning
 
-> Protocol release **0.3.2** (`v0.3.2`, 2026-09-12). Factory **V1** is immutable and is not this number.
+> Protocol release **0.3.3** (`v0.3.3`, 2026-09-12). Factory **V1** is immutable and is not this number.
 
-pre-audit local/testnet — not mainnet. Postgres millisecond timestamps to BIGINT (schema v6). Indexer event journal (schema v8). tokens.current_supply (schema v9). Top-10 ValuationService snapshot tables (schema v10), ranked from current_supply. R2/S3 keys match public /m/<id>.webp. Pricing signer fail-closed when the durable store is unavailable. Factory V1 immutable. Not audited.
+pre-audit local/testnet — not mainnet. External quote USD is a configured provider registry + multi-source consensus. tokens.current_supply is schema v9 (#23). Mark kind is schema v10 (#30 reserves v9). Top-10 snapshot tables are schema v11, ranked from current_supply. Factory V1 immutable. Not audited.
 
 ## Two version numbers
 
 | Kind | What it is | Source of truth | This HEAD |
 | --- | --- | --- | --- |
-| **Protocol release** | Overall REACTOR software + docs release (semver) | `docs/version.json` → `protocolVersion` | **0.3.2** |
+| **Protocol release** | Overall REACTOR software + docs release (semver) | `docs/version.json` → `protocolVersion` | **0.3.3** |
 | **Factory version** | Immutable on-chain factory label for **new launches** | `ReactorFactory.FACTORY_VERSION` | **V1** (`1`) |
 
 Factory **V1 stays V1 forever**. A different fee split, supply, Dev Buy cap, or curve is a **new factory deploy** (V2, V3, …), authorized by Guardian for new launches only. Existing V1 tokens are untouched. See `FACTORY_VERSIONING.md`.
@@ -41,8 +41,8 @@ Every **production** protocol release:
 5. Create an annotated git tag matching `releaseTag`:
 
 ```
-git tag -a v0.3.2 -m "REACTOR protocol 0.3.2"
-git push origin v0.3.2
+git tag -a v0.3.3 -m "REACTOR protocol 0.3.3"
+git push origin v0.3.3
 ```
 
 Rules:

@@ -1,6 +1,7 @@
-# BUILD REPORT — Protocol 0.3.2 Top-10 ValuationService
+# BUILD REPORT — Protocol 0.3.3 Top-10 ValuationService
 
-**Status:** Continue on existing REACTOR Origin repo. Rebased on `5c8d7f8` (main: #19 BIGINT + #20 media + #26 signer). Local Anvil 5042002 + Arc Public Testnet probe only.  
+**Status:** Continue on existing REACTOR Origin repo. Stacked on #23 (`57c140b`, `current_supply` v9) after main `#27` (`b4bf25d`) and consuming #30 consensus marks.  
+
 **Not audited. Not mainnet.**  
 **Economics / 3.5% / curve / Keeper routing / Factory V1 constants: unchanged.**
 
@@ -12,14 +13,14 @@ Rebased onto `main` after #27 merged (`b4bf25d`). `GET /markets` `fdv_usd6` uses
 
 | Item | Value |
 | --- | --- |
-| Protocol release | **0.3.2** (`docs/version.json`) — #19 BIGINT + #20 media + #26 signer + #27 journal + #10 Top-10 |
+| Protocol release | **0.3.3** (`docs/version.json`) — #27 journal + #23 `current_supply` + #30 consensus + #10 Top-10 |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
-| Intent | Replace web `discoverTop10` RPC fanout with canonical indexer ValuationService snapshot (issue #10). Stacked on #23 `current_supply` (v9) after #27 (v8). |
+| Intent | Replace web `discoverTop10` RPC fanout with canonical indexer ValuationService snapshot (issue #10). Rank from persisted `current_supply`. Consume #30 consensus marks. |
 | Foundry | Unchanged from 0.3.1 (**326 passed**) — no contract edits |
-| Indexer / lib | `pnpm --filter indexer test` includes `top10-rank.test.ts` + `tick-atomic.test.ts` + `ingest.valuation.test.ts` + `pnpm docs:check` |
+| Indexer / lib | `pnpm --filter indexer test` includes `top10-rank.test.ts` + `price-marks.test.ts` + `ingest.valuation.test.ts` + `tick-atomic.test.ts` + `pnpm docs:check` |
 | Mainnet | **Blocked** |
 
-## Closed this pass (P1 #7)
+## Closed this pass (P1 #7, already on parent)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
@@ -29,7 +30,7 @@ Rebased onto `main` after #27 merged (`b4bf25d`). `GET /markets` `fdv_usd6` uses
 | Postgres UNIQUE inside the tick transaction | **Yes** | Statement `SAVEPOINT` so caught `23505` does not abort the batch. Replay of the same logs stays idempotent. After `ROLLBACK TO SAVEPOINT`, the savepoint is `RELEASE`d. Prefer `ON CONFLICT DO NOTHING` on log identity. |
 | Append-only event identity too coarse | **Yes** | Schema **v8** (v6 remains BIGINT ms from #19; v7 was `(chain_id, tx, log_index)`): shared `indexer_event_journal` PK `(chain_id, tx, log_index, event_kind)` plus `address`; side tables unique on the same tuple. Inserts pass real `logIndex` + `chainId` + Solidity event name. Two identical same-kind logs in one tx both persist; two kinds at the same log index both persist; replay does not duplicate; other `chain_id` does not collide. |
 
-Honesty: 0.3.0 docs already said “Store work uses real transactions.” That was true for admission/locks, **not** for ingest cursor vs events. This pass makes that sentence true for `tick()`.
+Honesty: 0.3.0 docs already said “Store work uses real transactions.” That was true for admission/locks, **not** for ingest cursor vs events. #27 on parent makes that sentence true for `tick()`.
 
 ## Closed this run
 
@@ -37,16 +38,14 @@ Honesty: 0.3.0 docs already said “Store work uses real transactions.” That w
 | --- | --- | --- |
 | Web Top-10 enumerates Factory + values markets | **Yes** | `/api/reactor/top10` proxies `GET {indexer}/top10`. Source assert in `top10-rank.test.ts` |
 | Keeper vs public page drift | **Yes** | Both read persisted `top10_candidate_epochs` payload |
-| Burn-adjusted supply | **Yes** | persisted `current_supply` (holder `TokenBurned` + `totalSupply()` reconcile). SelfBurn/Top10Buy attribution does not move rank |
+| Burn-adjusted supply | **Yes** | persisted `current_supply` (holder `Burned` + `totalSupply()` reconcile). SelfBurn/Top10Buy attribution does not move rank |
 | Nested marks via ValuationService | **Yes** | NESTED/ZCAT/ZEC fixture in `top10-rank.test.ts` |
+| Consensus marks | **Yes** | Consumes #30 `kind=consensus` / `source=fused` rows. Schema **v10** |
 | Stale external fail-closed | **Yes** | prior-ranked ZEC leaf pauses epoch |
 | CORE excluded data-plane | **Yes** | CORE fixture never in rows |
 | Scale / no O(N) RPC | **Yes** | 8k indexed markets + fetch stub; 0 HTTP/RPC during rank |
 | Assumed 0.30% hookless fallback | **Yes** | Removed from `marketdata.ts` |
-| Schema v10 Top-10 tables (after #27 v8 journal + #23 v9 `current_supply`) | **Yes** | `migrations.ts`. #30 consensus schema not landed (conflicting); ranker tests still use `source=fused` marks |
-| `openStore().catch(() => undefined)` signer bypass | **Yes (main #26)** | `openSignerStore` + `requireDurableStore`. `SIGNER_STORE_UNAVAILABLE` → 503 |
-| Postgres INTEGER overflow on `Date.now()` ms | **Yes (main #19)** | Schema v6 `BIGINT` |
-| R2/S3 key = public `/m/<id>.webp` | **Yes (main #20)** | `mediaObjectKey` / `assertMediaKeyMatchesPublicUri` |
+| Schema v11 Top-10 tables | **Yes** | After #23 v9 `current_supply` + #30 v10 `kind` (v9 reserved) |
 
 ## Still blocked (do not fake)
 
@@ -54,8 +53,9 @@ Honesty: 0.3.0 docs already said “Store work uses real transactions.” That w
 | --- | --- |
 | Public mainnet (5042) | Hard blocked. No addresses. |
 | Independent Codex / professional audit | Not performed. Do not claim audited. |
-| Top-10 as onchain oracle | Frozen offchain by design. |
+| Top-10 as onchain oracle | Frozen offchain by design. External USD marks are the same trust class. |
 | Arc Factory claimed | No funded `ARC_TESTNET_PK` in this environment. |
+| Merge-train rebase after #23/#30 land | #30 (`ad5292b`) assigns `kind` to **v10** and reserves **v9** for #23 `current_supply`. This stack matches that map and puts Top-10 tables at **v11**. After those PRs merge, rebase again — do not reuse v7/v8/v9. Keep #10 open. |
 
 ## EIP-170 sizes
 
@@ -67,6 +67,9 @@ Unchanged from 0.3.1. Factory **stays V1**. Top-10 ranking is off-Factory.
 
 ## Honest gaps that remain
 
+- LOCAL may still use an explicit static ZEC mark when no HTTP URLs are set.
+- Public HTTP hosts (CoinGecko / Coinbase / Kraken parsers) are operator-configured, not a trustless feed.
+- Thin or missing Arc venues skip the 400 bps sanity band rather than inventing a pool price.
 - Unix-seconds INTEGER columns still hit the year-2038 wall on Postgres. Not this P0.
 - LOCAL Turnstile bypass when secret unset (explicit LOCAL only).
 - Funding-parent is a heuristic (ASN + /16 + optional first-USDC-funder).

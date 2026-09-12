@@ -1,0 +1,24 @@
+{
+  "assets": [
+    {
+      "token": "${ZEC_ADDRESS}",
+      "symbol": "ZEC",
+      "important": true,
+      "minSources": 2,
+      "sources": [
+        { "name": "zec-http-1", "kind": "http-json", "parser": "price", "url": "${ZEC_HTTP_URL}" },
+        { "name": "zec-http-2", "kind": "http-json", "parser": "price", "url": "${ZEC_HTTP_URL_2}" }
+      ]
+    },
+    {
+      "token": "${WBTC_ADDRESS}",
+      "symbol": "WBTC",
+      "important": true,
+      "minSources": 2,
+      "sources": [
+        { "name": "wbtc-http-1", "kind": "http-json", "parser": "price", "url": "${WBTC_HTTP_URL}" },
+        { "name": "wbtc-http-2", "kind": "http-json", "parser": "price", "url": "${WBTC_HTTP_URL_2}" }
+      ]
+    }
+  ]
+}

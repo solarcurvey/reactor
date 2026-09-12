@@ -8,6 +8,30 @@ Versioning: [Semantic Versioning](https://semver.org/) for the **protocol releas
 - Git tag: `vMAJOR.MINOR.PATCH` (see [Versioning](docs/versioning.md) and `CONTRIBUTING.md`)
 - Factory **V1 stays V1 forever**. A new fee split or curve is Factory V2, not a protocol patch.
 
+## [0.3.3] - 2026-09-12
+
+External quote USD marks are a configured provider registry with multi-source consensus. Tokenomics **unchanged**. Factory **V1**.
+
+### Added / Changed
+
+- Price providers are keyed by canonical quote address (config + `PRICE_PROVIDERS_JSON`), not hardcoded ZEC/WBTC branches. Important assets accept ≥2 independent HTTP sources (`ZEC_HTTP_URL_2`, `WBTC_HTTP_URL_2`, parsers).
+- Consensus applies documented staleness (120s), deviation (150 bps), optional Arc executable-market sanity (400 bps), and `minSources`. Accepted and rejected observations persist (`kind=observation|consensus`). Schema **v10** adds `external_price_marks.kind` (#30). Schema **v9** is `tokens.current_supply` (#23); #30 reserves that slot. Existing v8 databases `ALTER` + backfill `source IN ('consensus','fused','fail','missing')`.
+- Schema **v11** persists official Top-10 candidates (`top10_candidate_epochs` / `top10_candidate_rows`). Ranking reads persisted `current_supply` (not minted − SelfBurn/Top10Buy), 12m VWAP, and ValuationService consensus ancestry. Holder `burn()` changes rank/FDV.
+- ValuationService consumes the latest accepted consensus row only. PROD never falls back to a static dollar.
+- Launch authorization and material Top-10 candidates fail closed on provider outage or deviation. Trading continues. Isolated signer still requires the durable store (#26).
+- Guardian-added external quotes must have providers configured and `/pricing/health` ok before launch eligibility.
+- Watchdog reads rejected consensus reasons from `/pricing/health`.
+
+### Tokenomics
+
+- No change. Different split = new Factory version, not an edit to V1.
+
+### Known limits (honest)
+
+- Not audited. No public mainnet.
+- Offchain marks are trusted computation, not an onchain oracle.
+- Factory V1 runtime must stay ≤ 23,552.
+
 ## [0.3.2] - 2026-09-12
 
 Postgres millisecond timestamps, media key/URL alignment, signer fail-closed, and canonical Top-10 ValuationService. Tokenomics **unchanged**. Factory **V1**.
@@ -21,7 +45,7 @@ Postgres millisecond timestamps, media key/URL alignment, signer fail-closed, an
 
 - Schema **v6** promotes wall-clock millisecond / lease columns to `BIGINT`: `admission_hits.ts`, `issuance_bucket.updated_ms`, `leader_locks.ts`, `leader_locks.lease_until`, `keeper_operations.ts`, `alerts.ts`. Fresh Postgres DDL matches. Existing v5 databases `ALTER COLUMN … TYPE BIGINT` without data loss.
 - Schema **v7** keys append-only event rows by `(chain_id, tx, log_index)`. Schema **v8** adds shared `indexer_event_journal` and per-table uniqueness on `(chain_id, tx, log_index, event_kind)` plus emitting `address`. Ingest `tick()` commits those rows and the `indexer_state` cursor in one transaction. Postgres savepoints `ROLLBACK TO` + `RELEASE`. SQLite + Postgres regressions in `tick-atomic.test.ts`.
-- Schema **v10** persists official Top-10 candidates (`top10_candidate_epochs` / `top10_candidate_rows`) after schema **v9** `tokens.current_supply`. Ranking reads graduated markets, persisted `current_supply` (token-level burns + bounded `totalSupply()` reconcile — not minted − SelfBurn/Top10Buy), 12m VWAP, and ValuationService ancestry. `GET /top10` is the snapshot; web `/api/reactor/top10` and the Keeper only read it. No assumed 0.30% hookless quote/USDC pool. Scale test: thousands of indexed markets do not trigger per-request RPC. Holder `burn()` changes rank/FDV.
+- Schema **v9** on this stack is `tokens.current_supply` (#23). Top-10 snapshot tables moved to schema **v11** in 0.3.3.
 - Real Postgres integration test (`pnpm --filter indexer test:pg`) inserts current `Date.now()` into admission, issuance bucket, leader lock, Keeper job, and alert paths; Keeper leadership and LaunchAuthorization issuance run against Postgres. CI job `postgres-ms-timestamps` runs that test on GitHub.
 - Backend docs record seconds-vs-milliseconds conventions. SQLite INTEGER is already 64-bit; the production bug is Postgres 32-bit INTEGER overflow (~1.8e12 ms vs max 2_147_483_647).
 

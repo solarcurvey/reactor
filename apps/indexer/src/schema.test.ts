@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { openStore } from "./db.ts";
 import { consumeIssuanceToken } from "./admission.ts";
 import { raiseAlert } from "./alerts.ts";
@@ -12,7 +13,7 @@ function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
 }
 
-assert(SCHEMA_VERSION === 10, "schema version 10 adds Top-10 candidate tables after v9 current_supply");
+assert(SCHEMA_VERSION === 11, "schema version 11 adds Top-10 tables after v10 mark kind and v9 current_supply");
 assert(MS_TIMESTAMP_COLUMNS.length >= 6, "millisecond timestamp columns listed");
 
 const dir = mkdtempSync(join(tmpdir(), "reactor-prod-"));
@@ -24,6 +25,8 @@ for (const t of TABLES) {
   const row = await store.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", t);
   assert(row?.name === t, `missing table ${t}`);
 }
+const markCols = await store.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
+assert(markCols.some((c) => c.name === "kind"), "v10 external_price_marks.kind");
 
 for (const idx of [
   "idx_claims_identity",
@@ -140,8 +143,10 @@ await store.close();
   assert(ver === SCHEMA_VERSION, `v8 DB migrated to ${ver}, expected ${SCHEMA_VERSION}`);
   const cols = await v8.all<{ name: string }>("PRAGMA table_info(tokens)");
   assert(cols.some((c) => c.name === "current_supply"), "v9 adds current_supply onto a real post-#27 tokens table");
+  const kindCols = await v8.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
+  assert(kindCols.some((c) => c.name === "kind"), "v10 adds external_price_marks.kind onto a real post-#27 DB");
   const top10 = await v8.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", "top10_candidate_epochs");
-  assert(top10?.name === "top10_candidate_epochs", "v10 adds Top-10 candidate tables onto a real post-#27 DB");
+  assert(top10?.name === "top10_candidate_epochs", "v11 adds Top-10 candidate tables onto a real post-#27 DB");
   const backfilled = await v8.get<{ current_supply: string; supply: string }>(
     "SELECT current_supply, supply FROM tokens WHERE address=?",
     "0xdead",
@@ -152,4 +157,85 @@ await store.close();
 }
 
 rmSync(dir, { recursive: true, force: true });
+
+// Preceding production schema is v8 (#27 journal). v10 adds mark kind (v9 is current_supply).
+{
+  const upgradeDir = mkdtempSync(join(tmpdir(), "reactor-v8-"));
+  const upgradePath = join(upgradeDir, "v8.sqlite");
+  const seed = new DatabaseSync(upgradePath);
+  seed.exec(`
+    CREATE TABLE schema_migrations (id INTEGER PRIMARY KEY, applied_ts INTEGER NOT NULL);
+    CREATE TABLE external_price_marks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT
+    );
+    CREATE UNIQUE INDEX idx_external_marks_unique ON external_price_marks(token, source, ts);
+  `);
+  const insertMig = seed.prepare("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)");
+  for (let id = 1; id <= 8; id++) insertMig.run(id, 1_700_000_000);
+  seed
+    .prepare("INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason) VALUES(?,?,?,?,?,?,?)")
+    .run("0xzec", "ZEC", "fused", "42000000", 1_700_000_100, 1, "");
+  seed
+    .prepare("INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason) VALUES(?,?,?,?,?,?,?)")
+    .run("0xzec", "ZEC", "coingecko", "41900000", 1_700_000_100, 1, "");
+  const v8Cols = seed.prepare("PRAGMA table_info(external_price_marks)").all() as Array<{ name: string }>;
+  assert(!v8Cols.some((c) => c.name === "kind"), "v8 production marks have no kind");
+  seed.close();
+
+  const upgraded = await openStore({ sqlitePath: upgradePath });
+  assert((await applyMigrations(upgraded)) === SCHEMA_VERSION, `v8 upgrades to v${SCHEMA_VERSION}`);
+  const ver = await upgraded.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
+  assert(Number(ver?.n) === SCHEMA_VERSION, `schema_migrations records v${SCHEMA_VERSION}`);
+  const v9 = await upgraded.get<{ n: number }>("SELECT COUNT(*) as n FROM schema_migrations WHERE id=9");
+  assert(Number(v9?.n) === 1, "stacked branch fills reserved v9 with current_supply");
+  const cols = await upgraded.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
+  assert(cols.some((c) => c.name === "kind"), "v10 adds external_price_marks.kind");
+  const fused = await upgraded.get<{ kind: string }>("SELECT kind FROM external_price_marks WHERE source=?", "fused");
+  const obs = await upgraded.get<{ kind: string }>("SELECT kind FROM external_price_marks WHERE source=?", "coingecko");
+  assert(fused?.kind === "consensus", "legacy fused/consensus/fail/missing backfill to kind=consensus");
+  assert(obs?.kind === "observation", "provider rows default to kind=observation");
+  const top10 = await upgraded.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", "top10_candidate_epochs");
+  assert(top10?.name === "top10_candidate_epochs", "v11 adds Top-10 tables onto a v8 marks DB");
+  await upgraded.close();
+  rmSync(upgradeDir, { recursive: true, force: true });
+}
+
+// #30-only DB: jumped 8→10 (kind present, v9 row reserved/missing, no current_supply).
+{
+  const skipDir = mkdtempSync(join(tmpdir(), "reactor-v10-skip9-"));
+  const skipPath = join(skipDir, "v10.sqlite");
+  const seed = new DatabaseSync(skipPath);
+  seed.exec(`
+    CREATE TABLE schema_migrations (id INTEGER PRIMARY KEY, applied_ts INTEGER NOT NULL);
+    CREATE TABLE tokens (
+      address TEXT PRIMARY KEY, symbol TEXT, name TEXT, decimals INTEGER, creator TEXT, quote TEXT,
+      mode INTEGER, rewards_mode INTEGER, supply TEXT, ticker TEXT, factory_version INTEGER,
+      created_block INTEGER, created_tx TEXT, created_ts INTEGER
+    );
+    CREATE TABLE external_price_marks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT, kind TEXT DEFAULT 'observation'
+    );
+  `);
+  const insertMig = seed.prepare("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)");
+  for (let id = 1; id <= 8; id++) insertMig.run(id, 1_700_000_000);
+  insertMig.run(10, 1_700_000_000);
+  seed.prepare("INSERT INTO tokens(address,supply) VALUES(?,?)").run("0xdead", (10n ** 27n).toString());
+  seed.close();
+
+  const upgraded = await openStore({ sqlitePath: skipPath });
+  assert((await applyMigrations(upgraded)) === SCHEMA_VERSION, `#30-only DB migrates to v${SCHEMA_VERSION}`);
+  const v9 = await upgraded.get<{ n: number }>("SELECT COUNT(*) as n FROM schema_migrations WHERE id=9");
+  assert(Number(v9?.n) === 1, "reserved v9 row is filled with current_supply");
+  const cols = await upgraded.all<{ name: string }>("PRAGMA table_info(tokens)");
+  assert(cols.some((c) => c.name === "current_supply"), "current_supply lands on a #30-only DB that skipped v9");
+  const backfilled = await upgraded.get<{ current_supply: string }>("SELECT current_supply FROM tokens WHERE address=?", "0xdead");
+  assert(backfilled?.current_supply === (10n ** 27n).toString(), "#30-only DB backfills current_supply");
+  const top10 = await upgraded.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", "top10_candidate_epochs");
+  assert(top10?.name === "top10_candidate_epochs", "v11 Top-10 tables land after a #30-only v10");
+  await upgraded.close();
+  rmSync(skipDir, { recursive: true, force: true });
+}
+
 console.log("schema/store tests ok");

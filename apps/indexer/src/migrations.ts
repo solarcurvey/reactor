@@ -1,6 +1,6 @@
 import type { Store } from "./db.ts";
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 /**
  * Wall-clock fields written as `Date.now()` milliseconds (≈1.8e12 today).
@@ -197,7 +197,7 @@ CREATE TABLE IF NOT EXISTS route_venues (
   exists_onchain INTEGER, approved INTEGER, reliability_bps INTEGER
 );
 CREATE TABLE IF NOT EXISTS external_price_marks (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT
+  id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT, symbol TEXT, source TEXT, usd6 TEXT, ts INTEGER, ok INTEGER, reason TEXT, kind TEXT DEFAULT 'observation'
 );
 CREATE TABLE IF NOT EXISTS metadata (
   token TEXT PRIMARY KEY, image TEXT, description TEXT, website TEXT, twitter TEXT, telegram TEXT, media_id TEXT
@@ -503,15 +503,27 @@ export async function applyMigrations(store: Store): Promise<number> {
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 8, Math.floor(Date.now() / 1000));
     current = 8;
   }
+  // v9 = tokens.current_supply (#23). #30 reserves this slot and may jump 8→10.
+  await store.exec("ALTER TABLE tokens ADD COLUMN current_supply TEXT").catch(() => undefined);
+  await store.exec(
+    `UPDATE tokens SET current_supply = supply WHERE current_supply IS NULL OR current_supply = ''`,
+  ).catch(() => undefined);
   if (current < 9) {
-    await store.exec("ALTER TABLE tokens ADD COLUMN current_supply TEXT").catch(() => undefined);
-    await store.exec(
-      `UPDATE tokens SET current_supply = supply WHERE current_supply IS NULL OR current_supply = ''`,
-    ).catch(() => undefined);
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 9, Math.floor(Date.now() / 1000));
     current = 9;
+  } else {
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 9, Math.floor(Date.now() / 1000)).catch(() => undefined);
   }
+  // v10 = external_price_marks.kind (#30).
   if (current < 10) {
+    await store.exec("ALTER TABLE external_price_marks ADD COLUMN kind TEXT DEFAULT 'observation'").catch(() => undefined);
+    await store.exec(
+      "UPDATE external_price_marks SET kind='consensus' WHERE source IN ('consensus','fused','fail','missing') AND (kind IS NULL OR kind='observation')",
+    ).catch(() => undefined);
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 10, Math.floor(Date.now() / 1000));
+    current = 10;
+  }
+  if (current < 11) {
     await store.exec(`
       CREATE TABLE IF NOT EXISTS top10_candidate_epochs (
         id TEXT PRIMARY KEY,
@@ -535,8 +547,8 @@ export async function applyMigrations(store: Store): Promise<number> {
       );
       CREATE INDEX IF NOT EXISTS idx_top10_candidate_token ON top10_candidate_rows(token);
     `);
-    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 10, Math.floor(Date.now() / 1000));
-    current = 10;
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 11, Math.floor(Date.now() / 1000));
+    current = 11;
   }
   return current;
 }

@@ -11,6 +11,23 @@ import { addresses } from "./addresses";
  * VWAP / rank helpers: `packages/reactor/src/top10.ts`.
  */
 
+/** Mirror of `@reactor/core` consumeIndexerValuation — keep web free of that package graph. */
+export function consumeIndexerValuation(
+  response: { ok?: boolean; usd6?: string } | null,
+  reachable: boolean,
+): { usd6: bigint; ok: boolean } | "offline" {
+  if (!reachable || response == null) return "offline";
+  if (response.ok && response.usd6) {
+    try {
+      const usd6 = BigInt(response.usd6);
+      if (usd6 > 0n) return { usd6, ok: true };
+    } catch {
+      return { usd6: 0n, ok: false };
+    }
+  }
+  return { usd6: 0n, ok: false };
+}
+
 const POOLS_SLOT = 6n;
 
 const extsloadAbi = [

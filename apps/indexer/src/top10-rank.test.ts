@@ -85,7 +85,7 @@ const store = await openStore({ sqlitePath: join(dir, "t.sqlite") });
 await seedQuote(store, USDC, "USDC", 6, true);
 await seedQuote(store, ZEC, "ZEC", 8, false);
 await store.run(
-  "INSERT INTO external_price_marks(token,symbol,source,usd6,ts,ok,reason) VALUES(?,?,?,?,?,?,?)",
+  "INSERT INTO external_price_marks(token,symbol,source,usd6,ts,ok,reason,kind) VALUES(?,?,?,?,?,?,?,?)",
   ZEC.toLowerCase(),
   "ZEC",
   "fused",
@@ -93,6 +93,7 @@ await store.run(
   now,
   1,
   "test",
+  "consensus",
 );
 await seedQuote(store, ZCAT, "ZCAT", 18, false, ZEC.toLowerCase());
 await seedMarket(store, ZCAT, "ZCAT", ZEC, true);
@@ -201,7 +202,7 @@ await store.run(
   100,
 );
 await store.run(
-  "INSERT INTO external_price_marks(token,symbol,source,usd6,ts,ok,reason) VALUES(?,?,?,?,?,?,?)",
+  "INSERT INTO external_price_marks(token,symbol,source,usd6,ts,ok,reason,kind) VALUES(?,?,?,?,?,?,?,?)",
   ZEC.toLowerCase(),
   "ZEC",
   "fused",
@@ -209,6 +210,7 @@ await store.run(
   now - 10_000,
   0,
   "stale",
+  "consensus",
 );
 const paused = await computeTop10Epoch(store, { coreAddresses: [CORE], nowSec: now });
 assert(paused.pauseEpoch, `stale external on prior-ranked candidate must fail closed: ${paused.reason}`);

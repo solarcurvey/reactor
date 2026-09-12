@@ -171,7 +171,8 @@ pnpm --filter indexer watchdog
 | 8 | Inactive low-value does not freeze | `Top10Api.t.sol` thousands inactive |
 | 9 | Material candidate freezes | same |
 | 10 | External spot does not control mark | VWAP window + `fuseExternalUsd6` |
-| 11 | Nested ValuationEngine + cycle reject | `valuation.test.ts` |
+| 11 | Nested ValuationService + cycle reject | `valuation.test.ts` |
+| 38 | Configured price registry + consensus persist + fail-closed launch/Top-10 | `pricing.test.ts`, `price-marks.test.ts` |
 | 12 | EURC not $1 | `LaunchPricing.t.sol` |
 | 13 | USDC still requires LaunchAuthorization | `LaunchAuthorization.t.sol` §95 |
 | 14 | Concurrent auths + no replay | `LaunchPricing.t.sol` |
