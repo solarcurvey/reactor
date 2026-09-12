@@ -162,6 +162,8 @@ try {
   assert(journal.rows[0]?.n === "1", "post-#27 journal exists before pin");
   await admin.query("ALTER TABLE external_price_marks DROP COLUMN IF EXISTS kind");
   await admin.query("ALTER TABLE tokens DROP COLUMN IF EXISTS current_supply");
+  await admin.query("DROP TABLE IF EXISTS top10_candidate_rows");
+  await admin.query("DROP TABLE IF EXISTS top10_candidate_epochs");
   await admin.query("DELETE FROM schema_migrations WHERE id >= 9");
   await admin.query(`
     INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason)
@@ -177,6 +179,11 @@ try {
   assert((await applyMigrations(storeV8)) === SCHEMA_VERSION, `real v8 upgrades to v${SCHEMA_VERSION}`);
   assert(await migrationApplied(storeV8, 9), "v8 upgrade writes #23 v9 current_supply");
   assert(await migrationApplied(storeV8, 10), "v8 upgrade writes v10 kind after v9");
+  assert(await migrationApplied(storeV8, 11), "v8 upgrade writes v11 Top-10 tables after v10");
+  const top10 = await admin.query<{ exists: boolean }>(
+    "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='top10_candidate_epochs') AS exists",
+  );
+  assert(top10.rows[0]?.exists, "v11 adds top10_candidate_epochs onto a real post-#27 DB");
   const kindCol = await admin.query<{ data_type: string }>(
     "SELECT data_type FROM information_schema.columns WHERE table_schema='public' AND table_name='external_price_marks' AND column_name='kind'",
   );
@@ -204,6 +211,8 @@ try {
   const storeV9 = await openStore({ databaseUrl: url });
   assert((await applyMigrations(storeV9)) === SCHEMA_VERSION, "boot to stack tip");
   await admin.query("ALTER TABLE external_price_marks DROP COLUMN IF EXISTS kind");
+  await admin.query("DROP TABLE IF EXISTS top10_candidate_rows");
+  await admin.query("DROP TABLE IF EXISTS top10_candidate_epochs");
   await admin.query("DELETE FROM schema_migrations WHERE id >= 10");
   await admin.query(`
     INSERT INTO external_price_marks(token, symbol, source, usd6, ts, ok, reason)
@@ -211,9 +220,10 @@ try {
   `);
   assert(await migrationApplied(storeV9, 9), "pinned v9 has current_supply");
   assert(!(await migrationApplied(storeV9, 10)), "pinned v9 has no kind migration");
-  assert((await applyMigrations(storeV9)) === 10, "real v9 upgrades to v10");
+  assert((await applyMigrations(storeV9)) === SCHEMA_VERSION, "real v9 upgrades through v10 to v11");
   assert(await migrationApplied(storeV9, 9), "v9 row remains");
   assert(await migrationApplied(storeV9, 10), "v10 written after #23");
+  assert(await migrationApplied(storeV9, 11), "v11 Top-10 tables after #30 v10");
   await storeV9.close();
 
   // --- Fresh schema + live Date.now() paths ---

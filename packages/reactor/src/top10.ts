@@ -1,6 +1,89 @@
 /** Offchain Top-10 ranker. Mirrors contracts/src/libraries/Top10Ranker.sol. Never guesses a mark. */
 
+import { Q192 } from "./prices.ts";
+
 export const TOP10_FLOOR_USDC = 250_000n * 1_000_000n;
+/** 12 minutes — middle of the frozen 10–15m VWAP/TWAP window. */
+export const MARK_WINDOW_SEC = 12 * 60;
+export const MIN_VWAP_SAMPLES = 3;
+
+export type PriceSample = { notional: bigint; priceQuoteX18: bigint; ts: number };
+export type TradeSample = { notional: bigint; sqrtPrice: bigint; ts: number };
+
+/** FDV in quote raw units from official sqrtPrice and circulating/total supply. */
+export function fdvQuoteRaw(sqrt: bigint, supply: bigint, tokenIs0: boolean): bigint {
+  if (sqrt === 0n || supply === 0n) return 0n;
+  return tokenIs0 ? (supply * sqrt * sqrt) / Q192 : (supply * Q192) / (sqrt * sqrt);
+}
+
+/** Volume-weighted price_quote_x18. Fail closed on a thin 10–15m window. */
+export function vwapPriceQuoteX18(
+  samples: PriceSample[],
+  nowSec: number,
+  windowSec = MARK_WINDOW_SEC,
+): { priceX18: bigint; ok: boolean; n: number } {
+  const from = nowSec - windowSec;
+  const inWin = samples.filter((s) => s.ts >= from && s.priceQuoteX18 > 0n && s.notional > 0n);
+  if (inWin.length < MIN_VWAP_SAMPLES) return { priceX18: 0n, ok: false, n: inWin.length };
+  let num = 0n;
+  let den = 0n;
+  for (const s of inWin) {
+    num += s.priceQuoteX18 * s.notional;
+    den += s.notional;
+  }
+  if (den === 0n) return { priceX18: 0n, ok: false, n: inWin.length };
+  return { priceX18: num / den, ok: true, n: inWin.length };
+}
+
+/** Historical VWAP ending at the last pre-window trade. */
+export function lastGoodPriceQuoteX18(
+  samples: PriceSample[],
+  nowSec: number,
+  windowSec = MARK_WINDOW_SEC,
+): bigint {
+  const older = samples.filter((s) => s.ts < nowSec - windowSec && s.priceQuoteX18 > 0n && s.notional > 0n);
+  if (older.length < MIN_VWAP_SAMPLES) return 0n;
+  const end = older[older.length - 1]!.ts;
+  const v = vwapPriceQuoteX18(older, end, windowSec);
+  return v.ok ? v.priceX18 : 0n;
+}
+
+/** Volume-weighted FDV in quote raw from indexed trades. Fail closed on thin windows. */
+export function vwapFdvQuoteRaw(
+  samples: TradeSample[],
+  supply: bigint,
+  tokenIs0: boolean,
+  nowSec: number,
+  windowSec = MARK_WINDOW_SEC,
+): { fdv: bigint; ok: boolean } {
+  const from = nowSec - windowSec;
+  const inWin = samples.filter((s) => s.ts >= from && s.sqrtPrice > 0n && s.notional > 0n);
+  if (inWin.length < MIN_VWAP_SAMPLES || supply === 0n) return { fdv: 0n, ok: false };
+  let num = 0n;
+  let den = 0n;
+  for (const s of inWin) {
+    const fdv = fdvQuoteRaw(s.sqrtPrice, supply, tokenIs0);
+    if (fdv === 0n) continue;
+    num += fdv * s.notional;
+    den += s.notional;
+  }
+  if (den === 0n) return { fdv: 0n, ok: false };
+  return { fdv: num / den, ok: true };
+}
+
+/** Historical VWAP ending at the last pre-window trade. `nowSec = last.ts` so 3 samples in 12m can qualify. */
+export function lastGoodFdvQuote(samples: TradeSample[], supply: bigint, tokenIs0: boolean, nowSec: number): bigint {
+  const older = samples.filter((s) => s.ts < nowSec - MARK_WINDOW_SEC && s.sqrtPrice > 0n && s.notional > 0n);
+  if (older.length < MIN_VWAP_SAMPLES) return 0n;
+  const end = older[older.length - 1]!.ts;
+  const v = vwapFdvQuoteRaw(older, supply, tokenIs0, end);
+  return v.ok ? v.fdv : 0n;
+}
+
+export function isCoreToken(token: string, coreAddresses: readonly string[]): boolean {
+  const t = token.toLowerCase();
+  return coreAddresses.some((a) => a && a.toLowerCase() === t);
+}
 
 export type RankCandidate = {
   token: string;
