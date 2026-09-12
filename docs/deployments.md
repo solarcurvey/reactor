@@ -7,7 +7,7 @@
 | Network | Chain ID | Status | Notes |
 | --- | --- | --- | --- |
 | Local Anvil (PLACEHOLDER — not testnet, not mainnet) | 5042002 | Placeholder / not claimed | Committed `deployments/local.json` is a local demo dump. Not Arc Public Testnet. Not mainnet. Keys added after this dump (TickerRegistry, ProtocolV4Adapter, LaunchSigner, CoreToken) are listed as not recorded until a fresh `forge script Deploy`. |
-| Arc Public Testnet — NOT CLAIMED | 5042002 | Placeholder / not claimed | RPC and canonical USDC are documented in TESTNET_DEPLOYMENT.md. This repo does not claim a live REACTOR deploy. Do not treat empty cells as zero-address deploys. |
+| Arc Public Testnet — NOT CLAIMED | 5042002 | Placeholder / not claimed | RPC and canonical USDC are documented in TESTNET_DEPLOYMENT.md. Live #16 rehearsal evidence is deployments/arc-testnet-rehearsal.md (claimed false; Circle faucet RECAPTCHA_ERROR). This repo does not claim a live REACTOR deploy. Do not treat empty cells as zero-address deploys. |
 | Arc Mainnet — BLOCKED | 5042 | Placeholder / not claimed | Never invent mainnet addresses. Chain 5042 is hard-disabled in Keeper/apps. |
 
 v4 `PoolManager`: production accepts **verified** Arc addresses only. This repo does not hardcode a mainnet or unverified testnet PoolManager.
@@ -50,7 +50,7 @@ Committed `deployments/local.json` is a local demo dump. Not Arc Public Testnet.
 
 ## Arc Public Testnet — NOT CLAIMED
 
-RPC and canonical USDC are documented in TESTNET_DEPLOYMENT.md. This repo does not claim a live REACTOR deploy. Do not treat empty cells as zero-address deploys.
+RPC and canonical USDC are documented in TESTNET_DEPLOYMENT.md. Live #16 rehearsal evidence is deployments/arc-testnet-rehearsal.md (claimed false; Circle faucet RECAPTCHA_ERROR). This repo does not claim a live REACTOR deploy. Do not treat empty cells as zero-address deploys.
 
 | Contract | Factory version | Protocol release | Address | Chain | Source commit/tag | Deployment date | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- |

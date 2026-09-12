@@ -5,6 +5,9 @@ coverage/
 .turbo/
 .env
 .env.local
+.env.production
+.arc-testnet-pk
+.arc-testnet-deployer.json
 *.log
 .DS_Store
 apps/indexer/data/

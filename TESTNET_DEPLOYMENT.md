@@ -26,7 +26,9 @@ Gas: minimum `maxFeePerGas` 20 gwei. Base fee paid to beneficiary (no ETH-style 
 
 Buyback **testnet** safety constants are in `ReactorConstants` (300 bps impact, 20% chunk, 10% reserve, 1500 bps ref deviation, 5 min cooldown). See `ECONOMICS.md`.
 
-This environment does **not** automatically have a dedicated funded Arc Testnet key. If no key + faucet funds exist, **do not fabricate explorer evidence**. Checklist: `scripts/arc-testnet-checklist.md`. Blocker file: `deployments/arc-testnet-blocker.md`.
+This environment does **not** automatically have a dedicated funded Arc Testnet key. If no key + faucet funds exist, **do not fabricate explorer evidence**. Checklist: `scripts/arc-testnet-checklist.md`. Blocker file: `deployments/arc-testnet-blocker.md`. Full #16 rehearsal: `pnpm arc:rehearsal` + `scripts/arc-testnet-runbook.md`. Evidence: `deployments/arc-testnet-rehearsal.md`.
+
+**Circle faucet (2026-09-12 VM):** `POST https://faucet.circle.com/api/graphql` mutation `RequestToken` (`blockchain: ARC`, `token: USDC`) returns HTTP 200 with `extensions.code = RECAPTCHA_ERROR` / `ReCAPTCHA verification failed`. `POST https://api.circle.com/v1/faucet/drips` returns HTTP 401 without a Circle API key. Arc docs list no other faucet. A disposable `cast wallet new` address waits for a human reCAPTCHA drip.
 
 ## Deploy REACTOR (local / funded testnet)
 

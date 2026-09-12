@@ -1,6 +1,6 @@
 # AUDIT HANDOFF — REACTOR V1
 
-**This software has not been audited.** Treat every contract as hostile-unreviewed. Do not deploy to Arc Mainnet (5042). No production claim. No Arc Public Testnet claim.
+**This software has not been audited.** Treat every contract as hostile-unreviewed. Do not deploy to Arc Mainnet (5042). No production claim. No Arc Public Testnet claim. Live #16 rehearsal (`deployments/arc-testnet-rehearsal.md`) verified chain `5042002` and recorded a Circle faucet `RECAPTCHA_ERROR`; Factory remains unclaimed.
 
 **Protocol release:** `0.3.4` (`v0.3.4`, `docs/version.json`). **Factory version:** V1 (`FACTORY_VERSION = 1`) — immutable, not the protocol semver.
 

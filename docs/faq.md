@@ -72,4 +72,6 @@
 
 **Where is the sanctions runbook?** [Sanctions runbook](/docs/sanctions-runbook), linked from [Incident response](/docs/incident-response).
 
+**Is REACTOR live on Arc Public Testnet?** Not claimed. `pnpm arc:rehearsal` records live RPC/chain evidence. Circle faucet drips require a human reCAPTCHA (`RECAPTCHA_ERROR` from this VM). See `deployments/arc-testnet-rehearsal.md`. Do not treat empty deployment cells as addresses.
+
 See [Troubleshooting](/docs/troubleshooting), [Glossary](/docs/glossary), [Trust](/docs/trust), [Observability](/docs/observability), [CI and cost](/docs/ci).

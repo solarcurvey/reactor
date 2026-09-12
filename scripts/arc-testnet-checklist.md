@@ -1,6 +1,6 @@
 # Arc Public Testnet deploy checklist
 
-Use this when `ARC_TESTNET_PK` is a **funded** EOA on chain `5042002`. If the key is missing, stop and keep `claimed: false`. See `deployments/arc-testnet-blocker.md`.
+Use this when `ARC_TESTNET_PK` is a **funded** EOA on chain `5042002`. If the key is missing, stop and keep `claimed: false`. See `deployments/arc-testnet-blocker.md`. Full journey (issue #16): `scripts/arc-testnet-runbook.md` and `pnpm arc:rehearsal`.
 
 ## Pre-flight
 

@@ -1,0 +1,33 @@
+{
+  "at": "2026-09-12T19:32:21.365Z",
+  "claimedArcTestnet": false,
+  "network": "arc-public-testnet",
+  "steps": [
+    {
+      "id": "factory_code",
+      "status": "blocked",
+      "detail": "0x851356ae760d987E095750cCeb3bC6014560891C has no code on 5042002. /workspace/deployments/local.json is not a live testnet dump."
+    },
+    {
+      "id": "instant_launch",
+      "status": "blocked",
+      "detail": "Waiting for funded deploy + claimed addresses. Production Next env is in deployments/arc-testnet.env.example."
+    },
+    {
+      "id": "buy",
+      "status": "blocked",
+      "detail": "depends on Instant launch"
+    },
+    {
+      "id": "sell",
+      "status": "blocked",
+      "detail": "depends on BUY"
+    }
+  ],
+  "blockers": [
+    "ReactorFactory not deployed on Arc Public Testnet — cannot Instant launch"
+  ],
+  "note": "Production Instant path: admit/authorize → Factory.launchStandard → POST /quote → UserRouteExecutor.buy/sell with nonzero minOut.",
+  "indexer": "http://127.0.0.1:43148",
+  "chainId": 5042002
+}

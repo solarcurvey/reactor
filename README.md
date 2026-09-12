@@ -86,7 +86,7 @@ GitHub Actions is three-tier (fast PR / full merge-candidate / main). Docs-only 
 
 **Media:** `sharp` is required. On a fresh host, `pnpm approve-builds` (allow `sharp`) if the install asks.
 
-**Arc Public Testnet:** this repo does not claim a Factory deploy without an explorer hash. If `ARC_TESTNET_PK` is unset, see `deployments/arc-testnet-blocker.md`.
+**Arc Public Testnet:** this repo does not claim a Factory deploy without an explorer hash. `pnpm arc:rehearsal` records live RPC + faucet evidence (`deployments/arc-testnet-rehearsal.md`). If `ARC_TESTNET_PK` is unset or the Circle faucet reCAPTCHA blocks the VM, see `deployments/arc-testnet-blocker.md` and `scripts/arc-testnet-runbook.md`. Keep issue #16 open until Instant + BUY/SELL explorer hashes exist.
 
 ## Protocol notes
 

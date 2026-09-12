@@ -12,7 +12,8 @@ Source probe: `deployments/arc-factory-attempt.json` (RPC live, Factory sizes re
 | Arc Public Testnet RPC `https://rpc.testnet.arc.io` | Live (see attempt JSON `head`) |
 | Chain id `5042002` | Verified |
 | Factory runtime ≤ EIP-170 24,576 | Recorded in attempt JSON / `pnpm size:guard` |
-| Funded EOA private key `ARC_TESTNET_PK` | **Missing** |
+| Funded EOA private key `ARC_TESTNET_PK` | **Missing or unfunded** (disposable `cast wallet new` address is in `deployments/arc-testnet-rehearsal.md`) |
+| Circle faucet drip | **Blocked** — GraphQL `RECAPTCHA_ERROR` (`ReCAPTCHA verification failed`) from this VM. Developer `/v1/faucet/drips` is HTTP 401 without an API key. |
 | Explorer confirmation on [testnet.arcscan.app](https://testnet.arcscan.app) | **None** |
 | Uniswap v4 PoolManager on Arc Public Testnet | **Not deployed** (protocol dependency) |
 

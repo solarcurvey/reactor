@@ -32,7 +32,7 @@
       "deploymentDate": null,
       "verificationUrl": null,
       "verificationNote": "No REACTOR contracts claimed on explorer. Do not invent addresses.",
-      "note": "RPC and canonical USDC are documented in TESTNET_DEPLOYMENT.md. This repo does not claim a live REACTOR deploy. Do not treat empty cells as zero-address deploys."
+      "note": "RPC and canonical USDC are documented in TESTNET_DEPLOYMENT.md. Live #16 rehearsal evidence is deployments/arc-testnet-rehearsal.md (claimed false; Circle faucet RECAPTCHA_ERROR). This repo does not claim a live REACTOR deploy. Do not treat empty cells as zero-address deploys."
     },
     {
       "id": "arc-mainnet",

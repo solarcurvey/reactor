@@ -38,6 +38,16 @@ Canonical Multicall3 (`0xcA11bde05977b3631167028862bE2a173976CA11`) is **not ass
 
 Chainlink CRE lists a separate **Arc Testnet** (EIP-155 **1883**) for TypeScript workflows. This repo’s 5042002 demo and 5042 mainnet are not that catalog entry. CRE production writes to Arc Mainnet **5042 are not available and not claimed**. See `ops/cre/README.md` and [Automation](/docs/automation).
 
+## Issue #16 rehearsal
+
+`pnpm arc:rehearsal` probes live RPCs (`rpc.testnet.arc.io`, `rpc.testnet.arc.network`, plus Arc-doc alternates), verifies `eth_chainId = 5042002`, attempts the Circle faucet, and writes `deployments/arc-testnet-rehearsal.json` + `.md`. **claimed stays false** without an explorer hash.
+
+`pnpm arc:wallet-harness` is the production Instant + BUY/SELL path (same ABIs as the Next app: `POST /launch/authorize` → `launchStandard` → `POST /quote` → `UserRouteExecutor`). It exits nonzero when Factory has no code on 5042002.
+
+`pnpm arc:prod-web` writes `deployments/arc-testnet.env.example`. It refuses to mark the production build claimed unless `deployments/arc-testnet.json` has an explorer `verificationUrl`.
+
+Circle faucet automation receives GraphQL `RECAPTCHA_ERROR` (`ReCAPTCHA verification failed`). Fund the waiting address by hand, then re-run. Runbook: `scripts/arc-testnet-runbook.md`. Keep [#16](https://github.com/solarcurvey/reactor/issues/16) open until AC is met.
+
 ## Mainnet blockers (honest)
 
 1. Uniswap v4-core BUSL-1.1 — no production deploy without Additional Use Grant or Change Date (2027-06-15).
