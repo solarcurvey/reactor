@@ -75,9 +75,12 @@ export class ReactorClient {
   }
 
   async authorize(body: Record<string, unknown>) {
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    const wallet = typeof body.wallet === "string" ? body.wallet : typeof body.creator === "string" ? body.creator : "";
+    if (/^0x[a-fA-F0-9]{40}$/.test(wallet)) headers["x-reactor-wallet"] = wallet;
     const r = await fetch(`${this.opts.baseUrl}/launch/authorize`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify(body),
     });
     return r.json();

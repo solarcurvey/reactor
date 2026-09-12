@@ -2,6 +2,10 @@
 
 These are explicit **non-goals** for this hardening pass.
 
+## Official OFAC dataset ingest / trusted geo HMAC (#61 / #63)
+
+This tree’s #62 gate accepts those modules as plugins (`tryBindOfficialPolicyPlugins`). Full official-list ingest and production geo HMAC live on those issues — not reimplemented here.
+
 ## CircleWarp / CCTP
 
 Cross-chain USDC via Circle CCTP (burn on Ethereum/Base/Arbitrum, mint on Arc, auto-buy). Requires source-chain messengers, attestation, and a dedicated keying model. **Not implemented.**

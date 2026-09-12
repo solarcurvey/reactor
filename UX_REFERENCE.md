@@ -9,6 +9,7 @@ Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy,
 - Cards: icon, ticker, quote badge, FDV/mcap (`current_supply` × mark — tracks remaining onchain `totalSupply` after `burn()`, not the initial 1B mint, not a live ≡), 24h, volume, spark. One primary action.
 - Token page is **trading-first**: chart + ticket above fold; social/meta below. Social links render only after the URL allowlist (`noopener noreferrer nofollow`). Images use `SafeTokenImage` (first-party media only).
 - Instant form is compact: image, name, ticker, description, quote, EARNS X vs BUY+BURN, optional Dev Buy. No curve knobs.
+- Operator-policy 403/503 on launch / quote / upload uses the server `error` string (wallet or location unavailable). Not an onchain pause.
 
 ## Interaction
 

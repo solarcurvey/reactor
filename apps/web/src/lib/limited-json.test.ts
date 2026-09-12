@@ -96,8 +96,10 @@ async function main() {
 
   {
     const route = readFileSync(join(process.cwd(), "apps/web/src/app/api/launch-pricing/route.ts"), "utf8");
-    assert(route.includes("readLimitedText"), "BFF uses bounded reader");
-    assert(!route.includes("await req.text()"), "BFF no longer buffers unbounded text");
+    const proxy = readFileSync(join(process.cwd(), "apps/web/src/lib/launch-authorize-proxy.ts"), "utf8");
+    assert(route.includes("proxyLaunchAuthorize"), "BFF uses shared proxy");
+    assert(proxy.includes("readLimitedText"), "BFF uses bounded reader");
+    assert(!route.includes("await req.text()") && !proxy.includes("await req.text()"), "BFF no longer buffers unbounded text");
   }
 
   console.log("limited-json tests ok");

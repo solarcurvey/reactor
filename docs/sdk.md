@@ -4,7 +4,7 @@
 
 ## Authorize a launch
 
-`ReactorClient.authorize` posts `POST /launch/authorize`. It does **not** talk to the isolated signer.
+`ReactorClient.authorize` posts `POST /launch/authorize`. It does **not** talk to the isolated signer. The indexer operator-policy gate runs first (wallet + trusted geo). A `decision` of `deny` / `unavailable` is not a `LaunchAuthorization`. Client “clear” flags are ignored.
 
 ```ts
 import { ReactorClient } from "@reactor/sdk";

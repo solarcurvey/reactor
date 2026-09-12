@@ -1,8 +1,8 @@
-# BUILD REPORT — Trusted geo / jurisdiction policy (#63)
+# BUILD REPORT — Operator policy gate (Refs #62)
 
-**Status:** Ready-for-merge PR for issue **#63** only. Issue **#63 stays open** until independent audit + post-merge verify. Do not auto-close.  
-**Not audited. Not mainnet.**  
-**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+**Status:** Draft PR for independent re-audit. Issue **#62 stays open** until post-merge verify. Do not claim closed. Child of RELEASE GATE **#60**. Rebased onto combined `origin/main` `e712617` after squash-merged **#66** + **#67**. Address screen binds `#61` `indexerSanctionsStore().screen`. Trusted geo binds `#63` `evaluateRequestGeo`.
+**Not audited. Not mainnet.**
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.** No new Guardian power.
 
 ## This HEAD
 
@@ -10,49 +10,33 @@
 | --- | --- |
 | Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
-| Intent | Server-side geo policy interface: ALLOW / DENY / UNKNOWN + reason codes; trusted edge HMAC; versioned comprehensive-jurisdiction file with source + effective date; LOCAL fixtures that cannot load production denylists. |
-| Indexer / lib | `packages/reactor/src/geo-policy.test.ts` + `apps/indexer/src/geo-policy.test.ts` + `pnpm docs:check` |
-| Foundry | Not re-run this pass (offchain policy only) |
-| Rebase | Onto `origin/main` `d08aa1c55bdfc20f9d93cc33446f9c5542a7d1da` after squash-merged **#66** (exact official-list OFAC screening / #61). Same PR **#67** / same branch. Founder re-audit: SY + oblast overblocks closed; #63 stays open until #62/#65 consume. Protocol **0.3.3** / Factory **V1** unchanged. |
-| Mainnet | **Blocked** |
+| Intent | One canonical server-side policy gate on REACTOR-operated write/authorization paths. Client-side blocking is insufficient. |
+| Decision module | `packages/reactor/src/sanctions-policy.ts` — `allow` / `deny` / `unavailable` + machine reason codes |
+| Enforcement | `apps/indexer/src/operator-policy.ts` `gateProtectedWrite` on admit / authorize / quote / upload / isolated signer; Next BFF forwards and does not honor client flags |
+| Address screen | Merged `#61` `indexerSanctionsStore().screen` / `GET /sanctions/screen` (lookup API stays ungated) |
+| Tests | Unit matrix + production-shaped indexer HTTP + Next `/api/launch-pricing` BFF. Denial before signer/upload/tx canary payloads. |
+| Docs | `/docs/operator-policy`, trust, API, admission, FAQ, builders, SDK, TESTING row 59 |
 
-## Closed this run (#63 ACs — issue stays open)
+## Closed this run (#62 ACs — issue stays open)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
-| One server interface ALLOW / DENY / UNKNOWN + reasons | **Yes** | `evaluateGeoPolicy` / `evaluateRequestGeo` |
-| Production geo from trusted edge only | **Yes** | HMAC headers; unsigned `CF-IPCountry` ignored |
-| Versioned deny policy + source / effective date | **Yes** | `geo-policy-us-comprehensive.v1.json` **revision 3** / 2026-09-12. `CU`/`IR`/`KP` only. `SY` is `not_comprehensive` (E.O. 14312 / 2025-07-01; part 542 removed). Clear Syrian geo → ALLOW. |
-| Region-level when metadata exists; else conservative UNKNOWN | **Yes** | UA without region → `UNKNOWN_REGION_METADATA_UNAVAILABLE` |
-| E.O. 14065 oblast vs Covered Region (FAQ 1009) | **Yes (this HEAD)** | `UA-14` / `UA-09` / `Donetsk Oblast` / `Luhansk Oblast` → UNKNOWN, not DENY. Precise signed `UA-DPR` / `UA-LPR` or `DNR`/`DPR`/`LNR`/`LPR` / People's Republic names → DENY. Documented in `/docs/geo-policy`. |
-| VPN/Tor best-effort only | **Yes** | `confidence: "best_effort"`; T1 → UNKNOWN |
-| LOCAL/test fixtures; no accidental production list | **Yes** | Fixture `FX`/`FY`; `GEO_DENY_COUNTRIES` ignored on LOCAL |
-| No UI country checks | **Yes** | Web source scan in `geo-policy.test.ts` |
-| Docs + tests same change | **Yes** | `/docs/geo-policy`, trust, THREAT_MODEL, AUDIT_HANDOFF, TESTING row 59 |
-| #61 / #62 / #64 / #65 | **Not this PR** | Out of scope |
-| Independent audit 2026-09-12: stale `SY` blanket deny | **Fixed** | Removed `SY` from jurisdictions; `programNotes` + regression `signed({ country: "SY" })` → ALLOW. Targeted Syrian persons stay #61/#62. |
-| Independent re-audit: whole-oblast `UA-14`/`UA-09` DENY | **Fixed this HEAD** | FAQ 1009. Oblast codes/names → UNKNOWN. Precise covered-region fixture → DENY. |
-| Close #63 | **No** | Founder re-audit closed SY + oblast overblocks. Stays open until #62 enforcement + #65 UX consume, then post-merge verify. |
+| One shared policy module | **Yes** | `evaluateOperatorPolicy` — no per-route ad hoc checks |
+| allow / deny / unavailable + reason codes | **Yes** | `sanctions-policy.test.ts` |
+| Fail closed on blocked or stale/unavailable | **Yes** | HTTP matrix + PROD-without-plugins 503 |
+| Never trust browser clear/country/IP | **Yes** | Spoof headers/body still deny |
+| Real Next/indexer routes | **Yes** | `operator-policy.test.ts`, `operator-policy-bff.test.ts` |
+| Denial before payload | **Yes** | Canary signature/tx/upload absent; downstream counter |
+| Public GET reads documented + unblocked | **Yes** | `/markets` `/health` `/ticker` `/sanctions/screen` |
+| Docs list exact surfaces | **Yes** | `/docs/operator-policy` |
+| No economics redesign / no onchain-block claim | **Yes** | Disclaimer on every denial |
+| Preserve #66 screening APIs | **Yes** | `GET /sanctions/screen`, `GET /sanctions/dataset`, `indexerSanctionsStore().screen` |
 
 ---
 
-# Prior — Full GitHub CI extras on the #73 cost-control workflow (issue #17 / #42)
+# Prior — Exact official-list sanctions screening (Refs #61)
 
-**Status:** Merged **#42** on `origin/main` `80d3cac` after **#50** `e5fd745` / **#58** `c03c698`. Issue **#17 stays open**.  
-**Not audited. Not mainnet.** Tokenomics unchanged.
-
----
-
-# Prior — Eliminate RPC waterfalls (#37 / #50)
-
-**Status:** Merged **#50** on `origin/main` `e5fd745` after **#58** `c03c698`. Issue **#37 stays open**.  
-**Not audited. Not mainnet.** Tokenomics unchanged.
-
----
-
-# Prior — Exact official-list sanctions screening (Refs #61 / merged #66)
-
-**Status:** Branch `cursor/ofac-sanctions-dataset-1a33` / PR **#66**, rebased onto `origin/main` `ad7b457` after **#49** (UI QA) on #42 / #50 / #58. Issue **#61 stays open** until merge **and** post-merge verify (parent RELEASE GATE **#60**). Do not auto-close.  
+**Status:** Squash-merged **#66** (`d08aa1c`) on `origin/main`. Issue **#61 stays open** until post-merge verify (parent RELEASE GATE **#60**). Do not auto-close.  
 **Not audited. Not mainnet. Not a legal/OFAC compliance claim.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Protocol release remains 0.3.3** — do not restore a pre-rewrite version.
@@ -100,9 +84,25 @@ Full-only job `web-qa` (`pnpm --filter web test:qa`) plus cheap units in `test:l
 
 ---
 
+| Blocker | Why |
+| --- | --- |
+| Public mainnet (5042) | Hard blocked. No addresses. |
+| Claim Arc Multicall3 exists | Probe only. Do not hardcode yes. |
+| Close #37 | **Stays open** until merge + post-merge verify. Do not close from BUILD_REPORT. `Refs #37`. |
+| Close #10 | Stays open (merged #53). Do not `Fixes #10`. |
+| Top-10 as onchain oracle | Frozen offchain by design. TTL is offchain policy. |
+
+---
+
+# Prior — merged #58 next-build lint / typecheck
+
+**Status:** Merged on `origin/main` `c03c698`. `ohlcv-chart.tsx` lint/typecheck only. Architecture and tokenomics unchanged.
+
+---
+
 # Prior — CI cost cut without weakening release gates (Refs #69)
 
-**Status:** Merged **#73** (`300b7e5`) on `origin/main`. Issue **#69 stays open**. Cost/frequency refactor only. #15 / #17 / #18 production-readiness commands stay reachable.  
+**Status:** Merged **#73** (`300b7e5`) on `origin/main`. Issue **#69 stays open** until post-merge verify. Cost/frequency refactor only. #15 / #17 / #18 production-readiness commands stay reachable.
 **Not audited. Not mainnet.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Visibility was NOT changed.**
@@ -150,7 +150,7 @@ Founder (Davis): Support purge/GC of pre-rewrite dangling SHAs is **not required
 
 # Prior — History rewrite to noreply + prune (Refs #72 / #76)
 
-**Status:** Merged **#76** (`0bd9b82`) after **#74**. Issue **#72 stays open** until founder AC verify (visibility flip is still a founder gate). Do not `Fixes #72`.  
+**Status:** Merged **#76** (`0bd9b82`) after **#74**. Issue **#72 stays open** until founder AC verify (visibility flip is still a founder gate). Do not `Fixes #72`.
 **Not audited. Not mainnet.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Visibility was NOT changed. History WAS rewritten (founder-authorized).**
@@ -170,7 +170,7 @@ Founder (Davis): Support purge/GC of pre-rewrite dangling SHAs is **not required
 | Docs | `/docs/publicization` rewrite notes + SHA map |
 | Mainnet | **Blocked** |
 
-## Closed this run (#72 ACs — issue stays open)
+## Closed that run (#72 ACs — issue stays open)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |

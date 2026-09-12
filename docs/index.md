@@ -13,7 +13,7 @@ This software is **not audited**. There is **no public mainnet**. Local and test
 | Trader | [Trade on REACTOR](/docs/traders) |
 | Creator | [Launch a token](/docs/creators) |
 | Builder | [API, SDK, events](/docs/builders) · [Read path](/docs/perf) · [UI QA](/docs/qa) |
-| Protocol | [Curve](/docs/curve) · [Fees](/docs/fees) · [Quoter](/docs/quoting) · [Trust](/docs/trust) |
+| Protocol | [Curve](/docs/curve) · [Fees](/docs/fees) · [Quoter](/docs/quoting) · [Trust](/docs/trust) · [Operator policy](/docs/operator-policy) |
 | Reference | [API](/docs/api) · [Arc](/docs/arc) · [FAQ](/docs/faq) · [CI](/docs/ci) · [Versioning](/docs/versioning) · [Repo publicization](/docs/publicization) |
 
 ## The machine
@@ -55,7 +55,8 @@ See [Trust](/docs/trust) for the rest of the top 10.
 - Quote tickets are **one `UserRouteQuoter` eth_call** per candidate. The selected path, `amountOut`, hop kinds, `minOut`s, `feeLegs[]`, and terminal official/bonding result are the **same** `pickBest` winner. `PreviewRoute` is `plannedHops + 1`. Nested official 3.5% legs compound to 6.88% for two hops. `minOut` is never 0 or 1. SELL uses two floors from that preview: `minQuoteOut` (first-leg quote) and `minOut` (final USDC).
 - Arc finality is deterministic BFT — no eth-8 lag. Native gas is USDC-18; protocol USDC is 6 decimals.
 - Token names / tickers / descriptions / URLs / images are **untrusted** in the public UI. No raw HTML. [Browser security](/docs/web-security).
-- Exact official-list address screening (`GET /sanctions/screen`) is **not** legal/OFAC compliance and is **not** a launch/trade gate yet. [Address screening](/docs/sanctions).
-- Geo jurisdiction checks are a **server** ALLOW / DENY / UNKNOWN policy over trusted edge metadata. The UI does not ship a country deny list. Not a legal opinion. [Geo policy](/docs/geo-policy).
+- Exact official-list address screening (`GET /sanctions/screen`) is **not** legal/OFAC compliance. It is the `#61` lookup used by the operator-policy gate. [Address screening](/docs/sanctions).
+- Geo jurisdiction checks are a **server** ALLOW / DENY / UNKNOWN policy over trusted edge metadata. The UI does not ship a country deny list. Not a legal opinion. HTTP enforcement is [Operator policy](/docs/operator-policy). [Geo policy](/docs/geo-policy).
+- Operator policy (wallet screen + trusted geo) is enforced on REACTOR-operated write/authorization APIs only. Public reads and onchain contracts are not this gate. [Operator policy](/docs/operator-policy).
 
-Continue: [curve math](/docs/curve) · [nested fees](/docs/fees) · [Guardian](/docs/guardian) · [Keeper](/docs/keeper) · [tickers](/docs/tickers) · [admission](/docs/admission) · [browser security](/docs/web-security) · [address screening](/docs/sanctions) · [geo policy](/docs/geo-policy) · [repo publicization](/docs/publicization)
+Continue: [curve math](/docs/curve) · [nested fees](/docs/fees) · [Guardian](/docs/guardian) · [Keeper](/docs/keeper) · [tickers](/docs/tickers) · [admission](/docs/admission) · [operator policy](/docs/operator-policy) · [browser security](/docs/web-security) · [address screening](/docs/sanctions) · [geo policy](/docs/geo-policy) · [repo publicization](/docs/publicization)

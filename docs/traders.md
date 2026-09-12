@@ -6,7 +6,7 @@ Official REACTOR pools are Uniswap v4 with a **0% LP fee**. You pay a **3.5% quo
 
 ## How a trade is quoted
 
-1. The UI (or your bot) calls `POST /quote` with token, side, `amountIn`, slippage.
+1. The UI (or your bot) calls `POST /quote` with token, side, `amountIn`, slippage, and the connected wallet (`recipient`). REACTOR-operated quote assistance is [policy-gated](/docs/operator-policy) (wallet + trusted geo) before a ticket is returned. Public board `GET`s are not.
 2. The indexer plans ≤8 candidates (≤3 hops, no cycles).
 3. Each candidate is one **`UserRouteQuoter` `eth_call`** with state overrides. The indexer does not stitch per-hop sims that would need intermediate wallet balances.
 4. The winner is `pickBest` on the scored previews — not independently “max raw `amountOut`”. Hop `kind` is preserved: `OFFICIAL_REACTOR_V4` / `EXTERNAL_V4_HOOKLESS` / `BONDING_CURVE`. Hops, `amountOut`, kinds, `minOut`s, `feeLegs[]`, and the terminal official/bonding result are **one** candidate. `PreviewRoute` arrays are `plannedHops + 1`.

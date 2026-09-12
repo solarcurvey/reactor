@@ -136,7 +136,11 @@ export default function LaunchPage() {
       };
       signature?: `0x${string}`;
       error?: string;
+      reason?: string;
     };
+    if (body.decision === "deny" || body.decision === "unavailable") {
+      throw new Error(body.error ?? "REACTOR-operated services are unavailable for this request.");
+    }
     if (body.decision === "CHALLENGE") {
       setNeedsChallenge(true);
       throw new Error(body.error ?? "Complete the Cloudflare Turnstile challenge, then retry. CHALLENGE is not ALLOW.");
@@ -352,7 +356,9 @@ export default function LaunchPage() {
               }
               try {
                 const { INDEXER_URL } = await import("@/lib/chain");
-                const res = await fetch(`${INDEXER_URL}/upload`, { method: "POST", body: file });
+                const headers: Record<string, string> = {};
+                if (address) headers["x-reactor-wallet"] = address;
+                const res = await fetch(`${INDEXER_URL}/upload`, { method: "POST", headers, body: file });
                 const body = (await res.json()) as { publicUrl?: string; uri?: string; error?: string };
                 if (!res.ok) throw new Error(body.error ?? "upload failed");
                 const next = sanitizeMediaUrl(body.publicUrl ?? body.uri ?? "");

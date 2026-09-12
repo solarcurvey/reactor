@@ -87,6 +87,7 @@ Open product issues keep their acceptance commands. Attach new heavy jobs to **t
 | #38 | Live toasts | `live-toasts-ui` (full). Units also run in `test:lib` on the fast gate. |
 | #41 / TESTING row 51 | Hostile metadata / CSP | Cheap units in `test:lib`; production build + Playwright corpus in `web-production-security`. |
 | #61 (PR #66) | Exact official-list OFAC screening fixtures | Cheap units in `test:lib` (`@reactor/sanctions` + `sanctions-api.test.ts`). Live HTTPS is `SANCTIONS_NETWORK=1` / `test:sanctions:network` only — not a CI job. Do not add a second workflow. |
+| #62 (PR #68) | Server-side operator policy gate | Cheap units in `test:lib` (`sanctions-policy`, `operator-policy`, `operator-policy-bff`). Official `#61` `sanctions.ts` binds via `tryBindOfficialPolicyPlugins`. No new workflow. |
 | #35–#41 / #51 / #60 | Existing test requirements | Unchanged in substance. Reachable via `TESTING.md` commands and the full gate. |
 
 Recommended required checks (branch protection): **`constants-version-deployments`** (always present), **`page-budget`** (always present — #37 4k-market HTTP/RPC budgets), and **`ci-ok`** (present on merge-candidate + main; requires `page-budget` success). Do not require a check that the fast tier skips.

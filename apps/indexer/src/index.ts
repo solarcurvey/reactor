@@ -34,6 +34,7 @@ import { assetsToPrice, loadPriceRegistry, loadQuoteAssetRows, loadVerifiedVenue
 import { assertProductionHardGates } from "./prod-gates.ts";
 import { assertSharpWorks } from "./sharp-check.ts";
 import { indexerSanctionsStore, opsRefreshSanctions, sanctionsLookup } from "./sanctions.ts";
+import { CORS_POLICY_HEADERS, gateProtectedWrite, tryBindOfficialPolicyPlugins } from "./operator-policy.ts";
 
 const PORT = Number(process.env.INDEXER_PORT ?? 43148);
 /** Exact official-list lookup only. Not a #60 policy gate. */
@@ -101,7 +102,7 @@ function json(res: ServerResponse, code: number, body: unknown, rid?: string) {
   res.statusCode = code;
   for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.setHeader(k, v);
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "content-type,x-request-id,authorization,x-ops-token");
+  res.setHeader("Access-Control-Allow-Headers", CORS_POLICY_HEADERS);
   res.setHeader("Content-Type", "application/json");
   if (code === 413 || code === 429) res.setHeader("Connection", "close");
   if (rid) res.setHeader("x-request-id", rid);
@@ -444,6 +445,11 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     }
     const body = await readPublicJson(req, res, rid);
     if (!body) return;
+    const gate = await gateProtectedWrite({ headers: req.headers, body, surface: "quote" });
+    if (!gate.ok) {
+      json(res, gate.status, { ...gate.body, request_id: rid }, rid);
+      return;
+    }
     const q = await buildQuote(
       {
         store,
@@ -458,6 +464,11 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     return;
   }
   if (url.pathname === "/upload" && req.method === "POST") {
+    const gate = await gateProtectedWrite({ headers: req.headers, surface: "upload" });
+    if (!gate.ok) {
+      json(res, gate.status, { ...gate.body, request_id: rid }, rid);
+      return;
+    }
     const ip = String(req.socket.remoteAddress ?? "x");
     if (!uploadLimit.allow(ip)) {
       json(res, 429, { error: "rate limited", request_id: rid }, rid);
@@ -585,6 +596,11 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     }
     const body = await readPublicJson(req, res, rid);
     if (!body) return;
+    const gate = await gateProtectedWrite({ headers: req.headers, body, surface: "launch.admit" });
+    if (!gate.ok) {
+      json(res, gate.status, { ...gate.body, request_id: rid }, rid);
+      return;
+    }
     const out = await admit(store, {
       ...body,
       ip: String(req.socket.remoteAddress ?? ""),
@@ -599,6 +615,11 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
   if (url.pathname === "/launch/authorize" && req.method === "POST") {
     const body = await readPublicJson(req, res, rid);
     if (!body) return;
+    const gate = await gateProtectedWrite({ headers: req.headers, body, surface: "launch.authorize" });
+    if (!gate.ok) {
+      json(res, gate.status, { ...gate.body, request_id: rid }, rid);
+      return;
+    }
     try {
       const out = await authorizeLaunch(store, {
         ...body,
@@ -685,6 +706,7 @@ async function loop(store: Store) {
 
 assertProductionHardGates();
 await assertSharpWorks();
+await tryBindOfficialPolicyPlugins();
 
 const store = await openStore();
 {

@@ -45,6 +45,7 @@ Hostile-reader notes for Codex / external review. **Not an audit.**
 8. **Guardian cannot** withdraw, mint, change fee BPS, set Top-10, or take fee exemption as a wallet. See `GUARDIAN_MODEL.md`.
 9. **FoT / rebase quotes:** `creditRewards` / vault `accrue` measure actual received; shortfall reverts. Rebasing quotes are unsupported (document + do not register).
 16. **Keeper lease fence** — one `leader_locks` row; live leader renews `lease_until` without changing acquire `ts`; send is refused if renew fails. See `KEEPER_MODEL.md` and `/docs/keeper`.
+17. **Operator policy gate (#62)** — one shared offchain decision on REACTOR-operated write/authorization paths (`/launch/admit`, `/launch/authorize`, isolated signer, `/quote`, `/upload`, Next `/api/launch-pricing`). Fail closed on blocked wallet, blocked geo, or stale/unavailable required policy. Browser clear/country/IP flags are not authority. Does **not** block direct onchain use of public contracts. Not a legal/OFAC-compliance opinion. See `/docs/operator-policy`.
 
 ## Offchain indexer (not custody)
 
