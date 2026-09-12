@@ -1,10 +1,35 @@
-# BUILD REPORT — Protocol 0.3.2
+# BUILD REPORT — Issue #3 route candidate integrity
+
+**Status:** Indexer quote-ticket atomicity on protocol 0.3.2 (merged onto main @ `b4bf25d` — #27 atomic indexer schema, plus #19 BIGINT, #20 media keys, #26 signer fail-closed).  
+**Not audited. Not mainnet.**  
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.2** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Keep selected route and atomic preview/`minOut`s from the same candidate (`Fixes #3`). Rebased onto #27 without changing that accepted behavior. |
+| Indexer / lib | `quote-integrity.test.ts` + `tick-atomic.test.ts` + `pnpm --filter indexer test` |
+| Foundry | `UserRoute.t.sol` previewBuy/previewSell decode `hopOuts.length == hops.length + 1` |
+| Mainnet | **Blocked** |
+
+## Closed this run
+
+| Leftover | Closed? | Evidence |
+| --- | --- | --- |
+| `quote-service` mix of `bestPreview` (max `finalOut`) with a differently scored `pickBest` route | **Yes** | `quote-select.ts` binds the whole `PreviewRoute` to the pickBest winner. Routing-hop outs/kinds (`plannedHops`) are split from the terminal official/bonding slot (`plannedHops + 1`). BUY and SELL regressions decode `PreviewRoute`. Foundry `previewBuy`/`previewSell` assert `hopOuts.length == hops.length + 1`. |
+
+---
+
+# Prior — Protocol 0.3.2
 
 **Status:** Continue on existing REACTOR Origin repo. Parent `9f29527` (#20 media key/URL on #19 BIGINT, Factory V1).  
 **Not audited. Not mainnet.**  
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
-## This HEAD
+## Prior HEAD (0.3.2)
 
 | Item | Value |
 | --- | --- |

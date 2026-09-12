@@ -189,6 +189,7 @@ There is no Ownable, admin, bootstrap, or first-caller-wins `bindFactory`.
 
 - Official router is exact-in first. Exact-out exists at the hook but is less tested in the UI.
 - UserRoute `sell` takes caller `minQuoteOut` on the official first-leg and `minFinalOut` on the USDC exit. Intermediate hop floors are caller-supplied (`RouteExec` rejects 0). Sandwich of the official pool reverts when those floors are set from a quote (`UserRoute.t.sol`).
+- `POST /quote` tickets take hops, `amountOut`, hop kinds, hop `minOut`s, and the terminal official/bonding result from **one** selected candidate. `PreviewRoute` is `plannedHops + 1` (BUY appends the market leg; SELL prepends it). The indexer must not pair a max-`finalOut` preview with a differently scored path (`quote-integrity.test.ts`).
 - `launchAndBuy` unsigned path still uses internal curve `minOut=1` then checks the user `minOut` after.
 - No TWAP on buyback; Keeper sets slippage.
 - Fair launch is CCA-inspired, not the Uniswap CCA factory (ADR-002).

@@ -32,7 +32,7 @@ On ALLOW the body includes `launchConfigHash`. The signer recomputes it. A misma
 
 Helpers consume `POST /quote`:
 
-- Use returned `tx.to` / `tx.data` / `amountOut`.
+- Use returned `tx.to` / `tx.data` / `amountOut`. Hops, `amountOut`, and `minOut`s are one candidate.
 - Apply slippage locally. Refuse `minOut` ≤ 1.
 - Preserve hop `kind` and `feeLegs[]` in the UI.
 
