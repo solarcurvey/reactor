@@ -1,6 +1,6 @@
 import type { Store } from "./db.ts";
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 /**
  * Wall-clock fields written as `Date.now()` milliseconds (≈1.8e12 today).
@@ -347,6 +347,55 @@ export async function applyMigrations(store: Store): Promise<number> {
     }
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 6, Math.floor(Date.now() / 1000));
     current = 6;
+  }
+  if (current < 7) {
+    for (const stmt of [
+      "ALTER TABLE claims ADD COLUMN chain_id INTEGER DEFAULT 0",
+      "ALTER TABLE claims ADD COLUMN log_index INTEGER DEFAULT 0",
+      "ALTER TABLE selfburn ADD COLUMN chain_id INTEGER DEFAULT 0",
+      "ALTER TABLE selfburn ADD COLUMN log_index INTEGER DEFAULT 0",
+      "ALTER TABLE flywheel ADD COLUMN chain_id INTEGER DEFAULT 0",
+      "ALTER TABLE flywheel ADD COLUMN log_index INTEGER DEFAULT 0",
+      "ALTER TABLE core_buybacks ADD COLUMN chain_id INTEGER DEFAULT 0",
+      "ALTER TABLE core_buybacks ADD COLUMN log_index INTEGER DEFAULT 0",
+      "ALTER TABLE reward_events ADD COLUMN chain_id INTEGER DEFAULT 0",
+      "ALTER TABLE reward_events ADD COLUMN log_index INTEGER DEFAULT 0",
+      "ALTER TABLE guardian_events ADD COLUMN chain_id INTEGER DEFAULT 0",
+      "ALTER TABLE guardian_events ADD COLUMN log_index INTEGER DEFAULT 0",
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    for (const stmt of [
+      "UPDATE claims SET log_index = id WHERE COALESCE(log_index,0)=0",
+      "UPDATE selfburn SET log_index = id WHERE COALESCE(log_index,0)=0",
+      "UPDATE flywheel SET log_index = id WHERE COALESCE(log_index,0)=0",
+      "UPDATE core_buybacks SET log_index = id WHERE COALESCE(log_index,0)=0",
+      "UPDATE reward_events SET log_index = id WHERE COALESCE(log_index,0)=0",
+      "UPDATE guardian_events SET log_index = id WHERE COALESCE(log_index,0)=0",
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    for (const stmt of [
+      "DROP INDEX IF EXISTS idx_claims_unique",
+      "DROP INDEX IF EXISTS idx_selfburn_unique",
+      "DROP INDEX IF EXISTS idx_flywheel_unique",
+      "DROP INDEX IF EXISTS idx_core_buybacks_unique",
+      "DROP INDEX IF EXISTS idx_reward_events_unique",
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    for (const stmt of [
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_claims_log ON claims(chain_id, tx, log_index)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_selfburn_log ON selfburn(chain_id, tx, log_index)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_flywheel_log ON flywheel(chain_id, tx, log_index)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_core_buybacks_log ON core_buybacks(chain_id, tx, log_index)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_reward_events_log ON reward_events(chain_id, tx, log_index)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_guardian_events_log ON guardian_events(chain_id, tx, log_index)",
+    ]) {
+      await store.exec(stmt).catch(() => undefined);
+    }
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 7, Math.floor(Date.now() / 1000));
+    current = 7;
   }
   return current;
 }

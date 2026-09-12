@@ -31,6 +31,6 @@ Bounded `limit` (default 200, max 500), `before_id` keyset.
 
 ## Events
 
-Inserts treat **only** Postgres `23505` / SQLite `UNIQUE constraint failed` as duplicates. Other errors abort the tick.
+Inserts treat **only** Postgres `23505` / SQLite `UNIQUE constraint failed` as duplicates. Other errors abort the tick. Append-only rows use `(chain_id, tx, log_index)` so two identical same-kind logs in one transaction both persist.
 
 Each ingest tick persists log-derived writes and the `indexer_state` cursor (`block`, `block_hash`) in **one** `BEGIN` / `BEGIN IMMEDIATE` transaction (`persistTickBatch`). A crash after some events but before the cursor — or after the cursor but before remaining events — cannot commit. RPC stays outside the transaction; SSE is after commit. See [Events](/docs/events).

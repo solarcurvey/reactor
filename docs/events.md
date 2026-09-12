@@ -13,6 +13,8 @@ Indexer watches Factory, InstantLaunchModule, hook, curve, vaults, PoolManager, 
 
 ## Idempotence
 
+Append-only event rows (trades, claims, selfburn, flywheel, core buybacks, reward/guardian events) are keyed by **canonical log identity** `(chain_id, tx, log_index)` — not `(tx, token, amount)` or `(tx, quote, kind)`. Two same-kind events in one transaction at different log indexes both persist. Replay of those exact logs is `ON CONFLICT DO NOTHING`. Different `chain_id` values do not collide.
+
 Inserts treat **only** unique-constraint violations as duplicates:
 
 - Postgres `23505`
@@ -26,6 +28,6 @@ Any other error **aborts the tick**. The indexer does not swallow “looks like 
 
 `tick()` fetches logs, block timestamps, and the head hash **first** (RPC). Then **one** Store transaction writes every log-derived row in that range **and** advances `indexer_state` (`block` + `block_hash`). Mid-tick crash or a later write failure rolls **both** back. Reorg rewind of `block` + `block_hash` is the same (`rewindIndexerCursor`).
 
-Postgres statement failures inside that transaction use a `SAVEPOINT` so a caught `23505` does not abort the batch. SQLite uses `BEGIN IMMEDIATE`. SSE publishes **after** commit. Full-market 24h roll and `populateExternalPriceMarks` run **after** commit (incremental rolls stay inside). Proof: `tick-atomic.test.ts` (SQLite + Postgres) and `pg-smoke.ts`.
+Postgres statement failures inside that transaction use a `SAVEPOINT`; on failure the savepoint is `ROLLBACK TO` **and** `RELEASE` so caught `23505` does not accumulate nested savepoint state. Prefer `ON CONFLICT DO NOTHING` on the log identity. SQLite uses `BEGIN IMMEDIATE`. SSE publishes **after** commit. Full-market 24h roll and `populateExternalPriceMarks` run **after** commit (incremental rolls stay inside). Proof: `tick-atomic.test.ts` (SQLite + Postgres) and `pg-smoke.ts`.
 
 See [Markets](/docs/markets). Auditor event list: `AUDIT_HANDOFF.md`.

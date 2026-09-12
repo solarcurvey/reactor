@@ -274,27 +274,60 @@ async function persistOneLog(
     });
   }
   if (name === "RewardClaimed") {
-    try {
-      await store.run("INSERT INTO claims(token,account,amount,block,tx,ts) VALUES(?,?,?,?,?,?)", token.toLowerCase(), String(args.account ?? ""), String(args.amount ?? "0"), block, tx, ts);
+    if (
+      await insertLogOnce(
+        store,
+        `INSERT INTO claims(token,account,amount,block,tx,ts,chain_id,log_index) VALUES(?,?,?,?,?,?,?,?)
+         ON CONFLICT(chain_id, tx, log_index) DO NOTHING`,
+        token.toLowerCase(),
+        String(args.account ?? ""),
+        String(args.amount ?? "0"),
+        block,
+        tx,
+        ts,
+        chainId,
+        logIndex,
+      )
+    ) {
       sse.publish({ type: "rewards", data: { token, account: args.account, amount: args.amount, tx } });
-    } catch (e) {
-      if (!isUniqueViolation(e)) throw e;
     }
   }
   if (name === "SelfBurnAccrued" || name === "SelfBurnExecuted") {
-    try {
-      await store.run("INSERT INTO selfburn(token,quote,amount,burned,kind,block,tx,ts) VALUES(?,?,?,?,?,?,?,?)", token.toLowerCase(), String(args.quote ?? ""), String(args.amount ?? args.quoteIn ?? "0"), String(args.burned ?? "0"), name, block, tx, ts);
+    if (
+      await insertLogOnce(
+        store,
+        `INSERT INTO selfburn(token,quote,amount,burned,kind,block,tx,ts,chain_id,log_index) VALUES(?,?,?,?,?,?,?,?,?,?)
+         ON CONFLICT(chain_id, tx, log_index) DO NOTHING`,
+        token.toLowerCase(),
+        String(args.quote ?? ""),
+        String(args.amount ?? args.quoteIn ?? "0"),
+        String(args.burned ?? "0"),
+        name,
+        block,
+        tx,
+        ts,
+        chainId,
+        logIndex,
+      )
+    ) {
       sse.publish({ type: "burn", data: { token, name, tx } });
-    } catch (e) {
-      if (!isUniqueViolation(e)) throw e;
     }
   }
   if (name === "FlywheelAccrued" || name === "QuoteSettled") {
-    try {
-      await store.run("INSERT INTO flywheel(quote,amount,usdc_in,kind,block,tx,ts) VALUES(?,?,?,?,?,?,?)", String(args.quote ?? "").toLowerCase(), String(args.amount ?? "0"), String(args.usdcIn ?? "0"), name, block, tx, ts);
-    } catch (e) {
-      if (!isUniqueViolation(e)) throw e;
-    }
+    await insertLogOnce(
+      store,
+      `INSERT INTO flywheel(quote,amount,usdc_in,kind,block,tx,ts,chain_id,log_index) VALUES(?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(chain_id, tx, log_index) DO NOTHING`,
+      String(args.quote ?? "").toLowerCase(),
+      String(args.amount ?? "0"),
+      String(args.usdcIn ?? "0"),
+      name,
+      block,
+      tx,
+      ts,
+      chainId,
+      logIndex,
+    );
   }
   if (name === "EpochSubmitted") {
     await store.run(
@@ -308,11 +341,32 @@ async function persistOneLog(
     sse.publish({ type: "top10", data: { epochId: args.epochId, pot: args.pot } });
   }
   if (name === "BuybackExecuted" || name === "COREBurned") {
-    try {
-      await store.run("INSERT INTO core_buybacks(quote,quote_in,core_out,block,tx,ts) VALUES(?,?,?,?,?,?)", String(args.quote ?? "").toLowerCase(), String(args.quoteIn ?? "0"), String(args.coreOut ?? args.amount ?? "0"), block, tx, ts);
+    if (
+      await insertLogOnce(
+        store,
+        `INSERT INTO core_buybacks(quote,quote_in,core_out,block,tx,ts,chain_id,log_index) VALUES(?,?,?,?,?,?,?,?)
+         ON CONFLICT(chain_id, tx, log_index) DO NOTHING`,
+        String(args.quote ?? "").toLowerCase(),
+        String(args.quoteIn ?? "0"),
+        String(args.coreOut ?? args.amount ?? "0"),
+        block,
+        tx,
+        ts,
+        chainId,
+        logIndex,
+      )
+    ) {
       sse.publish({ type: "core", data: { name, tx } });
-    } catch (e) {
-      if (!isUniqueViolation(e)) throw e;
     }
+  }
+}
+
+async function insertLogOnce(store: Store, sql: string, ...params: unknown[]): Promise<boolean> {
+  try {
+    const r = await store.runChanges(sql, ...params);
+    return r.changes > 0;
+  } catch (e) {
+    if (isUniqueViolation(e)) return false;
+    throw e;
   }
 }

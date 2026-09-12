@@ -141,9 +141,10 @@ export async function recordTrade(
   const logIndex = t.logIndex ?? 0;
   const chainId = t.chainId ?? 0;
   try {
-    await store.run(
+    const inserted = await store.runChanges(
       `INSERT INTO trades(chain_id,block,tx,log_index,token,quote,side,source,amount_in,amount_out,notional_quote,price_quote_x18,sqrt_price,holders_fee,flywheel_fee,core_fee,ts)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(chain_id, tx, log_index) DO NOTHING`,
       chainId,
       t.block,
       t.tx,
@@ -162,6 +163,7 @@ export async function recordTrade(
       t.core ?? "0",
       t.ts,
     );
+    if (inserted.changes === 0) return;
   } catch (e) {
     if (isUniqueViolation(e)) return;
     throw e;

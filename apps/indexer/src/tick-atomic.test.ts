@@ -197,9 +197,81 @@ async function runSuite(store: Store, label: string) {
   console.log(`tick atomic ok (${label})`);
 }
 
+async function countWhere(store: Store, sql: string, ...params: unknown[]): Promise<number> {
+  const row = await store.get<{ n: number | string }>(sql, ...params);
+  return Number(row?.n ?? 0);
+}
+
+async function runIdentitySuite(store: Store, label: string) {
+  const token = addr(randomBytes(8).toString("hex"));
+  const quote = addr("q1");
+  const account = addr("b1");
+  const tx = txh();
+  const logs: TickLog[] = [
+    log("RewardClaimed", { token, account, amount: "20" }, { transactionHash: tx, logIndex: 3 }),
+    log("RewardClaimed", { token, account, amount: "20" }, { transactionHash: tx, logIndex: 4 }),
+    log("SelfBurnAccrued", { token, quote, amount: "7" }, { transactionHash: tx, logIndex: 5 }),
+    log("SelfBurnAccrued", { token, quote, amount: "7" }, { transactionHash: tx, logIndex: 6 }),
+    log("FlywheelAccrued", { quote, amount: "3" }, { transactionHash: tx, logIndex: 7 }),
+    log("FlywheelAccrued", { quote, amount: "3" }, { transactionHash: tx, logIndex: 8 }),
+    log("BuybackExecuted", { quote, quoteIn: "9", coreOut: "1" }, { transactionHash: tx, logIndex: 9 }),
+    log("BuybackExecuted", { quote, quoteIn: "9", coreOut: "1" }, { transactionHash: tx, logIndex: 10 }),
+    log("CurveBuy", { token, buyer: account, quoteIn: "1000", tokensOut: "5000", fee: "35" }, { transactionHash: tx, logIndex: 11 }),
+    log("CurveBuy", { token, buyer: account, quoteIn: "1000", tokensOut: "5000", fee: "35" }, { transactionHash: tx, logIndex: 12 }),
+  ];
+  const persistCtx = ctx();
+  persistCtx.chainId = 5042002;
+  await persistTickBatch(store, {
+    logs,
+    timestamps,
+    cursorBlock: String(30_000_000 + (Date.now() % 1_000_000)),
+    cursorHash: `0x${randomBytes(8).toString("hex")}`,
+    ctx: persistCtx,
+  });
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM claims WHERE token=? AND tx=?", token, tx)) === 2, `${label}: two identical claims at different log indexes`);
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM selfburn WHERE token=? AND tx=?", token, tx)) === 2, `${label}: two identical selfburn at different log indexes`);
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM flywheel WHERE quote=? AND tx=?", quote, tx)) === 2, `${label}: two identical flywheel at different log indexes`);
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM core_buybacks WHERE quote=? AND tx=?", quote, tx)) === 2, `${label}: two identical buybacks at different log indexes`);
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM trades WHERE token=? AND tx=?", token, tx)) === 2, `${label}: two identical trades at different log indexes`);
+
+  await persistTickBatch(store, {
+    logs,
+    timestamps,
+    cursorBlock: String(30_000_000 + (Date.now() % 1_000_000)),
+    cursorHash: `0x${randomBytes(8).toString("hex")}`,
+    ctx: persistCtx,
+  });
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM claims WHERE token=? AND tx=?", token, tx)) === 2, `${label}: replay does not duplicate claims`);
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM selfburn WHERE token=? AND tx=?", token, tx)) === 2, `${label}: replay does not duplicate selfburn`);
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM flywheel WHERE quote=? AND tx=?", quote, tx)) === 2, `${label}: replay does not duplicate flywheel`);
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM core_buybacks WHERE quote=? AND tx=?", quote, tx)) === 2, `${label}: replay does not duplicate buybacks`);
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM trades WHERE token=? AND tx=?", token, tx)) === 2, `${label}: replay does not duplicate trades`);
+
+  const otherChain = { ...persistCtx, chainId: 1, tokenByPool: new Map() };
+  await persistTickBatch(store, {
+    logs,
+    timestamps,
+    cursorBlock: String(40_000_000 + (Date.now() % 1_000_000)),
+    cursorHash: `0x${randomBytes(8).toString("hex")}`,
+    ctx: otherChain,
+  });
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM claims WHERE tx=?", tx)) === 4, `${label}: same tx+log on another chain does not collide`);
+  assert((await countWhere(store, "SELECT COUNT(*) as n FROM trades WHERE tx=?", tx)) === 4, `${label}: trades are chain-scoped`);
+  const kinds = await store.all<{ chain_id: number | string; log_index: number | string }>(
+    "SELECT chain_id, log_index FROM claims WHERE tx=? ORDER BY chain_id, log_index",
+    tx,
+  );
+  assert(kinds.length === 4, `${label}: four claim identities`);
+  const keys = new Set(kinds.map((r) => `${r.chain_id}:${r.log_index}`));
+  assert(keys.size === 4, `${label}: claim identities are (chain_id, log_index)`);
+
+  console.log(`tick log identity ok (${label})`);
+}
+
 const dir = mkdtempSync(join(tmpdir(), "reactor-tick-"));
 const sqlite = await openStore({ sqlitePath: join(dir, "t.sqlite") });
 await runSuite(sqlite, "sqlite");
+await runIdentitySuite(sqlite, "sqlite");
 await sqlite.close();
 rmSync(dir, { recursive: true, force: true });
 
@@ -214,6 +286,7 @@ try {
   const pg = await openStore({ databaseUrl: pgUrl });
   assert(pg.dialect === "postgres", "postgres dialect");
   await runSuite(pg, "postgres");
+  await runIdentitySuite(pg, "postgres");
   await pg.close();
   postgresRan = true;
 } catch (e) {

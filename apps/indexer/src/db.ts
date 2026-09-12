@@ -136,6 +136,7 @@ class PostgresStore implements Store {
     } catch (e) {
       try {
         await this.pool.query("ROLLBACK TO SAVEPOINT reactor_stmt");
+        await this.pool.query("RELEASE SAVEPOINT reactor_stmt");
       } catch {
         /* ignore */
       }

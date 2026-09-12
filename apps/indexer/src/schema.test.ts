@@ -12,18 +12,25 @@ function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
 }
 
-assert(SCHEMA_VERSION === 6, "schema version 6 promotes millisecond columns");
+assert(SCHEMA_VERSION === 7, "schema version 7 adds canonical log identity after v6 BIGINT ms columns");
 assert(MS_TIMESTAMP_COLUMNS.length >= 6, "millisecond timestamp columns listed");
 
 const dir = mkdtempSync(join(tmpdir(), "reactor-prod-"));
 const store = await openStore({ sqlitePath: join(dir, "t.sqlite") });
 const migrated = await store.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
-assert(Number(migrated?.n) === 6, "sqlite migrates to v6");
+assert(Number(migrated?.n) === 7, "sqlite migrates to v7");
 
 for (const t of TABLES) {
   const row = await store.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", t);
   assert(row?.name === t, `missing table ${t}`);
 }
+
+for (const idx of ["idx_claims_log", "idx_selfburn_log", "idx_flywheel_log", "idx_core_buybacks_log", "idx_reward_events_log", "idx_guardian_events_log"]) {
+  const row = await store.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='index' AND name=?", idx);
+  assert(row?.name === idx, `missing canonical log index ${idx}`);
+}
+const claimCols = await store.all<{ name: string }>("PRAGMA table_info(claims)");
+assert(claimCols.some((c) => c.name === "chain_id") && claimCols.some((c) => c.name === "log_index"), "claims has chain_id + log_index");
 
 await upsertToken(store, { address: "0xabc", symbol: "CAT", quote: "0xzec", ts: 100 });
 await upsertMarket(store, { token: "0xabc", quote: "0xzec", stage: "bonding", ts: 100 });

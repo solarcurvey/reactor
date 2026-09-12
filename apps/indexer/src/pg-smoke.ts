@@ -168,6 +168,32 @@ for (const [table, column] of [
   assert((await getState(store, "block_hash")) === beforeHash, "pg crash did not change hash");
   await persistTickBatch(store, { logs, timestamps, cursorBlock: "9", cursorHash: "0xpghash", ctx });
   assert((await getState(store, "block")) === "9", "pg commit cursor");
+
+  const claimTok = "0xdddddddddddddddddddddddddddddddddddddddd";
+  const claimTx = "0xpgidentityclaimtx000000000000000000000000000000000000000000000001";
+  const claimLogs = [3, 4].map((logIndex) => ({
+    eventName: "RewardClaimed",
+    args: { token: claimTok, account: quote, amount: "20" },
+    blockNumber: 9n,
+    transactionHash: claimTx,
+    logIndex,
+  }));
+  await persistTickBatch(store, {
+    logs: claimLogs,
+    timestamps,
+    cursorBlock: "9",
+    cursorHash: "0xpghash",
+    ctx,
+  });
+  await persistTickBatch(store, {
+    logs: claimLogs,
+    timestamps,
+    cursorBlock: "9",
+    cursorHash: "0xpghash",
+    ctx,
+  });
+  const claimN = await store.get<{ n: string }>("SELECT COUNT(*)::text AS n FROM claims WHERE tx=?", claimTx);
+  assert(Number(claimN?.n ?? 0) === 2, "pg two same-kind claims at different log indexes; replay idempotent");
 }
 await store.close();
 console.log("postgres smoke ok");

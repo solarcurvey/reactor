@@ -167,7 +167,7 @@ pnpm --filter indexer watchdog
 | 5 | Nested settle + nested Top-10 fee-exempt | `ProtocolSettlement.t.sol` |
 | 6 | Historical swap timestamps | `indexer.persist.test.ts` |
 | 7 | Indexer restart pool maps | same |
-| 7b | Event writes + cursor atomic (SQLite + Postgres) | `tick-atomic.test.ts`, `pg-smoke.ts` |
+| 7b | Event writes + cursor atomic; canonical `(chain_id, tx, log_index)` (SQLite + Postgres) | `tick-atomic.test.ts`, `pg-smoke.ts` |
 | 8 | Inactive low-value does not freeze | `Top10Api.t.sol` thousands inactive |
 | 9 | Material candidate freezes | same |
 | 10 | External spot does not control mark | VWAP window + `fuseExternalUsd6` |
@@ -207,7 +207,7 @@ pnpm --filter indexer watchdog
 | 35 | sharp required (not optional) | `sharp-check.test.ts` |
 | 36 | Postgres millisecond columns are BIGINT; Date.now() persists; v5 migrates | `pg-ms-timestamps.test.ts` (`pnpm --filter indexer test:pg`) |
 | 37 | R2/S3 object key equals public `/m/<id>.webp`; mock GET returns the object; PROD upload failure returns no StoredMedia | `media-r2.test.ts` |
-| 38 | Indexer event writes + cursor advance atomic | `tick-atomic.test.ts` (SQLite + Postgres), `pg-smoke.ts` |
+| 38 | Indexer event writes + cursor atomic; log identity `(chain_id, tx, log_index)` (schema v7) | `tick-atomic.test.ts` (SQLite + Postgres), `pg-smoke.ts` |
 
 ## Arc smoke
 
