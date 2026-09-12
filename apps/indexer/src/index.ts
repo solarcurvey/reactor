@@ -7,22 +7,19 @@ import { rpcFromEnv } from "./rpc.ts";
 import { SseHub } from "./sse.ts";
 import { ObjectStore, publicMediaUrl } from "./media.ts";
 import { RateLimit, SECURITY_HEADERS, logLine, requestId } from "./obs.ts";
-import { curvePriceX18, getState, recordTrade, setState, upsertMarket, upsertToken } from "./ingest.ts";
-import { isUniqueViolation } from "./unique.ts";
+import { getState, rollMarketAggregations } from "./ingest.ts";
 import { loadValuationService } from "./valuation-store.ts";
 import { populateExternalPriceMarks } from "./price-marks.ts";
 import { buildQuote } from "./quote-service.ts";
-import { persistVenue } from "./route-graph.ts";
 import { fillContinuous, CANDLE_INTERVALS } from "../../../packages/reactor/src/prices.ts";
 import { raiseAlert, recentAlerts } from "./alerts.ts";
 import type { ValuationService } from "../../../packages/reactor/src/valuation.ts";
 import { consensusUsd6, StaticProvider } from "../../../packages/reactor/src/pricing.ts";
-import { priceQuoteX18FromSqrt } from "../../../packages/reactor/src/prices.ts";
+import { persistTickBatch, rewindIndexerCursor } from "./tick-persist.ts";
 import { admit, tryNormalizeTicker } from "./admission.ts";
 import { authorizeLaunch } from "./authorize.ts";
 import { isReservedTicker, RESERVED_TICKERS } from "../../../packages/reactor/src/ticker.ts";
 import { HttpJsonProvider } from "../../../packages/reactor/src/pricing.ts";
-import { rollMarketAggregations, upsertOfficialPool } from "./ingest.ts";
 import { assertProductionHardGates } from "./prod-gates.ts";
 import { assertSharpWorks } from "./sharp-check.ts";
 
@@ -107,8 +104,7 @@ async function tick(store: Store) {
       const blk = await client.getBlock({ blockNumber: last });
       if (blk.hash && blk.hash !== lastHash) {
         const rewind = last > confirmations ? last - confirmations : 0n;
-        await setState(store, "block", rewind.toString());
-        await setState(store, "block_hash", "");
+        await rewindIndexerCursor(store, rewind.toString());
         return;
       }
     } catch {
@@ -121,233 +117,33 @@ async function tick(store: Store) {
   const watch = [factory, hook, addrs.BuybackVault, addrs.FlywheelVault, addrs.InstantCurve, addrs.SelfBurnVault, addrs.PoolManager, addrs.TickerRegistry]
     .filter(Boolean) as `0x${string}`[];
   const logs = await client.getLogs({ address: watch, events, fromBlock: from, toBlock: to });
-  const lastSqrt = new Map<string, string>();
-
-  for (const log of logs) {
-    const name = log.eventName ?? "unknown";
-    const args = (log.args ?? {}) as Record<string, unknown>;
-    const token = String(args.token ?? "");
-    const ts = await chainTs(log.blockNumber);
-    const tx = log.transactionHash;
-    const block = Number(log.blockNumber);
-    const logIndex = Number(log.logIndex ?? 0);
-    const chainId = deployment.chainId;
-
-    if (name === "TokenCreated") {
-      await upsertToken(store, {
-        address: token,
-        name: String(args.name ?? ""),
-        symbol: String(args.symbol ?? ""),
-        ticker: String(args.symbol ?? ""),
-        supply: String(args.supply ?? ""),
-        creator: String(args.creator ?? ""),
-        block,
-        tx,
-        ts,
-      });
-      sse.publish({ type: "launch", data: { token, name: args.name, symbol: args.symbol, tx } });
-    }
-    if (name === "LaunchCreated" || name === "InstantLaunchCreated") {
-      await upsertToken(store, { address: token, quote: String(args.quote ?? ""), creator: String(args.creator ?? ""), rewardsMode: Boolean(args.rewardsMode ?? true), block, tx, ts });
-      await upsertMarket(store, { token, quote: String(args.quote ?? ""), stage: "bonding", gradTarget: String(args.gradTarget ?? ""), ts });
-    }
-    if (name === "LaunchAuthorized") {
-      await upsertToken(store, {
-        address: token,
-        ticker: String(args.ticker ?? ""),
-        factoryVersion: Number(args.factoryVersion ?? 1),
-        block,
-        tx,
-        ts,
-      });
-    }
-    if (name === "TickerClaimed" || name === "TickerPermanentlyLocked") {
-      const ticker = String(args.ticker ?? "").toUpperCase();
-      await store.run(
-        `INSERT INTO tickers(ticker,token,factory,factory_version,locked_until,permanent,reserved)
-         VALUES(?,?,?,?,?,?,?) ON CONFLICT(ticker) DO UPDATE SET token=excluded.token, locked_until=excluded.locked_until, permanent=excluded.permanent`,
-        ticker,
-        String(args.token ?? args.canonicalToken ?? "").toLowerCase(),
-        String(args.factory ?? ""),
-        Number(args.version ?? 0),
-        Number(args.lockedUntil ?? 0),
-        name === "TickerPermanentlyLocked" ? 1 : 0,
-        name === "TickerPermanentlyLocked" && !args.canonicalToken ? 1 : 0,
-      );
-    }
-    if (name === "OfficialPoolCreated" || name === "GraduationCompleted") {
-      const poolId = String(args.poolId ?? "");
-      const quoteFromHook = String(args.quote ?? "");
-      tokenByPool.set(poolId, { token: token.toLowerCase(), quote: quoteFromHook });
-      await upsertOfficialPool(store, {
-        poolId,
-        token,
-        quote: String(args.quote ?? ""),
-        factory,
-        mode: Number(args.mode ?? (name === "GraduationCompleted" ? 0 : 0)),
-        hook: hook ?? "",
-        block,
-        tx,
-        ts,
-      });
-      await store.run(
-        `INSERT INTO pool_relationships(pool_id,token,quote,venue,fee,hooks,exists_onchain,approved,created_block)
-         VALUES(?,?,?,?,?,?,1,1,?) ON CONFLICT(pool_id) DO UPDATE SET exists_onchain=1, approved=1, token=excluded.token, quote=COALESCE(NULLIF(excluded.quote,''),pool_relationships.quote)`,
-        poolId,
-        token.toLowerCase(),
-        String(args.quote ?? "").toLowerCase(),
-        "OFFICIAL_REACTOR_V4",
-        0,
-        hook ?? "",
-        block,
-      );
-      await upsertMarket(store, { token, poolId, stage: "v4", marketLive: true, ts });
-      const protocol = (addrs.ProtocolV4Adapter ?? addrs.V4Adapter) as `0x${string}` | undefined;
-      const user = (addrs.V4Adapter ?? addrs.UniswapV4Adapter) as `0x${string}` | undefined;
-      const quote = String(args.quote ?? "");
-      if (protocol && quote && hook) {
-        const { poolKeyBytes } = await import("./route-graph.ts");
-        const data = poolKeyBytes(token as `0x${string}`, quote as `0x${string}`, 0, hook);
-        await persistVenue(store, { tokenIn: quote, tokenOut: token, adapter: protocol, kind: "protocol", data, poolId, exists: true, approved: true });
-        await persistVenue(store, { tokenIn: token, tokenOut: quote, adapter: protocol, kind: "protocol", data, poolId, exists: true, approved: true });
-        if (user) {
-          await persistVenue(store, { tokenIn: quote, tokenOut: token, adapter: user, kind: "user", data, poolId, exists: true, approved: true });
-          await persistVenue(store, { tokenIn: token, tokenOut: quote, adapter: user, kind: "user", data, poolId, exists: true, approved: true });
-        }
-      }
-      if (name === "GraduationCompleted") {
-        await store.run(
-          `INSERT INTO graduations(token,pool_id,quote_lp,token_lp,block,tx,ts) VALUES(?,?,?,?,?,?,?)
-           ON CONFLICT(token) DO UPDATE SET pool_id=excluded.pool_id`,
-          token.toLowerCase(),
-          poolId,
-          String(args.quoteLp ?? "0"),
-          String(args.tokenLp ?? "0"),
-          block,
-          tx,
-          ts,
-        );
-        sse.publish({ type: "graduation", data: { token, poolId, tx } });
-      }
-    }
-    if (name === "Swap" && args.id && args.sqrtPriceX96) lastSqrt.set(String(args.id), String(args.sqrtPriceX96));
-    if (name === "BondingProgress") {
-      await store.run(
-        `INSERT INTO bonding_states(token,real_quote,grad_target,inventory,ready,graduated,bonding_bps,updated_ts)
-         VALUES(?,?,?,?,0,0,0,?) ON CONFLICT(token) DO UPDATE SET real_quote=excluded.real_quote, grad_target=excluded.grad_target, inventory=excluded.inventory, updated_ts=excluded.updated_ts`,
-        token.toLowerCase(),
-        String(args.realQuote ?? "0"),
-        String(args.gradTarget ?? "0"),
-        String(args.inventory ?? "0"),
-        ts,
-      );
-      await upsertMarket(store, { token, realQuote: String(args.realQuote ?? "0"), gradTarget: String(args.gradTarget ?? "0"), stage: "bonding", ts });
-      sse.publish({ type: "bonding", data: { token, realQuote: args.realQuote, gradTarget: args.gradTarget } });
-    }
-    if (name === "CurveBuy" || name === "CurveSell") {
-      const quoteIn = String(args.quoteIn ?? args.quoteOut ?? "0");
-      const tokens = String(args.tokensOut ?? args.tokensIn ?? "0");
-      const mkt = await store.get<{ quote: string }>("SELECT quote FROM markets WHERE token=?", token.toLowerCase());
-      const q = mkt?.quote ?? "";
-      const qDec = quoteDec.get(q) ?? 18;
-      const px = curvePriceX18(quoteIn, tokens, qDec, 18);
-      await recordTrade(store, sse, {
-        block,
-        tx,
-        logIndex,
-        chainId,
-        token,
-        quote: q,
-        side: name === "CurveBuy" ? "buy" : "sell",
-        source: "curve",
-        amountIn: name === "CurveBuy" ? quoteIn : tokens,
-        amountOut: name === "CurveBuy" ? tokens : quoteIn,
-        notionalQuote: quoteIn,
-        priceQuoteX18: px,
-        ts,
-      });
-    }
-    if (name === "SwapFeeAccrued") {
-      const poolId = String(args.poolId ?? "");
-      const mapped = tokenByPool.get(poolId);
-      const q = String(args.quote ?? mapped?.quote ?? "");
-      const tok = mapped?.token ?? "";
-      const sqrt = lastSqrt.get(poolId) ?? "";
-      let px = "0";
-      if (sqrt && tok && q) {
-        try {
-          const tokenIs0 = tok.toLowerCase() < q.toLowerCase();
-          px = priceQuoteX18FromSqrt(BigInt(sqrt), tokenIs0, 18, quoteDec.get(q.toLowerCase()) ?? 18).toString();
-        } catch {
-          px = "0";
-        }
-      }
-      await recordTrade(store, sse, {
-        block,
-        tx,
-        logIndex,
-        chainId,
-        token: tok,
-        quote: q,
-        side: "swap",
-        source: "v4",
-        amountIn: String(args.notional ?? "0"),
-        amountOut: "0",
-        notionalQuote: String(args.notional ?? "0"),
-        priceQuoteX18: px,
-        sqrtPrice: sqrt,
-        holders: String(args.holders ?? "0"),
-        flywheel: String(args.flywheel ?? "0"),
-        core: String(args.coreAmt ?? "0"),
-        ts,
-      });
-    }
-    if (name === "RewardClaimed") {
-      try {
-        await store.run("INSERT INTO claims(token,account,amount,block,tx,ts) VALUES(?,?,?,?,?,?)", token.toLowerCase(), String(args.account ?? ""), String(args.amount ?? "0"), block, tx, ts);
-        sse.publish({ type: "rewards", data: { token, account: args.account, amount: args.amount, tx } });
-      } catch (e) {
-        if (!isUniqueViolation(e)) throw e;
-      }
-    }
-    if (name === "SelfBurnAccrued" || name === "SelfBurnExecuted") {
-      try {
-        await store.run("INSERT INTO selfburn(token,quote,amount,burned,kind,block,tx,ts) VALUES(?,?,?,?,?,?,?,?)", token.toLowerCase(), String(args.quote ?? ""), String(args.amount ?? args.quoteIn ?? "0"), String(args.burned ?? "0"), name, block, tx, ts);
-        sse.publish({ type: "burn", data: { token, name, tx } });
-      } catch (e) {
-        if (!isUniqueViolation(e)) throw e;
-      }
-    }
-    if (name === "FlywheelAccrued" || name === "QuoteSettled") {
-      try {
-        await store.run("INSERT INTO flywheel(quote,amount,usdc_in,kind,block,tx,ts) VALUES(?,?,?,?,?,?,?)", String(args.quote ?? "").toLowerCase(), String(args.amount ?? "0"), String(args.usdcIn ?? "0"), name, block, tx, ts);
-      } catch (e) {
-        if (!isUniqueViolation(e)) throw e;
-      }
-    }
-    if (name === "EpochSubmitted") {
-      await store.run(
-        `INSERT INTO top10_epochs(epoch_id,pot,n,finalized,paused,reason,ts) VALUES(?,?,?,0,0,'',?)
-         ON CONFLICT(epoch_id) DO UPDATE SET pot=excluded.pot, n=excluded.n`,
-        String(args.epochId ?? "0"),
-        String(args.pot ?? "0"),
-        Number(args.n ?? 0),
-        ts,
-      );
-      sse.publish({ type: "top10", data: { epochId: args.epochId, pot: args.pot } });
-    }
-    if (name === "BuybackExecuted" || name === "COREBurned") {
-      try {
-        await store.run("INSERT INTO core_buybacks(quote,quote_in,core_out,block,tx,ts) VALUES(?,?,?,?,?,?)", String(args.quote ?? "").toLowerCase(), String(args.quoteIn ?? "0"), String(args.coreOut ?? args.amount ?? "0"), block, tx, ts);
-        sse.publish({ type: "core", data: { name, tx } });
-      } catch (e) {
-        if (!isUniqueViolation(e)) throw e;
-      }
-    }
-  }
+  const timestamps = new Map<number, number>();
+  const needed = new Set<number>([Number(to)]);
+  for (const log of logs) needed.add(Number(log.blockNumber));
+  for (const n of needed) timestamps.set(n, await chainTs(BigInt(n)));
   const headBlk = await client.getBlock({ blockNumber: to });
-  await setState(store, "block", to.toString());
-  await setState(store, "block_hash", headBlk.hash ?? "");
+  const published = await persistTickBatch(store, {
+    logs: logs.map((log) => ({
+      eventName: log.eventName,
+      args: (log.args ?? {}) as Record<string, unknown>,
+      blockNumber: log.blockNumber,
+      transactionHash: log.transactionHash,
+      logIndex: log.logIndex,
+    })),
+    timestamps,
+    cursorBlock: to.toString(),
+    cursorHash: headBlk.hash ?? "",
+    ctx: {
+      chainId: deployment.chainId,
+      factory,
+      hook,
+      protocolAdapter: (addrs.ProtocolV4Adapter ?? addrs.V4Adapter) as string | undefined,
+      userAdapter: (addrs.V4Adapter ?? addrs.UniswapV4Adapter) as string | undefined,
+      tokenByPool,
+      quoteDec,
+    },
+  });
+  for (const ev of published) sse.publish(ev);
   await rollMarketAggregations(store);
   await populateExternalPriceMarks(store).catch(() => undefined);
 }

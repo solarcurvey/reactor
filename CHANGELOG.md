@@ -51,6 +51,7 @@ Honest leftovers on 0.3.0. Tokenomics **unchanged**. Factory **V1**.
 - `sharp` is an explicit required dependency (`pnpm.onlyBuiltDependencies`). Document `pnpm approve-builds`. Startup asserts the native pipeline.
 - Arc Public Testnet: no key in this environment — `deployments/arc-testnet-blocker.md` + `scripts/arc-testnet-checklist.md`. `claimed: false`.
 - Arc-compatible native gas metadata is USDC-18 (not ETH). `CoreToken` is the name; `TestCORE` remains a deprecated alias. `registerNative` stays fail-loud.
+- Indexer ingest: log-derived writes and `indexer_state` cursor (`block`, `block_hash`) commit in one transaction. Mid-tick crash rolls both back. Postgres statement savepoints keep caught `23505` from aborting the batch. SSE after commit. SQLite + Postgres regressions in `tick-atomic.test.ts`.
 
 ### Tokenomics
 

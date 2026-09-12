@@ -68,7 +68,7 @@ Pre-graduation Instant trades settle on `InstantCurve` (same 3.5% quote split). 
 
 ## Offchain
 
-- **Indexer:** production data model (Postgres when `DATABASE_URL` is set; SQLite local-only). Tables cover tokens/markets/quotes/pools/trades/candles/bonding/graduations/rewards/claims/selfburn/flywheel/CORE/Top-10/keeper/guardian/routes/marks/metadata. Never the source of truth for balances or fees.
+- **Indexer:** production data model (Postgres when `DATABASE_URL` is set; SQLite local-only). Tables cover tokens/markets/quotes/pools/trades/candles/bonding/graduations/rewards/claims/selfburn/flywheel/CORE/Top-10/keeper/guardian/routes/marks/metadata. Each ingest tick writes those event rows and advances `indexer_state` (`block`, `block_hash`) in one transaction. Never the source of truth for balances or fees.
 - **Time units (do not mix in one column):**
   - **Milliseconds** (`Date.now()`): `admission_hits.ts`, `issuance_bucket.updated_ms`, `leader_locks.ts`, `leader_locks.lease_until`, `keeper_operations.ts`, `alerts.ts`. Postgres type is `BIGINT` (schema v6). SQLite `INTEGER` is already 64-bit, which is why local tests hid the overflow.
   - **Unix seconds** (`Math.floor(Date.now() / 1000)` or chain `block.timestamp`): trade/candle/market/token timestamps, ticker `locked_until`, admission receipt `expires`/`ts`, challenges, `launch_auths.ts`, `schema_migrations.applied_ts`. These still fit in 32-bit `INTEGER` until 2038.

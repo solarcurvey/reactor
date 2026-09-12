@@ -5,10 +5,11 @@
  *   docker compose up -d postgres
  *   DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
  */
-import { openStore } from "./db.ts";
-import { recordTrade, upsertMarket, upsertToken } from "./ingest.ts";
+import { openStore, type Store } from "./db.ts";
+import { getState, recordTrade, upsertMarket, upsertToken } from "./ingest.ts";
 import { persistVenue, planFeeExemptRoute } from "./route-graph.ts";
 import { saveJob } from "./keeper-jobs.ts";
+import { persistTickBatch } from "./tick-persist.ts";
 import { TABLES } from "./schema.ts";
 
 const url = process.env.DATABASE_URL ?? "";
@@ -99,6 +100,74 @@ for (const [table, column] of [
     column,
   );
   assert(col?.data_type === "bigint", `${table}.${column} bigint`);
+}
+{
+  const token = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  const quote = "0xcccccccccccccccccccccccccccccccccccccccc";
+  const logs = [
+    {
+      eventName: "TokenCreated",
+      args: { token, creator: quote, name: "PG", symbol: "PG", supply: "1" },
+      blockNumber: 9n,
+      transactionHash: "0xpgatomic1",
+      logIndex: 0,
+    },
+    {
+      eventName: "InstantLaunchCreated",
+      args: { token, quote, creator: quote, rewardsMode: true, gradTarget: "1" },
+      blockNumber: 9n,
+      transactionHash: "0xpgatomic1",
+      logIndex: 1,
+    },
+  ];
+  const timestamps = new Map<number, number>([[9, 1_700_000_010]]);
+  const ctx = {
+    chainId: 5042002,
+    factory: proto,
+    hook: proto,
+    tokenByPool: new Map<string, { token: string; quote: string }>(),
+    quoteDec: new Map<string, number>(),
+  };
+  function crashOnCursor(inner: Store): Store {
+    const wrap = (s: Store): Store => ({
+      dialect: s.dialect,
+      exec: (sql) => s.exec(sql),
+      run: async (sql, ...params) => {
+        if (/indexer_state/i.test(sql)) throw new Error("injected crash");
+        return s.run(sql, ...params);
+      },
+      runChanges: (sql, ...params) => s.runChanges(sql, ...params),
+      get: (sql, ...p) => s.get(sql, ...p),
+      all: (sql, ...p) => s.all(sql, ...p),
+      transaction: (fn) => s.transaction((tx) => fn(wrap(tx))),
+      close: () => s.close(),
+      tryAdvisoryLock: (n, o, t) => s.tryAdvisoryLock(n, o, t),
+      releaseLock: (n, o) => s.releaseLock(n, o),
+    });
+    return wrap(inner);
+  }
+  const beforeBlock = await getState(store, "block");
+  const beforeHash = await getState(store, "block_hash");
+  const beforeTokens = Number((await store.get<{ n: string }>("SELECT COUNT(*)::text AS n FROM tokens WHERE address=?", token))?.n ?? 0);
+  let crashed = false;
+  try {
+    await persistTickBatch(crashOnCursor(store), {
+      logs,
+      timestamps,
+      cursorBlock: "9000009",
+      cursorHash: "0xpghash-crash",
+      ctx,
+    });
+  } catch (e) {
+    crashed = String(e).includes("injected crash");
+  }
+  assert(crashed, "pg atomic crash injected");
+  const n = await store.get<{ n: string }>("SELECT COUNT(*)::text AS n FROM tokens WHERE address=?", token);
+  assert(Number(n?.n ?? 0) === beforeTokens, "pg crash rolled back token with cursor");
+  assert((await getState(store, "block")) === beforeBlock, "pg crash did not advance cursor");
+  assert((await getState(store, "block_hash")) === beforeHash, "pg crash did not change hash");
+  await persistTickBatch(store, { logs, timestamps, cursorBlock: "9", cursorHash: "0xpghash", ctx });
+  assert((await getState(store, "block")) === "9", "pg commit cursor");
 }
 await store.close();
 console.log("postgres smoke ok");

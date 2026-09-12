@@ -1,8 +1,9 @@
 import type { Store } from "./db.ts";
-import type { SseHub } from "./sse.ts";
 import { applyTradeToCandle, CANDLE_INTERVALS, priceQuoteX18 } from "../../../packages/reactor/src/prices.ts";
 import { isUniqueViolation } from "./unique.ts";
 import { loadValuationService } from "./valuation-store.ts";
+
+export type SsePublisher = { publish(ev: { type: string; data: unknown }): void };
 
 const INTERVALS = Object.values(CANDLE_INTERVALS);
 
@@ -113,7 +114,7 @@ export async function upsertMarket(
 
 export async function recordTrade(
   store: Store,
-  sse: SseHub | undefined,
+  sse: SsePublisher | undefined,
   t: {
     block: number;
     tx: string;
