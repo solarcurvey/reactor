@@ -11,7 +11,7 @@
 | Protocol release | **0.3.1** (`docs/version.json`) |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
 | Intent | Close honest leftovers: Safe Builder JSON, quoter state overrides, production hard gates, funding-parent, sharp, Arc blocker, CoreToken/USDC-18 leftovers |
-| Foundry | Recorded after `forge test` this run |
+| Foundry | **326 passed**, 1 skipped (parent 0.3.0 recorded 325) |
 | Indexer / lib | `pnpm --filter indexer test` + web top10/marketdata + `pnpm docs:check` |
 | Review shots | Regenerated `review/*-{1440,390}.png` this commit including bonding token (`BONDING_TOKEN` + seed) |
 | Mainnet | **Blocked** |
@@ -45,8 +45,12 @@ Measured with `forge build --sizes` + `pnpm size:guard` (limit 24,576 − 1,024 
 
 | Contract | Runtime (bytes) | Gate |
 | --- | ---: | --- |
-| ReactorFactory | (see `deployments/sizes.json`) | ≤ 23,552 |
-| InstantLaunchModule / InstantCurve / ReactorHook / TickerRegistry / UserRouteQuoter | under EIP-170 | n/a |
+| ReactorFactory | **23,286** | ≤ 23,552 **pass** (unchanged from 0.3.0) |
+| InstantLaunchModule | 17,092 | under EIP-170 |
+| InstantCurve | 18,960 | under |
+| ReactorHook | 10,952 | under |
+| TickerRegistry | 4,827 | under |
+| UserRouteQuoter | **7,783** | smaller than 0.3.0 (8,559) — hops run in-place, no nested revert |
 
 ## Honest gaps that remain (not leftovers we pretended to close)
 

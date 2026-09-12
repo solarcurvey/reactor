@@ -1,6 +1,6 @@
 # Atomic route quoter
 
-User quotes are a **single `eth_call`** over the whole route (`UserRouteQuoter.previewBuy` / `previewSell`) with **ERC-20 state overrides** that credit the quoter (not the user wallet) on candidate `balanceOf` slots. Nested hops do **not** need intermediate wallet balances. The user can hold only USDC.
+User quotes are a **single `eth_call`** over the whole route (`UserRouteQuoter.previewBuy` / `previewSell`). The quoter **executes hops in-place** (no nested revert that would undo intermediate balances) and then reverts `PreviewRoute`. The indexer also sends ERC-20 **state overrides** that credit the quoter — not the user wallet — on candidate `balanceOf` slots. Nested hops do **not** need intermediate wallet balances. The user can hold only USDC.
 
 ## What is simulated
 

@@ -55,19 +55,19 @@ contract UserRouteQuoter {
 
         uint256 quoteIn = usdcIn;
         if (quote != usdc) {
-            RouteGuard.Hop[] memory probe = hops;
-            for (uint256 i; i < probe.length; i++) {
-                probe[i].minOut = 1;
+            // Execute hops in this call so intermediate quote stays on the quoter.
+            // Nested try/catch preview reverts undo those balances (the old failure mode).
+            // The outer eth_call still discards all state after PreviewRoute.
+            RouteGuard.Hop[] memory live = hops;
+            for (uint256 i; i < live.length; i++) {
+                live[i].minOut = 1;
             }
-            try this.probeHops(probe, usdc, quote, usdcIn) {}
-            catch (bytes memory err) {
-                (uint256[] memory outs, uint256 finalOut) = _decodePreview(err);
-                for (uint256 i; i < outs.length; i++) {
-                    hopOuts[i] = outs[i];
-                    kinds[i] = KIND_EXTERNAL;
-                }
-                quoteIn = finalOut;
+            (uint256 finalOut, uint256[] memory outs) = RouteExec.runRecorded(auth, live, usdc, quote, usdcIn, 1);
+            for (uint256 i; i < outs.length; i++) {
+                hopOuts[i] = outs[i];
+                kinds[i] = KIND_EXTERNAL;
             }
+            quoteIn = finalOut;
         } else if (hops.length != 0) {
             revert Bad();
         }
@@ -121,19 +121,16 @@ contract UserRouteQuoter {
 
         uint256 usdcOut = quoteOut;
         if (quote != usdc) {
-            RouteGuard.Hop[] memory probe = hops;
-            for (uint256 i; i < probe.length; i++) {
-                probe[i].minOut = 1;
+            RouteGuard.Hop[] memory live = hops;
+            for (uint256 i; i < live.length; i++) {
+                live[i].minOut = 1;
             }
-            try this.probeHops(probe, quote, usdc, quoteOut) {}
-            catch (bytes memory err) {
-                (uint256[] memory outs, uint256 finalOut) = _decodePreview(err);
-                for (uint256 i; i < outs.length; i++) {
-                    hopOuts[i + 1] = outs[i];
-                    kinds[i + 1] = KIND_EXTERNAL;
-                }
-                usdcOut = finalOut;
+            (uint256 finalOut, uint256[] memory outs) = RouteExec.runRecorded(auth, live, quote, usdc, quoteOut, 1);
+            for (uint256 i; i < outs.length; i++) {
+                hopOuts[i + 1] = outs[i];
+                kinds[i + 1] = KIND_EXTERNAL;
             }
+            usdcOut = finalOut;
         } else if (hops.length != 0) {
             revert Bad();
         }
