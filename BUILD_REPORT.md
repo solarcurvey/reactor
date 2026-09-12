@@ -90,7 +90,7 @@ Honesty: 0.3.0 docs already said “Store work uses real transactions.” That w
 
 ## API P1 (this branch) — markets cursor + candle bounds
 
-Indexer-only on top of 0.3.2. Architecture / economics / Factory V1 / no mainnet: **unchanged**. Fixes #9 (leave open until merged + verified).
+Rebased onto main `d084c47` (#28 SELL floors, after #21). Indexer-only. Architecture / economics / Factory V1 / no mainnet: **unchanged**. Fixes #9 (leave open until merged + verified).
 
 | Item | Status | Proof |
 | --- | --- | --- |
