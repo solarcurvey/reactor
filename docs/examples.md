@@ -9,7 +9,7 @@ curl -s http://127.0.0.1:43148/quote -H 'content-type: application/json' \
   -d '{"kind":"BUY","token":"0x…","tokenIn":"0xUSDC","tokenOut":"0x…","amountIn":"1000000","slippageBps":100}'
 ```
 
-Expect `ok`, `minOut` > 1, `feeLegs[]`, hop `kind`s (`OFFICIAL_REACTOR_V4` / `EXTERNAL_V4_HOOKLESS` / `BONDING_CURVE`). Submit `tx.to` + `tx.data`. A failed preview returns `ok: false`, not a dust floor.
+Expect `ok`, `minOut` > 1, `feeLegs[]`, hop `kind`s (`OFFICIAL_REACTOR_V4` / `EXTERNAL_V4_HOOKLESS` / `BONDING_CURVE`). Hops / `amountOut` / `minOut`s are one candidate. Submit `tx.to` + `tx.data`. A failed preview returns `ok: false`, not a dust floor.
 
 ## Authorize a launch
 

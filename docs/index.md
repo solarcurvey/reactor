@@ -52,7 +52,7 @@ See [Trust](/docs/trust) for the rest of the top 10.
 - Keeper maintains pots with simulated `minOut`. Keeper cannot configure. One leadership lease — atomic `leader_locks` only.
 - Launch Signer is isolated. Every launch, including USDC, needs a short-lived authorization that already passed admission. If the durable store is unavailable, the signer returns 503 and does not sign.
 - Indexer prices and charts are not onchain truth.
-- Quote tickets are **one `UserRouteQuoter` eth_call** per candidate. Edge kinds survive plan/sim/response. Nested official 3.5% legs are listed separately. `minOut` is never 0 or 1.
+- Quote tickets are **one `UserRouteQuoter` eth_call** per candidate. The selected path, `amountOut`, hop kinds, `minOut`s, and terminal official/bonding result are the **same** candidate. `PreviewRoute` is `plannedHops + 1`. Nested official 3.5% legs are listed separately. `minOut` is never 0 or 1.
 - Arc finality is deterministic BFT — no eth-8 lag. Native gas is USDC-18; protocol USDC is 6 decimals.
 
 Continue: [curve math](/docs/curve) · [nested fees](/docs/fees) · [Guardian](/docs/guardian) · [Keeper](/docs/keeper) · [tickers](/docs/tickers) · [admission](/docs/admission)

@@ -16,6 +16,12 @@ Edge `kind` is kept through plan → preview → `POST /quote` hops. Nested offi
 
 The planner emits ≤8 candidates, ≤3 hops, no cycles. Each candidate is previewed with **one** `UserRouteQuoter` call. The winner is the real `amountOut`, not a fake hop-count score.
 
+The ticket is **atomic**: `path`, routing-hop `kind`s, `amountOut`, hop `amountOut`s, hop `minOut`s, and the terminal official/bonding result all come from the **same** selected candidate. The indexer never pairs `bestPreview` (max `finalOut`) with a differently scored route.
+
+`PreviewRoute` allocates `hopOuts` / `kinds` as **`plannedHops.length + 1`**. The extra element is the terminal official/bonding market leg (BUY appends it; SELL prepends it). Routing-hop outs/kinds have length `plannedHops`. `amountOut` is the final token (BUY) or USDC (SELL). Hop `minOut`s are `applySlippage` on that candidate's **routing** hop outs. The terminal floor is `applySlippage` on the extra element (SELL `minQuoteOut` uses that quote-out).
+
+Indexer decode is the same `decodePreviewRoute` used by `POST /quote`. Foundry `UserRoute.t.sol` decodes live `previewBuy` / `previewSell` reverts and asserts `hopOuts.length == hops.length + 1`.
+
 If `UserRouteQuoter` is **not deployed**, the indexer falls back to one `UserRouteExecutor` `simulateContract`. That fallback is documented only for an undeployed quoter and **may still need wallet balances**. Deploy the quoter for override-based nested quotes.
 
 ## Protocol / maintenance path (separate)
