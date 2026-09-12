@@ -14,4 +14,24 @@ assert(LAUNCH_AUTH_TYPEHASH === keccak256(toBytes(LAUNCH_AUTH_TYPESTRING)), "typ
 const a = hashMetadata("", "", "", "", "");
 const b = hashMetadata("ipfs://x", "", "", "", "");
 assert(a !== b, "metadata hash binds image");
+{
+  const { fairCurveConfig, FAIR_V1, INSTANT_CURVE_V1, launchConfigHash, resolveFairParams } = await import(
+    "../../../packages/reactor/src/launch-auth.ts"
+  );
+  const p = resolveFairParams({ supply: 0, decimals: 0, duration: 0, auctionBps: 0, minRaise: 0 });
+  const h = fairCurveConfig(p.supply, p.decimals, p.duration, p.auctionBps, p.minRaise);
+  assert(h !== FAIR_V1 && h !== INSTANT_CURVE_V1, "fair binds params not FAIR_V1");
+  const cfg = launchConfigHash({
+    creator: "0x0000000000000000000000000000000000000001",
+    ticker: "CAT",
+    name: "Cat",
+    metadataHash: a,
+    quote: "0x0000000000000000000000000000000000000002",
+    mode: MODE_REWARDS,
+    factory: "0x0000000000000000000000000000000000000003",
+    factoryVersion: 1,
+    curveConfig: INSTANT_CURVE_V1,
+  });
+  assert(cfg.startsWith("0x") && cfg.length === 66, "launchConfigHash");
+}
 console.log("launch-auth tests ok");

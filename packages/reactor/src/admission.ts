@@ -15,11 +15,14 @@ export type AdmissionSignals = {
   turnstileRequired?: boolean;
   fundedCluster?: string;
   clusterLaunches?: number;
-  recentLaunches?: number;
+  /** Signed LaunchAuthorization count in the window — not pre-incremented admit hits. */
+  recentSignedAuths?: number;
   imageHashRepeats?: number;
   sessionHits?: number;
   ipHits?: number;
   walletHits?: number;
+  /** Remaining global issuance tokens (atomic bucket). */
+  issuanceTokens?: number;
 };
 
 export type AdmissionResult = {
@@ -32,7 +35,30 @@ export type AdmissionResult = {
 const CLUSTER_CHALLENGE = 3;
 const CLUSTER_DENY_ATTACK = 1;
 
-/** CHALLENGE is never ALLOW. Missing Turnstile when required is CHALLENGE, not a signature. */
+/** Caps on signed LaunchAuthorization issuance per hour (token-bucket capacity). */
+export const ISSUANCE_CAP: Record<IssuanceLevel, number> = {
+  NORMAL: 120,
+  ELEVATED: 40,
+  ATTACK: 12,
+};
+
+export function walletRateLimit(level: IssuanceLevel): number {
+  return level === "ATTACK" ? 1 : level === "ELEVATED" ? 3 : 8;
+}
+
+export function ipRateLimit(level: IssuanceLevel): number {
+  return level === "ATTACK" ? 2 : level === "ELEVATED" ? 8 : 40;
+}
+
+export function sessionRateLimit(level: IssuanceLevel): number {
+  return level === "ATTACK" ? 1 : 10;
+}
+
+/**
+ * CHALLENGE is never ALLOW.
+ * ELEVATED/ATTACK require Turnstile. A solved challenge ALLOWs when under rate + issuance limits.
+ * No infinite CHALLENGE loop after a valid token.
+ */
 export function evaluateAdmission(signals: AdmissionSignals, level: IssuanceLevel = "NORMAL"): AdmissionResult {
   const reasons: string[] = [];
   if (!signals.ticker) reasons.push("ticker required");
@@ -41,15 +67,15 @@ export function evaluateAdmission(signals: AdmissionSignals, level: IssuanceLeve
   if (!signals.metadata?.name || signals.metadata.name.trim().length < 2) reasons.push("name");
 
   const turnstileRequired = signals.turnstileRequired === true || level !== "NORMAL";
-  if (signals.turnstileOk === false && (turnstileRequired || signals.turnstileRequired !== false)) {
+  if (turnstileRequired && signals.turnstileOk !== true) {
     reasons.push("turnstile");
   }
 
-  if (level === "ATTACK" && (signals.recentLaunches ?? 0) > 0) reasons.push("global throttle");
-  if ((signals.recentLaunches ?? 0) > (level === "ELEVATED" ? 3 : 12)) reasons.push("wallet rate");
-  if ((signals.walletHits ?? 0) > (level === "ATTACK" ? 1 : level === "ELEVATED" ? 3 : 8)) reasons.push("wallet rate");
-  if ((signals.ipHits ?? 0) > (level === "ATTACK" ? 2 : level === "ELEVATED" ? 8 : 40)) reasons.push("ip rate");
-  if ((signals.sessionHits ?? 0) > (level === "ATTACK" ? 1 : 10)) reasons.push("session rate");
+  if ((signals.issuanceTokens ?? 1) < 1) reasons.push("issuance throttle");
+  if ((signals.recentSignedAuths ?? 0) >= ISSUANCE_CAP[level]) reasons.push("issuance throttle");
+  if ((signals.walletHits ?? 0) > walletRateLimit(level)) reasons.push("wallet rate");
+  if ((signals.ipHits ?? 0) > ipRateLimit(level)) reasons.push("ip rate");
+  if ((signals.sessionHits ?? 0) > sessionRateLimit(level)) reasons.push("session rate");
   if ((signals.imageHashRepeats ?? 0) > 3) reasons.push("image-hash cluster");
   if ((signals.clusterLaunches ?? 0) > (level === "ATTACK" ? CLUSTER_DENY_ATTACK : CLUSTER_CHALLENGE)) {
     reasons.push("funding-cluster");
@@ -57,7 +83,7 @@ export function evaluateAdmission(signals: AdmissionSignals, level: IssuanceLeve
 
   const hardDeny =
     reasons.includes("ticker required") ||
-    reasons.includes("global throttle") ||
+    reasons.includes("issuance throttle") ||
     reasons.includes("quote") ||
     reasons.includes("factory") ||
     (level === "ATTACK" && reasons.includes("funding-cluster"));
@@ -73,9 +99,7 @@ export function evaluateAdmission(signals: AdmissionSignals, level: IssuanceLeve
     reasons.includes("session rate") ||
     reasons.includes("image-hash cluster") ||
     reasons.includes("funding-cluster") ||
-    reasons.includes("name") ||
-    level !== "NORMAL" ||
-    signals.turnstileOk === false;
+    reasons.includes("name");
 
   if (needsChallenge) {
     return { decision: "CHALLENGE", reasons, level, challenge: "turnstile" };
@@ -84,10 +108,10 @@ export function evaluateAdmission(signals: AdmissionSignals, level: IssuanceLeve
   return { decision: "ALLOW", reasons: [], level };
 }
 
-export function issuanceFromCounts(launchesLastHour: number, envOverride?: string): IssuanceLevel {
+export function issuanceFromCounts(signedAuthsLastHour: number, envOverride?: string): IssuanceLevel {
   const env = (envOverride ?? "").toUpperCase();
   if (env === "ELEVATED" || env === "ATTACK" || env === "NORMAL") return env;
-  if (launchesLastHour >= 200) return "ATTACK";
-  if (launchesLastHour >= 60) return "ELEVATED";
+  if (signedAuthsLastHour >= 200) return "ATTACK";
+  if (signedAuthsLastHour >= 60) return "ELEVATED";
   return "NORMAL";
 }

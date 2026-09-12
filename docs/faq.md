@@ -2,20 +2,18 @@
 
 **Is this audited?** No.
 
-**Is Top-10 trustless?** No. Offchain API + structural onchain checks.
+**Mainnet?** Blocked. Chain 5042 is disabled in Keeper and deploy scripts.
 
-**Do I need a signature to launch on USDC?** Yes. Every launch needs `LaunchAuthorization`.
+**Is Factory V1 the protocol version?** No. Protocol is semver (`0.3.0`). Factory V1 stays V1 forever.
 
-**Can I squat a ticker by requesting a signature and not sending the tx?** No. The lock happens on successful `claimOnLaunch`.
+**Why do I see Turnstile?** Admission. CHALLENGE is not a signature. Solve it and retry.
 
-**Can Guardian unlock a ticker?** Permanent lock is one-way. The 24h lock expires unless permanently locked.
+**Why did Fair launch revert WrongParams?** The signature must hash the resolved supply/decimals/duration/auctionBps/minRaise. Instant still uses `INSTANT_CURVE_V1`.
 
-**Is EURC $1?** No. Only explicit `usdPegOne` (initially canonical USDC).
+**Why is EURC not $1?** Only `usdPegOne` assets are. Guardian sets that flag. Category.Stablecoins is not $1.
 
-**Where is Ops?** Off the public nav. `/ops` requires `OPS_TOKEN`.
+**Why is my route unavailable?** Preview failed or `amountOut`/`minOut` is dust. The API will not ship minOut 0/1.
 
-**Is CHALLENGE the same as ALLOW?** No. Complete Turnstile. The signer will not sign a challenge.
+**Why did Arc ignore 8 confirmations?** Arc BFT is final on commit. Default lag is 0.
 
-**Can I call the signer directly?** No. Direct calls without an admission receipt fail.
-
-**What is the protocol version vs Factory V1?** Protocol **0.2.0** is the overall REACTOR release (`docs/version.json`). Factory **V1** is an immutable on-chain constant and stays V1 forever. See [versioning](/docs/versioning).
+**Where is the Safe JSON?** `deployments/safe-genesis-builder.json`. Deployer ≠ Guardian. Fill env and regenerate.

@@ -33,4 +33,5 @@ export const TABLES = [
   "issuance_state",
   "admission_receipts",
   "official_pools",
+  "issuance_bucket",
 ] as const;

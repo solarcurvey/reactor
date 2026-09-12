@@ -35,6 +35,13 @@ export default function HomePage() {
     );
   }, [data, filter, q]);
 
+  const vol24 = useMemo(() => {
+    return (data ?? []).reduce((acc, t) => {
+      const v = t.volume24hUsd6 && t.volume24hUsd6 !== "0" ? BigInt(t.volume24hUsd6) : 0n;
+      return acc + v;
+    }, 0n);
+  }, [data]);
+
   return (
     <div>
       <section className="flex flex-wrap items-end justify-between gap-4 border-b border-white/8 pb-5">
@@ -48,6 +55,20 @@ export default function HomePage() {
             <strong className="text-zinc-200">3.5%</strong> quote charge — 2% holders / 1% Top-10 / 0.5% CORE. No
             creator cut. No transfer tax.
           </p>
+          <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-zinc-300">
+              Protocol 0.3.0
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-zinc-300">
+              Factory V1
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 tabular-nums text-zinc-300">
+              24h vol ${formatUnitsSafe(vol24, 6, 0)}
+            </span>
+            <span className="rounded-full border border-amber-300/20 bg-amber-300/5 px-2.5 py-1 text-amber-100/80">
+              Not audited · no mainnet
+            </span>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild size="sm">
@@ -93,7 +114,14 @@ export default function HomePage() {
         </div>
       </div>
 
-      {isLoading && <p className="mt-8 text-sm text-zinc-500">Loading indexed markets…</p>}
+      {isLoading && (
+        <div className="mt-6 space-y-2" aria-busy="true">
+          <p className="text-sm text-zinc-500">Loading indexed markets…</p>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-11 animate-pulse rounded-xl bg-white/[0.04]" />
+          ))}
+        </div>
+      )}
       {isError && !REVIEW_FIXTURES && (
         <div className="mt-8 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
           Could not read the factory. Is Anvil running on 127.0.0.1:8545?
@@ -117,7 +145,8 @@ export default function HomePage() {
                 <th className="px-3 py-2 font-medium">Earns</th>
                 <th className="hidden px-3 py-2 font-medium sm:table-cell">Mode</th>
                 <th className="hidden px-3 py-2 font-medium md:table-cell">Price</th>
-                <th className="hidden px-3 py-2 font-medium lg:table-cell">24h</th>
+                <th className="hidden px-3 py-2 font-medium lg:table-cell">24h USD</th>
+                <th className="hidden px-3 py-2 font-medium xl:table-cell">FDV</th>
                 <th className="hidden px-3 py-2 font-medium md:table-cell">Holder rewards</th>
                 <th className="px-3 py-2 font-medium"></th>
               </tr>
@@ -170,6 +199,9 @@ export default function HomePage() {
                       {t.volume24hUsd6 && t.volume24hUsd6 !== "0"
                         ? `$${formatUnitsSafe(BigInt(t.volume24hUsd6), 6, 0)}`
                         : "—"}
+                    </td>
+                    <td className="hidden px-3 py-2 font-mono text-[12px] text-zinc-400 xl:table-cell">
+                      {t.fdvUsd6 && t.fdvUsd6 !== "0" ? `$${formatUnitsSafe(BigInt(t.fdvUsd6), 6, 0)}` : "—"}
                     </td>
                     <td className="hidden px-3 py-2 font-mono text-[12px] text-zinc-300 md:table-cell">
                       {formatUnitsSafe(t.lifetimeRewards ?? 0n, t.quoteDecimals ?? 18, 3)} {t.quoteSymbol}

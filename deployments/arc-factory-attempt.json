@@ -1,15 +1,33 @@
 {
-  "at": "2026-09-12T00:44:11.009Z",
+  "at": "2026-09-12T11:36:46.920Z",
   "rpc": "https://rpc.testnet.arc.io",
   "chainWanted": 5042002,
   "eip170": 24576,
   "claimed": false,
+  "nativeGas": {
+    "symbol": "USDC",
+    "decimals": 18,
+    "note": "Arc native gas is USDC-18 internally"
+  },
+  "usdcErc20": {
+    "address": "0x3600000000000000000000000000000000000000",
+    "decimals": 6
+  },
+  "finality": "deterministic BFT — no eth-8 confirmation lag (docs.arc.io/arc/concepts/deterministic-finality)",
   "chainId": 5042002,
   "chainHex": "0x4cef52",
-  "creationBytes": 25409,
-  "runtimeBytes": 23280,
+  "creationBytes": 25415,
+  "runtimeBytes": 23286,
   "runtimeOverEip170": false,
-  "head": "0x3acb639",
+  "head": "0x3add269",
   "estimateError": "execution reverted",
-  "error": "no ARC_TESTNET_PK — eth_sendRawTransaction not attempted. RPC live + estimate recorded. Not claimed."
+  "error": "no ARC_TESTNET_PK — eth_sendRawTransaction not attempted. RPC live + estimate recorded. Not claimed.",
+  "blocker": [
+    "Fund an EOA from https://faucet.circle.com on Arc Public Testnet (5042002)",
+    "export ARC_TESTNET_PK=0x… (never commit)",
+    "export ARC_TESTNET_RPC=https://rpc.testnet.arc.io",
+    "pnpm arc:factory-attempt",
+    "Require an explorer hash on https://testnet.arcscan.app before claiming",
+    "Mainnet 5042 remains blocked"
+  ]
 }

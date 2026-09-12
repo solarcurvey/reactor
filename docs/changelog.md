@@ -2,7 +2,7 @@
 
 # Changelog
 
-Protocol release **0.2.0** (`v0.2.0`). Factory **V1** is unchanged by this number.
+Protocol release **0.3.0** (`v0.3.0`). Factory **V1** is unchanged by this number.
 
 The canonical file is `CHANGELOG.md` at the repo root. Same content below.
 
@@ -13,6 +13,41 @@ Versioning: [Semantic Versioning](https://semver.org/) for the **protocol releas
 - Protocol source of truth: `docs/version.json` (`protocolVersion`)
 - Git tag: `vMAJOR.MINOR.PATCH` (see [Versioning](docs/versioning.md) and `CONTRIBUTING.md`)
 - Factory **V1 stays V1 forever**. A new fee split or curve is Factory V2, not a protocol patch.
+
+## [0.3.0] - 2026-09-12
+
+Correctness pass on admission, quoting, indexer markets, valuation, media, Arc. Tokenomics **unchanged**. Factory **V1**.
+
+### Added / Changed
+
+- Launch page uses the real Cloudflare Turnstile widget. CHALLENGE → widget → token → re-admit → ALLOW → signer. No `window.turnstileToken` stub.
+- ELEVATED/ATTACK: a solved challenge ALLOWs under rate + issuance limits. Table-driven tests. No infinite CHALLENGE loop.
+- Global LaunchAuthorization issuance is an atomic token-bucket (Postgres/SQLite, optional Redis). Counts **signed** auths.
+- ALLOW receipts carry `launchConfigHash`; the signer requires a match.
+- Receipt consume is `UPDATE…RETURNING` / SQLite transaction. Concurrent consume test.
+- Funding-cluster is an honest network-rename + optional first-USDC-funder signal. No KYC.
+- Fair LaunchAuthorization binds supply/decimals/duration/auctionBps/minRaise via `fairCurveConfig`. Instant keeps `INSTANT_CURVE_V1`.
+- `permanentlyLockTicker` reverts if another token holds the active 24h lock.
+- `UserRouteQuoter`: one eth_call whole-route preview. Edge kinds preserved. Multi-candidate by real `amountOut`. Nested fee legs disclosed. Maintenance quoter stays separate. Never minOut 0/1.
+- Indexer: real Store transactions; only 23505/UNIQUE as duplicate; 24h NUMERIC + latest-by-ts + ValuationService USD + incremental roll; bounded candles/trades; keyset pagination; NUMERIC sorts.
+- One ValuationService for Top-10 / signer / markets. `external_price_marks` worker. No static ZEC in PROD.
+- Media: explicit `sharp`, stream 2MB cap, R2/S3 SigV4.
+- Safe Transaction Builder JSON template + deployer≠Guardian. `registerNative` no longer silent.
+- Arc: USDC 18 gas / 6 ERC20 documented. Finality default 0 (BFT, drop eth-8). Real broadcast if `ARC_TESTNET_PK`, else honest blocker.
+- Docs corpus expanded (quoting, valuation, markets, media, Arc). Package versions aligned to 0.3.0.
+
+### Tokenomics
+
+- No change. Different split = new Factory version, not an edit to V1.
+
+### Known limits (honest)
+
+- Not audited. No public mainnet.
+- Arc Factory **not claimed** unless `deployments/arc-factory-attempt.json` has a confirmed explorer hash.
+- Top-10 ranks remain an offchain API.
+- LOCAL Turnstile bypass when secret unset.
+- Funding-cluster is a heuristic, not chain analysis.
+- Factory V1 runtime must stay ≤ 23,552. Logic stays in modules/libs/backend.
 
 ## [0.2.0] - 2026-09-12
 

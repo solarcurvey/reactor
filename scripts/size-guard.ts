@@ -11,7 +11,14 @@ const EIP170 = 24_576;
 const limit = Number(process.env.ARC_MAX_CODE_SIZE ?? EIP170);
 const margin = Number(process.env.SIZE_MARGIN ?? 1024);
 const maxOk = limit - margin;
-const contracts = ["ReactorFactory", "InstantLaunchModule", "InstantCurve", "ReactorHook", "TickerRegistry"];
+const contracts = [
+  "ReactorFactory",
+  "InstantLaunchModule",
+  "InstantCurve",
+  "ReactorHook",
+  "TickerRegistry",
+  "UserRouteQuoter",
+];
 
 type Row = { name: string; runtime: number; creation: number; ok: boolean };
 

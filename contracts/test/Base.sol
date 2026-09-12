@@ -42,6 +42,7 @@ import {IReactorSwapper} from "../src/interfaces/IReactorSwapper.sol";
 import {LaunchPricing} from "../src/libraries/LaunchPricing.sol";
 import {CurveMath} from "../src/libraries/CurveMath.sol";
 import {UserRouteExecutor} from "../src/UserRouteExecutor.sol";
+import {UserRouteQuoter} from "../src/UserRouteQuoter.sol";
 import {CoreVesting} from "../src/CoreVesting.sol";
 import {CoreLiquidityVault} from "../src/CoreLiquidityVault.sol";
 import {CoreBuybackExecutor} from "../src/CoreBuybackExecutor.sol";
@@ -71,6 +72,7 @@ contract Base is Test {
     ProtocolV4Adapter public protocolAdapter;
     RoutingRegistry public routes;
     UserRouteExecutor public userRouter;
+    UserRouteQuoter public userQuoter;
     CoreVesting public coreVesting;
     CoreLiquidityVault public coreLp;
     CoreBuybackExecutor public coreBuyback;
@@ -216,6 +218,7 @@ contract Base is Test {
         router.setProtocolVault(address(protocolAdapter), true);
         router.sealProtocolVaults();
         userRouter = new UserRouteExecutor(auth, hook, IReactorSwapper(address(router)), curve, address(usdc));
+        userQuoter = new UserRouteQuoter(auth, hook, IReactorSwapper(address(router)), curve, address(usdc));
         curve.bindRouteExecutor(address(userRouter));
 
         _seedHop(address(zec), 100_000e8, 5_000_000e6, zecUsdcKey);
@@ -364,12 +367,30 @@ contract Base is Test {
         return _launchAuthFor(address(this), symbol, quote, vq0, LaunchAuthorization.INSTANT_CURVE_V1);
     }
 
+    function _fairDefaults() internal pure returns (bytes32) {
+        return LaunchAuthorization.fairCurveConfig(
+            ReactorConstants.DEFAULT_SUPPLY,
+            ReactorConstants.DEFAULT_DECIMALS,
+            ReactorConstants.DEFAULT_FAIR_DURATION,
+            ReactorConstants.DEFAULT_AUCTION_BPS,
+            0
+        );
+    }
+
+    function _fairCfg(ReactorFactory.FairParams memory p) internal pure returns (bytes32) {
+        uint256 supply = p.supply == 0 ? ReactorConstants.DEFAULT_SUPPLY : p.supply;
+        uint8 dec = p.decimals == 0 ? ReactorConstants.DEFAULT_DECIMALS : p.decimals;
+        uint64 duration = p.duration == 0 ? ReactorConstants.DEFAULT_FAIR_DURATION : p.duration;
+        uint16 auctionBps = p.auctionBps == 0 ? ReactorConstants.DEFAULT_AUCTION_BPS : p.auctionBps;
+        return LaunchAuthorization.fairCurveConfig(supply, dec, duration, auctionBps, p.minRaise);
+    }
+
     function _fairAuth(string memory symbol, address quote)
         internal
         view
         returns (LaunchAuthorization.Auth memory a, bytes memory sig)
     {
-        return _launchAuthFor(address(this), symbol, quote, 0, LaunchAuthorization.FAIR_V1);
+        return _launchAuthFor(address(this), symbol, quote, 0, _fairDefaults());
     }
 
     function _launchAuthFor(address creator, string memory symbol, address quote, uint256 vq0, bytes32 curveConfig)
@@ -379,9 +400,9 @@ contract Base is Test {
     {
         string memory ticker = Ticker.normalize(symbol);
         uint8 dec = _quoteDecimals(quote);
-        uint8 mode = curveConfig == LaunchAuthorization.FAIR_V1
-            ? LaunchAuthorization.MODE_FAIR
-            : LaunchAuthorization.MODE_REWARDS;
+        uint8 mode = curveConfig == LaunchAuthorization.INSTANT_CURVE_V1
+            ? LaunchAuthorization.MODE_REWARDS
+            : LaunchAuthorization.MODE_FAIR;
         a = LaunchAuthorization.Auth({
             factory: address(factory),
             factoryVersion: 1,
@@ -449,7 +470,7 @@ contract Base is Test {
             name: p.name,
             metadataHash: LaunchAuthorization.hashMetadata(p.image, p.description, p.website, p.twitter, p.telegram),
             virtualQuote0: 0,
-            curveConfig: LaunchAuthorization.FAIR_V1,
+            curveConfig: _fairCfg(p),
             authId: keccak256(abi.encode(p.quote, ticker, creator, p.name, block.timestamp, gasleft(), address(this))),
             deadline: block.timestamp + 15 minutes
         });
