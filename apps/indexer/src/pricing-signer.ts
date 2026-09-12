@@ -15,7 +15,7 @@ import {
 } from "./launch-signer.ts";
 import type { Store } from "./db.ts";
 import { assertProductionHardGates } from "./prod-gates.ts";
-import { gateProtectedWrite, tryBindOfficialPolicyPlugins } from "./operator-policy.ts";
+import { bindRecoveredIdentity, gateProtectedWrite, tryBindOfficialPolicyPlugins } from "./operator-policy.ts";
 
 const PORT = Number(process.env.PRICING_SIGNER_PORT ?? 43149);
 const LOCAL = (process.env.REACTOR_ENV ?? "").toUpperCase() === "LOCAL";
@@ -72,6 +72,7 @@ const server = createServer(async (req, res) => {
       res.end(JSON.stringify({ ...gate.body, request_id: rid }));
       return;
     }
+    bindRecoveredIdentity(body as unknown as Record<string, unknown>, gate.wallet);
     const store = await durableStore();
     const out = await signAuthorized(store, body, {
       receipt: body.receipt ?? String(req.headers["x-admission-receipt"] ?? ""),

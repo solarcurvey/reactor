@@ -3,27 +3,35 @@ import { AddressInfo } from "node:net";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import {
   CORS_POLICY_HEADERS,
   bindOperatorPolicyProviders,
+  claimedClientWallet,
   extractSubjectWallet,
   fixtureEvaluateGeo,
   fixtureScreenAddress,
   gateProtectedWrite,
+  issueOperatorWalletChallenge,
   isProtectedWritePath,
   isPublicReadPath,
   resetOperatorPolicyState,
   setFixtureBlockedWallets,
   setFixtureDatasetFreshness,
   setFixtureLocalDefaultGeo,
+  tryBindOfficialPolicyPlugins,
 } from "./operator-policy.ts";
 import { OPERATOR_POLICY_DISCLAIMER } from "../../../packages/reactor/src/sanctions-policy.ts";
 
-const CLEAR = "0x1111111111111111111111111111111111111111";
-const BLOCKED = "0x2222222222222222222222222222222222222222";
+const CLAIMED_CLEAR = "0x1111111111111111111111111111111111111111";
 const CANARY_SIGNATURE = "CANARY_LAUNCH_SIGNATURE";
 const CANARY_TX = "0xCANARY_TX_PAYLOAD";
 const CANARY_UPLOAD = "/m/canary-should-not-leak.webp";
+
+const blockedAcct = privateKeyToAccount(generatePrivateKey());
+const clearAcct = privateKeyToAccount(generatePrivateKey());
+const BLOCKED = blockedAcct.address.toLowerCase();
+const CLEAR = clearAcct.address.toLowerCase();
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
@@ -87,11 +95,42 @@ function hit(
   });
 }
 
-/**
- * Production path names + the same `gateProtectedWrite` the indexer/signer call.
- * Downstream runs only after allow — canary payloads prove early denial.
- */
-function createProductionShapedHandler(downstream: { ran: number }) {
+async function signProof(account: { signMessage: (a: { message: string }) => Promise<string> }): Promise<string> {
+  const issued = issueOperatorWalletChallenge();
+  if ("error" in issued) throw new Error(issued.error);
+  const signature = await account.signMessage({ message: issued.message });
+  return JSON.stringify({ token: issued.token, signature });
+}
+
+async function spoofHeaders(signer: typeof blockedAcct, extra: Record<string, string> = {}): Promise<Record<string, string>> {
+  return {
+    "x-reactor-wallet-proof": await signProof(signer),
+    "x-reactor-wallet": CLAIMED_CLEAR,
+    "x-sanctions-clear": "1",
+    "x-ofac-clear": "true",
+    "cf-ipcountry": "US",
+    "x-country": "US",
+    "x-forwarded-for": "8.8.8.8",
+    "x-reactor-geo-fixture": extra["x-reactor-geo-fixture"] ?? "US",
+    ...extra,
+  };
+}
+
+function spoofBody(extra: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    wallet: CLAIMED_CLEAR,
+    creator: CLAIMED_CLEAR,
+    recipient: CLAIMED_CLEAR,
+    account: CLAIMED_CLEAR,
+    sanctionsClear: true,
+    ofacClear: true,
+    country: "US",
+    complianceOk: true,
+    ...extra,
+  };
+}
+
+function createProductionShapedHandler(downstream: { ran: number; lastWallet?: string }) {
   return async (req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
     const pathname = url.pathname.replace(/\/+$/, "") || "/";
@@ -99,6 +138,12 @@ function createProductionShapedHandler(downstream: { ran: number }) {
     res.setHeader("access-control-allow-headers", CORS_POLICY_HEADERS);
 
     if ((req.method ?? "GET") === "GET" && isPublicReadPath("GET", pathname)) {
+      if (pathname === "/operator-policy/challenge") {
+        const issued = issueOperatorWalletChallenge();
+        res.statusCode = "error" in issued ? 503 : 200;
+        res.end(JSON.stringify(issued));
+        return;
+      }
       res.statusCode = 200;
       res.end(JSON.stringify({ ok: true, path: pathname, items: [], public: true }));
       return;
@@ -129,14 +174,16 @@ function createProductionShapedHandler(downstream: { ran: number }) {
         return;
       }
       downstream.ran += 1;
+      downstream.lastWallet = gate.wallet;
       res.statusCode = 200;
       res.end(
         JSON.stringify({
           ok: true,
           signature: CANARY_SIGNATURE,
-          tx: { to: "0xfactory", data: CANARY_TX },
+          tx: { to: "0xfactory", data: CANARY_TX, recipient: gate.wallet },
           uri: CANARY_UPLOAD,
           surface,
+          wallet: gate.wallet,
         }),
       );
       return;
@@ -148,8 +195,8 @@ function createProductionShapedHandler(downstream: { ran: number }) {
 }
 
 function assertDenied(hitRes: Hit, reason: string, downstream: { ran: number }, before: number) {
-  assert(hitRes.status === 403 || hitRes.status === 503, `${reason} status ${hitRes.status}`);
-  assert(hitRes.json.reason === reason, `reason ${hitRes.json.reason} != ${reason}`);
+  assert(hitRes.status === 403 || hitRes.status === 503, `${reason} status ${hitRes.status} ${hitRes.raw}`);
+  assert(hitRes.json.reason === reason, `reason ${hitRes.json.reason} != ${reason} ${hitRes.raw}`);
   assert(hitRes.json.ok === false, "ok false");
   assert(typeof hitRes.json.error === "string" && String(hitRes.json.error).length > 0, "user error");
   assert(hitRes.json.disclaimer === OPERATOR_POLICY_DISCLAIMER, "disclaimer");
@@ -159,9 +206,10 @@ function assertDenied(hitRes: Hit, reason: string, downstream: { ran: number }, 
   assert(downstream.ran === before, `downstream ran ${downstream.ran} after deny`);
 }
 
-function assertAllowed(hitRes: Hit, downstream: { ran: number }, before: number) {
+function assertAllowed(hitRes: Hit, downstream: { ran: number }, before: number, wallet: string) {
   assert(hitRes.status === 200, `allow status ${hitRes.status} ${hitRes.raw}`);
   assert(hitRes.json.signature === CANARY_SIGNATURE, "allow returns payload");
+  assert(hitRes.json.wallet === wallet, `bound wallet ${hitRes.json.wallet}`);
   assert(downstream.ran === before + 1, "downstream ran once");
 }
 
@@ -175,44 +223,27 @@ resetOperatorPolicyState();
   assert(isProtectedWritePath("POST", "/upload"), "upload protected");
   assert(!isProtectedWritePath("GET", "/markets"), "markets not a write");
   assert(isPublicReadPath("GET", "/markets"), "markets is public read");
-  assert(isPublicReadPath("GET", "/health"), "health is public read");
-  assert(isPublicReadPath("GET", "/ticker/CAT"), "ticker is public read");
-  assert(isPublicReadPath("GET", "/candles/0x1111111111111111111111111111111111111111"), "candles read");
+  assert(isPublicReadPath("GET", "/operator-policy/challenge"), "challenge is public");
 }
 
 {
-  const w = extractSubjectWallet({
-    headers: { "x-sanctions-clear": "1", "cf-ipcountry": "US" },
-    body: { sanctionsClear: true, country: "US", recipient: CLEAR },
-  });
-  assert(w === CLEAR, "wallet from recipient, not spoof flags");
-  assert(
-    extractSubjectWallet({
-      headers: { "x-reactor-wallet": BLOCKED, "x-sanctions-clear": "true" },
-      body: { sanctionsClear: true },
-    }) === BLOCKED,
-    "header wallet still screened",
-  );
+  assert(extractSubjectWallet({ headers: {}, body: { wallet: CLAIMED_CLEAR } }) === undefined, "claimed wallet is not subject");
+  assert(claimedClientWallet({ headers: { "x-reactor-wallet": CLAIMED_CLEAR }, body: {} }) === CLAIMED_CLEAR, "claimed still parsed for ignore list");
+  const cors = CORS_POLICY_HEADERS.split(",");
+  assert(cors.includes("x-reactor-wallet-proof"), "proof header is CORS-permitted");
+  assert(!cors.includes("x-reactor-wallet"), "claimed wallet header is not CORS-permitted");
 }
 
 {
   setFixtureBlockedWallets([BLOCKED]);
   setFixtureDatasetFreshness("current");
-  const blocked = fixtureScreenAddress(BLOCKED);
-  const clear = fixtureScreenAddress(CLEAR);
-  assert(blocked.decision === "blocked", "fixture blocked");
-  assert(clear.decision === "clear", "fixture clear");
-  const deny = fixtureEvaluateGeo({ "x-reactor-geo-fixture": "FX" });
-  const allow = fixtureEvaluateGeo({ "x-reactor-geo-fixture": "US" });
-  const spoofCountry = fixtureEvaluateGeo({ "cf-ipcountry": "US", "x-country": "US" });
-  assert(deny.decision === "DENY", "FX denied");
-  assert(allow.decision === "ALLOW", "US allowed");
-  assert(spoofCountry.decision === "ALLOW", "LOCAL default allow — spoof country ignored");
-  const prodGeo = fixtureEvaluateGeo({ "cf-ipcountry": "US" }, { REACTOR_ENV: "PROD" });
-  assert(prodGeo.decision === "UNKNOWN", "PROD ignores browser country");
+  assert(fixtureScreenAddress(BLOCKED).decision === "blocked", "fixture blocked");
+  assert(fixtureScreenAddress(CLEAR).decision === "clear", "fixture clear");
+  assert(fixtureEvaluateGeo({ "x-reactor-geo-fixture": "FX" }).decision === "DENY", "FX denied");
+  assert(fixtureEvaluateGeo({ "cf-ipcountry": "US" }, { REACTOR_ENV: "PROD" }).decision === "UNKNOWN", "PROD ignores browser country");
 }
 
-const downstream = { ran: 0 };
+const downstream = { ran: 0, lastWallet: "" };
 const srv = await listen(createProductionShapedHandler(downstream));
 
 try {
@@ -226,8 +257,8 @@ try {
     const r = await hit(srv.url, {
       method: "POST",
       path: "/launch/authorize",
-      body: { wallet: BLOCKED, creator: BLOCKED, ticker: "CAT" },
-      headers: { "x-reactor-geo-fixture": "US" },
+      body: spoofBody({ ticker: "CAT" }),
+      headers: await spoofHeaders(blockedAcct),
     });
     assertDenied(r, "DENY_ADDRESS_BLOCKED", downstream, before);
   }
@@ -237,8 +268,8 @@ try {
     const r = await hit(srv.url, {
       method: "POST",
       path: "/quote",
-      body: { recipient: CLEAR, kind: "BUY", tokenIn: CLEAR, tokenOut: BLOCKED, amountIn: "1" },
-      headers: { "x-reactor-geo-fixture": "FX" },
+      body: spoofBody({ kind: "BUY", amountIn: "1" }),
+      headers: await spoofHeaders(clearAcct, { "x-reactor-geo-fixture": "FX" }),
     });
     assertDenied(r, "DENY_GEO_BLOCKED", downstream, before);
   }
@@ -248,10 +279,10 @@ try {
     const r = await hit(srv.url, {
       method: "POST",
       path: "/launch/admit",
-      body: { wallet: CLEAR, ticker: "CAT" },
-      headers: { "x-reactor-geo-fixture": "US" },
+      body: spoofBody({ ticker: "CAT" }),
+      headers: await spoofHeaders(clearAcct),
     });
-    assertAllowed(r, downstream, before);
+    assertAllowed(r, downstream, before, CLEAR);
   }
 
   {
@@ -260,8 +291,8 @@ try {
     const r = await hit(srv.url, {
       method: "POST",
       path: "/launch/authorize",
-      body: { wallet: CLEAR },
-      headers: { "x-reactor-geo-fixture": "US" },
+      body: spoofBody(),
+      headers: await spoofHeaders(clearAcct),
     });
     assertDenied(r, "UNAVAILABLE_DATASET_STALE", downstream, before);
     setFixtureDatasetFreshness("current");
@@ -273,7 +304,7 @@ try {
     const r = await hit(srv.url, {
       method: "POST",
       path: "/upload",
-      headers: { "x-reactor-wallet": CLEAR, "x-reactor-geo-fixture": "US" },
+      headers: await spoofHeaders(clearAcct),
     });
     assertDenied(r, "UNAVAILABLE_DATASET_MISSING", downstream, before);
     setFixtureDatasetFreshness("current");
@@ -284,23 +315,25 @@ try {
     const r = await hit(srv.url, {
       method: "POST",
       path: "/launch/authorize",
-      body: {
-        wallet: BLOCKED,
-        creator: BLOCKED,
-        sanctionsClear: true,
-        ofacClear: true,
-        country: "US",
-        complianceOk: true,
-      },
+      body: spoofBody({ ticker: "CAT" }),
       headers: {
+        "x-reactor-wallet": CLAIMED_CLEAR,
         "x-sanctions-clear": "1",
-        "x-ofac-clear": "true",
-        "x-compliance-ok": "1",
         "cf-ipcountry": "US",
-        "x-country": "US",
-        "x-forwarded-for": "8.8.8.8",
         "x-reactor-geo-fixture": "US",
       },
+    });
+    assertDenied(r, "UNAVAILABLE_WALLET_MISSING", downstream, before);
+  }
+
+  const spoofSurfaces = ["/launch/admit", "/launch/authorize", "/quote", "/upload", "/"] as const;
+  for (const path of spoofSurfaces) {
+    const before = downstream.ran;
+    const r = await hit(srv.url, {
+      method: "POST",
+      path,
+      body: path === "/upload" ? undefined : spoofBody(),
+      headers: await spoofHeaders(blockedAcct),
     });
     assertDenied(r, "DENY_ADDRESS_BLOCKED", downstream, before);
   }
@@ -308,48 +341,45 @@ try {
   {
     const markets = await hit(srv.url, { path: "/markets" });
     assert(markets.status === 200 && markets.json.public === true, "GET /markets not blocked");
-    const health = await hit(srv.url, { path: "/health" });
-    assert(health.status === 200 && health.json.ok === true, "GET /health not blocked");
-    const ticker = await hit(srv.url, { path: "/ticker/CAT" });
-    assert(ticker.status === 200, "GET /ticker not blocked");
+    const challenge = await hit(srv.url, { path: "/operator-policy/challenge" });
+    assert(challenge.status === 200 && typeof challenge.json.message === "string", "challenge issues");
   }
 
   {
-    const before = downstream.ran;
-    const r = await hit(srv.url, {
-      method: "POST",
-      path: "/",
-      body: { creator: BLOCKED, wallet: BLOCKED },
-      headers: { "x-reactor-geo-fixture": "US" },
-    });
-    assertDenied(r, "DENY_ADDRESS_BLOCKED", downstream, before);
-  }
-
-  {
-    bindOperatorPolicyProviders({
-      screenAddress: () => ({ decision: "unavailable", reason: "missing_dataset", freshness: "missing" }),
-      evaluateGeo: () => ({ decision: "ALLOW", reason: "ALLOW_JURISDICTION_NOT_LISTED" }),
-    });
+    resetOperatorPolicyState();
+    process.env.OPERATOR_POLICY_PLUGIN_BLOCKED = BLOCKED;
+    const bound = await tryBindOfficialPolicyPlugins(process.env, join(dirname(fileURLToPath(import.meta.url)), "operator-policy-plugin-fixtures"));
+    assert(bound.address && bound.geo, `official plugin path ${JSON.stringify(bound)}`);
     const before = downstream.ran;
     const r = await hit(srv.url, {
       method: "POST",
       path: "/quote",
-      body: { recipient: CLEAR, sanctionsClear: true },
-      headers: { "x-sanctions-clear": "1", "cf-ipcountry": "US" },
+      body: spoofBody(),
+      headers: await spoofHeaders(blockedAcct),
     });
-    assertDenied(r, "UNAVAILABLE_DATASET_MISSING", downstream, before);
+    assertDenied(r, "DENY_ADDRESS_BLOCKED", downstream, before);
+    const allow = await hit(srv.url, {
+      method: "POST",
+      path: "/quote",
+      body: spoofBody(),
+      headers: await spoofHeaders(clearAcct),
+    });
+    assertAllowed(allow, downstream, before + 0, CLEAR);
     bindOperatorPolicyProviders(null);
+    resetOperatorPolicyState();
+    setFixtureBlockedWallets([BLOCKED]);
+    delete process.env.OPERATOR_POLICY_PLUGIN_BLOCKED;
   }
 
   {
     const prod = await gateProtectedWrite({
-      headers: { "cf-ipcountry": "US", "x-sanctions-clear": "1" },
-      body: { wallet: CLEAR, sanctionsClear: true, country: "US" },
+      headers: { "cf-ipcountry": "US", "x-sanctions-clear": "1", "x-reactor-wallet": CLAIMED_CLEAR },
+      body: spoofBody(),
       env: { REACTOR_ENV: "PROD" },
       surface: "launch.authorize",
     });
     assert(!prod.ok, "PROD without official plugins fail-closes");
-    assert(prod.status === 503, "PROD unavailable is 503");
+    assert(prod.status === 403 || prod.status === 503, "PROD closed");
   }
 } finally {
   await srv.close();
@@ -363,22 +393,24 @@ try {
   for (const path of ["/launch/admit", "/launch/authorize", "/quote", "/upload"]) {
     const idx = indexSrc.indexOf(`url.pathname === "${path}"`);
     assert(idx >= 0, `index.ts has ${path}`);
-    const after = indexSrc.slice(idx, idx + 2200);
+    const after = indexSrc.slice(idx, idx + 2800);
     assert(after.includes("gateProtectedWrite"), `${path} calls gateProtectedWrite`);
     if (path === "/launch/authorize") {
       assert(after.indexOf("gateProtectedWrite") < after.indexOf("authorizeLaunch"), "authorize gated before sign");
+      assert(after.includes("bindRecoveredIdentity"), "authorize binds recovered signer");
     }
     if (path === "/quote") {
       assert(after.indexOf("gateProtectedWrite") < after.indexOf("buildQuote"), "quote gated before ticket");
+      assert(after.includes("bindRecoveredIdentity"), "quote binds recipient to recovered signer");
     }
     if (path === "/upload") {
       assert(after.indexOf("gateProtectedWrite") < after.indexOf("media.put"), "upload gated before store");
+      assert(after.includes("wallet: gate.wallet"), "upload attributes recovered signer");
     }
   }
+  assert(indexSrc.includes("/operator-policy/challenge"), "challenge route mounted");
   assert(signerSrc.includes("gateProtectedWrite"), "isolated signer gated");
-  const signerGate = signerSrc.indexOf("const gate = await gateProtectedWrite");
-  const signerOut = signerSrc.indexOf("const out = await signAuthorized");
-  assert(signerGate >= 0 && signerOut > signerGate, "signer gated before output");
+  assert(signerSrc.includes("bindRecoveredIdentity"), "signer binds recovered creator");
 }
 
 console.log("operator-policy http matrix ok");

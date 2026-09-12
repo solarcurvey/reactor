@@ -9,7 +9,9 @@
  *   - LOCAL fixture providers (deterministic; not production authority)
  *   - production without plugins fail-closes (unavailable)
  *
- * Browser JSON / query / `x-sanctions-clear` / `CF-IPCountry` never override.
+ * Browser JSON / query / `x-sanctions-clear` / `CF-IPCountry` /
+ * `x-reactor-wallet` / body.wallet never become the screened subject.
+ * Subject is the EIP-191 recovered signer of a server-issued challenge.
  */
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -23,6 +25,12 @@ import {
   type GeoPolicyResult,
   type OperatorPolicyDecision,
 } from "../../../packages/reactor/src/sanctions-policy.ts";
+import {
+  issueWalletProofChallenge,
+  readWalletProofParts,
+  recoverWalletProof,
+  type WalletProofChallenge,
+} from "../../../packages/reactor/src/wallet-proof.ts";
 
 export {
   evaluateOperatorPolicy,
@@ -80,6 +88,7 @@ export const UNTRUSTED_POLICY_HEADER_NAMES = [
   "true-client-ip",
   "x-real-ip",
   "x-forwarded-for",
+  "x-reactor-wallet",
 ] as const;
 
 const UNTRUSTED_BODY_KEYS = [
@@ -93,6 +102,10 @@ const UNTRUSTED_BODY_KEYS = [
   "complianceOk",
   "blocked",
   "clear",
+  "wallet",
+  "creator",
+  "recipient",
+  "account",
 ] as const;
 
 /** Same fixture deny ISOs as issue #63 LOCAL policy (FX / FY-99). */
@@ -267,17 +280,13 @@ export function isPublicReadPath(method: string, pathname: string): boolean {
   if (m !== "GET" && m !== "HEAD") return false;
   const p = pathname.replace(/\/+$/, "") || "/";
   if (p === "/health" || p === "/markets" || p === "/quote-assets" || p === "/valuation" || p === "/top10") return true;
+  if (p === "/operator-policy/challenge") return true;
   if (p === "/pricing/health" || p === "/stream" || p === "/events" || p === "/reactor" || p === "/keeper") return true;
   if (p.startsWith("/ticker/") || p.startsWith("/candles/") || p.startsWith("/swaps/") || p.startsWith("/m/")) return true;
   return false;
 }
 
-/**
- * Connected/user wallet from server-observed request identity.
- * Body wallet/creator/recipient/account or `x-reactor-wallet`.
- * Never reads client "clear"/country flags.
- */
-export function extractSubjectWallet(input: { headers: HeaderMap; body?: Record<string, unknown> }): string | undefined {
+export function claimedClientWallet(input: { headers: HeaderMap; body?: Record<string, unknown> }): string | undefined {
   const body = input.body ?? {};
   const candidates = [body.wallet, body.creator, body.recipient, body.account, header(input.headers, "x-reactor-wallet")];
   for (const c of candidates) {
@@ -285,6 +294,66 @@ export function extractSubjectWallet(input: { headers: HeaderMap; body?: Record<
     if (n) return n;
   }
   return undefined;
+}
+
+/**
+ * @deprecated Client-supplied wallet is not authority. Use recoverSubjectWallet.
+ */
+export function extractSubjectWallet(input: { headers: HeaderMap; body?: Record<string, unknown> }): string | undefined {
+  void input;
+  return undefined;
+}
+
+export function walletProofSecret(env: NodeJS.ProcessEnv = process.env): string {
+  const s = env.OPERATOR_POLICY_HMAC_SECRET?.trim() || env.ADMISSION_HMAC_SECRET?.trim() || "";
+  if (s.length >= 16) return s;
+  if (!productionHardGatesApply(env)) return "local-operator-policy-hmac-do-not-use-in-prod";
+  return "";
+}
+
+export function walletProofChainId(env: NodeJS.ProcessEnv = process.env): number {
+  const n = Number(env.CHAIN_ID ?? env.NEXT_PUBLIC_CHAIN_ID ?? 5042002);
+  return Number.isInteger(n) && n > 0 ? n : 5042002;
+}
+
+export function issueOperatorWalletChallenge(
+  env: NodeJS.ProcessEnv = process.env,
+  nowSec: number = Math.floor(Date.now() / 1000),
+): WalletProofChallenge | { error: string } {
+  const secret = walletProofSecret(env);
+  if (!secret) return { error: "wallet proof secret unavailable" };
+  return issueWalletProofChallenge({ chainId: walletProofChainId(env), secret, nowSec });
+}
+
+export async function recoverSubjectWallet(input: {
+  headers: HeaderMap;
+  body?: Record<string, unknown>;
+  env?: NodeJS.ProcessEnv;
+}): Promise<{ address?: string; reason?: "wallet_missing" | "wallet_invalid" | "wallet_proof_stale" }> {
+  const env = input.env ?? process.env;
+  const secret = walletProofSecret(env);
+  if (!secret) return { reason: "wallet_missing" };
+  const parts = readWalletProofParts({
+    headerProof: header(input.headers, "x-reactor-wallet-proof"),
+    body: input.body,
+  });
+  if (!parts) return { reason: "wallet_missing" };
+  const recovered = await recoverWalletProof({
+    token: parts.token,
+    signature: parts.signature,
+    secret,
+    expectedChainId: walletProofChainId(env),
+  });
+  if (!recovered.ok) return { reason: recovered.reason };
+  return { address: recovered.address };
+}
+
+/** Downstream artifacts must use the recovered signer, not the claimed wallet. */
+export function bindRecoveredIdentity(body: Record<string, unknown>, wallet: string): void {
+  body.wallet = wallet;
+  body.creator = wallet;
+  body.recipient = wallet;
+  body.account = wallet;
 }
 
 function ignoredClientSignals(headers: HeaderMap, body?: Record<string, unknown>): string[] {
@@ -323,12 +392,15 @@ export async function gateProtectedWrite(input: {
 }): Promise<PolicyGateAllow | PolicyGateDeny> {
   const env = input.env ?? process.env;
   const ignored = ignoredClientSignals(input.headers, input.body);
-  const wallet = extractSubjectWallet({ headers: input.headers, body: input.body });
+  const claimed = claimedClientWallet({ headers: input.headers, body: input.body });
+  if (claimed) ignored.push("claimed-wallet");
+  const recovered = await recoverSubjectWallet({ headers: input.headers, body: input.body, env });
+  const wallet = recovered.address;
   const p = providers(env);
 
   const addressScreen: AddressScreenResult = wallet
     ? await p.screenAddress(wallet)
-    : { decision: "unavailable", reason: "wallet_missing", freshness: "missing" };
+    : { decision: "unavailable", reason: recovered.reason ?? "wallet_missing", freshness: "missing" };
   const geo = p.evaluateGeo(input.headers, env);
   const decision = evaluateOperatorPolicy({ addressScreen, geo });
 
@@ -348,8 +420,11 @@ export async function gateProtectedWrite(input: {
  * Optional #61 / #63 bind. Missing modules are not an error — production
  * then fail-closes until those plugins exist.
  */
-export async function tryBindOfficialPolicyPlugins(env: NodeJS.ProcessEnv = process.env): Promise<{ address: boolean; geo: boolean }> {
-  const dir = dirname(fileURLToPath(import.meta.url));
+export async function tryBindOfficialPolicyPlugins(
+  env: NodeJS.ProcessEnv = process.env,
+  pluginDir?: string,
+): Promise<{ address: boolean; geo: boolean }> {
+  const dir = pluginDir ?? dirname(fileURLToPath(import.meta.url));
   let address = false;
   let geo = false;
   let screenFn: OperatorPolicyProviders["screenAddress"] | undefined;
@@ -409,4 +484,4 @@ export async function tryBindOfficialPolicyPlugins(env: NodeJS.ProcessEnv = proc
   return { address, geo };
 }
 
-export const CORS_POLICY_HEADERS = "content-type,x-request-id,authorization,x-ops-token,x-reactor-wallet,x-reactor-geo-fixture,x-reactor-geo,x-reactor-geo-ts,x-reactor-geo-country,x-reactor-geo-region,x-reactor-geo-region-name,x-reactor-geo-anonymizer,x-reactor-geo-ip,x-reactor-geo-mac";
+export const CORS_POLICY_HEADERS = "content-type,x-request-id,authorization,x-ops-token,x-reactor-wallet-proof,x-reactor-geo-fixture,x-reactor-geo,x-reactor-geo-ts,x-reactor-geo-country,x-reactor-geo-region,x-reactor-geo-region-name,x-reactor-geo-anonymizer,x-reactor-geo-ip,x-reactor-geo-mac";

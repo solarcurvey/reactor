@@ -67,17 +67,31 @@ export class ReactorClient {
     return r.json();
   }
 
-  async admit(body: Record<string, unknown>) {
+  async admit(body: Record<string, unknown>, proof?: { token: string; signature: string }) {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (this.opts.apiKey) headers["x-partner-key"] = this.opts.apiKey;
+    const p =
+      proof ??
+      (body.walletProof && typeof body.walletProof === "object"
+        ? (body.walletProof as { token: string; signature: string })
+        : undefined);
+    if (p?.token && p?.signature) {
+      headers["x-reactor-wallet-proof"] = JSON.stringify({ token: p.token, signature: p.signature });
+    }
     const r = await fetch(`${this.opts.baseUrl}/launch/admit`, { method: "POST", headers, body: JSON.stringify(body) });
     return r.json();
   }
 
-  async authorize(body: Record<string, unknown>) {
+  async authorize(body: Record<string, unknown>, proof?: { token: string; signature: string }) {
     const headers: Record<string, string> = { "content-type": "application/json" };
-    const wallet = typeof body.wallet === "string" ? body.wallet : typeof body.creator === "string" ? body.creator : "";
-    if (/^0x[a-fA-F0-9]{40}$/.test(wallet)) headers["x-reactor-wallet"] = wallet;
+    const p =
+      proof ??
+      (body.walletProof && typeof body.walletProof === "object"
+        ? (body.walletProof as { token: string; signature: string })
+        : undefined);
+    if (p?.token && p?.signature) {
+      headers["x-reactor-wallet-proof"] = JSON.stringify({ token: p.token, signature: p.signature });
+    }
     const r = await fetch(`${this.opts.baseUrl}/launch/authorize`, {
       method: "POST",
       headers,

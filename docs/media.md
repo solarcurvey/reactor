@@ -1,6 +1,6 @@
 # Media uploads
 
-`POST /upload` on the indexer. Operator policy runs first (`x-reactor-wallet` + trusted geo) — a denied request never returns a stored `uri`. See [Operator policy](/docs/operator-policy).
+`POST /upload` on the indexer. Operator policy runs first (recovered wallet proof + trusted geo) — a denied request never returns a stored `uri`. See [Operator policy](/docs/operator-policy).
 
 - Stream cap **2MB** — the request is destroyed if the body exceeds the limit.
 - Magic-byte type check (JPEG / PNG / WebP / GIF) and dimension bounds.

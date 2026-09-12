@@ -65,6 +65,15 @@ const unknownGeo: GeoPolicyResult = { decision: "UNKNOWN", reason: "UNKNOWN_MISS
     geo: allowGeo,
   });
   assert(d.reason === "UNAVAILABLE_WALLET_MISSING", "missing wallet maps");
+  assert(d.httpStatus === 403, "missing wallet is 403");
+}
+
+{
+  const d = evaluateOperatorPolicy({
+    addressScreen: { decision: "unavailable", reason: "wallet_invalid", freshness: "missing" },
+    geo: allowGeo,
+  });
+  assert(d.reason === "UNAVAILABLE_WALLET_PROOF" && d.httpStatus === 403, "invalid proof maps 403");
 }
 
 {

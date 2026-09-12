@@ -23,7 +23,7 @@ const UNTRUSTED_FORWARD = new Set([
 
 const TRUSTED_FORWARD = [
   "x-request-id",
-  "x-reactor-wallet",
+  "x-reactor-wallet-proof",
   "x-reactor-geo-fixture",
   "x-reactor-geo",
   "x-reactor-geo-ts",
@@ -34,6 +34,8 @@ const TRUSTED_FORWARD = [
   "x-reactor-geo-ip",
   "x-reactor-geo-mac",
 ];
+
+const UNTRUSTED_IDENTITY = ["x-reactor-wallet"];
 
 export function indexerLaunchAuthorizeUrl(env: NodeJS.ProcessEnv = process.env): string {
   const indexer = env.INDEXER_URL ?? env.NEXT_PUBLIC_INDEXER_URL ?? "http://127.0.0.1:43148";
@@ -46,18 +48,13 @@ export function launchAuthorizeForwardHeaders(req: Request, bodyText: string): R
     const v = req.headers.get(name);
     if (v) headers[name] = v;
   }
-  if (!headers["x-reactor-wallet"]) {
-    try {
-      const parsed = JSON.parse(bodyText) as { wallet?: unknown; creator?: unknown };
-      const w = typeof parsed.wallet === "string" ? parsed.wallet : typeof parsed.creator === "string" ? parsed.creator : "";
-      if (/^0x[a-fA-F0-9]{40}$/.test(w)) headers["x-reactor-wallet"] = w;
-    } catch {
-      /* body already capped; ignore parse */
-    }
-  }
   for (const name of UNTRUSTED_FORWARD) {
     delete headers[name];
   }
+  for (const name of UNTRUSTED_IDENTITY) {
+    delete headers[name];
+  }
+  void bodyText;
   return headers;
 }
 

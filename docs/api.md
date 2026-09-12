@@ -12,7 +12,7 @@ Base URL: indexer (local `http://127.0.0.1:43148`).
 | GET | `/markets/:token` | One market row (same SELECT as the board). 404 if unknown. |
 | GET | `/page/token/:token` | Indexed aggregation: market + candles + swaps in one response (`interval`, `candle_limit`, `swap_limit`). SQL in parallel. Not a live quote. |
 | GET | `/ticker/:ticker` | Canonical status, 24h lock, latest token |
-| POST | `/quote` | **Operator policy gated** (wallet + trusted geo) before any ticket / `tx` payload. One `UserRouteQuoter` eth_call per candidate. Winner is `pickBest` (not max raw out). `feeLegs[]` are that winner + terminal market (`aggregateProtocolImpactBps` compounds). SELL includes `minQuoteOut` (first-leg quote) and `minOut` (final USDC). Protocol kinds use `exemptOfficialLegs[]`. JSON body **16KiB** default / **64KiB** hard max (stream + chunked). |
+| POST | `/quote` | **Operator policy gated** (recovered wallet proof + trusted geo) before any ticket / `tx` payload. `recipient` is rebound to the recovered signer. One `UserRouteQuoter` eth_call per candidate. Winner is `pickBest` (not max raw out). `feeLegs[]` are that winner + terminal market (`aggregateProtocolImpactBps` compounds). SELL includes `minQuoteOut` (first-leg quote) and `minOut` (final USDC). Protocol kinds use `exemptOfficialLegs[]`. JSON body **16KiB** default / **64KiB** hard max (stream + chunked). |
 | GET | `/candles/:token` | `interval`, `limit`, exclusive `before`/`after` on `t`. Gap-fill ≤ `limit` (max 1000). Public read — not policy-gated. |
 | GET | `/swaps/:token` | Bounded `limit`, `before_id` |
 | GET | `/quote-assets` | Registered quotes |
@@ -20,10 +20,11 @@ Base URL: indexer (local `http://127.0.0.1:43148`).
 | GET | `/top10` | Canonical epoch candidates from ValuationService + persisted `current_supply`. Snapshot TTL 15m (`computedTs`); stale + failed refresh pauses. No per-request Factory RPC. |
 | GET | `/pricing/health` | Per-asset consensus, accepted/rejected observations, Arc sanity from the verified `route_venues` executable mark (not a synthetic `markets` row). 503 in PROD when an important mark fails. |
 | GET | `/stream` | SSE named events after persist commit. Clients patch cached board / token-page rows — do not refetch `/markets` on every print. `hello` includes `head` (hub id at attach) and `last` (resume cursor from `?after=` / `Last-Event-ID`). First-session toasts use `id > head`; reconnect must not raise that cutoff. `core` / `Top10Buy` rows carry `(chainId, tx, logIndex, eventKind)`. Accruals and `EpochSubmitted` (`top10`) are not buy+burn confirms. |
+| GET | `/operator-policy/challenge` | Short-lived EIP-191 message + HMAC token for write-path wallet binding. Public. |
 | GET | `/health` | Liveness |
 | GET | `/sanctions/screen` | Exact official-list address lookup. `decision` is `blocked` / `clear` / `unavailable` plus `datasetVersion` / `freshness`. Not legal/OFAC compliance. Lookup only — write/authorization gating is [operator policy](/docs/operator-policy) (#62). |
 | GET | `/sanctions/dataset` | Active dataset version, source coverage, and freshness. |
-| POST | `/upload` | **Operator policy gated** (`x-reactor-wallet` + trusted geo) before the image is stored. Stream 2MB + sharp + SigV4 remote. Returns `uri` `/m/<id>.webp` (R2/S3 key `m/<id>.webp`). |
+| POST | `/upload` | **Operator policy gated** (recovered wallet proof + trusted geo) before the image is stored. Stream 2MB + sharp + SigV4 remote. Returns `uri` `/m/<id>.webp` (R2/S3 key `m/<id>.webp`) and `wallet` (recovered signer). |
 | GET | `/m/:file` | Local WebP by filename (`<id>.webp`). CDN uses the same path as the object key. `nosniff` + `Content-Security-Policy: default-src 'none'; sandbox`. Public read — not policy-gated. |
 | POST | `/launch/admit` | **Operator policy gated**, then ALLOW / CHALLENGE / DENY. Partner header `x-partner-key`. No signature. JSON body **16KiB** default / **64KiB** hard max. |
 | POST | `/launch/authorize` | **Operator policy gated**, then admission → ALLOW receipt → isolated signer. CHALLENGE ≠ ALLOW. Policy deny is **403**; required-policy unavailable is **503** — no signature. JSON body **16KiB** default / **64KiB** hard max. |

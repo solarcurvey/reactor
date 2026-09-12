@@ -12,7 +12,8 @@
 | Factory | **V1** — **unchanged** |
 | Intent | One canonical server-side policy gate on REACTOR-operated write/authorization paths. Client-side blocking is insufficient. |
 | Decision module | `packages/reactor/src/sanctions-policy.ts` — `allow` / `deny` / `unavailable` + machine reason codes |
-| Enforcement | `apps/indexer/src/operator-policy.ts` `gateProtectedWrite` on admit / authorize / quote / upload / isolated signer; Next BFF forwards and does not honor client flags |
+| Wallet subject | EIP-191 recover of server challenge (`wallet-proof.ts`). Claimed wallet headers/JSON are not authority. |
+| Enforcement | `apps/indexer/src/operator-policy.ts` `gateProtectedWrite` on admit / authorize / quote / upload / isolated signer; Next BFF forwards proof only |
 | Address screen | Merged `#61` `indexerSanctionsStore().screen` / `GET /sanctions/screen` (lookup API stays ungated) |
 | Tests | Unit matrix + production-shaped indexer HTTP + Next `/api/launch-pricing` BFF. Denial before signer/upload/tx canary payloads. |
 | Docs | `/docs/operator-policy`, trust, API, admission, FAQ, builders, SDK, TESTING row 59 |
@@ -25,6 +26,7 @@
 | allow / deny / unavailable + reason codes | **Yes** | `sanctions-policy.test.ts` |
 | Fail closed on blocked or stale/unavailable | **Yes** | HTTP matrix + PROD-without-plugins 503 |
 | Never trust browser clear/country/IP | **Yes** | Spoof headers/body still deny |
+| Screen recovered signer, not claimed wallet | **Yes** | Sign-as-BLOCKED + `x-reactor-wallet`/`body.wallet=CLEAR` denies on admit/authorize/quote/upload/signer/BFF. `extractSubjectWallet` returns undefined. CORS does not permit `x-reactor-wallet`. |
 | Real Next/indexer routes | **Yes** | `operator-policy.test.ts`, `operator-policy-bff.test.ts` |
 | Denial before payload | **Yes** | Canary signature/tx/upload absent; downstream counter |
 | Public GET reads documented + unblocked | **Yes** | `/markets` `/health` `/ticker` `/sanctions/screen` |

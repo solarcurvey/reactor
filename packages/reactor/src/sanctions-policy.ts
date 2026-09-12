@@ -26,7 +26,8 @@ export type AddressScreenReason =
   | "invalid_query"
   | "incompatible_parser"
   | "wallet_missing"
-  | "wallet_invalid";
+  | "wallet_invalid"
+  | "wallet_proof_stale";
 
 export type AddressScreenResult = {
   decision: AddressScreenDecision;
@@ -52,6 +53,7 @@ export type OperatorPolicyReason =
   | "UNAVAILABLE_ADDRESS_SCREEN"
   | "UNAVAILABLE_GEO_POLICY"
   | "UNAVAILABLE_WALLET_MISSING"
+  | "UNAVAILABLE_WALLET_PROOF"
   | "UNAVAILABLE_POLICY_REQUIRED";
 
 export type OperatorPolicyDecision = {
@@ -73,7 +75,8 @@ export const USER_POLICY_MESSAGES: Record<OperatorPolicyReason, string> = {
   UNAVAILABLE_DATASET_STALE: "Required compliance checks are temporarily unavailable.",
   UNAVAILABLE_ADDRESS_SCREEN: "Required compliance checks are temporarily unavailable.",
   UNAVAILABLE_GEO_POLICY: "Required compliance checks are temporarily unavailable.",
-  UNAVAILABLE_WALLET_MISSING: "A connected wallet is required for this action.",
+  UNAVAILABLE_WALLET_MISSING: "A signed wallet proof is required for this action.",
+  UNAVAILABLE_WALLET_PROOF: "A signed wallet proof is required for this action.",
   UNAVAILABLE_POLICY_REQUIRED: "Required compliance checks are temporarily unavailable.",
 };
 
@@ -81,7 +84,8 @@ const ADDRESS_UNAVAILABLE_REASON: Record<string, OperatorPolicyReason> = {
   missing_dataset: "UNAVAILABLE_DATASET_MISSING",
   stale_dataset: "UNAVAILABLE_DATASET_STALE",
   wallet_missing: "UNAVAILABLE_WALLET_MISSING",
-  wallet_invalid: "UNAVAILABLE_WALLET_MISSING",
+  wallet_invalid: "UNAVAILABLE_WALLET_PROOF",
+  wallet_proof_stale: "UNAVAILABLE_WALLET_PROOF",
 };
 
 function finish(
@@ -94,7 +98,12 @@ function finish(
     decision,
     reason,
     userMessage: USER_POLICY_MESSAGES[reason],
-    httpStatus: reason === "ALLOW" ? 200 : decision === "deny" ? 403 : 503,
+    httpStatus:
+      reason === "ALLOW"
+        ? 200
+        : decision === "deny" || reason === "UNAVAILABLE_WALLET_MISSING" || reason === "UNAVAILABLE_WALLET_PROOF"
+          ? 403
+          : 503,
     policyId: OPERATOR_POLICY_ID,
     disclaimer: OPERATOR_POLICY_DISCLAIMER,
     addressScreen,
