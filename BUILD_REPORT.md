@@ -11,6 +11,10 @@
 | Protocol release | **0.3.0** (`docs/version.json`) |
 | Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
 | Intent | Admission integrity, UserRouteQuoter, indexer 24h/USD/keyset, ValuationService, SigV4, Arc BFT finality, docs + UI |
+| Foundry | **325 passed**, 1 skipped (parent 0.2.0 recorded 321) |
+| Indexer / lib | `pnpm --filter indexer test` + web top10/marketdata **ok** |
+| Playwright smoke | **5/5** after traders H1 restore |
+| Review shots | Regenerated `review/*-{1440,390}.png` this commit (token-bonding left stale — `BONDING_TOKEN` unset) |
 | Mainnet | **Blocked** |
 
 ## EIP-170 sizes
