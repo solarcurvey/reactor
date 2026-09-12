@@ -47,6 +47,7 @@ Postgres millisecond timestamps, media key/URL alignment, and signer fail-closed
 - `GET /markets` keyset (`cursor_ts` + `cursor_token`) uses the same column as `sort`: `new` → `updated_ts`, `vol` → `volume_24h_usd6`, `price` → `price_usd6`. `sort=price` no longer pages on `updated_ts`.
 - `GET /candles/:token` gap-fill materializes at most `limit` buckets (hard cap 1000). `before` / `after` stay exclusive on `t` (aligned `before` does not synthesize that bucket). A sparse 1m series does not allocate every minute from the first trade to now.
 - Nested user quotes disclose **every** official REACTOR fee hop of the **scored winner** plus its terminal market, not only a single terminal leg and not an independently tracked max-`amountOut` preview. Two official 3.5% legs compound to **688 bps / 6.88%**. Protocol tickets use `exemptOfficialLegs[]`. The trade ticket formats each charged leg in that hop’s quote asset and decimals and does not sum heterogeneous raw fee amounts. Refs #5 (issue stays open).
+- Indexer token `Burned` / `Transfer` to zero persist in the same `persistTickBatch` transaction as `indexer_state` cursor advance. A crash after the cursor but before the burn journal cannot skip those rows on restart. Schema stays **v9** `current_supply` on top of #27 v8. SQLite + Postgres regression in `tick-atomic.test.ts`.
 
 ### Tokenomics
 

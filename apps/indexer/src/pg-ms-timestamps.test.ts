@@ -152,11 +152,59 @@ try {
   assert(row.job_ts === "1700000444", "keeper_operations.ts preserved");
   assert(row.alert_ts === "1700000555", "alerts.ts preserved");
 
+  // --- Real post-#27 (v8) DB: full journal identity, then strip only v9 ---
+  await resetPublic(admin);
+  const bootV8 = await openStore({ databaseUrl: url });
+  assert((await applyMigrations(bootV8)) === SCHEMA_VERSION, "boot applies current schema");
+  const journal = await bootV8.get<{ exists: boolean }>(
+    "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='indexer_event_journal') AS exists",
+  );
+  assert(journal?.exists, "post-#27 journal exists before pin");
+  await bootV8.exec("ALTER TABLE tokens DROP COLUMN current_supply");
+  await bootV8.run("DELETE FROM schema_migrations WHERE id >= 9");
+  await bootV8.run(
+    `INSERT INTO tokens(address,symbol,name,decimals,creator,quote,mode,rewards_mode,supply,ticker,factory_version,created_block,created_tx,created_ts)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    "0xdead",
+    "OLD",
+    "Old",
+    18,
+    "",
+    "",
+    0,
+    1,
+    "1000000000000000000000000000",
+    "OLD",
+    1,
+    0,
+    "",
+    0,
+  );
+  const pinned = await bootV8.get<{ n: number }>("SELECT COALESCE(MAX(id),0) as n FROM schema_migrations");
+  assert(Number(pinned?.n) === 8, `pinned post-#27 schema is ${pinned?.n}, expected 8`);
+  await bootV8.close();
+  assert((await columnType(admin, "tokens", "current_supply")) === "", "pinned v8 tokens has no current_supply");
+  const storeV8 = await openStore({ databaseUrl: url });
+  assert((await applyMigrations(storeV8)) === SCHEMA_VERSION, `v8 DB migrated to ${SCHEMA_VERSION}`);
+  await storeV8.close();
+  const v8col = await columnType(admin, "tokens", "current_supply");
+  assert(v8col === "text", `v9 adds tokens.current_supply onto a real post-#27 DB, got ${v8col || "missing"}`);
+  const backfill = await admin.query<{ current_supply: string; supply: string }>(
+    "SELECT current_supply, supply FROM tokens WHERE address='0xdead'",
+  );
+  assert(
+    backfill.rows[0]?.current_supply === backfill.rows[0]?.supply &&
+      backfill.rows[0]?.supply === "1000000000000000000000000000",
+    "v9 backfills current_supply from a real post-#27 tokens row",
+  );
+
   // --- Fresh schema + live Date.now() paths ---
   await resetPublic(admin);
   const store = await openStore({ databaseUrl: url });
   assert(store.dialect === "postgres", "fresh dialect");
   assert((await applyMigrations(store)) === SCHEMA_VERSION, `fresh schema is v${SCHEMA_VERSION}`);
+  const supplyCol = await columnType(admin, "tokens", "current_supply");
+  assert(supplyCol === "text", `tokens.current_supply expected text, got ${supplyCol || "missing"}`);
 
   for (const t of TABLES) {
     const exists = await store.get<{ exists: boolean }>(

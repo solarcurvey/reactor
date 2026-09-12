@@ -44,8 +44,15 @@ const rows = [
   { token: "0x0000000000000000000000000000000000000005", ts: 50, vol: "99", px: "40" },
 ];
 
+const MINT = (10n ** 27n).toString();
 for (const r of rows) {
-  await upsertToken(store, { address: r.token, symbol: `T${r.token.slice(-1)}`, quote: "0xusdc", ts: r.ts });
+  await upsertToken(store, {
+    address: r.token,
+    symbol: `T${r.token.slice(-1)}`,
+    quote: "0xusdc",
+    supply: MINT,
+    ts: r.ts,
+  });
   await upsertMarket(store, { token: r.token, quote: "0xusdc", stage: "v4", ts: r.ts });
   await store.run(
     "UPDATE markets SET volume_24h_usd6=?, price_usd6=?, updated_ts=? WHERE token=?",
@@ -107,6 +114,10 @@ assert(tokens(pricePage2.items).join() === byPrice.slice(2, 4).join(), "price pa
 
 const fullPrice = await listMarkets(store, { sort: "price", limit: 100 });
 assert(fullPrice.total === 5 && tokens(fullPrice.items).join() === byPrice.join(), "full price order");
+assert(
+  fullPrice.items.every((i) => String(i.current_supply) === MINT && String(i.supply) === MINT),
+  "listMarkets projects tokens.current_supply for burn-adjusted FDV",
+);
 
 {
   const page1 = await listMarkets(store, { sort: "price", limit: 2 });

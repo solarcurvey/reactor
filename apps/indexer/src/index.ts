@@ -8,7 +8,7 @@ import { SseHub } from "./sse.ts";
 import { ObjectStore, publicMediaUrl } from "./media.ts";
 import { RateLimit, SECURITY_HEADERS, logLine, requestId } from "./obs.ts";
 import { abortIncoming, BodyTooLargeError, readJsonBody } from "./read-json-body.ts";
-import { getState, rollMarketAggregations } from "./ingest.ts";
+import { getState, reconcileCurrentSupplies, rollMarketAggregations, setState } from "./ingest.ts";
 import { loadValuationService } from "./valuation-store.ts";
 import { populateExternalPriceMarks } from "./price-marks.ts";
 import { buildQuote } from "./quote-service.ts";
@@ -61,6 +61,13 @@ const events = [
   parseAbiItem("event BuybackExecuted(address indexed quote, uint256 quoteIn, uint256 coreOut, address indexed caller)"),
   parseAbiItem("event COREBurned(uint256 amount)"),
 ];
+
+const TOKEN_BURN_EVENTS = [
+  parseAbiItem("event Burned(address indexed account, uint256 amount)"),
+  parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 amount)"),
+];
+
+const TOTAL_SUPPLY_ABI = [{ name: "totalSupply", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] }] as const;
 
 const factory = addrs.ReactorFactory as `0x${string}`;
 const hook = addrs.ReactorHook as `0x${string}`;
@@ -133,41 +140,97 @@ async function tick(store: Store) {
     }
   }
   let from = last > 0n ? last + 1n : 0n;
-  if (from > head) return;
-  const to = head - from > 2000n ? from + 2000n : head;
-  const watch = [factory, hook, addrs.BuybackVault, addrs.FlywheelVault, addrs.InstantCurve, addrs.SelfBurnVault, addrs.PoolManager, addrs.TickerRegistry]
-    .filter(Boolean) as `0x${string}`[];
-  const logs = await client.getLogs({ address: watch, events, fromBlock: from, toBlock: to });
-  const timestamps = new Map<number, number>();
-  const needed = new Set<number>([Number(to)]);
-  for (const log of logs) needed.add(Number(log.blockNumber));
-  for (const n of needed) timestamps.set(n, await chainTs(BigInt(n)));
-  const headBlk = await client.getBlock({ blockNumber: to });
-  const published = await persistTickBatch(store, {
-    logs: logs.map((log) => ({
-      eventName: log.eventName,
-      args: (log.args ?? {}) as Record<string, unknown>,
-      address: log.address,
-      blockNumber: log.blockNumber,
-      transactionHash: log.transactionHash,
-      logIndex: log.logIndex,
-    })),
-    timestamps,
-    cursorBlock: to.toString(),
-    cursorHash: headBlk.hash ?? "",
-    ctx: {
-      chainId: deployment.chainId,
-      factory,
-      hook,
-      protocolAdapter: (addrs.ProtocolV4Adapter ?? addrs.V4Adapter) as string | undefined,
-      userAdapter: (addrs.V4Adapter ?? addrs.UniswapV4Adapter) as string | undefined,
-      tokenByPool,
-      quoteDec,
+  const burnedThisTick = new Set<string>();
+  const createdThisTick = new Set<string>();
+  const coreAddr = String(addrs.CoreToken ?? addrs.TestCORE ?? "").toLowerCase();
+  if (from <= head) {
+    const to = head - from > 2000n ? from + 2000n : head;
+    const watch = [factory, hook, addrs.BuybackVault, addrs.FlywheelVault, addrs.InstantCurve, addrs.SelfBurnVault, addrs.PoolManager, addrs.TickerRegistry]
+      .filter(Boolean) as `0x${string}`[];
+    const logs = await client.getLogs({ address: watch, events, fromBlock: from, toBlock: to });
+    for (const log of logs) {
+      if (log.eventName === "TokenCreated") {
+        const created = String((log.args as { token?: string } | undefined)?.token ?? "").toLowerCase();
+        if (created) createdThisTick.add(created);
+      }
+    }
+    const timestamps = new Map<number, number>();
+    const needed = new Set<number>([Number(to)]);
+    for (const log of logs) needed.add(Number(log.blockNumber));
+    // Watch already-indexed tokens plus TokenCreated in this window so a
+    // same-window public burn() is fetched. RPC stays outside persistTickBatch;
+    // journal/supply writes share that transaction with the cursor.
+    const knownTokens = await store.all<{ address: string }>("SELECT address FROM tokens");
+    const burnWatch = [
+      ...new Set([...knownTokens.map((r) => r.address.toLowerCase()), ...createdThisTick, coreAddr].filter(Boolean)),
+    ] as `0x${string}`[];
+    const tokenBurnLogs = burnWatch.length
+      ? await client.getLogs({ address: burnWatch, events: TOKEN_BURN_EVENTS, fromBlock: from, toBlock: to })
+      : [];
+    for (const log of tokenBurnLogs) needed.add(Number(log.blockNumber));
+    for (const n of needed) timestamps.set(n, await chainTs(BigInt(n)));
+    const headBlk = await client.getBlock({ blockNumber: to });
+    const published = await persistTickBatch(store, {
+      logs: logs.map((log) => ({
+        eventName: log.eventName,
+        args: (log.args ?? {}) as Record<string, unknown>,
+        address: log.address,
+        blockNumber: log.blockNumber,
+        transactionHash: log.transactionHash,
+        logIndex: log.logIndex,
+      })),
+      burnLogs: tokenBurnLogs.map((log) => ({
+        eventName: log.eventName,
+        args: (log.args ?? {}) as Record<string, unknown>,
+        address: log.address,
+        blockNumber: log.blockNumber,
+        transactionHash: log.transactionHash,
+        logIndex: log.logIndex,
+      })),
+      timestamps,
+      cursorBlock: to.toString(),
+      cursorHash: headBlk.hash ?? "",
+      ctx: {
+        chainId: deployment.chainId,
+        factory,
+        hook,
+        protocolAdapter: (addrs.ProtocolV4Adapter ?? addrs.V4Adapter) as string | undefined,
+        userAdapter: (addrs.V4Adapter ?? addrs.UniswapV4Adapter) as string | undefined,
+        tokenByPool,
+        quoteDec,
+      },
+    });
+    for (const ev of published) {
+      sse.publish(ev);
+      if (ev.type === "burn") {
+        const token = String((ev.data as { token?: string } | undefined)?.token ?? "").toLowerCase();
+        if (token) burnedThisTick.add(token);
+      }
+    }
+    await populateExternalPriceMarks(store).catch(() => undefined);
+  }
+  const cursor = (await getState(store, "supply_reconcile_cursor")) ?? "";
+  const rec = await reconcileCurrentSupplies(
+    store,
+    async (addr) => {
+      try {
+        return (await client.readContract({
+          address: addr as `0x${string}`,
+          abi: TOTAL_SUPPLY_ABI,
+          functionName: "totalSupply",
+        })) as bigint;
+      } catch {
+        return null;
+      }
     },
-  });
-  for (const ev of published) sse.publish(ev);
+    {
+      limit: Number(process.env.SUPPLY_RECONCILE_LIMIT ?? 40),
+      after: cursor,
+      priority: [coreAddr, ...burnedThisTick, ...createdThisTick],
+    },
+  );
+  await setState(store, "supply_reconcile_cursor", rec.nextCursor);
   await rollMarketAggregations(store);
-  await populateExternalPriceMarks(store).catch(() => undefined);
 }
 
 async function refreshQuotes(store: Store) {

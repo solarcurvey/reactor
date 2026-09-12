@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { openStore, type Store } from "./db.ts";
 import { getState } from "./ingest.ts";
+import { currentSupplyRaw } from "./ingest.ts";
 import { persistTickBatch, rewindIndexerCursor, type TickLog, type TickPersistCtx } from "./tick-persist.ts";
 
 function assert(cond: unknown, msg: string): asserts cond {
@@ -18,10 +19,15 @@ function addr(seed: string): string {
   return `0x${seed.padEnd(40, "0")}`.toLowerCase();
 }
 
+const ZERO = "0x0000000000000000000000000000000000000000";
+const INITIAL_SUPPLY = "1000000000000000000000000000";
+const HOLDER_BURN = "40000000000000000000000000";
+
 function log(name: string, args: Record<string, unknown>, extra?: Partial<TickLog>): TickLog {
   return {
     eventName: name,
     args,
+    address: extra?.address,
     blockNumber: extra?.blockNumber ?? 10n,
     transactionHash: extra?.transactionHash ?? `0x${"ab".repeat(32)}`,
     logIndex: extra?.logIndex ?? 0,
@@ -73,7 +79,7 @@ function txh(): string {
 
 function launchLogs(token: string, quote: string, tx = txh()): TickLog[] {
   return [
-    log("TokenCreated", { token, creator: addr("c1"), name: "Cat", symbol: "CAT", supply: "1000000000000000000000000000" }, { transactionHash: tx, logIndex: 0 }),
+    log("TokenCreated", { token, creator: addr("c1"), name: "Cat", symbol: "CAT", supply: INITIAL_SUPPLY }, { transactionHash: tx, logIndex: 0 }),
     log("InstantLaunchCreated", { token, quote, creator: addr("c1"), rewardsMode: true, gradTarget: "1000" }, { transactionHash: tx, logIndex: 1 }),
     log("CurveBuy", { token, buyer: addr("b1"), quoteIn: "1000", tokensOut: "5000", fee: "35" }, { transactionHash: tx, logIndex: 2 }),
     log("RewardClaimed", { token, account: addr("b1"), amount: "20" }, { transactionHash: tx, logIndex: 3 }),
@@ -297,10 +303,183 @@ async function runIdentitySuite(store: Store, label: string) {
   console.log(`tick log identity ok (${label})`);
 }
 
+function burnLogsFor(token: string, tx: string, logIndex0 = 20): TickLog[] {
+  return [
+    log(
+      "Transfer",
+      { from: addr("h1"), to: ZERO, amount: HOLDER_BURN },
+      { transactionHash: tx, logIndex: logIndex0, address: token, blockNumber: 10n },
+    ),
+    log(
+      "Burned",
+      { account: addr("h1"), amount: HOLDER_BURN },
+      { transactionHash: tx, logIndex: logIndex0 + 1, address: token, blockNumber: 10n },
+    ),
+  ];
+}
+
+async function burnJournalCount(store: Store, tx: string): Promise<number> {
+  return countWhere(
+    store,
+    "SELECT COUNT(*) as n FROM indexer_event_journal WHERE tx=? AND event_kind IN ('Transfer','Burned')",
+    tx,
+  );
+}
+
+async function burnSideCount(store: Store, token: string, tx: string): Promise<number> {
+  return countWhere(
+    store,
+    "SELECT COUNT(*) as n FROM selfburn WHERE token=? AND tx=? AND event_kind IN ('Transfer','Burned')",
+    token,
+    tx,
+  );
+}
+
+/**
+ * Davis #8: cursor must not advance without the burn journal for that range.
+ * Crash on the indexer_state write (the old post-cursor persistTokenBurnLogs seam)
+ * rolls burn rows back with the cursor. Retry + "restart from cursor+1" cannot drop them.
+ */
+async function runBurnCursorAtomicSuite(store: Store, label: string) {
+  const quote = addr("q1");
+  const persistCtx = ctx();
+
+  const seeded = addr(randomBytes(8).toString("hex"));
+  const seedTx = txh();
+  const cursor0 = String(60_000_000 + (Date.now() % 1_000_000));
+  const hash0 = `0x${randomBytes(8).toString("hex")}`;
+  await persistTickBatch(store, {
+    logs: launchLogs(seeded, quote, seedTx),
+    timestamps,
+    cursorBlock: cursor0,
+    cursorHash: hash0,
+    ctx: persistCtx,
+  });
+  assert((await currentSupplyRaw(store, seeded)) === BigInt(INITIAL_SUPPLY), `${label}: seed supply`);
+
+  const burnTx = txh();
+  const burns = burnLogsFor(seeded, burnTx);
+  const cursor1 = String(Number(cursor0) + 10);
+  const hash1 = `0x${randomBytes(8).toString("hex")}`;
+  let crashed = false;
+  try {
+    await persistTickBatch(
+      crashStore(store, (sql) => /indexer_state/i.test(sql)),
+      {
+        logs: [],
+        burnLogs: burns,
+        timestamps,
+        cursorBlock: cursor1,
+        cursorHash: hash1,
+        ctx: persistCtx,
+      },
+    );
+  } catch (e) {
+    crashed = String(e).includes("injected crash");
+  }
+  assert(crashed, `${label}: burn+cursor crash injected`);
+  assert((await getState(store, "block")) === cursor0, `${label}: cursor not advanced without burn journal`);
+  assert((await getState(store, "block_hash")) === hash0, `${label}: hash not advanced without burn journal`);
+  assert((await burnJournalCount(store, burnTx)) === 0, `${label}: crash before cursor commit drops burn journal`);
+  assert((await burnSideCount(store, seeded, burnTx)) === 0, `${label}: crash before cursor commit drops burn side rows`);
+  assert((await currentSupplyRaw(store, seeded)) === BigInt(INITIAL_SUPPLY), `${label}: current_supply unchanged when burn tx rolls back`);
+
+  const recovered = await persistTickBatch(store, {
+    logs: [],
+    burnLogs: burns,
+    timestamps,
+    cursorBlock: cursor1,
+    cursorHash: hash1,
+    ctx: persistCtx,
+  });
+  assert(recovered.some((e) => e.type === "burn"), `${label}: retry publishes burn SSE after commit`);
+  assert((await getState(store, "block")) === cursor1, `${label}: retry advances cursor with burns`);
+  assert((await getState(store, "block_hash")) === hash1, `${label}: retry hash`);
+  assert((await burnJournalCount(store, burnTx)) === 2, `${label}: Transfer + Burned journal rows committed with cursor`);
+  assert((await burnSideCount(store, seeded, burnTx)) === 2, `${label}: Transfer + Burned selfburn rows committed with cursor`);
+  assert(
+    (await currentSupplyRaw(store, seeded)) === BigInt(INITIAL_SUPPLY) - 2n * BigInt(HOLDER_BURN),
+    `${label}: holder burns applied (same-tx Transfer+Burned are two identities)`,
+  );
+
+  const cursor2 = String(Number(cursor1) + 10);
+  const hash2 = `0x${randomBytes(8).toString("hex")}`;
+  await persistTickBatch(store, {
+    logs: [],
+    burnLogs: [],
+    timestamps,
+    cursorBlock: cursor2,
+    cursorHash: hash2,
+    ctx: persistCtx,
+  });
+  assert((await getState(store, "block")) === cursor2, `${label}: restart cursor+1`);
+  assert((await burnJournalCount(store, burnTx)) === 2, `${label}: restart from cursor+1 cannot drop committed burn journal`);
+  assert((await burnSideCount(store, seeded, burnTx)) === 2, `${label}: restart from cursor+1 cannot drop committed burn side rows`);
+
+  const replay = await persistTickBatch(store, {
+    logs: [],
+    burnLogs: burns,
+    timestamps,
+    cursorBlock: cursor2,
+    cursorHash: hash2,
+    ctx: persistCtx,
+  });
+  assert(!replay.some((e) => e.type === "burn"), `${label}: replay of committed burn identity is a no-op`);
+  assert((await burnJournalCount(store, burnTx)) === 2, `${label}: replay does not duplicate burn journal`);
+  assert(
+    (await currentSupplyRaw(store, seeded)) === BigInt(INITIAL_SUPPLY) - 2n * BigInt(HOLDER_BURN),
+    `${label}: replay does not decrement current_supply twice`,
+  );
+
+  const sameWindow = addr(randomBytes(8).toString("hex"));
+  const sameTx = txh();
+  const cursor3 = String(Number(cursor2) + 10);
+  const hash3 = `0x${randomBytes(8).toString("hex")}`;
+  crashed = false;
+  try {
+    await persistTickBatch(
+      crashStore(store, (sql) => /indexer_state/i.test(sql)),
+      {
+        logs: launchLogs(sameWindow, quote, sameTx),
+        burnLogs: burnLogsFor(sameWindow, sameTx, 4),
+        timestamps,
+        cursorBlock: cursor3,
+        cursorHash: hash3,
+        ctx: persistCtx,
+      },
+    );
+  } catch (e) {
+    crashed = String(e).includes("injected crash");
+  }
+  assert(crashed, `${label}: same-window TokenCreated+burn crash injected`);
+  assert((await getState(store, "block")) === cursor2, `${label}: same-window crash leaves prior cursor`);
+  assert((await countTokens(store, sameWindow)) === 0, `${label}: same-window token rolled back with burns`);
+  assert((await burnJournalCount(store, sameTx)) === 0, `${label}: same-window burn journal rolled back with cursor`);
+
+  await persistTickBatch(store, {
+    logs: launchLogs(sameWindow, quote, sameTx),
+    burnLogs: burnLogsFor(sameWindow, sameTx, 4),
+    timestamps,
+    cursorBlock: cursor3,
+    cursorHash: hash3,
+    ctx: persistCtx,
+  });
+  assert((await getState(store, "block")) === cursor3, `${label}: same-window retry commits cursor`);
+  assert((await countTokens(store, sameWindow)) === 1, `${label}: same-window token committed with burns`);
+  assert((await burnJournalCount(store, sameTx)) === 2, `${label}: same-window burns committed with TokenCreated + cursor`);
+  assert(
+    (await currentSupplyRaw(store, sameWindow)) === BigInt(INITIAL_SUPPLY) - 2n * BigInt(HOLDER_BURN),
+    `${label}: same-window public burn() applied in the cursor transaction`,
+  );
+
+  console.log(`tick burn+cursor atomic ok (${label})`);
+}
+
 const dir = mkdtempSync(join(tmpdir(), "reactor-tick-"));
 const sqlite = await openStore({ sqlitePath: join(dir, "t.sqlite") });
 await runSuite(sqlite, "sqlite");
 await runIdentitySuite(sqlite, "sqlite");
+await runBurnCursorAtomicSuite(sqlite, "sqlite");
 await sqlite.close();
 rmSync(dir, { recursive: true, force: true });
 
@@ -316,6 +495,7 @@ try {
   assert(pg.dialect === "postgres", "postgres dialect");
   await runSuite(pg, "postgres");
   await runIdentitySuite(pg, "postgres");
+  await runBurnCursorAtomicSuite(pg, "postgres");
   await pg.close();
   postgresRan = true;
 } catch (e) {

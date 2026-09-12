@@ -6,7 +6,7 @@ Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy,
 
 - Header: mark, Discover, Launch/IGNITE, Rewards, CORE, compact wallet.
 - Home is a **board**, not a landing page: live filters, dense token cards, one featured rail.
-- Cards: icon, ticker, quote badge, FDV/mcap, 24h, volume, spark. One primary action.
+- Cards: icon, ticker, quote badge, FDV/mcap (`current_supply` × mark — tracks remaining onchain `totalSupply` after `burn()`, not the initial 1B mint, not a live ≡), 24h, volume, spark. One primary action.
 - Token page is **trading-first**: chart + ticket above fold; social/meta below.
 - Instant form is compact: image, name, ticker, description, quote, EARNS X vs BUY+BURN, optional Dev Buy. No curve knobs.
 
