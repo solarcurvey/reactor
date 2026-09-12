@@ -18,14 +18,14 @@ import {
   type AddressScreenResult,
   type GeoPolicyResult,
   type OperatorPolicyDecision,
-} from "../../packages/reactor/src/operator-policy-evaluate.ts";
-import { normalizeEvmAddress, publicPolicyView } from "../../packages/reactor/src/operator-policy-ux.ts";
+} from "../../../packages/reactor/src/operator-policy-evaluate.ts";
+import { normalizeEvmAddress, publicPolicyView } from "../../../packages/reactor/src/operator-policy-ux.ts";
 import {
   issueWalletProofChallenge,
   readWalletProofParts,
   recoverWalletProof,
   type WalletProofChallenge,
-} from "../../packages/reactor/src/wallet-proof.ts";
+} from "../../../packages/reactor/src/wallet-proof.ts";
 
 export type HeaderMap = Record<string, string | string[] | undefined>;
 

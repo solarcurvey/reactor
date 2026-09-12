@@ -159,22 +159,19 @@ test("client-state allow still fails at the real #62 write gate", async ({ page 
     const signature = await blocked.signMessage({ message: challenge.message as string });
     const proof = JSON.stringify({ token: challenge.token, signature });
 
-    const gated = await page.evaluate(
-      async ({ proof, claimedClear, fixtureUrl }) => {
-        const res = await fetch(`${fixtureUrl}/launch/authorize`, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-reactor-wallet-proof": proof,
-            "x-reactor-wallet": claimedClear,
-            "x-sanctions-clear": "1",
-          },
-          body: JSON.stringify({ wallet: claimedClear, creator: claimedClear, sanctionsClear: true }),
-        });
-        return { status: res.status, body: (await res.json()) as { reason?: string; ranDownstream?: boolean } };
+    const gatedRes = await page.request.post(`${fixtureUrl}/launch/authorize`, {
+      headers: {
+        "content-type": "application/json",
+        "x-reactor-wallet-proof": proof,
+        "x-reactor-wallet": claimedClear,
+        "x-sanctions-clear": "1",
       },
-      { proof, claimedClear, fixtureUrl },
-    );
+      data: { wallet: claimedClear, creator: claimedClear, sanctionsClear: true },
+    });
+    const gated = {
+      status: gatedRes.status(),
+      body: (await gatedRes.json()) as { reason?: string; ranDownstream?: boolean },
+    };
     expect(gated.status).toBe(403);
     expect(gated.body.reason).toBe("DENY_ADDRESS_BLOCKED");
     expect(gated.body.ranDownstream).toBe(false);
