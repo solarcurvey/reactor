@@ -25,3 +25,23 @@ runs:
         if [ ! -d lib/v4-core/lib/solmate ]; then
           git -C lib/v4-core submodule update --init --recursive
         fi
+    - name: Prefetch solc 0.8.26 (retry CDN)
+      shell: bash
+      run: |
+        set -euo pipefail
+        ver=0.8.26
+        if find "${HOME}/.svm" -type f \( -name "solc-0.8.26" -o -name "solc-0.8.26+*" -o -path "*0.8.26*solc*" \) 2>/dev/null | grep -q .; then
+          echo "solc 0.8.26 already in ~/.svm"
+          find "${HOME}/.svm" -type f -name "solc*" | head
+          exit 0
+        fi
+        for attempt in 1 2 3 4 5; do
+          echo "svm install ${ver} (attempt ${attempt})"
+          if command -v svm >/dev/null && svm install "${ver}"; then
+            exit 0
+          fi
+          echo "svm install failed; retrying after $((attempt * 4))s" >&2
+          sleep $((attempt * 4))
+        done
+        echo "failed to download solc ${ver} from binaries.soliditylang.org after retries" >&2
+        exit 1

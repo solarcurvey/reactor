@@ -124,7 +124,7 @@ Ready-for-review / `ci-full` / `main`: **one** full path per SHA (not push+PR tw
 ## Caches / setup
 
 - pnpm + Node 22: `.github/actions/setup-pnpm` (`cache: pnpm`).
-- Foundry + `contracts/cache` + `~/.svm`: `.github/actions/setup-foundry`.
+- Foundry + `contracts/cache` + `~/.svm`: `.github/actions/setup-foundry`. After the cache restore, prefetch `solc 0.8.26` via `svm install` with retries so a one-shot `binaries.soliditylang.org` reset cannot skip `forge test` / Attack / CREATE2 / `size:guard`.
 - Playwright browsers: `~/.cache/ms-playwright` keyed on the lockfile.
 
 Tiny isolated VMs that only repeated `pnpm install` were combined (`keeper-lease-pg` into `postgres-ms-timestamps`; docs + indexer + cheap security into `constants-version-deployments`).

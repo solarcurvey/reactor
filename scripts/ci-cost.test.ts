@@ -121,6 +121,11 @@ assert.match(ciYml, /github\.event\.pull_request\.head\.sha \|\| github\.sha/);
 // Caches
 assert.match(ciYml, /~\/\.cache\/ms-playwright/);
 assert.match(readFileSync(join(root, ".github/actions/setup-foundry/action.yml"), "utf8"), /contracts\/cache/);
+assert.match(
+  readFileSync(join(root, ".github/actions/setup-foundry/action.yml"), "utf8"),
+  /svm install/,
+  "setup-foundry must prefetch solc via svm install (retry CDN)",
+);
 assert.match(readFileSync(join(root, ".github/actions/setup-pnpm/action.yml"), "utf8"), /cache: pnpm/);
 
 // --- path classifier -------------------------------------------------------

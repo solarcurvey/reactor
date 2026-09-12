@@ -38,7 +38,9 @@
 
 ## Billing vs real CI
 
-Exact-head GitHub Actions may show empty-step FAILURE because of account payments / spending-limit. That is **not** a Solidity / docs / size-guard regression. Do not weaken gates to “fix” it. Local verify: `pnpm docs:check`, `pnpm docs:links`, `scripts/docs-links.test.ts`, `scripts/ci-cost.test.ts`, `scripts/ci-public-harden.test.ts`. After billing is restored, require exact-head `ci-ok`.
+Empty-step FAILURE is the account spending-limit / payment block — not a Solidity / docs / size-guard regression. Do not weaken gates to “fix” it.
+
+After billing recovered, `ci-full` on **`606e569`** ran the real full tier ([`34725661667`](https://github.com/solarcurvey/reactor/actions/runs/34725661667)): `docs-links`, `web`, `web-production-security`, `live-toasts-ui`, `postgres-ms-timestamps`, and `constants-version-deployments` **succeeded**. `solidity + size-guard` failed before any test: `binaries.soliditylang.org` connection reset while fetching `solc-linux-amd64-v0.8.26`. That is not an assertion failure. `setup-foundry` now prefetches `solc 0.8.26` with retries after the `~/.svm` cache restore. Exact-head `ci-ok` (Attack suite, CREATE2 `test_hookBits`, size-guard, `docs:links`) is still required. Do not treat `606e569` or historical `6140ce0` as the closer.
 
 ## What this is not
 
