@@ -39,7 +39,7 @@ Shared keys live in `apps/web/src/lib/query.ts` (`qk.markets`, `qk.market`, `qk.
 
 ## Page budgets (CI)
 
-`apps/web/src/lib/page-budget.test.ts` seeds **4,000** indexer markets and runs the same loaders as the UI. HTTP and RPC waves must stay **O(1) or O(page)** (`BOARD_PAGE_SIZE = 80`). The same counts must hold at N=500 and N=4,000. Live `POST /quote` is outside the table.
+`apps/web/src/lib/page-budget.test.ts` seeds **4,000** indexer markets and runs the same loaders as the UI. HTTP and RPC waves must stay **O(1) or O(page)** (`BOARD_PAGE_SIZE = 80`). The same counts must hold at N=500 and N=4,000. Live `POST /quote` is outside the table. GitHub job **`page-budget`** is a **fast** job in #73’s `.github/workflows/ci.yml` and runs that file on every PR (including drafts). Feature-branch `push` is omitted. The file stays in `pnpm test:lib`.
 
 | Page | HTTP | RPC waves | RPC calls | Max rows |
 | --- | ---: | ---: | ---: | ---: |

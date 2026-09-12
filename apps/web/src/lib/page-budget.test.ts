@@ -522,6 +522,18 @@ async function main() {
       qc.clear();
     }
 
+    {
+      const ciYml = readFileSync(new URL("../../../../.github/workflows/ci.yml", import.meta.url), "utf8");
+      const trigger = ciYml.split("jobs:")[0] ?? "";
+      assert(/name:\s*page-budget/.test(ciYml), "visible GitHub job page-budget");
+      assert(ciYml.includes("test:page-budget") || ciYml.includes("page-budget.test.ts"), "job runs this file");
+      assert(trigger.includes("pull_request"), "page-budget runs on pull_request");
+      assert(
+        !/on:\s*\n\s+push:\s*\n\s+pull_request:/.test(trigger),
+        "do not copy docs-sync push+pull_request pair (Refs #69/#73)",
+      );
+    }
+
     console.log(
       `page-budget ok: catalog=${n4000} pages=${at4000.map((u) => `${u.name}:${u.http}h/${u.rpcWaves}w/${u.rpcCalls}c`).join(" ")}`,
     );
