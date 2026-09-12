@@ -43,6 +43,7 @@ Official REACTOR pools are Uniswap v4 markets with a 0% LP fee and a 3.5% quote-
 - /docs/versioning Versioning
 - /docs/changelog Changelog
 - /docs/policy Docs policy
+- /docs/ci CI and cost
 - /docs/publicization Repo publicization
 
 ## Honesty

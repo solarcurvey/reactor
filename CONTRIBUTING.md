@@ -63,12 +63,8 @@ A protocol `0.1.1` / `0.2.0` bump does not rewrite Factory V1. A different 3.5% 
 - Factory version labels vs `FACTORY_VERSION`
 - Protocol semver vs `package.json` / CHANGELOG / generated pages
 - `deployments/local.json` vs web + indexer copies
-<<<<<<< HEAD
-- Stale `docs/versioning.md`, `docs/deployments.md`, `docs/changelog.md`
-- Tracked docs / `BUILD_REPORT.md` still contain `<<<<<<<` / `>>>>>>>` conflict markers
-=======
 - Stale `docs/versioning.md`, `docs/deployments.md`, `docs/changelog.md`, `docs/llms.txt`
->>>>>>> 2f9c1a2 (Close handbook AC gaps: full-text search, link CI, version matrix.)
+- Tracked docs / `BUILD_REPORT.md` still contain `<<<<<<<` / `>>>>>>>` conflict markers
 - A mainnet (5042) address appearing in generated tables
 
 Do not “fix” a red check by editing generated markdown. Edit `docs/version.json` / `deployments/registry.json` / the Solidity source and regenerate.

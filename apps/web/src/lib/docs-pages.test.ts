@@ -49,6 +49,7 @@ const requiredSlugs = [
   "versioning",
   "changelog",
   "policy",
+  "ci",
   "publicization",
 ];
 
@@ -94,6 +95,7 @@ assert.match(llms, new RegExp(`Protocol ${rel.protocolVersion.replace(/\./g, "\\
 assert.match(llms, /\/docs\/economics/);
 assert.match(llms, /\/docs\/security/);
 assert.match(llms, /\/docs\/troubleshooting/);
+assert.match(llms, /\/docs\/ci/);
 
 const index = readFileSync(join(docsDir, "index.md"), "utf8");
 assert.match(index, /2% holders/);
