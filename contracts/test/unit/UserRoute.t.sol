@@ -268,6 +268,24 @@ contract UserRouteTest is Base {
         vm.stopPrank();
     }
 
+    function _decodePreviewRoute(bytes memory err)
+        internal
+        view
+        returns (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds)
+    {
+        require(err.length >= 4, "short");
+        bytes4 sel;
+        assembly {
+            sel := mload(add(err, 32))
+        }
+        assertEq(sel, UserRouteQuoter.PreviewRoute.selector);
+        bytes memory payload = new bytes(err.length - 4);
+        for (uint256 i; i < payload.length; i++) {
+            payload[i] = err[i + 4];
+        }
+        (amountOut, hopOuts, kinds) = abi.decode(payload, (uint256, uint256[], bytes32[]));
+    }
+
     /// @notice §BM 31 — one preview call; always reverts PreviewRoute; amountOut > 1
     function test_31_quoter_whole_route_preview() public {
         (address token,) = _instant(
@@ -291,19 +309,9 @@ contract UserRouteTest is Base {
         try userQuoter.previewBuy(token, 10e6, _emptyHops()) {
             revert("must revert PreviewRoute");
         } catch (bytes memory err) {
-            require(err.length >= 4, "short");
-            bytes4 sel;
-            assembly {
-                sel := mload(add(err, 32))
-            }
-            assertEq(sel, UserRouteQuoter.PreviewRoute.selector);
-            bytes memory payload = new bytes(err.length - 4);
-            for (uint256 i; i < payload.length; i++) {
-                payload[i] = err[i + 4];
-            }
-            (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) =
-                abi.decode(payload, (uint256, uint256[], bytes32[]));
+            (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) = _decodePreviewRoute(err);
             assertGt(amountOut, 1, "preview amountOut dust");
+            assertEq(hopOuts.length, 1, "0 hops -> 1 terminal slot");
             assertEq(kinds.length, 1);
             assertEq(kinds[0], userQuoter.KIND_OFFICIAL());
             assertEq(hopOuts[0], amountOut);
@@ -326,22 +334,43 @@ contract UserRouteTest is Base {
         try userQuoter.previewBuy(token, 10e6, _hop(address(usdc), address(zec), zecUsdcKey)) {
             revert("must revert PreviewRoute");
         } catch (bytes memory err) {
-            require(err.length >= 4, "short");
-            bytes4 sel;
-            assembly {
-                sel := mload(add(err, 32))
-            }
-            assertEq(sel, UserRouteQuoter.PreviewRoute.selector);
-            bytes memory payload = new bytes(err.length - 4);
-            for (uint256 i; i < payload.length; i++) {
-                payload[i] = err[i + 4];
-            }
-            (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) =
-                abi.decode(payload, (uint256, uint256[], bytes32[]));
+            (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) = _decodePreviewRoute(err);
             assertGt(amountOut, 1, "nested preview amountOut");
-            assertGe(kinds.length, 2, "hop + bonding/official");
+            assertEq(hopOuts.length, 2, "1 routing hop + terminal market leg");
+            assertEq(kinds.length, 2, "kinds is hops+1");
+            assertEq(kinds[0], userQuoter.KIND_EXTERNAL(), "BUY routing slot first");
+            assertTrue(
+                kinds[1] == userQuoter.KIND_BONDING() || kinds[1] == userQuoter.KIND_OFFICIAL(),
+                "BUY terminal last"
+            );
+            assertEq(amountOut, hopOuts[1], "amountOut is terminal tokens");
             assertGt(hopOuts[0], 1, "first hop produced ZEC inside the call");
         }
         assertEq(zec.balanceOf(bob), 0, "user still has no ZEC after quote");
+    }
+
+    /// @notice Nested SELL: official/bonding first, then quote→USDC hop. PreviewRoute is hops+1.
+    function test_nested_previewSell_hops_plus_terminal() public {
+        address token = _instantZcat(1);
+        uint256 bought = _buy(alice, token, address(zec), 5e8);
+        // Sell a slice so CurveMath.sellOut stays under realQuote after the 3.5% buy fee.
+        uint256 sellAmt = bought / 2;
+        vm.prank(alice);
+        ReactorToken(token).transfer(address(userQuoter), sellAmt);
+        try userQuoter.previewSell(token, sellAmt, _hop(address(zec), address(usdc), zecUsdcKey)) {
+            revert("must revert PreviewRoute");
+        } catch (bytes memory err) {
+            (uint256 amountOut, uint256[] memory hopOuts, bytes32[] memory kinds) = _decodePreviewRoute(err);
+            assertGt(amountOut, 1, "nested sell amountOut");
+            assertEq(hopOuts.length, 2, "1 routing hop + terminal market leg");
+            assertEq(kinds.length, 2, "kinds is hops+1");
+            assertTrue(
+                kinds[0] == userQuoter.KIND_BONDING() || kinds[0] == userQuoter.KIND_OFFICIAL(),
+                "SELL terminal first"
+            );
+            assertEq(kinds[1], userQuoter.KIND_EXTERNAL(), "SELL routing slot last");
+            assertEq(amountOut, hopOuts[1], "amountOut is final USDC");
+            assertGt(hopOuts[0], 1, "terminal quote out");
+        }
     }
 }
