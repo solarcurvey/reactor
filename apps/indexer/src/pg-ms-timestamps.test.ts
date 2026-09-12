@@ -183,6 +183,14 @@ try {
   assert(kindCol.rows[0]?.data_type === "text", "v10 adds external_price_marks.kind");
   const v8col = await columnType(admin, "tokens", "current_supply");
   assert(v8col === "text", `v9 adds tokens.current_supply onto a real post-#27 DB, got ${v8col || "missing"}`);
+  const backfill = await admin.query<{ current_supply: string; supply: string }>(
+    "SELECT current_supply, supply FROM tokens WHERE address='0xdead'",
+  );
+  assert(
+    backfill.rows[0]?.current_supply === backfill.rows[0]?.supply &&
+      backfill.rows[0]?.supply === "1000000000000000000000000000",
+    "v9 backfills current_supply from a real post-#27 tokens row",
+  );
   const kinds = await admin.query<{ source: string; kind: string }>(
     "SELECT source, kind FROM external_price_marks ORDER BY source",
   );
