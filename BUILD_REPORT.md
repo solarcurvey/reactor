@@ -1,4 +1,37 @@
-# BUILD REPORT — Protocol 0.3.4 frontend observability
+# BUILD REPORT — CI docs-only path filter (Refs #69 residual)
+
+**Status:** Open PR **#81** on `cursor/ci-docs-only-path-filter-e078`, rebased onto `origin/main` `789eb5c` (squash-merged **#46**). Addresses founder re-audit gap (2). **Do not close #69.** Do not `Fixes` / `Closes` #69. Frozen economics. No mainnet.
+**Not audited. Not mainnet.**
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+Gap (1) source (`obs-ui`) is now on `main` via **#46**. #69 still needs **one green protected-main full run** after this cost fix (and after #46) that executes `obs-ui` rather than skip-as-pass.
+
+## This HEAD (#69 gap 2)
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.4** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Ordinary docs-only / trivial non-draft PRs must not launch unrelated Solidity / Postgres / browser / `obs-ui` matrices. Force-full (`ci-full` / `workflow_dispatch` full / `push` to `main`) still runs every required job. `ci-ok` still rejects skipped required jobs on that full path. |
+| Mechanism | `scripts/ci-decide.sh` classifies paths first, then sets `full` / `force_full`. Heavy jobs stay `if: needs.decide.outputs.full == 'true'`. `scripts/ci-ok.sh` is always-on: cheap path requires decide + `test:lib` + `page-budget`; full path requires every listed job `== success` including `obs-ui`. |
+| Tests | `pnpm test:ci-cost` — docs-only ready PR does not launch heavy jobs; `ci-full` / dispatch / main still do; `ci-ok` rejects `skipped` on full and accepts those skips on cheap. |
+| Mainnet | **Blocked** |
+
+## Closed this run (#69 gap 2 — issue stays open)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Docs-only/trivial non-draft PRs skip unrelated heavy matrices | **Yes** | `scripts/ci-decide.sh` + `scripts/ci-cost.test.ts` |
+| Force-full still runs every required job | **Yes** | `ci-full` / dispatch full / main cases in `test:ci-cost` |
+| `ci-ok` rejects skips on the full path | **Yes** | `scripts/ci-ok.sh` + skipped-solidity/postgres/browser/`obs-ui` asserts |
+| #15 / #17 / #18 commands unchanged | **Yes** | Same pnpm/forge job steps; only the `full` selector changed |
+| #39 `obs-ui` folded on main | **Yes (source)** | Merged #46 / `789eb5c`. Job stays full-only. |
+| One green protected-main full run including `obs-ui` | **No** | Still required before #69 can close. |
+| Close #69 | **No** | Post-#46/#81 main green still needed. `Refs #69` only. |
+
+---
+
+# Prior — Protocol 0.3.4 frontend observability (merged #46)
 
 **Status:** Rebased onto latest `origin/main` `4207356` (**#75** Restricted-access UX after **#44** E2E release gate / #70 / #79 / #68 / #67 / #66 / #49 / #50 / #42 / #58). Same PR **#46** / issue **#39**. This pass keeps **`obs-ui`** (production `next start`), first-party resolve, configured-DSN **staging vendor proof** (`obs/vendor-proof.test.ts`), and `/api/telemetry` **429 backpressure** so #49 `web-qa` does not treat Chromium ingest 429 as a page diagnostic (quote `?inject=quote-429` stays fail-visible). Live org/project still post-merge. **#39 stays open until merge + post-merge verify.** #75 `/restricted` + disabled write CTAs stay from main. #70 sanctions ops docs/nav + #79 #17 evidence + #68 operator-policy + #67 geo + #66 OFAC stay from main. #44 `e2e-release-gate` stays from main.
 

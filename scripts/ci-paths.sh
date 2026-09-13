@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Fail-safe path classifier for CI. A skipped heavy job is not a pass —
-# this script only decides *optional* fast-tier Foundry. The full merge-candidate
-# and main gates ignore these flags and always run required commands.
+# Fail-safe path classifier for CI. A skipped heavy job is not a pass on the
+# force-full path (`ci-full` / workflow_dispatch full / push to main).
+# `ci-decide.sh` uses docs_only so ordinary docs-only/trivial PRs stay cheap.
+# Empty or failed diffs fail-safe (docs_only=false) so a broken filter cannot
+# skip a required code merge-candidate.
 #
 # Usage:
 #   scripts/ci-paths.sh --diff BASE_SHA HEAD_SHA

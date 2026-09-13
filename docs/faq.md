@@ -48,7 +48,7 @@
 
 **What does CI run?** Fast PR: `pnpm test:lib` (indexer + web unit + `docs:check` + `docs:links` + cheap security). Full merge-candidate / main: that plus Foundry (`FOUNDRY_PROFILE=ci`, Attack suite, CREATE2, size guard), production Next security, live-toasts, Postgres, Playwright smoke + interactive, and #35 `e2e-release-gate`. See [CI and cost](/docs/ci).
 
-**Why didn't the full CI suite run?** Draft feature-branch updates run the fast gate only (`pnpm test:lib`, plus targeted Foundry if Solidity changed). Mark the PR ready for review, add the `ci-full` label, or `workflow_dispatch` tier **full**. See [CI and cost](/docs/ci).
+**Why didn't the full CI suite run?** Draft feature-branch updates and **docs-only / trivial** PRs (even ready-for-review) run the fast gate only (`pnpm test:lib`, plus targeted Foundry if Solidity changed). A non-draft **code** PR, the `ci-full` label, or `workflow_dispatch` tier **full** runs the heavy matrix. See [CI and cost](/docs/ci).
 
 **Why did an old CI run cancel?** A newer force-push on the same PR cancels in-progress jobs. Main post-merge runs are keyed by SHA and are not canceled by unrelated PRs.
 

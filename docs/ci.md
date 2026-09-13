@@ -4,17 +4,17 @@ Refs #69. Tokenomics, Factory V1, and architecture are **not** CI knobs. This pa
 
 Public-fork harden from #74 (Refs #72) is **kept** on this single workflow: `permissions: contents: read`, every `actions/checkout` has `persist-credentials: false`, no `pull_request_target`, no workflow secrets. `pnpm test:lib` runs `test:ci-cost`, `scripts/ci-public-harden.test.ts`, `scripts/safe-genesis-builder.test.ts`, `docs:check`, and `docs:links`. Operator checklist: [Repo publicization](/docs/publicization).
 
-A **skipped job is not a pass**. Required release jobs must execute their acceptance commands. `continue-on-error` is forbidden. `ci-ok` fails if any full-gate job is `skipped`, `cancelled`, or `failure`.
+A **skipped job is not a pass** on the force-full / code merge-candidate path. Required release jobs must execute their acceptance commands. `continue-on-error` is forbidden. `ci-ok` fails if any full-gate job is `skipped`, `cancelled`, or `failure` when `full=true`. On the cheap path (`full=false`) it only requires the always-on jobs; skipped Solidity / Postgres / browser jobs are expected.
 
 ## Three tiers
 
 | Tier | When | What runs |
 | --- | --- | --- |
-| **Fast PR** | Every meaningful `pull_request` update (draft included) | `pnpm test:lib` (indexer + web unit + cheap security + Safe genesis builder + `docs:check` + `docs:links` + this page’s invariants + #61 sanctions fixtures + #63 geo-policy tests) plus visible `page-budget` (`pnpm test:page-budget`). Targeted Foundry + `size:guard` **only** when Solidity paths change. |
-| **Full merge-candidate** | Non-draft PR (`ready_for_review` / later `synchronize`), label **`ci-full`**, or `workflow_dispatch` (default **full**) | Fast commands **plus** production Next / hostile-metadata (`pnpm test:web-security`), `web-qa` (visual / a11y / failure-injection), `live-toasts-ui`, `obs-ui`, full Foundry (`FOUNDRY_PROFILE=ci`, Attack suite, CREATE2 `test_hookBits`, `size:guard`), Postgres `test:pg` + two-worker `test:pg-lease` + `pg-smoke`, `docs:links` (explicit job), Playwright smoke + interactive (`web`), #35 `e2e-release-gate` (`pnpm test:e2e:release`). Path filters do **not** skip these. |
+| **Fast PR** | Every meaningful `pull_request` update (draft **or** docs-only/trivial, including ready-for-review docs-only) | `pnpm test:lib` (indexer + web unit + cheap security + Safe genesis builder + `docs:check` + `docs:links` + this page’s invariants + #61 sanctions fixtures + #63 geo-policy tests) plus visible `page-budget` (`pnpm test:page-budget`). Targeted Foundry + `size:guard` **only** when Solidity paths change. |
+| **Full merge-candidate** | Non-draft **code** PR, label **`ci-full`**, or `workflow_dispatch` (default **full**) | Fast commands **plus** production Next / hostile-metadata (`pnpm test:web-security`), `web-qa` (visual / a11y / failure-injection), `live-toasts-ui`, `obs-ui`, full Foundry (`FOUNDRY_PROFILE=ci`, Attack suite, CREATE2 `test_hookBits`, `size:guard`), Postgres `test:pg` + two-worker `test:pg-lease` + `pg-smoke`, `docs:links` (explicit job), Playwright smoke + interactive (`web`), #35 `e2e-release-gate` (`pnpm test:e2e:release`). Force-full (`ci-full` / dispatch **full** / `main`) ignores path filters. |
 | **Main post-merge** | `push` to **`main`** only | The same full gate, once, on the merged SHA. |
 
-Docs-only / Solidity-only / web-only drafts do not launch unrelated heavy matrices (no production `next build`, Playwright, Postgres, or CI-fuzz Foundry). On a **final merge candidate** those filters are ignored so #15 / #17 / #18 gates still run.
+Docs-only / trivial (`*.md`, `docs/**`, LICENSE, gitignore) PRs — draft **or** ready-for-review — do not launch unrelated Solidity / Postgres / browser / `obs-ui` matrices. Add label **`ci-full`**, `workflow_dispatch` tier **full**, or merge to `main` to force every required job so #15 / #17 / #18 gates still run. #39 `obs-ui` is on `main` via merged #46; #69 still needs one green protected-main full run after this cost fix.
 
 ## Accepted #17 / #42 evidence
 
@@ -55,7 +55,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 
 ## Path filters (fail-safe)
 
-`scripts/ci-paths.sh` classifies the PR diff. If the list is empty or `git diff` fails, every area is treated as changed (Foundry may run on the fast tier). The full tier **ignores** the classifier.
+`scripts/ci-paths.sh` classifies the PR diff. `scripts/ci-decide.sh` then sets `full` / `force_full`. If the list is empty or `git diff` fails, every area is treated as changed (`docs_only=false`) so a broken filter cannot skip a code merge-candidate. Ordinary docs-only/trivial PRs keep `full=false` even when they are ready for review. Label **`ci-full`**, `workflow_dispatch` tier **full**, and `push` to `main` set `force_full=true` and ignore the classifier.
 
 | Area | Paths |
 | --- | --- |
@@ -68,7 +68,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 
 | Job | Tier | Commands (must execute) |
 | --- | --- | --- |
-| `decide-tier` | always | Classify SHA + paths. Cheap. |
+| `decide-tier` | always | `scripts/ci-decide.sh` — classify SHA + paths + `full` / `force_full`. Cheap. |
 | `constants-version-deployments` | always | `pnpm test:lib` (includes `docs:check` + `docs:links` + `safe-genesis-builder.test.ts` + #61 sanctions fixtures + #63 geo-policy tests) |
 | `page-budget` | always | `pnpm test:page-budget` (4k-market HTTP/RPC budgets; also in `test:lib`) |
 | `foundry-targeted` | fast + Solidity paths | `forge test` (default profile) + `pnpm size:guard` |
@@ -82,7 +82,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | `docs-links` | full / main | `pnpm docs:links` (in-repo slugs/files only; no network). Also in `test:lib` on the fast gate. |
 | `web` | full / main | Playwright smoke + interactive (`e2e/smoke.spec.ts`, `e2e/interactive.spec.ts`). Capture shots stay `CAPTURE=1` local-only. Live-toasts Playwright stays on `live-toasts-ui`. |
 | `e2e-release-gate` | full / main | `pnpm test:e2e:release` (production Next + EIP-1193 / MV3 wallet; `xvfb-run`) |
-| `ci-ok` | full / main | All of the above full jobs **and** `page-budget` `== success` (including `web-qa`, `obs-ui`, and `e2e-release-gate`) |
+| `ci-ok` | always | When `full=true`: all of the above full jobs **and** `page-budget` `== success` (including `web-qa`, `obs-ui`, and `e2e-release-gate`). When `full=false`: only `decide` + `constants-version-deployments` + `page-budget`. Skipped ≠ pass on the full path (`scripts/ci-ok.sh`). |
 
 `keeper-lease-pg` / `two-worker-postgres` is **folded** into `postgres-ms-timestamps` (`test:pg-lease` still runs). Do not add a second Postgres lease workflow.
 
@@ -97,7 +97,7 @@ Open product issues keep their acceptance commands. Attach new heavy jobs to **t
 | #15 / #36 (merged #49, closed) | Visual / a11y / failure-injection | `web-qa` (full). Closed after `ad7b457` / `34729758795`. Do not re-add `.github/workflows/web-qa.yml`. |
 | #15 / #18 | Production-readiness parent | Same full-tier rule. Do not move those commands to optional / `continue-on-error`. |
 | #37 (merged #50, closed) | RPC page-budget | Required always-on `page-budget` (`pnpm test:page-budget` plus the same file in `test:lib`; required by `ci-ok`). Closed after `e5fd745` / `34727279555`. |
-| #39 (PR #46) | Observability | `obs-ui` (full). Units also run in `test:lib` on the fast gate. Folded from `observability.yml` — do not restore a second workflow. |
+| #39 (merged #46) | Observability | `obs-ui` (full). Units also run in `test:lib` on the fast gate. Folded from `observability.yml` — do not restore a second workflow. **#39 stays open** until post-merge live vendor verify. |
 | #38 | Live toasts | `live-toasts-ui` (full). Units also run in `test:lib` on the fast gate. |
 | #41 / TESTING row 51 | Hostile metadata / CSP | Cheap units in `test:lib`; production build + Playwright corpus in `web-production-security`. |
 | #61 (merged #66, closed) | Exact official-list OFAC screening fixtures | Cheap units in `test:lib` (`@reactor/sanctions` + `sanctions-api.test.ts`). Closed after `d08aa1c` / `34731099571`. Live HTTPS is `SANCTIONS_NETWORK=1` / `test:sanctions:network` only — not a CI job. |
@@ -107,7 +107,7 @@ Open product issues keep their acceptance commands. Attach new heavy jobs to **t
 | #60 / #64 / #69 | Sanctions parent + freshness + CI cost | **Stay open.** |
 | #35–#41 / #51 / #60 | Existing test requirements | Unchanged in substance. Reachable via `TESTING.md` commands and the full gate. |
 
-Recommended required checks (branch protection): **`constants-version-deployments`** (always present), **`page-budget`** (always present — #37 4k-market HTTP/RPC budgets), and **`ci-ok`** (present on merge-candidate + main; requires `page-budget` success). Do not require a check that the fast tier skips.
+Recommended required checks (branch protection): **`constants-version-deployments`**, **`page-budget`**, and **`ci-ok`** (always present). On a docs-only PR `ci-ok` only requires the cheap jobs; on `ci-full` / dispatch **full** / `main` it rejects skipped heavy jobs. Do not require a heavy job name that the cheap path skips.
 
 ## Manual full suite (billing-safe)
 
@@ -139,7 +139,7 @@ Draft feature-branch SHA, no `ci-full` label — the common Cursor agent loop.
 
 Expected reduction for that cycle: **about 80–90% fewer jobs**, and **all** heavy minutes (Next / Playwright / Postgres / CI-fuzz Foundry) move to merge-candidate + main.
 
-Ready-for-review / `ci-full` / `main`: **one** full path per SHA (not push+PR twice). Postgres lease is a single job, not two workflows.
+Ready-for-review **code** / `ci-full` / `main`: **one** full path per SHA (not push+PR twice). Docs-only ready-for-review stays on the cheap path (2–3 jobs) unless labeled `ci-full`. Postgres lease is a single job, not two workflows.
 
 ## Caches / setup
 
