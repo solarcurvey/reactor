@@ -18,7 +18,7 @@ The gated and logged subject is the **same verified EIP-191 signer as #68** (`pa
 
 ## Persist + refresh
 
-Active version, content hash, retrieved time, official source metadata, and last successful refresh are persisted under `SANCTIONS_DATA_DIR` (`current.json`, `refresh-state.json`, `versions/<id>/`).
+Official `#61` ingest (`@reactor/sanctions`) persists under `SANCTIONS_DATA_DIR` (`current.json` + `versions/<id>/dataset.json`). The #64 freshness pointer, refresh-state, and last-known-good copy live under `SANCTIONS_OPS_DATA_DIR` or `SANCTIONS_DATA_DIR/ops` so the two `dataset.json` layouts cannot clobber each other. `POST /ops/sanctions/refresh` refreshes the shared in-memory `#61` store (so `GET /sanctions/screen` sees the new generation) and then adapts that snapshot into the ops registry.
 
 Version identity matches **#61 source-generation**: `ofac-<contentHash16>-<generationHash12>`. Address-set `contentHash` is stable when the canonical keys are unchanged. A later official fetch with the **same addresses** still persists a new immutable generation (`retrievedAt` + per-source ETag / Last-Modified / publish date / body hash). `current.json` also stores `retrievedAt` and `sourceGenerationHash`. After a process restart, freshness ages from the latest generation — not the first time those addresses were seen.
 

@@ -42,7 +42,7 @@ Exact versions on `GET /health` → `sanctions`, `GET /sanctions/health`, and `/
 
 ## Evidence preservation
 
-1. Keep `SANCTIONS_DATA_DIR` (`current.json`, `refresh-state.json`, `versions/<id>/`). Do not prune the active version.
+1. Keep both `SANCTIONS_DATA_DIR` (#61 official dataset) and `SANCTIONS_OPS_DATA_DIR` or `SANCTIONS_DATA_DIR/ops` (#64 freshness pointer + `refresh-state.json`). Do not prune the active version in either tree.
 2. Export recent `alerts` rows (`sanctions_*`) and indexer logs with `kind=sanctions_audit` / `x-request-id`.
 3. Do **not** dump raw request bodies, IPs, signatures, or keys into the ticket.
 4. Record exact `dataset.versionId`, `contentHash`, `operatorPolicyVersion`, and `geoPolicyVersion`.

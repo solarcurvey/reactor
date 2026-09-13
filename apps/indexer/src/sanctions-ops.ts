@@ -1,12 +1,14 @@
 /**
  * Indexer wiring for sanctions freshness, health, alerts, and audit (issue #64).
  *
- * Binds official #61 / #62 / #63 modules when those files exist.
+ * Official #61 ingest is on main (`sanctions.ts`). #62 / #63 bind when those files exist.
  * Last-known-good + SLA live in `@reactor/core` `SanctionsOps`.
  */
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { opsRefreshSanctions } from "./sanctions.ts";
+import type { SanctionsStore } from "../../../packages/sanctions/src/store.ts";
 import {
   GEO_POLICY_VERSION_DEFAULT,
   SANCTIONS_DATASET_SLA_MS,
@@ -225,61 +227,59 @@ export async function applySanctionsOpsGate(input: {
   return opsGate;
 }
 
-async function tryOfficialFetcher(): Promise<(() => Promise<RefreshPayload>) | undefined> {
-  const dir = dirname(fileURLToPath(import.meta.url));
-  const path = join(dir, "sanctions.ts");
-  if (!existsSync(path)) return undefined;
-  try {
-    const mod = (await import(path)) as {
-      opsRefreshSanctions?: (store: { active?: () => { version?: RefreshPayload } }) => Promise<{
-        ok: boolean;
-        error?: string;
-        version?: {
-          id: string;
-          retrievedAt: string;
-          sources: RefreshPayload["sources"];
-          contentHash: string;
-          sourceGenerationHash?: string;
-          addressCount: number;
-        };
-      }>;
-      indexerSanctionsStore?: () => {
-        active: () => {
-          version: {
-            id?: string;
-            retrievedAt: string;
-            sources: RefreshPayload["sources"];
-            contentHash: string;
-            sourceGenerationHash?: string;
-            addressCount: number;
-          };
-          index: Map<string, { family: string; canonicalKey: string; display?: string }>;
-        } | null;
-      };
+export type OfficialStoreLike = {
+  active: () => {
+    version: {
+      id?: string;
+      retrievedAt: string;
+      sources: RefreshPayload["sources"];
+      contentHash: string;
+      sourceGenerationHash?: string;
+      addressCount?: number;
     };
-    if (typeof mod.opsRefreshSanctions === "function" && typeof mod.indexerSanctionsStore === "function") {
-      return async () => {
-        const store = mod.indexerSanctionsStore!();
-        const result = await mod.opsRefreshSanctions!(store);
-        if (!result.ok) throw new Error(result.error ?? "official refresh failed");
-        const active = store.active();
-        if (!active) throw new Error("official refresh did not activate");
-        return adaptOfficialRefreshPayload({
-          version: {
-            id: result.version?.id ?? active.version.id,
-            retrievedAt: active.version.retrievedAt,
-            sources: active.version.sources,
-            contentHash: active.version.contentHash,
-            sourceGenerationHash: active.version.sourceGenerationHash,
-          },
-          index: active.index.values(),
-        });
-      };
-    }
-  } catch {
-    /* official #61 plugin optional */
-  }
-  return undefined;
+    index: Map<string, { family: string; canonicalKey: string; display?: string }>;
+  } | null;
+};
+
+export type OfficialRefreshResult = {
+  ok: boolean;
+  error?: string;
+  version?: { id?: string };
+};
+
+/** Adapt a just-refreshed #61 store into a #64 payload. Shared in-memory store stays current. */
+export async function refreshPayloadFromOfficialStore(
+  store: OfficialStoreLike,
+  result: OfficialRefreshResult,
+): Promise<RefreshPayload> {
+  if (!result.ok) throw new Error(result.error ?? "official refresh failed");
+  const active = store.active();
+  if (!active) throw new Error("official refresh did not activate");
+  return adaptOfficialRefreshPayload({
+    version: {
+      id: result.version?.id ?? active.version.id,
+      retrievedAt: active.version.retrievedAt,
+      sources: active.version.sources,
+      contentHash: active.version.contentHash,
+      sourceGenerationHash: active.version.sourceGenerationHash,
+    },
+    index: active.index.values(),
+  });
+}
+
+export function bindOfficialRefresh(
+  store: OfficialStoreLike,
+  refresh: (store: OfficialStoreLike) => Promise<OfficialRefreshResult> = (s) =>
+    opsRefreshSanctions(s as SanctionsStore),
+): () => Promise<RefreshPayload> {
+  return async () => refreshPayloadFromOfficialStore(store, await refresh(store));
+}
+
+function defaultOpsDataDir(env: NodeJS.ProcessEnv): string {
+  const explicit = env.SANCTIONS_OPS_DATA_DIR?.trim();
+  if (explicit) return explicit;
+  const official = env.SANCTIONS_DATA_DIR?.trim() || new URL("../data/sanctions", import.meta.url).pathname;
+  return join(official, "ops");
 }
 
 export function isProtectedWritePath(method: string, pathname: string): boolean {
@@ -296,10 +296,18 @@ export function protectedAction(pathname: string): (typeof SANCTIONS_OPS_PROTECT
 export async function createSanctionsOps(
   store: Store | { run?: Store["run"] } | null,
   env: NodeJS.ProcessEnv = process.env,
-  opts: { dataDir?: string; now?: () => number; fetchOfficialList?: () => Promise<RefreshPayload> } = {},
+  opts: {
+    dataDir?: string;
+    now?: () => number;
+    fetchOfficialList?: () => Promise<RefreshPayload>;
+    officialStore?: OfficialStoreLike;
+  } = {},
 ): Promise<SanctionsOps> {
-  const dataDir = opts.dataDir ?? env.SANCTIONS_DATA_DIR ?? new URL("../data/sanctions", import.meta.url).pathname;
-  const official = opts.fetchOfficialList ?? (await tryOfficialFetcher()) ?? defaultFetcher(env);
+  const dataDir = opts.dataDir ?? defaultOpsDataDir(env);
+  const official =
+    opts.fetchOfficialList ??
+    (opts.officialStore ? bindOfficialRefresh(opts.officialStore) : undefined) ??
+    defaultFetcher(env);
   const ops = new SanctionsOps({
     dataDir,
     maxAgeMs: Number(env.SANCTIONS_MAX_AGE_MS ?? SANCTIONS_DATASET_SLA_MS),

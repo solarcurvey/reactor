@@ -6,6 +6,7 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import {
   allowFixtureSanctionsRefresh,
   applySanctionsOpsGate,
+  bindOfficialRefresh,
   createSanctionsOps,
   extractWallet,
   handleSanctionsOpsRequest,
@@ -277,6 +278,58 @@ const t0 = Date.parse("2026-09-12T00:00:00.000Z");
   assert(restarted.health().freshness === "current", "t1 is still inside SLA after restart");
 
   rmSync(dir, { recursive: true, force: true });
+}
+
+{
+  const officialDir = mkdtempSync(join(tmpdir(), "idx-sanctions-official-"));
+  const opsDir = mkdtempSync(join(tmpdir(), "idx-sanctions-opsdir-"));
+  const t1 = Date.parse("2026-09-12T12:00:00.000Z");
+  const t1Iso = new Date(t1).toISOString();
+  let active: ReturnType<typeof adaptOfficialRefreshPayload> | null = null;
+  const shared = {
+    active: () =>
+      active
+        ? {
+            version: {
+              id: "ofac-shared-gen-t1",
+              retrievedAt: active.retrievedAt,
+              sources: active.sources,
+              contentHash: "2146004f67043f8a16d67a53f75c50b514aa457d992db3f01c58225be21761ac",
+              sourceGenerationHash: "shared-generation-t1",
+            },
+            index: new Map(active.addresses.map((a) => [a.canonicalKey, a])),
+          }
+        : null,
+  };
+  let refreshCalls = 0;
+  const fetchOfficial = bindOfficialRefresh(shared, async (store) => {
+    refreshCalls += 1;
+    active = adaptOfficialRefreshPayload({
+      version: {
+        id: "ofac-shared-gen-t1",
+        retrievedAt: t1Iso,
+        sources: fixtureRefreshPayload(t1Iso).sources,
+        sourceGenerationHash: "shared-generation-t1",
+      },
+      index: fixtureRefreshPayload(t1Iso).addresses,
+    });
+    assert(store.active()?.version.id === "ofac-shared-gen-t1", "shared store updated before adapt");
+    return { ok: true, version: { id: "ofac-shared-gen-t1" } };
+  });
+  const ops = await createSanctionsOps(null, { REACTOR_ENV: "LOCAL", SANCTIONS_DATA_DIR: officialDir }, {
+    dataDir: opsDir,
+    now: () => t1,
+    officialStore: shared,
+    fetchOfficialList: fetchOfficial,
+  });
+  const out = await ops.refresh();
+  assert(out.ok, "shared official store refresh");
+  assert(refreshCalls === 1, "official refresh used the bound store");
+  assert(shared.active()?.version.retrievedAt === t1Iso, "lookup store stays on t1 generation");
+  assert(ops.health().dataset.versionId === "ofac-shared-gen-t1", "ops health uses official generation");
+  assert(opsDir !== officialDir, "ops persist dir is not the official ingest dir");
+  rmSync(officialDir, { recursive: true, force: true });
+  rmSync(opsDir, { recursive: true, force: true });
 }
 
 console.log("indexer sanctions-ops tests ok");

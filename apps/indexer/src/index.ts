@@ -803,7 +803,7 @@ await assertSharpWorks();
 await tryBindOfficialPolicyPlugins();
 
 const store = await openStore();
-sanctionsOps = await createSanctionsOps(store);
+sanctionsOps = await createSanctionsOps(store, process.env, { officialStore: sanctions });
 {
   const start = await sanctionsOps.startup();
   logLine({
