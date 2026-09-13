@@ -77,7 +77,7 @@ pnpm --filter web test:qa   # prod next build + visual matrix + axe + keyboard +
 pnpm safe:genesis # Safe Transaction Builder JSON from deployments/local.json (deployer ≠ Safe)
 ```
 
-GitHub Actions is three-tier (fast PR / full merge-candidate / main). Full gate includes Foundry + Attack + CREATE2 + size guard, `docs:links`, Playwright smoke, production Next security, live-toasts, and Postgres. See [`/docs/ci`](docs/ci.md).
+GitHub Actions is three-tier (fast PR / full merge-candidate / main). Full gate includes Foundry + Attack + CREATE2 + size guard, `docs:links`, Playwright smoke, visual/a11y `web-qa`, production Next security, live-toasts, and Postgres. See [`/docs/ci`](docs/ci.md).
 
 **Production (`REACTOR_ENV=PROD` or `NODE_ENV=production`):** the indexer and isolated signer refuse to start if `TURNSTILE_SECRET` / site key are missing, if `SIGNER_INLINE` is on, or if the Anvil `#0` signer fallback would be used. `LOCAL` may keep those bypasses.
 
