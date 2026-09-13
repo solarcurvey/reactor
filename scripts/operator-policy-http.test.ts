@@ -18,6 +18,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import sharp from "sharp";
 import { OPERATOR_POLICY_DISCLAIMER } from "../packages/reactor/src/sanctions-policy.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -27,10 +28,6 @@ const clearAcct = privateKeyToAccount(generatePrivateKey());
 const BLOCKED = blockedAcct.address.toLowerCase();
 const CLEAR = clearAcct.address.toLowerCase();
 const HMAC = "test-operator-policy-hmac-secret";
-const PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
-  "base64",
-);
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
@@ -230,6 +227,12 @@ async function main() {
   let edge: { url: string; close: () => Promise<void> } | undefined;
   let edgeFx: { url: string; close: () => Promise<void> } | undefined;
   try {
+    const PNG = await sharp({
+      create: { width: 32, height: 32, channels: 3, background: { r: 16, g: 16, b: 16 } },
+    })
+      .png()
+      .toBuffer();
+
     const indexerPort = await freePort();
     const stalePort = await freePort();
     const webPort = await freePort();
