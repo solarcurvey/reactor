@@ -28,13 +28,7 @@ The first Terraform apply is deliberately a human-admin operation because it cre
 
 It may only read and replace code on the three named Lambda functions. Its OIDC trust defaults to the exact `main` branch subject, not every ref in the repository.
 
-`.github/workflows/deploy-aws-relay.yml` is manual (`workflow_dispatch`) and refuses to run unless the checked-out ref is `refs/heads/main`. Configure these non-secret repository variables after the first apply:
-
-- `AWS_RELAY_DEPLOY_ROLE_ARN` — Terraform output `github_deploy_role_arn`;
-- `AWS_RELAY_REGION` — for example `us-east-1`;
-- `AWS_RELAY_NAME_PREFIX` — the applied `name_prefix`.
-
-No long-lived AWS access key belongs in GitHub.
+REACTOR's #69 CI-cost gate intentionally allows only `.github/workflows/ci.yml`; do **not** add a second deployment workflow. `scripts/deploy-aws-relay-code.sh` is the code-only deployment primitive. When the real AWS stack exists, the existing `ci.yml` may expose an explicitly gated/manual production-deploy job that obtains OIDC credentials and calls that script. Until that single-workflow integration is reviewed, deploy code manually with short-lived assumed-role credentials; never add long-lived AWS access keys to GitHub.
 
 ## One-time operator flow
 
@@ -42,11 +36,11 @@ No long-lived AWS access key belongs in GitHub.
 2. Build the Lambda artifact from repository root: `bash scripts/build-aws-relay-bundle.sh`.
 3. Copy `terraform.tfvars.example` to an uncommitted `terraform.tfvars` and fill the Arc/testnet URLs/addresses.
 4. As a human-approved AWS administrator, run `terraform init && terraform plan && terraform apply` in this directory. Review the plan: exactly three asymmetric KMS keys, three runtime roles/functions, schedules/alarms, and the code-only GitHub OIDC role.
-5. Record `github_deploy_role_arn` plus region/name-prefix as the three GitHub repository variables above. Do **not** add AWS access-key secrets.
+5. Record Terraform output `github_deploy_role_arn` plus region/name-prefix for the eventual single-workflow OIDC deployment gate. Do **not** add AWS access-key secrets.
 6. Derive/record the three public EVM addresses from KMS (`GetPublicKey` is public material). Fund Relay A/B only; the maintenance authorizer never sends a transaction.
 7. Arc Public Testnet rehearsal: A consumes a real KMS-authorized job, B observes it used; disable A and prove B consumes a fresh job. Retain tx hashes + CloudWatch evidence.
 8. Only after review/audit, approve Guardian Safe cutover so `Guardian.keeper == AutomationGateway` and the Gateway job signer is the maintenance-authorizer KMS address.
-9. After the infrastructure is stable, ordinary reviewed runtime-code updates may use the manual OIDC deploy workflow from `main`. IAM/KMS/config changes still require a separately reviewed human Terraform apply.
+9. After the infrastructure is stable, ordinary reviewed runtime-code updates use `pnpm build:aws-relay` followed by `bash scripts/deploy-aws-relay-code.sh` under short-lived OIDC/assumed-role credentials. IAM/KMS/config changes still require a separately reviewed human Terraform/admin path.
 
 No VPC/NAT Gateway, dedicated RDS, Kubernetes, or always-on EC2 is provisioned here.
 
