@@ -16,7 +16,7 @@
 | Foundry | `AutomationGateway.t.sol` + `AutomationGatewayAuth.t.sol` + `MaintenanceFailover.t.sol` |
 | Indexer / lib | `maintenance-job.test.ts` + #46 obs units + #80 `brand.test.ts` in `test:web-unit` |
 | CRE | Auth-blocked `cre workflow simulate` is **not** the Arc Testnet CRE AC. |
-| Replay | Onto `origin/main` `4915f3e` (#80 after #81). Restore exact-head `ci-full` so `solidity + size-guard` (failover rehearsal) runs. Playwright `web` / `obs-ui` pins read `docs/version.json` via CJS-safe `e2e/protocol-version.ts` (no `import.meta` in `*.spec.ts`). |
+| Replay | Onto `origin/main` `4915f3e` (#80 after #81). Replay commit `dfc97fc`. Restore exact-head `ci-full` so `solidity + size-guard` (failover rehearsal) runs. Playwright `web` / `obs-ui` pins read `docs/version.json` via CJS-safe `e2e/protocol-version.ts` (no `import.meta` in `*.spec.ts`). |
 
 | Mainnet | **Blocked** |
 
