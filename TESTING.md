@@ -52,7 +52,7 @@ pnpm test:operator-policy-http  # real indexer + production Next HTTP matrix (CI
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
 pnpm docs:links                 # in-repo /docs slugs + relative files (CI docs-links job; no network)
 pnpm test:web-unit              # top10 / marketdata / limited-json / fee-legs / constants-sync
-pnpm test:ci-cost               # #69: no duplicate push+PR, concurrency, fail-safe paths
+pnpm test:ci-cost               # #69: no duplicate push+PR, concurrency, docs-only classification, fail-safe paths
 npx --yes tsx scripts/ci-public-harden.test.ts  # #72: permissions / persist-credentials / no pull_request_target
 # CI: .github/workflows/ci.yml contents:read; actions/checkout persist-credentials:false.
 pnpm --filter web test          # Playwright smoke + interactive + live-toasts (dev server; not visual/a11y/failures)

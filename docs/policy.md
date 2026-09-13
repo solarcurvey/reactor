@@ -12,7 +12,7 @@ pnpm docs:links  # fail on broken in-repo /docs slugs and relative files (no net
 
 Do not edit generated `docs/versioning.md`, `docs/deployments.md`, or `docs/changelog.md` by hand.
 
-CI: `pnpm test:lib` (fast) runs `docs:check` and `docs:links`. Full merge-candidate also runs job `docs-links`. Frequency and required gates: [CI and cost](/docs/ci) (Refs #69 / #17). Do not add a feature-branch `push` + `pull_request` pair.
+CI: `pnpm test:lib` (fast) runs `docs:check` and `docs:links`. Docs-only PRs stay on that cheap gate even when ready for review. Full merge-candidate also runs job `docs-links`. Frequency and required gates: [CI and cost](/docs/ci) (Refs #69 / #17). Do not add a feature-branch `push` + `pull_request` pair.
 
 Repository visibility is **not** a docs:check knob. Do not publicize without founder instruction. Operator checklist: [Repo publicization](/docs/publicization) (Refs #72). Personal-mailbox trailers were remapped 2026-09-12 on advertised refs. Residual dangling SHAs are accepted; Support purge/GC is not a #72 AC. Agents must not flip visibility.
 

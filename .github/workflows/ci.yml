@@ -8,9 +8,9 @@
 # Tiers
 #   fast  — every meaningful PR update (draft included): unit / docs:check /
 #           cheap security. Targeted Foundry only when Solidity paths change.
-#   full  — merge-candidate SHA: ready_for_review (non-draft), label `ci-full`,
-#           workflow_dispatch (default), or push to main. Path filters do NOT
-#           skip required gates. Commands always execute.
+#   full  — force-full: label `ci-full`, workflow_dispatch (default full),
+#           or push to main. Ordinary non-draft PRs also go full unless the
+#           diff is docs-only/trivial. Force-full ignores path filters.
 #   main  — push to main only. One integrated post-merge path. Unrelated PRs
 #           cannot cancel it.
 #
@@ -18,8 +18,8 @@
 # exceptions: this file's `push: branches: [main]` and `workflow_dispatch`.
 #
 # Sibling heavy gates: #35 E2E is job `e2e-release-gate` (full/main);
-# #36 visual/a11y is job `web-qa` (full/main). Remaining slots (#39 obs)
-# must add jobs here with
+# #36 visual/a11y is job `web-qa` (full/main); #39 obs is job `obs-ui`
+# (full/main). Later heavy gates must add jobs here with
 # `if: needs.decide.outputs.full == 'true'` — never a second push+pull_request
 # workflow. #37 page-budget is cheap (SQLite unit) and lands as a fast job.
 # Nightly/cron matrices stay off while pre-traction.
@@ -61,7 +61,9 @@ jobs:
     timeout-minutes: 5
     outputs:
       full: ${{ steps.out.outputs.full }}
+      force_full: ${{ steps.out.outputs.force_full }}
       solidity: ${{ steps.out.outputs.solidity }}
+      docs_only: ${{ steps.out.outputs.docs_only }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -79,25 +81,7 @@ jobs:
           DISPATCH_TIER: ${{ github.event.inputs.tier }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          set -euo pipefail
-          FULL=false
-          case "$EVENT_NAME" in
-            push) FULL=true ;;
-            workflow_dispatch)
-              if [ "${DISPATCH_TIER:-full}" != "fast" ]; then FULL=true; fi
-              ;;
-            pull_request)
-              if [ "${PR_DRAFT}" != "true" ]; then FULL=true; fi
-              if echo ",${PR_LABELS}," | grep -q ',ci-full,'; then FULL=true; fi
-              ;;
-          esac
-          echo "full=${FULL}" | tee -a "$GITHUB_OUTPUT"
-          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "${BASE_SHA}" ]; then
-            bash scripts/ci-paths.sh --diff "$BASE_SHA" "$HEAD_SHA"
-          else
-            bash scripts/ci-paths.sh --fail-safe
-          fi
+        run: bash scripts/ci-decide.sh
 
   # Visible cheap gate. Always executes commands (never skip-as-pass).
   constants-version-deployments:
@@ -448,7 +432,7 @@ jobs:
 
   ci-ok:
     name: ci-ok
-    if: always() && needs.decide.outputs.full == 'true'
+    if: always()
     needs:
       - decide
       - constants-version-deployments
@@ -466,32 +450,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: All required full-gate jobs executed and passed
-        run: |
-          set -euo pipefail
-          echo "decide=${{ needs.decide.result }}"
-          echo "constants-version-deployments=${{ needs.constants-version-deployments.result }}"
-          echo "page-budget=${{ needs.page-budget.result }}"
-          echo "solidity=${{ needs.solidity.result }}"
-          echo "web-production-security=${{ needs.web-production-security.result }}"
-          echo "operator-policy-http=${{ needs.operator-policy-http.result }}"
-          echo "web-qa=${{ needs.web-qa.result }}"
-          echo "live-toasts-ui=${{ needs.live-toasts-ui.result }}"
-          echo "obs-ui=${{ needs.obs-ui.result }}"
-          echo "postgres-ms-timestamps=${{ needs.postgres-ms-timestamps.result }}"
-          echo "docs-links=${{ needs.docs-links.result }}"
-          echo "web=${{ needs.web.result }}"
-          echo "e2e-release-gate=${{ needs.e2e-release-gate.result }}"
-          test "${{ needs.decide.result }}" = success
-          test "${{ needs.constants-version-deployments.result }}" = success
-          test "${{ needs.page-budget.result }}" = success
-          test "${{ needs.solidity.result }}" = success
-          test "${{ needs.web-production-security.result }}" = success
-          test "${{ needs.operator-policy-http.result }}" = success
-          test "${{ needs.web-qa.result }}" = success
-          test "${{ needs.live-toasts-ui.result }}" = success
-          test "${{ needs.obs-ui.result }}" = success
-          test "${{ needs.postgres-ms-timestamps.result }}" = success
-          test "${{ needs.docs-links.result }}" = success
-          test "${{ needs.web.result }}" = success
-          test "${{ needs.e2e-release-gate.result }}" = success
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Required jobs executed and passed
+        env:
+          FULL: ${{ needs.decide.outputs.full }}
+          RESULT_DECIDE: ${{ needs.decide.result }}
+          RESULT_CONSTANTS: ${{ needs.constants-version-deployments.result }}
+          RESULT_PAGE_BUDGET: ${{ needs.page-budget.result }}
+          RESULT_SOLIDITY: ${{ needs.solidity.result }}
+          RESULT_WEB_PRODUCTION_SECURITY: ${{ needs.web-production-security.result }}
+          RESULT_OPERATOR_POLICY_HTTP: ${{ needs.operator-policy-http.result }}
+          RESULT_WEB_QA: ${{ needs.web-qa.result }}
+          RESULT_LIVE_TOASTS: ${{ needs.live-toasts-ui.result }}
+          RESULT_OBS_UI: ${{ needs.obs-ui.result }}
+          RESULT_POSTGRES: ${{ needs.postgres-ms-timestamps.result }}
+          RESULT_DOCS_LINKS: ${{ needs.docs-links.result }}
+          RESULT_WEB: ${{ needs.web.result }}
+          RESULT_E2E: ${{ needs.e2e-release-gate.result }}
+        run: bash scripts/ci-ok.sh
