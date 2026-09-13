@@ -86,7 +86,7 @@ GitHub Actions is three-tier (fast PR / full merge-candidate / main). Docs-only 
 
 **Media:** `sharp` is required. On a fresh host, `pnpm approve-builds` (allow `sharp`) if the install asks.
 
-**Arc Public Testnet:** #16 rehearsal recorded Factory + Instant/Fair smoke on [testnet.arcscan.app](https://testnet.arcscan.app). See `docs/deployments.md` and `deployments/arc-testnet-smoke.json`. Circle faucet automation still hits `RECAPTCHA_ERROR`; this run was funded from a box throwaway. Keep issue #16 open until human AC. No mainnet (5042).
+**Arc Public Testnet:** #16 2026-09-12 Factory + Instant/Fair smoke is on [testnet.arcscan.app](https://testnet.arcscan.app) but **SUPERSEDED** (immutable guardian = lost disposable `0xbeD4…`). Isolated redeploy uses `SAFE_GENESIS=true` + Davis hardware EOA as `EXPECTED_SAFE` — see `scripts/arc-testnet-eoa-genesis-runbook.md`. New Guardian/Factory addresses are not invented here. `claimedProdPath` stays false. Keep issue #16 open. No mainnet (5042).
 
 ## Protocol notes
 

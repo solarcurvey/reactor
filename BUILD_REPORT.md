@@ -1,6 +1,14 @@
-# BUILD REPORT — Issue #16 Arc Public Testnet rehearsal
+# BUILD REPORT — Issue #16 isolated EOA-guardian redeploy (docs)
 
-**Status:** Rebased onto `origin/main` `922f909` (squash-merged **#48** handbook after **#80** Industrial Forge / **#81** / **#46** / **#75** / **#44**). Same draft PR #52 / same branch. Protocol **0.3.4**. Factory **V1** unchanged. **#16 stays open.** LOCAL authorize Instant RHRSL + Fair RHRFL explorer hashes are in `deployments/arc-testnet-journey.json` (Blockscout `result=success`, `claimedArcTestnet: true`). `blockers` lists the LOCAL/non-PROD gaps (`authorizeEnv: LOCAL`, no Turnstile, disposable signer = deployer, Mock USDC-6, not production Next+wallet). Not full PROD. `claimedProdPath` stays **false**.
+**Status:** Continue draft **#52** on `cursor/arc-testnet-deploy-rehearsal-deab` (already on `origin/main` `922f909`). Protocol **0.3.4**. Factory **V1** unchanged. **#16 stays open.** Davis chose **REDEPLOY** of Arc Public Testnet `5042002`. The 2026-09-12 Guardian `0x2CdF37541256749E5CF6ac5C806e0d23A685F224` / Factory `0xB48D1B397834eBcccb8961041d827487097e0535` dump is **SUPERSEDED / non-PROD-isolated** (immutable `guardian()` = lost disposable `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E`). Isolated path is documented only: `SAFE_GENESIS=true` constructors on the ops box (deployer ≠ guardian), then Davis HW-signs `SafeGenesisBatch.s.sol` calldata with `EXPECTED_SAFE` = hardware EOA `0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406` (no Gnosis Safe this round). `pauseLaunches(false)` LAST after VerifyGenesis. New Guardian/Factory addresses are **placeholders** in `deployments/arc-testnet-isolated.json` — this PR does **not** claim on-chain success and does **not** invent tx hashes. `claimedProdPath` stays **false** until Instant/Fair smoke on the new deploy + Turnstile + wallet UI ACs. Public env only: `NEXT_PUBLIC_WALLETCONNECT_ID`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, four role addresses. No private keys / HMAC / Turnstile secret / Sentry DSN.
+**Not audited. Not mainnet.**
+**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+---
+
+# Prior — Issue #16 Arc Public Testnet rehearsal (SUPERSEDED dump)
+
+**Status:** Rebased onto `origin/main` `922f909` (squash-merged **#48** handbook after **#80** Industrial Forge / **#81** / **#46** / **#75** / **#44**). Same draft PR #52 / same branch. Protocol **0.3.4**. Factory **V1** unchanged. **#16 stays open.** LOCAL authorize Instant RHRSL + Fair RHRFL explorer hashes are in `deployments/arc-testnet-journey.json` (Blockscout `result=success`, `claimedArcTestnet: true`, now `superseded: true`). `blockers` lists the LOCAL/non-PROD gaps (`authorizeEnv: LOCAL`, no Turnstile, disposable signer = deployer, Mock USDC-6, not production Next+wallet) plus the lost-key redeploy. Not full PROD. `claimedProdPath` stays **false**.
 **Not audited. Not mainnet.**
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
@@ -22,7 +30,7 @@
 | Workflows | Inherited merged **#48** / **#80** / **#81** / **#46** / **#75** / **#44** / **#70** / **#79** / **#68** / **#67** / **#66** / **#49** / **#42** / **#50** / **#73** `.github/workflows/ci.yml` (`ci-decide.sh` docs-only cheap path + three-tier + page-budget + `web-qa` + `e2e-release-gate` + `obs-ui` + `docs:links` + handbook docs-copy/visual + sanctions/geo/operator-policy/restricted-access fixtures). Prefer main for CI. Do not rewrite decide-tier. Actions billing empty-step failures are not AC failures. |
 | Mainnet | **Blocked** |
 
-Keep **#16 open** until Instant + Fair explorer AC are human-confirmed. Guardian-signed Factory smoke (`pnpm arc:smoke`) is recorded. LOCAL authorize Instant RHRSL + Fair RHRFL (`pnpm arc:wallet-harness`) used `POST /launch/authorize` → `launchStandard` / `createFairLaunch` → `POST /quote` → `UserRouteExecutor`. Blockscout `status=ok` / `result=success`. `pnpm arc:prod-web` wrote env examples + `deployments/arc-testnet-prod-path.json` (`claimedProdPath: false`). Full PROD still needs Turnstile + isolated signer ≠ deployer ≠ Keeper + browser/wallet. No Safe genesis. Do not invent those keys.
+Keep **#16 open**. Guardian-signed Factory smoke and LOCAL authorize Instant RHRSL + Fair RHRFL on the **SUPERSEDED** dump stay recorded. Isolated PROD-path constructors happen off-PR on the ops box; Davis HW-signs genesis. `claimedProdPath` stays false until Instant/Fair smoke on the **new** deploy + Turnstile + wallet UI ACs. Do not invent new Guardian/Factory addresses or secrets.
 
 ---
 

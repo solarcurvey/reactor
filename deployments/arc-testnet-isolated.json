@@ -1,0 +1,59 @@
+{
+  "network": "arc-public-testnet-isolated",
+  "chainId": 5042002,
+  "rpc": "https://rpc.testnet.arc.network",
+  "explorer": "https://testnet.arcscan.app",
+  "claimedArcTestnet": false,
+  "claimedProdPath": false,
+  "prodIsolated": false,
+  "pendingOpsBoxBroadcast": true,
+  "noGnosisSafeThisRound": true,
+  "safeGenesis": true,
+  "sourceCommit": null,
+  "sourceTag": "v0.3.4",
+  "deploymentDate": null,
+  "verificationUrl": null,
+  "factoryVersion": 1,
+  "protocolVersion": "0.3.4",
+  "verificationNote": "Constructors and remaining genesis happen off-PR on the ops box. Leave Guardian/Factory addresses and explorer links empty until those broadcasts exist. Do not invent tx hashes or contract addresses.",
+  "expectedSafe": "0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406",
+  "deployer": null,
+  "note": "Pending isolated PROD-path redeploy on Arc Public Testnet 5042002. SAFE_GENESIS=true constructors (deployer EOA ≠ GUARDIAN). EXPECTED_SAFE / GUARDIAN env is Davis Ramsey hardware EOA 0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406 — not a Gnosis Safe this round. Davis HW-signs SafeGenesisBatch.s.sol calldata (Batch A → VerifyGenesis → pauseLaunches(false) LAST). New ReactorGuardian / ReactorFactory addresses are placeholders until the ops box broadcasts. Supercedes 0x2CdF37541256749E5CF6ac5C806e0d23A685F224 / 0xB48D1B397834eBcccb8961041d827487097e0535 (lost disposable guardian key). claimedProdPath stays false until Instant/Fair smoke + Turnstile + wallet UI ACs land. No Arc Mainnet (5042).",
+  "roles": {
+    "guardianEoa": "0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406",
+    "launchSigner": "0xd880BD31948Ffc89E8D26C6ac90f98F825E56E9e",
+    "pricingSigner": "0x346363d14E6Acf1b05CA8Aa22F7E06a201A69a76",
+    "keeper": "0xf2105235d0a74969f229deb72d3C8C578643147F"
+  },
+  "publicEnv": {
+    "NEXT_PUBLIC_WALLETCONNECT_ID": "f7366a56987b5b93b9dd8099f8e5b419",
+    "NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAEyd86VMZKBjIeLX"
+  },
+  "neverCommit": [
+    "private keys",
+    "HMAC secrets",
+    "TURNSTILE_SECRET",
+    "Sentry DSN",
+    "SIGNER_INTERNAL_TOKEN",
+    "ADMISSION_HMAC_SECRET",
+    "PRICING_SIGNER_PK",
+    "DEPLOYER_PK"
+  ],
+  "addresses": {
+    "LaunchSigner": "0xd880BD31948Ffc89E8D26C6ac90f98F825E56E9e",
+    "PricingSigner": "0x346363d14E6Acf1b05CA8Aa22F7E06a201A69a76",
+    "Keeper": "0xf2105235d0a74969f229deb72d3C8C578643147F"
+  },
+  "pendingAddresses": {
+    "Guardian": null,
+    "ReactorFactory": null,
+    "createTx": null,
+    "createExplorer": null
+  },
+  "supersedes": {
+    "Guardian": "0x2CdF37541256749E5CF6ac5C806e0d23A685F224",
+    "ReactorFactory": "0xB48D1B397834eBcccb8961041d827487097e0535",
+    "lostGuardianKey": "0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E",
+    "evidence": "deployments/arc-testnet.json"
+  }
+}

@@ -53,7 +53,9 @@ function loadTestnetClaim(): {
   return {
     claimed: Boolean(j.claimedArcTestnet && j.verificationUrl),
     rpc: j.rpc ?? "https://rpc.testnet.arc.io",
-    note: j.claimedArcTestnet ? "claimed dump present" : "testnet dump exists but claimedArcTestnet is false",
+    note: j.claimedArcTestnet
+      ? "historical claimed dump present — SUPERSEDED / non-PROD-isolated (lost immutable guardian). Isolated path: deployments/arc-testnet-isolated.json"
+      : "testnet dump exists but claimedArcTestnet is false",
     verificationUrl: j.verificationUrl,
     deployer: j.deployer,
     factory: addrs.ReactorFactory,
@@ -77,16 +79,29 @@ NEXT_PUBLIC_INDEXER_URL=http://127.0.0.1:43148
 ARC_TESTNET_RPC=${claim.rpc}
 ARC_FINALITY_CONFIRMATIONS=0
 
-# Required in PROD (indexer + isolated signer refuse to start without these).
+# Public widget / connector IDs only (safe to commit).
+NEXT_PUBLIC_WALLETCONNECT_ID=f7366a56987b5b93b9dd8099f8e5b419
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=0x4AAAAAAEyd86VMZKBjIeLX
+
+# Required in PROD — host secrets. NEVER commit these values.
 TURNSTILE_SECRET=
-NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 PRICING_SIGNER_PK=
 SIGNER_INTERNAL_TOKEN=
 ADMISSION_HMAC_SECRET=
 # SIGNER_INLINE must stay unset/false in PROD.
+# SENTRY_DSN=                      # host-only; never commit
+
+# Isolated PROD-path roles (public addresses). Deployer ≠ guardian.
+# GUARDIAN / EXPECTED_SAFE is Davis hardware EOA — not a Gnosis Safe this round.
+GUARDIAN=0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406
+EXPECTED_SAFE=0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406
+EXPECTED_LAUNCH_SIGNER=0xd880BD31948Ffc89E8D26C6ac90f98F825E56E9e
+EXPECTED_PRICING_SIGNER=0x346363d14E6Acf1b05CA8Aa22F7E06a201A69a76
+EXPECTED_KEEPER=0xf2105235d0a74969f229deb72d3C8C578643147F
+KEEPER=0xf2105235d0a74969f229deb72d3C8C578643147F
+SAFE_GENESIS=true
 
 # Optional
-# NEXT_PUBLIC_WALLETCONNECT_ID=
 # DATABASE_URL=postgres://user:pass@host:5432/reactor
 # MEDIA_CDN_BASE=
 # R2_ENDPOINT=

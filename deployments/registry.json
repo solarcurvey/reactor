@@ -20,7 +20,7 @@
     },
     {
       "id": "arc-public-testnet",
-      "label": "Arc Public Testnet — claimed (#16 rehearsal)",
+      "label": "Arc Public Testnet — SUPERSEDED (#16 rehearsal, non-PROD-isolated)",
       "placeholder": false,
       "claimed": true,
       "chain": "Arc Public Testnet",
@@ -31,8 +31,24 @@
       "sourceTag": "v0.3.3",
       "deploymentDate": "2026-09-12",
       "verificationUrl": "https://testnet.arcscan.app/tx/0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67",
-      "verificationNote": "Blockscout API result=success for Factory create + Instant/Fair smoke + LOCAL authorize Instant RHRSL / Fair RHRFL. Keep #16 open for human AC.",
-      "note": "Issue #16 rehearsal on 5042002. Disposable EOA Guardian/Keeper/LaunchSigner `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E` (not Safe). Instant/Fair quote is Mock USDC-6 `0x44CBe037ABFA8696E4466cA9D278Dbbe44B932dC`, not canonical `0x3600…0000`. PoolManager is official v4-core BUSL deployed this session (not a Circle-provided manager). Smoke: Instant RHRSI `0x62A7aDF0deb2c1918603e9834dD9ACe07CDA2f87` + Fair RHRFA `0x077322bE71C871F7134a9bb97e8f85A3991497c6`. LOCAL authorize path: Instant RHRSL `0xf93a49eBc9B669891F29F87bCC151188Eb715e12` + Fair RHRFL `0x7B52a009560f55978E82E50aD24FDC3f0e1F86E0` (fairId 2). Evidence: deployments/arc-testnet.json + arc-testnet-smoke.json + arc-testnet-journey.json. No mainnet (5042)."
+      "verificationNote": "Historical Blockscout result=success for Factory 0xB48D… / Guardian 0x2CdF…. SUPERSEDED: immutable guardian is lost disposable 0xbeD4…. Not the isolated PROD-path. Keep #16 open.",
+      "note": "SUPERSEDED / non-PROD-isolated. Explorer-true 2026-09-12 rehearsal (Factory `0xB48D1B397834eBcccb8961041d827487097e0535`, ReactorGuardian `0x2CdF37541256749E5CF6ac5C806e0d23A685F224`) but obsolete for isolated PROD. `guardian()`/`launchSigner()`/`pricingSigner()`/`keeper()` all = lost disposable `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E` — cannot rotate. Davis chose REDEPLOY. Instant/Fair quote on this dump is Mock USDC-6 `0x44CBe037ABFA8696E4466cA9D278Dbbe44B932dC`. Evidence stays in deployments/arc-testnet.json + arc-testnet-smoke.json + arc-testnet-journey.json. New addresses: deployments/arc-testnet-isolated.json (placeholders). No mainnet (5042)."
+    },
+    {
+      "id": "arc-public-testnet-isolated",
+      "label": "Arc Public Testnet — isolated PROD-path (PENDING ops-box broadcast)",
+      "placeholder": true,
+      "claimed": false,
+      "chain": "Arc Public Testnet",
+      "chainId": 5042002,
+      "explorer": "https://testnet.arcscan.app",
+      "addressFile": "deployments/arc-testnet-isolated.json",
+      "sourceCommit": null,
+      "sourceTag": "v0.3.4",
+      "deploymentDate": null,
+      "verificationUrl": null,
+      "verificationNote": "Pending ops-box SAFE_GENESIS constructors + Davis HW-signed genesis. Do not invent Guardian/Factory addresses or tx hashes.",
+      "note": "PENDING isolated PROD-path redeploy. SAFE_GENESIS=true constructors (deployer ≠ GUARDIAN). EXPECTED_SAFE is Davis hardware EOA `0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406` (not a Gnosis Safe this round). Role map: LaunchSigner `0xd880BD31948Ffc89E8D26C6ac90f98F825E56E9e`, PricingSigner `0x346363d14E6Acf1b05CA8Aa22F7E06a201A69a76`, Keeper `0xf2105235d0a74969f229deb72d3C8C578643147F`. ReactorGuardian / ReactorFactory addresses stay empty until the ops box broadcasts. `claimedProdPath` stays false until Instant/Fair smoke + Turnstile + wallet UI ACs. Runbook: scripts/arc-testnet-eoa-genesis-runbook.md. Supercedes 0x2CdF… / 0xB48D…. No mainnet (5042)."
     },
     {
       "id": "arc-mainnet",

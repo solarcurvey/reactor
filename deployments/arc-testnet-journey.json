@@ -1,6 +1,8 @@
 {
   "at": "2026-09-12T23:48:30.000Z",
   "claimedArcTestnet": true,
+  "superseded": true,
+  "prodIsolated": false,
   "network": "arc-public-testnet",
   "chainId": 5042002,
   "indexer": "http://127.0.0.1:43148",
@@ -88,6 +90,8 @@
     "Instant/Fair quote is Mock USDC-6 0x44CBe037ABFA8696E4466cA9D278Dbbe44B932dC, not canonical 0x3600000000000000000000000000000000000000",
     "not production Next + wallet harness (scripted LOCAL indexer; wagmi injected() only; no WalletConnect)",
     "Guardian/Keeper/LaunchSigner are not a production Safe",
-    "Not full PROD — claimedArcTestnet records the LOCAL authorize Instant/Fair explorer path only"
+    "Not full PROD — claimedArcTestnet records the LOCAL authorize Instant/Fair explorer path only",
+    "SUPERSEDED / non-PROD-isolated — Factory 0xB48D1B397834eBcccb8961041d827487097e0535 / Guardian 0x2CdF37541256749E5CF6ac5C806e0d23A685F224 have immutable guardian() = lost disposable 0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E (cannot rotate). Davis chose REDEPLOY.",
+    "claimedProdPath stays false until Instant/Fair smoke on the NEW deploy + Turnstile + wallet UI ACs land"
   ]
 }

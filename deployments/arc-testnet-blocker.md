@@ -1,8 +1,10 @@
-# Arc Public Testnet — Factory claimed on explorer (#16 rehearsal)
+# Arc Public Testnet — SUPERSEDED 2026-09-12 dump (non-PROD-isolated)
 
-**claimed: true** on Blockscout API (`result=success`). Keep #16 open for human AC.
+**Historical claimed: true** on Blockscout API (`result=success`). **SUPERSEDED** for isolated PROD-path. Keep #16 open.
 
-This file previously recorded the Circle faucet `RECAPTCHA_ERROR` blocker. Funding arrived from a box throwaway wallet onto `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E`. Full stack + Instant/Fair smoke are in `deployments/arc-testnet.json` and `deployments/arc-testnet-smoke.json`.
+ReactorGuardian `0x2CdF37541256749E5CF6ac5C806e0d23A685F224` / Factory `0xB48D1B397834eBcccb8961041d827487097e0535` have immutable `guardian()` = lost disposable `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E` (same as launchSigner / pricingSigner / keeper). Guardian cannot rotate. Davis chose REDEPLOY. New addresses stay empty in `deployments/arc-testnet-isolated.json` until the ops box broadcasts. Runbook: `scripts/arc-testnet-eoa-genesis-runbook.md`.
+
+This file previously recorded the Circle faucet `RECAPTCHA_ERROR` blocker. Funding arrived from a box throwaway wallet onto `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E`. Full stack + Instant/Fair smoke for the **old** dump are in `deployments/arc-testnet.json` and `deployments/arc-testnet-smoke.json`.
 
 | Requirement | Status |
 | --- | --- |

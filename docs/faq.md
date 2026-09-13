@@ -52,7 +52,9 @@
 
 **When do the bottom-right burn toasts show?** Only after the indexer commits a CORE buy+burn (`BuybackExecuted` / `COREBurned`) or a Top-10 `Top10Buy`. Connecting does not dump the SSE replay buffer. A reconnect still delivers events that landed while you were disconnected, exactly once. Epoch submit and Standard SelfBurn do not toast. Hover or focus pauses auto-dismiss.
 
-**Where is the Safe JSON?** `deployments/safe-genesis-builder.json`. Deployer ≠ Guardian. Fill env and regenerate (`pnpm safe:genesis`).
+**Where is the Safe JSON?** `deployments/safe-genesis-builder.json`. Deployer ≠ Guardian. Fill env and regenerate (`pnpm safe:genesis`). Isolated Arc Public Testnet this round has **no Gnosis Safe**: `EXPECTED_SAFE` is Davis's hardware EOA. Use `SafeGenesisBatch.s.sol` calldata (`scripts/arc-testnet-eoa-genesis-runbook.md`). `pauseLaunches(false)` last after VerifyGenesis.
+
+**Why redeploy 5042002?** The 2026-09-12 Guardian `0x2CdF…` / Factory `0xB48D…` stack is SUPERSEDED / non-PROD-isolated. Immutable `guardian()` is the lost disposable `0xbeD4…`. Guardian cannot rotate. New contract addresses stay empty until the ops box broadcasts — do not invent them.
 
 **Can I change the 3.5% split?** No. Different split = V2 factory deploy.
 

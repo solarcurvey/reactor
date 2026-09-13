@@ -10,8 +10,9 @@ Use this when `ARC_TESTNET_PK` is a **funded** EOA on chain `5042002`. If the ke
 - [ ] `cast chain-id --rpc-url https://rpc.testnet.arc.io` → `5042002`
 - [ ] Confirm you are **not** on mainnet `5042`
 - [ ] `pnpm size:guard` — Factory runtime ≤ 23,552
-- [ ] Guardian Safe address ≠ deployer
-- [ ] Launch Signer EOA ≠ Keeper ≠ Safe
+- [ ] Guardian (`GUARDIAN` / `EXPECTED_SAFE`) ≠ deployer. This isolated round: Davis hardware EOA `0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406` — **not** a Gnosis Safe
+- [ ] Launch Signer `0xd880BD31948Ffc89E8D26C6ac90f98F825E56E9e` ≠ Keeper `0xf2105235d0a74969f229deb72d3C8C578643147F` ≠ guardian ≠ Pricing Signer `0x346363d14E6Acf1b05CA8Aa22F7E06a201A69a76`
+- [ ] Do **not** reuse SUPERSEDED `0x2CdF37541256749E5CF6ac5C806e0d23A685F224` / `0xB48D1B397834eBcccb8961041d827487097e0535` (lost disposable guardian key)
 - [ ] Canonical USDC `0x3600000000000000000000000000000000000000` (6 decimals) for `usdPegOne`
 - [ ] PoolManager: if **not** on-chain, you must deploy official v4-core (BUSL, non-production) yourself — this repo does not invent an address
 
@@ -34,16 +35,21 @@ forge script script/Deploy.s.sol:Deploy \
 
 Use ≥ 20 gwei `maxFeePerGas` (Arc docs).
 
-## Genesis (Safe)
+## Genesis (EOA guardian this round)
+
+Constructors: `SAFE_GENESIS=true` + `GUARDIAN=0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406` on the ops box. Then:
 
 ```bash
-export EXPECTED_SAFE=0x…           # ≠ DEPLOYER
-export DEPLOYER=0x…
-# fill GUARDIAN_CONTRACT, REGISTRY, FACTORY, USDC, … from the broadcast
-pnpm safe:genesis                  # Batch A / Batch B JSON + MultiSend
+export EXPECTED_SAFE=0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406   # Davis HW EOA, ≠ DEPLOYER
+export DEPLOYER=0x…                                              # ops-box constructor EOA
+# fill GUARDIAN_CONTRACT, REGISTRY, FACTORY, USDC, … from the NEW broadcast (do not invent)
+forge script script/SafeGenesisBatch.s.sol:SafeGenesisBatch --rpc-url "$ARC_TESTNET_RPC"
+# Davis HW-sends Batch A calldata, then:
 forge script script/VerifyGenesis.s.sol:VerifyGenesis --rpc-url "$ARC_TESTNET_RPC"
-# Then execute Batch B only
+# Then Batch B only — pauseLaunches(false) LAST
 ```
+
+Full order: `scripts/arc-testnet-eoa-genesis-runbook.md`. `pnpm safe:genesis` JSON is optional ordering reference; no Gnosis Safe UI this round.
 
 ## Claim rule
 

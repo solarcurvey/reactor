@@ -260,7 +260,7 @@ ${networkRows}
 
 v4 \`PoolManager\`: production accepts **verified** Arc addresses only. This repo does not hardcode a mainnet or unverified testnet PoolManager.
 
-SAFE genesis: Batch A (config while paused, including Launch Signer + TickerRegistry + authorizeFactory) → Verify → Batch B (vesting T0 + \`pauseLaunches(false)\`).
+SAFE_GENESIS constructors (deployer ≠ GUARDIAN / EXPECTED_SAFE) then Batch A (config while paused, including Launch Signer + TickerRegistry + authorizeFactory) → VerifyGenesis → Batch B (vesting T0 + \`pauseLaunches(false)\` LAST). Isolated Arc Public Testnet this round uses Davis's hardware EOA as EXPECTED_SAFE (not a Gnosis Safe). See \`scripts/arc-testnet-eoa-genesis-runbook.md\`.
 
 ${sections.join("\n")}
 ## How to record a real deploy

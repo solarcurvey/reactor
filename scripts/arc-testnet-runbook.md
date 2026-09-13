@@ -1,6 +1,6 @@
 # Arc Public Testnet — full deploy + production web runbook (#16)
 
-Use this after `pnpm arc:rehearsal`. **Keep issue #16 open** until Instant launch + BUY/SELL have explorer hashes. Never invent addresses. Never deploy chain `5042`.
+Use this after `pnpm arc:rehearsal`. **Keep issue #16 open** until Instant launch + BUY/SELL have explorer hashes **on the isolated redeploy**. The 2026-09-12 `0x2CdF…` / `0xB48D…` dump is **SUPERSEDED** (lost immutable guardian key). Isolated path: `scripts/arc-testnet-eoa-genesis-runbook.md`. Never invent addresses. Never deploy chain `5042`.
 
 ## 0. Disposable key (VM)
 
@@ -64,7 +64,7 @@ forge script script/Deploy.s.sol:Deploy \
 
 Copy the broadcast addresses into **`deployments/arc-testnet.json`** (do not overwrite `deployments/local.json` without labeling). Point `deployments/registry.json` `arc-public-testnet.addressFile` at that file. Set `sourceCommit` to the git SHA. `claimed: true` only after [testnet.arcscan.app](https://testnet.arcscan.app) shows the create receipts. Then `pnpm docs:gen`. #16 rehearsal already recorded this (`docs/deployments.md`). Then Instant + Fair: `pnpm arc:smoke`.
 
-Production-shaped Guardian = Safe ≠ deployer: `SAFE_GENESIS=true` + `pnpm safe:genesis`. See `scripts/arc-testnet-checklist.md`.
+Isolated PROD-path Guardian this round = Davis hardware EOA `0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406` ≠ deployer: `SAFE_GENESIS=true` constructors on the ops box, then Davis HW-signs `SafeGenesisBatch.s.sol` calldata (`EXPECTED_SAFE` is that EOA, not a Gnosis Safe). `pauseLaunches(false)` LAST after VerifyGenesis. See `scripts/arc-testnet-eoa-genesis-runbook.md` and `scripts/arc-testnet-checklist.md`.
 
 ## 4. Production Next + indexer
 

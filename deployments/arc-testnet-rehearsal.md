@@ -1,6 +1,6 @@
 # Arc Public Testnet rehearsal — issue #16
 
-**claimed: true on explorer API** (Blockscout `status=ok`, `result=success`). Keep #16 open for human AC. Not Safe genesis. Not audited. No mainnet.
+**Historical claimed: true on explorer API** (Blockscout `status=ok`, `result=success`). **SUPERSEDED / non-PROD-isolated** — immutable guardian is the lost disposable `0xbeD4…`. Davis chose REDEPLOY. New Guardian/Factory addresses are pending ops-box broadcast (`deployments/arc-testnet-isolated.json`). Keep #16 open for human AC. Not audited. No mainnet.
 
 | Field | Value |
 | --- | --- |

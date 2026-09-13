@@ -338,6 +338,25 @@ export async function codeSize(rpc: string, address: `0x${string}`): Promise<num
  * true for the recorded LOCAL authorize explorer path. Do not treat an empty
  * `blockers` array as "no gaps" while `note` / `authorizeEnv` document LOCAL.
  */
+export const SUPERSEDED_TESTNET = {
+  guardian: "0x2CdF37541256749E5CF6ac5C806e0d23A685F224",
+  factory: "0xB48D1B397834eBcccb8961041d827487097e0535",
+  lostKey: "0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E",
+} as const;
+
+/** Public isolated-path roles. Not contract addresses. Do not invent Factory/Guardian. */
+export const ISOLATED_PROD_ROLES = {
+  expectedSafe: "0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406",
+  launchSigner: "0xd880BD31948Ffc89E8D26C6ac90f98F825E56E9e",
+  pricingSigner: "0x346363d14E6Acf1b05CA8Aa22F7E06a201A69a76",
+  keeper: "0xf2105235d0a74969f229deb72d3C8C578643147F",
+} as const;
+
+export const PUBLIC_WEB_ENV = {
+  NEXT_PUBLIC_WALLETCONNECT_ID: "f7366a56987b5b93b9dd8099f8e5b419",
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: "0x4AAAAAAEyd86VMZKBjIeLX",
+} as const;
+
 export const LOCAL_AUTHORIZE_STANDING_BLOCKERS = [
   "authorizeEnv is LOCAL — REACTOR_ENV=PROD was not used",
   "no Cloudflare Turnstile (LOCAL indexer authorize skips CHALLENGE)",
@@ -346,6 +365,8 @@ export const LOCAL_AUTHORIZE_STANDING_BLOCKERS = [
   "not production Next + wallet harness (scripted LOCAL indexer; wagmi injected() only; no WalletConnect)",
   "Guardian/Keeper/LaunchSigner are not a production Safe",
   "Not full PROD — claimedArcTestnet records the LOCAL authorize Instant/Fair explorer path only",
+  "SUPERSEDED / non-PROD-isolated — Factory 0xB48D1B397834eBcccb8961041d827487097e0535 / Guardian 0x2CdF37541256749E5CF6ac5C806e0d23A685F224 have immutable guardian() = lost disposable 0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E (cannot rotate). Davis chose REDEPLOY.",
+  "claimedProdPath stays false until Instant/Fair smoke on the NEW deploy + Turnstile + wallet UI ACs land",
 ] as const;
 
 export function mergeJourneyStandingBlockers(existing: string[] = []): string[] {
@@ -407,10 +428,20 @@ export function assembleProdPathReport(input: {
   }
   blockers.push("no Safe genesis (Guardian is not a production Safe)");
   blockers.push("Circle faucet automation still RECAPTCHA_ERROR — not a PROD gate, funding is already on-chain");
+  blockers.push(
+    "SUPERSEDED / non-PROD-isolated — ReactorGuardian 0x2CdF37541256749E5CF6ac5C806e0d23A685F224 and Factory 0xB48D1B397834eBcccb8961041d827487097e0535 have immutable guardian() = lost disposable 0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E. Cannot rotate. Davis chose REDEPLOY.",
+  );
+  blockers.push(
+    "NEW Guardian/Factory addresses pending ops-box SAFE_GENESIS constructors — do not invent them. Isolated dump: deployments/arc-testnet-isolated.json",
+  );
+  blockers.push("claimedProdPath stays false until Instant/Fair smoke on the NEW deploy + Turnstile + wallet UI ACs land");
   const notes = [
-    "LOCAL authorize Instant RHRSL + Fair RHRFL is recorded. That is not full PROD.",
-    "Do not set SIGNER_INLINE in PROD. Do not reuse Anvil #0. Do not invent Turnstile keys.",
-    "claimedProdPath stays false until Turnstile + isolated signer ≠ deployer ≠ Keeper + browser/wallet path are human-confirmed.",
+    "LOCAL authorize Instant RHRSL + Fair RHRFL is recorded on the SUPERSEDED dump. That is not full PROD and not the isolated path.",
+    "Do not set SIGNER_INLINE in PROD. Do not reuse Anvil #0. Do not invent Turnstile secrets, HMAC, signer PKs, or Sentry DSN.",
+    "Public env only: NEXT_PUBLIC_WALLETCONNECT_ID and NEXT_PUBLIC_TURNSTILE_SITE_KEY are in deployments/arc-testnet.env.example. TURNSTILE_SECRET stays host-only.",
+    "Target roles (not contract addresses): EXPECTED_SAFE/GUARDIAN 0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406, LaunchSigner 0xd880BD31948Ffc89E8D26C6ac90f98F825E56E9e, PricingSigner 0x346363d14E6Acf1b05CA8Aa22F7E06a201A69a76, Keeper 0xf2105235d0a74969f229deb72d3C8C578643147F.",
+    "Constructors happen off-PR on the ops machine. Davis HW-signs genesis as EOA EXPECTED_SAFE (no Gnosis Safe this round). pauseLaunches(false) LAST after VerifyGenesis.",
+    "claimedProdPath stays false until Instant/Fair smoke on the NEW deploy + Turnstile + wallet UI ACs are human-confirmed.",
   ];
   return {
     claimedProdPath: false,

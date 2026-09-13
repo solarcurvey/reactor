@@ -40,17 +40,19 @@ Canonical Multicall3 (`0xcA11bde05977b3631167028862bE2a173976CA11`) is **not ass
 
 Chainlink CRE lists a separate **Arc Testnet** (EIP-155 **1883**) for TypeScript workflows. This repo’s 5042002 demo and 5042 mainnet are not that catalog entry. CRE production writes to Arc Mainnet **5042 are not available and not claimed**. See `ops/cre/README.md` and [Automation](/docs/automation).
 
-## Issue #16 rehearsal
+## Issue #16 rehearsal (SUPERSEDED dump + pending isolated redeploy)
 
 `pnpm arc:rehearsal` probes live RPCs (`rpc.testnet.arc.io`, `rpc.testnet.arc.network`, plus Arc-doc alternates), verifies `eth_chainId = 5042002`, attempts the Circle faucet, and writes `deployments/arc-testnet-rehearsal.json` + `.md`.
 
-`forge script script/Deploy.s.sol:Deploy` on `https://rpc.testnet.arc.network` wrote `deployments/arc-testnet.json`. Factory `0xB48D1B397834eBcccb8961041d827487097e0535` create tx is [on explorer](https://testnet.arcscan.app/tx/0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67). Instant + Fair smoke: `pnpm arc:smoke` → `deployments/arc-testnet-smoke.json`. Instant/Fair quote is **Mock USDC-6** from that dump, not canonical `0x3600…0000`. Guardian is the disposable deployer EOA (not Safe).
+The 2026-09-12 `forge script script/Deploy.s.sol:Deploy` dump in `deployments/arc-testnet.json` is **SUPERSEDED / non-PROD-isolated**. Factory `0xB48D1B397834eBcccb8961041d827487097e0535` create tx is [on explorer](https://testnet.arcscan.app/tx/0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67). Instant + Fair smoke: `pnpm arc:smoke` → `deployments/arc-testnet-smoke.json`. Instant/Fair quote on that dump is **Mock USDC-6**, not canonical `0x3600…0000`. `guardian()` / `launchSigner()` / `pricingSigner()` / `keeper()` all = lost disposable `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E`. Immutable guardian — cannot rotate. Davis chose REDEPLOY.
 
-`pnpm arc:wallet-harness` ran the LOCAL authorize Instant RHRSL + Fair RHRFL path (same ABIs as the Next app: `POST /launch/authorize` → `launchStandard` / `createFairLaunch` → `POST /quote` → `UserRouteExecutor`). Evidence: `deployments/arc-testnet-journey.json` (`claimedArcTestnet: true` for that explorer path; `blockers` lists the LOCAL/non-PROD gaps already in `note` — do not treat `blockers: []` as “no gaps”). Direct Factory smoke does **not** replace that path. LOCAL is not full PROD.
+Isolated PROD-path (pending ops-box broadcast): `SAFE_GENESIS=true` constructors with `GUARDIAN` = Davis hardware EOA `0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406` (not a Gnosis Safe this round; deployer ≠ guardian). Davis HW-signs `SafeGenesisBatch.s.sol` calldata. `pauseLaunches(false)` LAST after VerifyGenesis. New Guardian/Factory addresses stay empty in `deployments/arc-testnet-isolated.json` — do not invent them. Runbook: `scripts/arc-testnet-eoa-genesis-runbook.md`.
 
-`pnpm arc:prod-web` writes `deployments/arc-testnet.env.example` and `deployments/arc-testnet-prod-path.json`. `claimedProdPath` stays **false**. Honest blockers: Cloudflare Turnstile site/secret, isolated launch signer ≠ deployer ≠ Keeper (on-chain LaunchSigner/Keeper are still the funded EOA), `SIGNER_INLINE` forbidden, `SIGNER_INTERNAL_TOKEN` + `ADMISSION_HMAC_SECRET`, no WalletConnect / injected browser wallet in this VM, no Safe genesis. Do not invent those keys. LOCAL authorize is not this path.
+`pnpm arc:wallet-harness` ran the LOCAL authorize Instant RHRSL + Fair RHRFL path against the **old** dump (same ABIs as the Next app: `POST /launch/authorize` → `launchStandard` / `createFairLaunch` → `POST /quote` → `UserRouteExecutor`). Evidence: `deployments/arc-testnet-journey.json` (`claimedArcTestnet: true` for that historical explorer path; `superseded: true`; `blockers` lists LOCAL/non-PROD gaps plus the lost-key redeploy). Direct Factory smoke does **not** replace that path. LOCAL is not full PROD.
 
-Circle faucet automation still receives GraphQL `RECAPTCHA_ERROR`. This rehearsal was funded from a box throwaway wallet. Runbook: `scripts/arc-testnet-runbook.md`. Keep [#16](https://github.com/solarcurvey/reactor/issues/16) open until human AC is met.
+`pnpm arc:prod-web` writes `deployments/arc-testnet.env.example` and `deployments/arc-testnet-prod-path.json`. Public `NEXT_PUBLIC_WALLETCONNECT_ID` and `NEXT_PUBLIC_TURNSTILE_SITE_KEY` are wired in that example. `claimedProdPath` stays **false** until Instant/Fair smoke on the **new** deploy + Turnstile + wallet UI ACs land. Never commit `TURNSTILE_SECRET`, HMAC, signer PKs, or Sentry DSN.
+
+Circle faucet automation still receives GraphQL `RECAPTCHA_ERROR`. The superseded rehearsal was funded from a box throwaway wallet. Keep [#16](https://github.com/solarcurvey/reactor/issues/16) open until human AC is met.
 
 ## Mainnet blockers (honest)
 

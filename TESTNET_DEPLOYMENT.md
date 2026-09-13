@@ -26,7 +26,7 @@ Gas: minimum `maxFeePerGas` 20 gwei. Base fee paid to beneficiary (no ETH-style 
 
 Buyback **testnet** safety constants are in `ReactorConstants` (300 bps impact, 20% chunk, 10% reserve, 1500 bps ref deviation, 5 min cooldown). See `ECONOMICS.md`.
 
-#16 rehearsal (2026-09-12) recorded Factory + Instant/Fair smoke on explorer. Addresses: `deployments/arc-testnet.json` → `docs/deployments.md`. Instant/Fair quote is Mock USDC-6 from `Deploy.s.sol`, not canonical `0x3600…0000`. Guardian is the disposable deployer EOA. Keep #16 open for human AC.
+#16 rehearsal (2026-09-12) recorded Factory + Instant/Fair smoke on explorer. That dump is **SUPERSEDED / non-PROD-isolated**: Guardian `0x2CdF37541256749E5CF6ac5C806e0d23A685F224` / Factory `0xB48D1B397834eBcccb8961041d827487097e0535` have immutable `guardian()` = lost disposable `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E`. Davis chose REDEPLOY. Isolated path: `SAFE_GENESIS=true` constructors (deployer ≠ `GUARDIAN`), then Davis HW-signs `SafeGenesisBatch.s.sol` calldata with `EXPECTED_SAFE` = hardware EOA `0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406` (not a Gnosis Safe this round). `pauseLaunches(false)` LAST after VerifyGenesis. New Guardian/Factory addresses stay empty in `deployments/arc-testnet-isolated.json` until the ops box broadcasts — do not invent them. `claimedProdPath` stays false. Runbook: `scripts/arc-testnet-eoa-genesis-runbook.md`. Keep #16 open.
 
 **Circle faucet (2026-09-12 VM):** `POST https://faucet.circle.com/api/graphql` mutation `RequestToken` (`blockchain: ARC`, `token: USDC`) returns HTTP 200 with `extensions.code = RECAPTCHA_ERROR`. `POST https://api.circle.com/v1/faucet/drips` returns HTTP 401 without a Circle API key. This rehearsal was funded from a box throwaway wallet onto `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E`.
 
@@ -58,13 +58,13 @@ forge script script/Deploy.s.sol:Deploy \
 
 Use at least 20 gwei. Never commit the key. `.env.example` lists variables.
 
-Production-shaped local/testnet: set `GUARDIAN` to the **final Safe**, `KEEPER` to the designated Keeper, `SAFE_GENESIS=true` (launches stay paused). Then:
+Production-shaped local/testnet: set `GUARDIAN` / `EXPECTED_SAFE` to the **final** guardian (production: a Safe; this isolated testnet round: Davis hardware EOA `0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406`), `KEEPER` to the designated Keeper, `SAFE_GENESIS=true` (launches stay paused; deployer ≠ guardian). Then Batch A calldata from `SafeGenesisBatch.s.sol`, then:
 
 ```bash
 forge script script/VerifyGenesis.s.sol:VerifyGenesis --rpc-url $RPC
 ```
 
-Never deploy with a temporary EOA Guardian and transfer later.
+Then Batch B with `pauseLaunches(false)` **last**. Never deploy with a temporary EOA Guardian and transfer later — this round's EOA **is** the immutable guardian.
 
 ## What gets deployed
 
@@ -76,7 +76,7 @@ Never deploy with a temporary EOA Guardian and transfer later.
 6. `CoreToken` (`TestCORE` deprecated alias) genesis 100M vest + 900M LP
 7. Official hooked CORE/USDC lock (`CoreLiquidityVault`) — not hookless
 8. Vaults, router, hook CREATE2, factory, InstantCurve, UserRoute, adapters
-9. `SAFE_GENESIS=true` keeps launches paused until Safe enables
+9. `SAFE_GENESIS=true` keeps launches paused until the guardian (Safe, or this-round hardware EOA) enables via Batch B — `pauseLaunches(false)` last
 
 Addresses are appended to `deployments/<network>.json`.
 

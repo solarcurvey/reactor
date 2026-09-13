@@ -9,6 +9,9 @@ import {
   assembleProdPathReport,
   mergeJourneyStandingBlockers,
   LOCAL_AUTHORIZE_STANDING_BLOCKERS,
+  ISOLATED_PROD_ROLES,
+  PUBLIC_WEB_ENV,
+  SUPERSEDED_TESTNET,
   redactSecrets,
   refuseMainnet,
   ANVIL0_PK,
@@ -135,5 +138,40 @@ const prodFile = JSON.parse(readFileSync(join(import.meta.dirname, "../deploymen
 };
 assert.equal(prodFile.claimedProdPath, false);
 assert.ok(prodFile.blockers.length > 0);
+assert.ok(prodFile.blockers.some((b) => /SUPERSEDED/i.test(b)));
+assert.ok(prodFile.blockers.some((b) => /0x2CdF/i.test(b) || /lost disposable/i.test(b)));
+
+const isolated = JSON.parse(readFileSync(join(import.meta.dirname, "../deployments/arc-testnet-isolated.json"), "utf8")) as {
+  claimedArcTestnet: boolean;
+  claimedProdPath: boolean;
+  expectedSafe: string;
+  addresses: Record<string, string | null | undefined>;
+  pendingAddresses: { Guardian: string | null; ReactorFactory: string | null };
+  publicEnv: Record<string, string>;
+};
+assert.equal(isolated.claimedArcTestnet, false);
+assert.equal(isolated.claimedProdPath, false);
+assert.equal(isolated.expectedSafe.toLowerCase(), ISOLATED_PROD_ROLES.expectedSafe.toLowerCase());
+assert.equal(isolated.addresses.LaunchSigner.toLowerCase(), ISOLATED_PROD_ROLES.launchSigner.toLowerCase());
+assert.equal(isolated.addresses.PricingSigner.toLowerCase(), ISOLATED_PROD_ROLES.pricingSigner.toLowerCase());
+assert.equal(isolated.addresses.Keeper.toLowerCase(), ISOLATED_PROD_ROLES.keeper.toLowerCase());
+assert.equal(isolated.pendingAddresses.Guardian, null);
+assert.equal(isolated.pendingAddresses.ReactorFactory, null);
+assert.ok(!isolated.addresses.Guardian, "do not invent new ReactorGuardian");
+assert.ok(!isolated.addresses.ReactorFactory, "do not invent new Factory");
+assert.equal(isolated.publicEnv.NEXT_PUBLIC_WALLETCONNECT_ID, PUBLIC_WEB_ENV.NEXT_PUBLIC_WALLETCONNECT_ID);
+assert.equal(isolated.publicEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY, PUBLIC_WEB_ENV.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+
+const oldDump = JSON.parse(readFileSync(join(import.meta.dirname, "../deployments/arc-testnet.json"), "utf8")) as {
+  superseded: boolean;
+  prodIsolated: boolean;
+  addresses: { Guardian: string; ReactorFactory: string };
+};
+assert.equal(oldDump.superseded, true);
+assert.equal(oldDump.prodIsolated, false);
+assert.equal(oldDump.addresses.Guardian.toLowerCase(), SUPERSEDED_TESTNET.guardian.toLowerCase());
+assert.equal(oldDump.addresses.ReactorFactory.toLowerCase(), SUPERSEDED_TESTNET.factory.toLowerCase());
+
+assert.ok(journey.blockers.some((b) => /SUPERSEDED/i.test(b)));
 
 console.log("arc-testnet-lib tests ok");
