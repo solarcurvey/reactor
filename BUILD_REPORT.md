@@ -1,4 +1,56 @@
-# BUILD REPORT — Exact official-list sanctions screening (Refs #61)
+# BUILD REPORT — Trusted geo / jurisdiction policy (#63)
+
+**Status:** Ready-for-merge PR for issue **#63** only. Issue **#63 stays open** until independent audit + post-merge verify. Do not auto-close.  
+**Not audited. Not mainnet.**  
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Server-side geo policy interface: ALLOW / DENY / UNKNOWN + reason codes; trusted edge HMAC; versioned comprehensive-jurisdiction file with source + effective date; LOCAL fixtures that cannot load production denylists. |
+| Indexer / lib | `packages/reactor/src/geo-policy.test.ts` + `apps/indexer/src/geo-policy.test.ts` + `pnpm docs:check` |
+| Foundry | Not re-run this pass (offchain policy only) |
+| Rebase | Onto `origin/main` `d08aa1c55bdfc20f9d93cc33446f9c5542a7d1da` after squash-merged **#66** (exact official-list OFAC screening / #61). Same PR **#67** / same branch. Founder re-audit: SY + oblast overblocks closed; #63 stays open until #62/#65 consume. Protocol **0.3.3** / Factory **V1** unchanged. |
+| Mainnet | **Blocked** |
+
+## Closed this run (#63 ACs — issue stays open)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| One server interface ALLOW / DENY / UNKNOWN + reasons | **Yes** | `evaluateGeoPolicy` / `evaluateRequestGeo` |
+| Production geo from trusted edge only | **Yes** | HMAC headers; unsigned `CF-IPCountry` ignored |
+| Versioned deny policy + source / effective date | **Yes** | `geo-policy-us-comprehensive.v1.json` **revision 3** / 2026-09-12. `CU`/`IR`/`KP` only. `SY` is `not_comprehensive` (E.O. 14312 / 2025-07-01; part 542 removed). Clear Syrian geo → ALLOW. |
+| Region-level when metadata exists; else conservative UNKNOWN | **Yes** | UA without region → `UNKNOWN_REGION_METADATA_UNAVAILABLE` |
+| E.O. 14065 oblast vs Covered Region (FAQ 1009) | **Yes (this HEAD)** | `UA-14` / `UA-09` / `Donetsk Oblast` / `Luhansk Oblast` → UNKNOWN, not DENY. Precise signed `UA-DPR` / `UA-LPR` or `DNR`/`DPR`/`LNR`/`LPR` / People's Republic names → DENY. Documented in `/docs/geo-policy`. |
+| VPN/Tor best-effort only | **Yes** | `confidence: "best_effort"`; T1 → UNKNOWN |
+| LOCAL/test fixtures; no accidental production list | **Yes** | Fixture `FX`/`FY`; `GEO_DENY_COUNTRIES` ignored on LOCAL |
+| No UI country checks | **Yes** | Web source scan in `geo-policy.test.ts` |
+| Docs + tests same change | **Yes** | `/docs/geo-policy`, trust, THREAT_MODEL, AUDIT_HANDOFF, TESTING row 59 |
+| #61 / #62 / #64 / #65 | **Not this PR** | Out of scope |
+| Independent audit 2026-09-12: stale `SY` blanket deny | **Fixed** | Removed `SY` from jurisdictions; `programNotes` + regression `signed({ country: "SY" })` → ALLOW. Targeted Syrian persons stay #61/#62. |
+| Independent re-audit: whole-oblast `UA-14`/`UA-09` DENY | **Fixed this HEAD** | FAQ 1009. Oblast codes/names → UNKNOWN. Precise covered-region fixture → DENY. |
+| Close #63 | **No** | Founder re-audit closed SY + oblast overblocks. Stays open until #62 enforcement + #65 UX consume, then post-merge verify. |
+
+---
+
+# Prior — Full GitHub CI extras on the #73 cost-control workflow (issue #17 / #42)
+
+**Status:** Merged **#42** on `origin/main` `80d3cac` after **#50** `e5fd745` / **#58** `c03c698`. Issue **#17 stays open**.  
+**Not audited. Not mainnet.** Tokenomics unchanged.
+
+---
+
+# Prior — Eliminate RPC waterfalls (#37 / #50)
+
+**Status:** Merged **#50** on `origin/main` `e5fd745` after **#58** `c03c698`. Issue **#37 stays open**.  
+**Not audited. Not mainnet.** Tokenomics unchanged.
+
+---
+
+# Prior — Exact official-list sanctions screening (Refs #61 / merged #66)
 
 **Status:** Branch `cursor/ofac-sanctions-dataset-1a33` / PR **#66**, rebased onto `origin/main` `ad7b457` after **#49** (UI QA) on #42 / #50 / #58. Issue **#61 stays open** until merge **and** post-merge verify (parent RELEASE GATE **#60**). Do not auto-close.  
 **Not audited. Not mainnet. Not a legal/OFAC compliance claim.**  
@@ -11,7 +63,7 @@
 
 **Rebase (after #49 / `ad7b457`):** replayed the #61 commits onto `origin/main` `ad7b457`. Conflicts (docs/`package.json` only — no economics rewrite): `package.json` `test:lib` keeps **#61** sanctions fixtures **and** #49 `qa-inject` / console-gate / contrast **and** #42 `safe-genesis` / `docs:links` / `test:web-unit` **and** #50 `indexed` / `page-budget`; `TESTING.md` row 52 stays #61 (53–56 #50, 57 #42, 58 #49); `docs/trust.md` keeps fail-visible UI + screening; `docs/ci.md` keeps always-on `page-budget`, full-only `web-qa` / `docs-links` / Playwright `web`, **and** the #61 fixture slot; `AUDIT_HANDOFF.md` / `BUILD_REPORT.md` keep #61 + #49 + earlier amendments. `#73` single `ci.yml` + `#72/#74/#76/#77` harden kept. Live OFAC HTTPS stays `SANCTIONS_NETWORK=1` / `test:sanctions:network` — not a second workflow. Do not restore `docs-sync.yml` or `web-qa.yml`.
 
-## This HEAD
+## That HEAD
 
 | Item | Value |
 | --- | --- |

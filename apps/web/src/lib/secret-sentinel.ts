@@ -18,6 +18,7 @@ export const CLIENT_FORBIDDEN_ENV = [
   "NEXT_PUBLIC_ARC_TESTNET_PK",
   "NEXT_PUBLIC_RPC_URL_FALLBACK",
   "NEXT_PUBLIC_OPS_TOKEN",
+  "NEXT_PUBLIC_GEO_EDGE_SECRET",
 ] as const;
 
 /** Server-only names that must not be read from apps/web client source. */
@@ -32,6 +33,7 @@ export const SERVER_ONLY_ENV = [
   "ARC_TESTNET_PK",
   "RPC_URL_FALLBACK",
   "OPS_TOKEN",
+  "GEO_EDGE_SECRET",
 ] as const;
 
 /** Well-known Anvil account #0 private key (local-only; never ship in client assets). */

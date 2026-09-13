@@ -56,5 +56,6 @@ See [Trust](/docs/trust) for the rest of the top 10.
 - Arc finality is deterministic BFT — no eth-8 lag. Native gas is USDC-18; protocol USDC is 6 decimals.
 - Token names / tickers / descriptions / URLs / images are **untrusted** in the public UI. No raw HTML. [Browser security](/docs/web-security).
 - Exact official-list address screening (`GET /sanctions/screen`) is **not** legal/OFAC compliance and is **not** a launch/trade gate yet. [Address screening](/docs/sanctions).
+- Geo jurisdiction checks are a **server** ALLOW / DENY / UNKNOWN policy over trusted edge metadata. The UI does not ship a country deny list. Not a legal opinion. [Geo policy](/docs/geo-policy).
 
-Continue: [curve math](/docs/curve) · [nested fees](/docs/fees) · [Guardian](/docs/guardian) · [Keeper](/docs/keeper) · [tickers](/docs/tickers) · [admission](/docs/admission) · [browser security](/docs/web-security) · [repo publicization](/docs/publicization)
+Continue: [curve math](/docs/curve) · [nested fees](/docs/fees) · [Guardian](/docs/guardian) · [Keeper](/docs/keeper) · [tickers](/docs/tickers) · [admission](/docs/admission) · [browser security](/docs/web-security) · [address screening](/docs/sanctions) · [geo policy](/docs/geo-policy) · [repo publicization](/docs/publicization)

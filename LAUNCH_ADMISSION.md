@@ -30,6 +30,8 @@ Ticker, quote, factory, metadata, wallet, session, IP, ASN, client, Cloudflare T
 
 **Production hard gates:** outside `REACTOR_ENV=LOCAL`, missing Turnstile secret/site key, `SIGNER_INLINE`, or an Anvil `#0` signer key refuses start and launch.
 
+Geo / jurisdiction policy (`evaluateRequestGeo`, issue #63) is a separate server ALLOW / DENY / UNKNOWN layer over trusted edge metadata. It is **not** part of Turnstile admission and is **not** applied as an HTTP gate here (#62).
+
 Durable state in Postgres/SQLite: `admission_hits`, challenges, image hashes, `issuance_bucket`, receipts. Optional Redis. Not process-local Maps. The signer treats store unavailability as deny, not as “no durable checks.”
 
 **Time units:** `admission_hits.ts` and `issuance_bucket.updated_ms` are wall-clock **milliseconds** (`Date.now()`). Challenge `created_ts` / `solved_ts`, image-hash `first_seen`, receipt `expires`/`ts`, and `launch_auths.ts` are **unix seconds**. Millisecond columns are `BIGINT` (schema v6) because Postgres `INTEGER` is 32-bit and cannot store ~1.8e12. See `ARCHITECTURE.md`.

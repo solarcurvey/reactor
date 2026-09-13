@@ -276,6 +276,7 @@ pnpm --filter indexer watchdog
 | 56 | Page request/RPC budgets on 4k seeded markets; abort obsolete loads; SSE patches without invalidate; no refetch-on-focus. Required always-on CI job `page-budget` (`ci-ok` requires success) | `apps/web/src/lib/page-budget.test.ts`, `.github/workflows/ci.yml` |
 | 57 | Full GitHub CI on the #69 three-tier `ci.yml`: Solidity / size guard / Attack / CREATE2, backend + web unit + Safe genesis via `test:lib`, `docs:check` + `docs:links`, Playwright smoke + interactive (`web`), Postgres | `.github/workflows/ci.yml`, `docs/ci.md`, `scripts/docs-links.ts`, `scripts/safe-genesis-builder.test.ts` |
 | 58 | Visual / a11y / failure-injection gate; CI fails on unexplained screenshot, serious axe diffs, color-contrast, leftover `text-zinc-500|600|700`, or unexpected console/pageerror | `e2e/visual.spec.ts`, `e2e/states.spec.ts`, `e2e/a11y.spec.ts`, `e2e/failures.spec.ts`, `qa-inject.test.ts`, `e2e/contrast.test.ts`, `e2e/console-gate.test.ts` |
+| 59 | Trusted geo policy (#63): ALLOW/DENY/UNKNOWN + reason codes; production HMAC edge only; LOCAL fixture cannot load production deny ISOs; region fail-closed; `UA-14`/`UA-09` oblast UNKNOWN (FAQ 1009); precise `UA-DPR`/`UA-LPR` still DENY; SY not blanket-denied; VPN best-effort; no UI country list | `packages/reactor/src/geo-policy.test.ts`, `apps/indexer/src/geo-policy.test.ts` |
 
 ## Arc smoke
 

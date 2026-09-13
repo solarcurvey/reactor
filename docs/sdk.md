@@ -48,3 +48,5 @@ Helpers consume `POST /quote`:
 - Preserve hop `kind`, `feeLegs[]`, and `aggregateProtocolImpactBps` in the UI. Those fields belong to the scored winner, not a higher-raw-output loser. Do not recompute official 3.5% from a single notional. Render each charged fee leg in **that hop’s quote asset and decimals**. Do not sum `holders` / `flywheel` / `core` across different quote tokens. When denoms differ, the only combined figure is `aggregateProtocolImpactBps`. Protocol tickets expose `exemptOfficialLegs[]`.
 
 `@reactor/core` exports `planCandidates`, `applyMinOuts`, `ValuationService`, `consensusUsd6`, `launchBlockedByValuation`, `evaluateAdmission`, `fairCurveConfig`, `launchConfigHash`, and Top-10 rank helpers (`rankTop10`, VWAP, `acceptTop10Snapshot` / `TOP10_SNAPSHOT_TTL_SEC`). Official ranks still come from indexer `GET /top10`. External USD is a configured provider registry + consensus — not a separate ZEC pricer.
+
+Geo policy (`evaluateGeoPolicy`) is a **server** helper. Do not call it from a browser or copy production ISO deny lists into a terminal. See [Geo policy](/docs/geo-policy).

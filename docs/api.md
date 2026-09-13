@@ -46,4 +46,8 @@ Public JSON POSTs (`/quote`, `/launch/admit`, `/launch/authorize`) share a strea
 
 The isolated launch-pricing signer (`127.0.0.1:43149`) is not a public API; it uses the same JSON cap as defense in depth.
 
+## Geo policy (not an HTTP route)
+
+Issue **#63** adds `evaluateRequestGeo` on the indexer (trusted edge HMAC + versioned deny revision → ALLOW / DENY / UNKNOWN). It is **not** a public endpoint and is **not** applied as a request gate on the table above. Browser country headers are ignored. See [Geo policy](/docs/geo-policy).
+
 See [Markets](/docs/markets), [Quoting](/docs/quoting), [Admission](/docs/admission).

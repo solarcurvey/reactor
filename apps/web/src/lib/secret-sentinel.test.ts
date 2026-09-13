@@ -38,6 +38,7 @@ for (const name of [
   "NEXT_PUBLIC_R2_SECRET_KEY",
   "NEXT_PUBLIC_DEPLOYER_PK",
   "NEXT_PUBLIC_ARC_TESTNET_PK",
+  "NEXT_PUBLIC_GEO_EDGE_SECRET",
 ]) {
   assert(!envExample.includes(name), `.env.example must not publicize ${name}`);
 }

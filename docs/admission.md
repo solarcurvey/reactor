@@ -46,4 +46,6 @@ Turnstile: Cloudflare `siteverify` when `TURNSTILE_SECRET` is set. LOCAL bypass 
 
 **Production hard gates** (`REACTOR_ENV=PROD` / `NODE_ENV=production` and not `LOCAL`): the indexer and isolated signer **refuse to start** (and `POST /launch/authorize` refuses) if `TURNSTILE_SECRET` or the site key is missing, if `SIGNER_INLINE` would be used, or if the signer key is missing / is Anvil `#0`. LOCAL may keep those bypasses.
 
+Geo / jurisdiction policy is a **separate** server evaluator (`evaluateRequestGeo`, issue #63). It is not Turnstile admission and is not applied as a request gate on this path. See [Geo policy](/docs/geo-policy).
+
 See `LAUNCH_ADMISSION.md`, [Creators](/docs/creators), [Tickers](/docs/tickers).
