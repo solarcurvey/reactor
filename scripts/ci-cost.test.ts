@@ -68,6 +68,7 @@ assert.match(
 
 for (const job of [
   "constants-version-deployments",
+  "page-budget",
   "web-production-security",
   "live-toasts-ui",
   "postgres-ms-timestamps",
@@ -91,6 +92,16 @@ assert.match(ciYml, /test "\$\{\{ needs\.web-production-security\.result \}\}" =
 assert.match(ciYml, /test "\$\{\{ needs\.postgres-ms-timestamps\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.live-toasts-ui\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.solidity\.result \}\}" = success/);
+assert.match(ciYml, /test "\$\{\{ needs\.page-budget\.result \}\}" = success/);
+assert.match(ciYml, /pnpm test:page-budget/);
+
+// page-budget is required and always-on (no full-tier `if:` skip).
+{
+  const after = ciYml.split(/^  page-budget:\s*$/m)[1] ?? "";
+  const job = after.split(/^  [a-z][\w-]*:\s*$/m)[0] ?? "";
+  assert.match(job, /name:\s*page-budget/);
+  assert.doesNotMatch(job, /^\s+if:/m, "page-budget must not skip (required on every PR)");
+}
 
 // Exact-head checkout
 assert.match(ciYml, /github\.event\.pull_request\.head\.sha \|\| github\.sha/);
@@ -147,7 +158,7 @@ assert.equal(unsafe.docs_only, "false");
 
 assert.match(ciDoc, /Before \/ after/);
 assert.match(ciDoc, /10 jobs/);
-assert.match(ciDoc, /1–2 jobs/);
+assert.match(ciDoc, /2–3 jobs/);
 assert.match(ciDoc, /workflow_dispatch/);
 assert.match(ciDoc, /ci-full/);
 assert.match(ciDoc, /cancel-in-progress/);
@@ -157,5 +168,7 @@ assert.match(ciDoc, /#17/);
 assert.match(ciDoc, /#18/);
 assert.match(ciDoc, /No nightly/);
 assert.match(ciDoc, /Refs #69/);
+assert.match(ciDoc, /page-budget/);
+assert.match(ciDoc, /Recommended required checks[\s\S]*page-budget/);
 
 console.log("ci-cost invariants ok");

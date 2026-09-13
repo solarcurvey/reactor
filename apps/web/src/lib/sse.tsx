@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { INDEXER_URL } from "./chain";
 import { streamEndpoint } from "./live-toasts";
+import { applyLiveEventToClient, type LiveEvent } from "./live-cache";
 
-export type LiveEvent = { type: string; data: Record<string, unknown>; id?: number };
+export type { LiveEvent };
 
 const STREAM_TYPES = ["trade", "launch", "bonding", "graduation", "rewards", "burn", "top10", "core", "hello"] as const;
 
@@ -77,6 +79,21 @@ export function subscribeReactorStream(fn: Listener): () => void {
       closeStream();
     }
   };
+}
+
+const LiveCtx = createContext<{ last: LiveEvent | null; ok: boolean } | null>(null);
+
+export function LiveCacheProvider({ children }: { children: ReactNode }) {
+  const live = useReactorStream();
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (live.last) applyLiveEventToClient(qc, live.last);
+  }, [live.last, qc]);
+  return <LiveCtx.Provider value={live}>{children}</LiveCtx.Provider>;
+}
+
+export function useReactorLive() {
+  return useContext(LiveCtx) ?? { last: null, ok: false };
 }
 
 export function useReactorStream() {

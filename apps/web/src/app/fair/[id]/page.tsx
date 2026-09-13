@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { parseUnitsSafe, formatUnitsSafe } from "@/lib/utils";
-import { unwrapFair, useLaunchTokens } from "@/lib/hooks";
+import { unwrapFair, useMarket } from "@/lib/hooks";
 import { tokenPath } from "@/lib/untrusted-metadata";
 import { FIXTURE_FAIR, REVIEW_FIXTURES } from "@/lib/review-fixtures";
 import { resolveTradeWrite } from "@/lib/tx-guard";
@@ -24,7 +24,6 @@ export default function FairPage() {
   const { address, writesEnabled, matched, mismatchMessage, chainId } = useOfficialChain();
   const client = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
-  const { data: tokens } = useLaunchTokens();
   const [amount, setAmount] = useState("100");
   const [error, setError] = useState<string | null>(null);
 
@@ -34,8 +33,8 @@ export default function FairPage() {
     args: [fairId],
   });
 
-  const launch = tokens?.find((t) => t.fairId === fairId);
   const chainRow = fl ? unwrapFair(fl) : null;
+  const { data: launch } = useMarket(chainRow?.token);
   const row =
     REVIEW_FIXTURES && fairId === 1n && (!chainRow || chainRow.startTime === 0n)
       ? FIXTURE_FAIR

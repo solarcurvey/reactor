@@ -38,4 +38,6 @@ SELL tickets apply slippage independently on the **same** selected `PreviewedRou
 
 `minQuoteOut` is quote units. It is never launch-token `amountIn`. A missing first-leg (`hopOuts` empty) or malformed `plannedHops+1` preview fails the ticket (`ok: false`, no `tx`). Routed SELLs do not rebuild `hopOuts` from sequential hop sims — they use the selected `#21` `PreviewedRoute` only.
 
+Catalog batching (`/markets`, `/page/token`, `/quote-assets`, Multicall3 probe) does **not** cache or relax this ticket. TTL stays **30 seconds**. Indexed marks are display-only.
+
 A failed preview is **unavailable** — the API returns `ok: false`, not a dust floor.

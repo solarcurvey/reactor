@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useReactorEvents } from "@/lib/hooks";
@@ -31,9 +32,10 @@ export default function ReactorPage() {
   const { data, isLoading, isError } = useReactorEvents();
   const events = data?.events ?? [];
   const api = useQuery({
-    queryKey: ["reactor-top10-api"],
-    queryFn: async (): Promise<ApiPayload> => {
-      const res = await fetch("/api/reactor/top10");
+    queryKey: qk.top10,
+    refetchOnWindowFocus: false,
+    queryFn: async ({ signal }): Promise<ApiPayload> => {
+      const res = await fetch("/api/reactor/top10", { signal });
       if (!res.ok) throw new Error("api");
       return res.json();
     },

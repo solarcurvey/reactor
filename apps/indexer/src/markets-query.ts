@@ -79,6 +79,19 @@ export type ListMarketsOpts = {
   offset?: number;
 };
 
+export function normalizeMarketToken(raw: string | null | undefined): `0x${string}` | null {
+  const s = String(raw ?? "").trim().toLowerCase();
+  if (!/^0x[a-f0-9]{40}$/.test(s)) return null;
+  return s as `0x${string}`;
+}
+
+export async function getMarket(store: Store, token: string): Promise<Record<string, unknown> | null> {
+  const addr = normalizeMarketToken(token);
+  if (!addr) return null;
+  const row = await store.get<Record<string, unknown>>(`${MARKET_SELECT} WHERE m.token=?`, addr);
+  return row ?? null;
+}
+
 export async function listMarkets(
   store: Store,
   opts: ListMarketsOpts = {},

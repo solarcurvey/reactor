@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ReactorCore } from "@/components/reactor-core";
 import { useCoreStats } from "@/lib/hooks";
+import { qk } from "@/lib/query";
+import { readContractsBatched } from "@/lib/rpc-batch";
 import { addresses, deployment } from "@/lib/addresses";
 import { arcLocal } from "@/lib/chain";
 import { formatUnitsSafe, shortAddress } from "@/lib/utils";
@@ -25,17 +27,18 @@ const vestingAbi = parseAbi([
 export default function CorePage() {
   const { data, isLoading, isError } = useCoreStats();
   const vesting = useQuery({
-    queryKey: ["core-vesting", addresses.CoreVesting],
+    queryKey: qk.coreVesting(addresses.CoreVesting),
     enabled: !!addresses.CoreVesting,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const client = createPublicClient({ chain: arcLocal, transport: http(deployment.rpc) });
       const addr = addresses.CoreVesting as `0x${string}`;
-      const [t0, claimed, vested, claimable, total] = await Promise.all([
-        client.readContract({ address: addr, abi: vestingAbi, functionName: "t0" }),
-        client.readContract({ address: addr, abi: vestingAbi, functionName: "claimed" }),
-        client.readContract({ address: addr, abi: vestingAbi, functionName: "vested" }),
-        client.readContract({ address: addr, abi: vestingAbi, functionName: "claimable" }),
-        client.readContract({ address: addr, abi: vestingAbi, functionName: "TOTAL" }),
+      const [t0, claimed, vested, claimable, total] = await readContractsBatched<bigint>(client, [
+        { address: addr, abi: vestingAbi, functionName: "t0" },
+        { address: addr, abi: vestingAbi, functionName: "claimed" },
+        { address: addr, abi: vestingAbi, functionName: "vested" },
+        { address: addr, abi: vestingAbi, functionName: "claimable" },
+        { address: addr, abi: vestingAbi, functionName: "TOTAL" },
       ]);
       return { t0, claimed, vested, claimable, total };
     },

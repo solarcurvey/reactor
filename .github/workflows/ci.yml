@@ -17,10 +17,11 @@
 # Feature-branch `push` is intentionally omitted (PR-event only). Genuine
 # exceptions: this file's `push: branches: [main]` and `workflow_dispatch`.
 #
-# Sibling heavy gates (#35 E2E, #36 visual/a11y, #37 RPC budget, #39 obs,
-# #17 Foundry extras such as docs:links) must add jobs here with
+# Sibling heavy gates (#35 E2E, #36 visual/a11y, #39 obs, #17 Foundry extras
+# such as docs:links) must add jobs here with
 # `if: needs.decide.outputs.full == 'true'` — never a second push+pull_request
-# workflow. Nightly/cron matrices stay off while pre-traction.
+# workflow. #37 page-budget is cheap (SQLite unit) and lands as a fast job.
+# Nightly/cron matrices stay off while pre-traction.
 name: ci
 
 on:
@@ -105,6 +106,23 @@ jobs:
       - uses: ./.github/actions/setup-pnpm
       - name: Unit + docs:check + cheap security + CI-cost invariants
         run: pnpm test:lib
+
+  # Required #37 page-budget gate. Cheap (SQLite seed + unit asserts).
+  # Always-on fast job (no `if:` skip). Also listed in ci-ok (skipped ≠ pass).
+  # File stays in pnpm test:lib.
+  page-budget:
+    name: page-budget
+    needs: decide
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+      - name: 500-vs-4k HTTP/RPC budgets, abort, SSE patch, no focus refetch
+        run: pnpm test:page-budget
 
   foundry-targeted:
     name: foundry-targeted
@@ -261,6 +279,7 @@ jobs:
     needs:
       - decide
       - constants-version-deployments
+      - page-budget
       - solidity
       - web-production-security
       - live-toasts-ui
@@ -273,12 +292,14 @@ jobs:
           set -euo pipefail
           echo "decide=${{ needs.decide.result }}"
           echo "constants-version-deployments=${{ needs.constants-version-deployments.result }}"
+          echo "page-budget=${{ needs.page-budget.result }}"
           echo "solidity=${{ needs.solidity.result }}"
           echo "web-production-security=${{ needs.web-production-security.result }}"
           echo "live-toasts-ui=${{ needs.live-toasts-ui.result }}"
           echo "postgres-ms-timestamps=${{ needs.postgres-ms-timestamps.result }}"
           test "${{ needs.decide.result }}" = success
           test "${{ needs.constants-version-deployments.result }}" = success
+          test "${{ needs.page-budget.result }}" = success
           test "${{ needs.solidity.result }}" = success
           test "${{ needs.web-production-security.result }}" = success
           test "${{ needs.live-toasts-ui.result }}" = success

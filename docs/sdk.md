@@ -36,6 +36,8 @@ On ALLOW the body includes `launchConfigHash`. The signer recomputes it. A misma
 
 `ReactorClient.markets` calls `GET /markets`. Pass `sort` (`new` / `vol` / `price`) with `cursor_ts` + `cursor_token` from `next_cursor`. `cursor_ts` is that sort’s key, not always a timestamp.
 
+`ReactorClient.market(token)` is `GET /markets/:token`. `quoteAssets()` is `GET /quote-assets`. `tokenPage(token, interval)` is `GET /page/token/:token` (market + candles + swaps). Those are display APIs — use `POST /quote` for a ticket.
+
 ## Quote tickets
 
 Helpers consume `POST /quote`:

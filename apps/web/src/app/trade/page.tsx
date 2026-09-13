@@ -22,7 +22,7 @@ export default function TradePage() {
           Exact-in only. 3.5% quote charge: 2% holders / 1% flywheel / 0.5% CORE. Incomplete fills revert.
         </p>
         {isLoading && <p className="mt-6 text-sm text-zinc-500">Loading markets…</p>}
-        {isError && <p className="mt-6 text-sm text-zinc-500">Factory unreachable.</p>}
+        {isError && <p className="mt-6 text-sm text-zinc-500">Indexer unreachable.</p>}
         {!isLoading && live.length === 0 && (
           <p className="mt-6 text-sm text-zinc-500">
             No live official pools. <Link href="/launch" className="text-cyan-200 underline">Ignite one</Link>.

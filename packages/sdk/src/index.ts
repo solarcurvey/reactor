@@ -50,6 +50,23 @@ export class ReactorClient {
     return r.json();
   }
 
+  async market(token: string) {
+    const r = await fetch(`${this.opts.baseUrl.replace(/\/$/, "")}/markets/${token}`);
+    return r.json();
+  }
+
+  async quoteAssets() {
+    const r = await fetch(`${this.opts.baseUrl.replace(/\/$/, "")}/quote-assets`);
+    return r.json();
+  }
+
+  async tokenPage(token: string, interval = "5m") {
+    const u = new URL(`/page/token/${token}`, this.opts.baseUrl);
+    u.searchParams.set("interval", interval);
+    const r = await fetch(u);
+    return r.json();
+  }
+
   async admit(body: Record<string, unknown>) {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (this.opts.apiKey) headers["x-partner-key"] = this.opts.apiKey;

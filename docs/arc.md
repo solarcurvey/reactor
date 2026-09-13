@@ -27,3 +27,7 @@ Indexer default `ARC_FINALITY_CONFIRMATIONS=0`. The Ethereum-style 8-block lag i
 - Without a key, the JSON lists an honest blocker checklist (Circle faucet → key → re-run → explorer). Same content: `deployments/arc-testnet-blocker.md` and `scripts/arc-testnet-checklist.md`. **claimed stays false.**
 
 PoolManager is **not** deployed on Arc Public Testnet as of this release. Local Anvil 5042002 ships official v4-core (BUSL, non-production).
+
+## Multicall3
+
+Canonical Multicall3 (`0xcA11bde05977b3631167028862bE2a173976CA11`) is **not assumed** on Arc. `readContractsBatched` probes bytecode, requires one successful `multicall`, and otherwise runs independent `readContract` calls in parallel. Anvil usually has the contract; Arc testnet may not. See [Read path performance](/docs/perf).

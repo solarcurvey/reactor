@@ -24,6 +24,7 @@ import {
 } from "./keeper-jobs.ts";
 import { planFeeExemptRoute, syncOfficialFactoryVenues } from "./route-graph.ts";
 import { acceptTop10Snapshot } from "../../../packages/reactor/src/top10.ts";
+import { indexCalls, readContractsBatched } from "../../../packages/reactor/src/rpc-batch.ts";
 
 /**
  * Designated Keeper daemon.
@@ -283,6 +284,12 @@ async function submitOnce(state: KeeperState, id: string, send: () => Promise<He
   }
 }
 
+async function listFactoryTokens(factory: `0x${string}`): Promise<`0x${string}`[]> {
+  const len = Number(await client.readContract({ address: factory, abi: factoryAbi, functionName: "allTokensLength" }));
+  if (len <= 0) return [];
+  return readContractsBatched<`0x${string}`>(client, indexCalls(factory, factoryAbi, "allTokens", len));
+}
+
 async function discoverQuotes(): Promise<{
   quotes: `0x${string}`[];
   metas: Map<string, QuoteMeta>;
@@ -294,19 +301,18 @@ async function discoverQuotes(): Promise<{
   const quotes: `0x${string}`[] = [];
   if (registry) {
     const n = Number(await client.readContract({ address: registry, abi: registryAbi, functionName: "count" }));
-    for (let i = 0; i < n; i++) {
-      const token = (await client.readContract({
-        address: registry,
-        abi: registryAbi,
-        functionName: "list",
-        args: [BigInt(i)],
-      })) as `0x${string}`;
-      const g = (await client.readContract({
-        address: registry,
-        abi: registryAbi,
-        functionName: "get",
-        args: [token],
-      })) as readonly unknown[];
+    const listed = n > 0
+      ? await readContractsBatched<`0x${string}`>(client, indexCalls(registry, registryAbi, "list", n))
+      : [];
+    const rows = listed.length
+      ? await readContractsBatched<readonly unknown[]>(
+          client,
+          listed.map((token) => ({ address: registry, abi: registryAbi, functionName: "get", args: [token] })),
+        )
+      : [];
+    for (let i = 0; i < listed.length; i++) {
+      const token = listed[i]!;
+      const g = rows[i] ?? [];
       const enabled = Boolean(g[6]);
       const exists = Boolean(g[7]);
       metas.set(token.toLowerCase(), {
@@ -324,21 +330,15 @@ async function discoverQuotes(): Promise<{
   if (!quotes.some((q) => q.toLowerCase() === usdc.toLowerCase())) quotes.push(usdc);
   const factory = addrs.ReactorFactory as `0x${string}` | undefined;
   if (factory) {
-    const len = Number(await client.readContract({ address: factory, abi: factoryAbi, functionName: "allTokensLength" }));
-    for (let i = 0; i < len; i++) {
-      const token = (await client.readContract({
-        address: factory,
-        abi: factoryAbi,
-        functionName: "allTokens",
-        args: [BigInt(i)],
-      })) as `0x${string}`;
-      const info = (await client.readContract({
-        address: factory,
-        abi: factoryAbi,
-        functionName: "tokenInfo",
-        args: [token],
-      })) as readonly unknown[];
-      const quote = String(info[1]) as `0x${string}`;
+    const tokens = await listFactoryTokens(factory);
+    const infos = tokens.length
+      ? await readContractsBatched<readonly unknown[]>(
+          client,
+          tokens.map((token) => ({ address: factory, abi: factoryAbi, functionName: "tokenInfo", args: [token] })),
+        )
+      : [];
+    for (const info of infos) {
+      const quote = String(info?.[1] ?? "") as `0x${string}`;
       if (quote && !quotes.some((q) => q.toLowerCase() === quote.toLowerCase())) quotes.push(quote);
     }
   }
@@ -353,20 +353,16 @@ async function syncLiveOfficialVenues() {
   const factory = addrs.ReactorFactory as `0x${string}` | undefined;
   if (!protocol || !factory) return;
   const venues: Array<{ token: string; quote: string; protocol: string; user?: string; hook: string; poolId?: string }> = [];
-  const len = Number(await client.readContract({ address: factory, abi: factoryAbi, functionName: "allTokensLength" }));
-  for (let i = 0; i < len; i++) {
-    const token = (await client.readContract({
-      address: factory,
-      abi: factoryAbi,
-      functionName: "allTokens",
-      args: [BigInt(i)],
-    })) as `0x${string}`;
-    const info = (await client.readContract({
-      address: factory,
-      abi: factoryAbi,
-      functionName: "tokenInfo",
-      args: [token],
-    })) as readonly unknown[];
+  const tokens = await listFactoryTokens(factory);
+  const infos = tokens.length
+    ? await readContractsBatched<readonly unknown[]>(
+        client,
+        tokens.map((token) => ({ address: factory, abi: factoryAbi, functionName: "tokenInfo", args: [token] })),
+      )
+    : [];
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]!;
+    const info = infos[i] ?? [];
     const quote = String(info[1]);
     const live = Boolean(info[5]);
     if (!live) continue;
@@ -550,20 +546,36 @@ async function tickBody(chainId: number) {
   if (addrs.V4Adapter) adapters.add(addrs.V4Adapter.toLowerCase());
 
   if (factory && curve && process.env.KEEPER_GRADUATE !== "0") {
-    const len = Number(await client.readContract({ address: factory, abi: factoryAbi, functionName: "allTokensLength" }));
-    for (let i = 0; i < len && ran < MAX_JOBS_PER_TICK; i++) {
-      const token = (await client.readContract({
-        address: factory,
-        abi: factoryAbi,
-        functionName: "allTokens",
-        args: [BigInt(i)],
-      })) as `0x${string}`;
-      const exists = await client.readContract({ address: curve, abi: curveAbi, functionName: "existsOf", args: [token] });
-      if (!exists) continue;
-      const [ready, graduated] = await Promise.all([
-        client.readContract({ address: curve, abi: curveAbi, functionName: "readyOf", args: [token] }),
-        client.readContract({ address: curve, abi: curveAbi, functionName: "graduatedOf", args: [token] }),
-      ]);
+    const tokens = await listFactoryTokens(factory);
+    const existsRows = tokens.length
+      ? await readContractsBatched<boolean>(
+          client,
+          tokens.map((token) => ({ address: curve, abi: curveAbi, functionName: "existsOf", args: [token] })),
+          { allowFailure: true },
+        )
+      : [];
+    const live = tokens.filter((_, i) => Boolean(existsRows[i]));
+    const states = live.length
+      ? await readContractsBatched<boolean>(
+          client,
+          live.flatMap((token) => [
+            { address: curve, abi: curveAbi, functionName: "readyOf", args: [token] },
+            { address: curve, abi: curveAbi, functionName: "graduatedOf", args: [token] },
+          ]),
+          { allowFailure: true },
+        )
+      : [];
+    const accrued = selfBurn && live.length
+      ? await readContractsBatched<bigint>(
+          client,
+          live.map((token) => ({ address: selfBurn, abi: selfBurnAbi, functionName: "accrued", args: [token] })),
+          { allowFailure: true },
+        )
+      : [];
+    for (let i = 0; i < live.length && ran < MAX_JOBS_PER_TICK; i++) {
+      const token = live[i]!;
+      const ready = Boolean(states[i * 2]);
+      const graduated = Boolean(states[i * 2 + 1]);
       if (ready && !graduated) {
         await run(
           `grad:${token.toLowerCase()}`,
@@ -572,12 +584,7 @@ async function tickBody(chainId: number) {
         );
       }
       if (selfBurn) {
-        const acc = (await client.readContract({
-          address: selfBurn,
-          abi: selfBurnAbi,
-          functionName: "accrued",
-          args: [token],
-        })) as bigint;
+        const acc = (accrued[i] ?? 0n) as bigint;
         if (acc >= THRESHOLD) {
           const sim = await client
             .simulateContract({

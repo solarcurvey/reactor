@@ -1,32 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLaunchTokens } from "@/lib/hooks";
 import { formatUnitsSafe } from "@/lib/utils";
 import { tokenPath } from "@/lib/untrusted-metadata";
 import { UntrustedText } from "@/components/untrusted-text";
 
 export default function SearchPage() {
-  const { data, isLoading, isError } = useLaunchTokens();
   const [q, setQ] = useState("");
+  const [debounced, setDebounced] = useState("");
   const [stage, setStage] = useState<"all" | "bonding" | "v4">("all");
 
-  const items = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return (data ?? []).filter((t) => {
-      if (stage === "bonding" && !t.bonding) return false;
-      if (stage === "v4" && !t.marketLive) return false;
-      if (!needle) return true;
-      return (
-        t.name.toLowerCase().includes(needle) ||
-        t.symbol.toLowerCase().includes(needle) ||
-        t.token.toLowerCase().includes(needle) ||
-        (t.quoteSymbol ?? "").toLowerCase().includes(needle) ||
-        (t.ticker ?? "").toLowerCase().includes(needle)
-      );
-    });
-  }, [data, q, stage]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(q.trim()), 200);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const { data, isLoading, isError } = useLaunchTokens({
+    q: debounced,
+    stage: stage === "all" ? undefined : stage,
+    limit: 80,
+  });
+  const items = data ?? [];
 
   return (
     <div className="mx-auto max-w-3xl">

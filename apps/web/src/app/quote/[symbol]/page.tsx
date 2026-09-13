@@ -16,11 +16,14 @@ import { tokenPath } from "@/lib/untrusted-metadata";
  */
 export default function QuotePage() {
   const { symbol } = useParams<{ symbol: string }>();
-  const { data: tokens, isLoading } = useLaunchTokens();
   const { data: quotes } = useQuotes();
   const sym = decodeURIComponent(symbol ?? "").toUpperCase();
   const quote = quotes?.find((q) => q.symbol.toUpperCase() === sym);
-  const markets = (tokens ?? []).filter((t) => (t.quoteSymbol ?? "").toUpperCase() === sym);
+  const { data: tokens, isLoading } = useLaunchTokens(
+    { quote: quote?.token, limit: 80 },
+    { enabled: !!quote },
+  );
+  const markets = tokens ?? [];
   const holderRewards = markets.reduce((s, t) => s + (t.lifetimeRewards ?? 0n), 0n);
   const bonding = markets.filter((t) => t.bonding).length;
   const graduated = markets.filter((t) => t.mode === 0 && t.marketLive).length;

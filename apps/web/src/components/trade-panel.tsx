@@ -9,7 +9,8 @@ import { Input } from "./ui/input";
 import { erc20, router, token as tokenC, curve, userRoute } from "@/lib/contracts";
 import { officialPoolKey, buyZeroForOne } from "@/lib/pool";
 import { formatUnitsSafe, parseUnitsSafe } from "@/lib/utils";
-import { useQuotes, type LaunchToken } from "@/lib/hooks";
+import { useQuotes, useTicketWallet, type LaunchToken } from "@/lib/hooks";
+import { readTicketWallet } from "@/lib/wallet-reads";
 import { addresses } from "@/lib/addresses";
 import { INDEXER_URL } from "@/lib/chain";
 import {
@@ -47,6 +48,21 @@ export function TradePanel({ t }: { t: LaunchToken }) {
 
   const quoteDec = t.quoteDecimals ?? 18;
   const usdcRoute = Boolean(payUsdc && t.quote.toLowerCase() !== addresses.USDC.toLowerCase() && userRoute.address);
+  const bondingLive = Boolean(t.bonding && t.curve && !t.marketLive);
+  const spender = (usdcRoute && userRoute.address
+    ? userRoute.address
+    : bondingLive && t.curve
+      ? t.curve
+      : addresses.ReactorRouter) as `0x${string}`;
+  const payAsset = (side === "buy" ? (usdcRoute ? addresses.USDC : t.quote) : t.token) as `0x${string}`;
+  const { data: ticketWallet } = useTicketWallet({
+    token: t.token,
+    quote: t.quote,
+    spender,
+    payAsset,
+    account: address,
+    side,
+  });
   const inDec = side === "buy" ? (usdcRoute ? 6 : quoteDec) : t.decimals;
   const parsed = parseUnitsSafe(amount, inDec);
 
@@ -149,9 +165,8 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         setError("minOut is dust after slippage. Increase size or tighten decimals.");
         return;
       }
-      const bonding = Boolean(t.bonding && t.curve && !t.marketLive);
       const hops = sanitizeRouteHops(liveHops);
-      const kind = usdcRoute && userRoute.address ? "userRoute" : bonding ? "curve" : "router";
+      const kind = usdcRoute && userRoute.address ? "userRoute" : bondingLive ? "curve" : "router";
       const write = resolveTradeWrite({
         chainId,
         connected: address,
@@ -168,20 +183,21 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         setError("minQuoteOut is dust. Increase size.");
         return;
       }
-      const spender = write.to;
       const asset = side === "buy" ? (usdcRoute ? addresses.USDC : write.quote) : write.token;
-      const allowance = (await client.readContract({
-        address: asset,
-        abi: erc20.abi,
-        functionName: "allowance",
-        args: [address, spender],
-      })) as bigint;
+      const fresh = await readTicketWallet(client, {
+        owner: address,
+        quote: write.quote,
+        token: write.token,
+        spender: write.to,
+        payAsset: asset,
+      });
+      const allowance = fresh.allowance;
       if (allowance < parsed) {
         const approveHash = await writeContractAsync({
           address: asset,
           abi: erc20.abi,
           functionName: "approve",
-          args: [spender, parsed * 4n],
+          args: [write.to, parsed * 4n],
         });
         await waitForTransactionReceipt(client, { hash: approveHash });
       }
@@ -274,6 +290,13 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         inputMode="decimal"
         placeholder="0.0"
       />
+      {isConnected && ticketWallet && (
+        <p className="mt-1 text-[11px] tabular-nums text-zinc-500">
+          Bal {formatUnitsSafe(side === "buy" ? ticketWallet.quoteBalance : ticketWallet.tokenBalance, inDec, 4)}{" "}
+          {side === "buy" ? (usdcRoute ? "USDC" : t.quoteSymbol) : t.symbol}
+          {" · "}allow {formatUnitsSafe(ticketWallet.allowance, inDec, 4)}
+        </p>
+      )}
       <div className="mt-3 space-y-1 text-xs text-zinc-400">
         {feeView.officialCount > 0 ? (
           <>
@@ -396,18 +419,19 @@ export function RewardsModule({ t }: { t: LaunchToken }) {
   const { address, isConnected, writesEnabled, chainId } = useOfficialChain();
   const client = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
-  const [pending, setPending] = useState<bigint | null>(null);
+  const { data: ticketWallet, refetch } = useTicketWallet({
+    token: t.token,
+    quote: t.quote,
+    spender: addresses.ReactorRouter,
+    payAsset: t.quote,
+    account: address,
+    side: "claim",
+  });
+  const pending = ticketWallet?.pendingRewards ?? null;
   const [msg, setMsg] = useState<string | null>(null);
 
   async function refresh() {
-    if (!address || !client) return;
-    const v = (await client.readContract({
-      address: t.token,
-      abi: tokenC.abi,
-      functionName: "pendingRewards",
-      args: [address],
-    })) as bigint;
-    setPending(v);
+    await refetch();
   }
 
   async function claim() {

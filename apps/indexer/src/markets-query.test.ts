@@ -4,11 +4,13 @@ import { join } from "node:path";
 import { openStore } from "./db.ts";
 import { upsertMarket, upsertToken } from "./ingest.ts";
 import {
+  getMarket,
   listMarkets,
   marketCursorValue,
   marketKeysetSql,
   marketOrderSql,
   nextMarketCursor,
+  normalizeMarketToken,
   parseMarketSort,
 } from "./markets-query.ts";
 
@@ -143,6 +145,12 @@ assert(
   assert(!page2Tokens.includes(ahead), "row inserted ahead of the cursor is omitted from later pages (not a frozen snapshot)");
   assert(page2Tokens.join() === byPrice.slice(2, 4).join(), "page 2 stays deterministic on the original tail");
 }
+
+assert(normalizeMarketToken("0x0000000000000000000000000000000000000004") === "0x0000000000000000000000000000000000000004", "normalize");
+assert(normalizeMarketToken("0xZZ") === null, "reject bad token");
+const one = await getMarket(store, "0x0000000000000000000000000000000000000004");
+assert(one && String(one.token) === "0x0000000000000000000000000000000000000004", "getMarket by address");
+assert((await getMarket(store, "0x00000000000000000000000000000000000000ff")) === null, "getMarket miss");
 
 await store.close();
 rmSync(dir, { recursive: true, force: true });

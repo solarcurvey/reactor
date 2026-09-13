@@ -26,6 +26,10 @@ pnpm --filter indexer test
 npx --yes tsx apps/web/src/lib/top10.test.ts
 npx --yes tsx apps/web/src/lib/marketdata.test.ts
 npx --yes tsx apps/web/src/lib/live-toasts.test.ts
+npx --yes tsx apps/web/src/lib/indexed.test.ts
+pnpm test:page-budget         # same as page-budget.test.ts; required always-on CI job page-budget
+# CI: .github/workflows/ci.yml job page-budget (required; every PR including drafts; ci-ok requires it).
+# #73 should absorb this as a fast job — do not add a second push+pull_request file.
 npx --yes tsx apps/web/src/lib/security-headers.test.ts
 npx --yes tsx apps/web/src/lib/tx-guard.test.ts
 npx --yes tsx apps/web/src/lib/secret-sentinel.test.ts
@@ -245,6 +249,10 @@ pnpm --filter indexer watchdog
 | 49 | Top-10 ranks from indexer ValuationService snapshot (schema v11); no `discoverTop10` Factory RPC | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts`, `apps/web/src/lib/marketdata.test.ts` |
 | 50 | Top-10 snapshot TTL: healthy → age past 15m → refresh fails → API pauses and Keeper refuses; indexed `quote_lp` liquidity arm; no mint-supply fallback after v9 | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts` |
 | 51 | Untrusted token metadata (no raw HTML, URL scheme allowlist, media policy) + production CSP (nonce `script-src`, live headers, bundle sentinel, browser XSS corpus, tx-guard / chain mismatch) | `untrusted-metadata.test.ts`, `security-headers.test.ts`, `tx-guard.test.ts`, `secret-sentinel.test.ts`, `e2e/prod-security.spec.ts`, `admission-unit.test.ts` |
+| 52 | Multicall3 probed then verified; missing/failed multicall falls back to parallel `readContract` | `packages/reactor/src/rpc-batch.test.ts` |
+| 53 | `GET /markets/:token` + `GET /page/token/:token` aggregate market/candles/swaps; invalid token rejected | `page-reads.test.ts`, `markets-query.test.ts` |
+| 54 | Search/query path + quote-asset / market row mapping | `apps/web/src/lib/indexed.test.ts` |
+| 55 | Page request/RPC budgets on 4k seeded markets; abort obsolete loads; SSE patches without invalidate; no refetch-on-focus. Required always-on CI job `page-budget` (`ci-ok` requires success) | `apps/web/src/lib/page-budget.test.ts`, `.github/workflows/ci.yml` |
 
 ## Arc smoke
 

@@ -33,7 +33,8 @@ Names, tickers, descriptions, and images on the board are **untrusted creator st
 
 | Surface | Source |
 | --- | --- |
-| Homepage / search | `GET /markets` — search, NUMERIC sort (`new` / `vol` / `price`), keyset (`cursor_ts` + `cursor_token` on that sort key) |
+| Homepage / search | `GET /markets` — search (`q`), `stage`, NUMERIC sort (`new` / `vol` / `price`), keyset (`cursor_ts` + `cursor_token` on that sort key) |
+| Token page | `GET /page/token/:token` (market + candles + tape). Live ticket is still `POST /quote`. |
 | Top-10 | Indexer `GET /top10` (ValuationService snapshot, 15m TTL). Not a Factory RPC. |
 | 24h price | Latest trade **by `ts`**, not `MAX(price)` |
 | 24h USD volume | ValuationService (`volume_24h_usd6`) |
