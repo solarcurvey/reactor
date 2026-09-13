@@ -18,12 +18,17 @@ export function WalletButton() {
   const state = useQaState();
   const [menu, setMenu] = useState(false);
   const [reject, setReject] = useState<string | null>(null);
+  // Wagmi reconnects from the injected provider after a full navigation.
+  // Keep the first client paint on the SSR "Connect wallet" tree unless the
+  // QA fixture URL already opted into a connected chrome (React 418).
+  const [hydrated, setHydrated] = useState(false);
 
   const fixtureConnected = state === "wallet-menu" || state === "wallet-connected";
   const shownAddress = address ?? (fixtureConnected ? "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" : undefined);
-  const shownConnected = isConnected || fixtureConnected;
+  const shownConnected = fixtureConnected || (hydrated && isConnected);
 
   useEffect(() => {
+    setHydrated(true);
     if (state === "wallet-menu") setMenu(true);
     if (inject === "wallet-reject") setReject(FAILURE_COPY["wallet-reject"].body);
     if (inject === "wallet-revert") setReject(FAILURE_COPY["wallet-revert"].body);
@@ -55,7 +60,7 @@ export function WalletButton() {
     );
   }
 
-  if (isConnected && chainId !== arcLocal.id) {
+  if (hydrated && isConnected && chainId !== arcLocal.id) {
     return (
       <Button
         size="sm"
