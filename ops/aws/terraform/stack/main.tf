@@ -44,10 +44,12 @@ resource "aws_kms_alias" "runtime" {
   target_key_id = aws_kms_key.runtime[each.key].key_id
 }
 
-resource "aws_secretsmanager_secret" "maintenance_api_token" {
-  name                    = "reactor/${var.environment}/managed-relay/api-token"
+resource "aws_secretsmanager_secret" "api_token" {
+  for_each = local.roles
+
+  name                    = "reactor/${var.environment}/managed-relay/${each.key}-api-token"
   recovery_window_in_days = 30
-  description             = "Bearer token for REACTOR canonical maintenance job API. Value is set out-of-band; never commit it."
+  description             = "Role-scoped bearer token for REACTOR ${each.key} maintenance API access. Value is set out-of-band; never commit it."
 }
 
 resource "aws_secretsmanager_secret" "rpc_url" {
@@ -91,9 +93,9 @@ data "aws_iam_policy_document" "runtime" {
   }
 
   statement {
-    sid       = "ReadRuntimeSecrets"
+    sid       = "ReadOwnApiTokenAndRpc"
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.maintenance_api_token.arn, aws_secretsmanager_secret.rpc_url.arn]
+    resources = [aws_secretsmanager_secret.api_token[each.key].arn, aws_secretsmanager_secret.rpc_url.arn]
   }
 }
 
@@ -132,7 +134,7 @@ resource "aws_lambda_function" "worker" {
       MAINTENANCE_GATEWAY_ADDRESS     = var.gateway_address
       MAINTENANCE_JOB_SIGNER_ADDRESS  = var.job_signer_address
       MAINTENANCE_API_BASE            = var.maintenance_api_base
-      MAINTENANCE_API_TOKEN_SECRET_ID = aws_secretsmanager_secret.maintenance_api_token.arn
+      MAINTENANCE_API_TOKEN_SECRET_ID = aws_secretsmanager_secret.api_token[each.key].arn
       MAINTENANCE_RPC_URL_SECRET_ID   = aws_secretsmanager_secret.rpc_url.arn
       MAINTENANCE_KMS_KEY_ID          = aws_kms_key.runtime["authorizer"].key_id
       RELAY_A_KMS_KEY_ID              = aws_kms_key.runtime["relay-a"].key_id

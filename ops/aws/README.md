@@ -2,9 +2,9 @@
 
 This directory is the boring production execution path for the provider-agnostic `AutomationGateway` introduced by #51.
 
-`canonical REACTOR decision service -> KMS MaintenanceJob authorizer -> signed immutable job -> Relay A / Relay B -> AutomationGateway`
+`canonical REACTOR planner / ValuationService -> durable Postgres queue -> KMS MaintenanceJob authorizer -> Relay A / Relay B -> AutomationGateway`
 
-The authorizer retains decision authority. Relay A/B only deliver an already-authorized typed job. A relay cannot substitute Top-10 members or weights, change routes/hops, lower `minOut`, change amount, change snapshot/window, or replay a consumed job.
+The canonical planner retains decision authority. The authorizer signs only an exact planner-produced job. Relay A/B only deliver an already-authorized typed job. A relay cannot substitute Top-10 members or weights, change routes/hops, lower `minOut`, change amount, change snapshot/window, or replay a consumed job.
 
 ## Security boundaries
 
@@ -16,15 +16,41 @@ Three AWS KMS asymmetric `ECC_SECG_P256K1` / `SIGN_VERIFY` keys are mandatory an
 
 The private keys never exist as environment variables, files, GitHub secrets, or process memory. `apps/indexer/src/kms-evm.ts` converts KMS DER ECDSA output to canonical low-s EVM signatures and recovers the expected address before use.
 
-Production refuses `JOB_SIGNER_PRIVATE_KEY`, `KEEPER_PRIVATE_KEY`, and `RELAYER_PRIVATE_KEY` in the managed path. Runtime roles may use only their own KMS key. The authorizer does not have a relay key; neither relay can sign a `MaintenanceJob`.
+Production refuses `JOB_SIGNER_PRIVATE_KEY`, `KEEPER_PRIVATE_KEY`, and `RELAYER_PRIVATE_KEY` in the managed path. Each Lambda IAM role can `kms:Sign` only with its own KMS key.
 
 Guardian Safe, launch signer, pricing signer, deployer, maintenance signer, Relay A and Relay B must all be distinct. Supply those public privileged addresses in `REACTOR_FORBIDDEN_ADDRESSES` so identity derivation and relay startup fail closed on accidental reuse.
+
+### API credentials are role-scoped
+
+Do **not** share one maintenance API bearer token between the three AWS roles. Terraform creates one secret container per AWS role:
+
+- `reactor/<env>/managed-relay/authorizer-api-token`
+- `reactor/<env>/managed-relay/relay-a-api-token`
+- `reactor/<env>/managed-relay/relay-b-api-token`
+
+The authorizer IAM role can read only the authorizer token; Relay A only Relay A's token; Relay B only Relay B's token. The canonical queue service maps those tokens to capabilities:
+
+| Role | Allowed |
+| --- | --- |
+| authorizer | `GET /ops/maintenance/unsigned`, `POST /ops/maintenance/signed` |
+| Relay A | `GET /ops/maintenance/signed`, `POST /ops/maintenance/result` as A |
+| Relay B | `GET /ops/maintenance/signed`, `POST /ops/maintenance/result` as B |
+
+There is deliberately **no HTTP endpoint to enqueue an unsigned job**. The canonical planner calls `enqueueUnsignedMaintenance(...)` directly against the shared durable store. A compromised relay therefore cannot manufacture an unsigned decision job and ask the authorizer to bless it.
+
+## Durable queue
+
+`apps/indexer/src/maintenance-queue.ts` stores the exact canonical unsigned envelope, the one accepted signature, and append-only relay-result evidence. A duplicate `jobId` with different payload is rejected. A failed Relay A result leaves the signed job available to Relay B. A consumed/already-used/replay result completes it.
+
+`apps/indexer/src/maintenance-queue-api.ts` is the role-scoped courier API. By default it binds to loopback; production should publish only the `/ops/maintenance/*` routes through the existing authenticated TLS ingress or equivalent private service path. Do not expose the backing database or add a client/public unsigned-job write path.
+
+The remaining planner integration is intentionally narrow: switch the existing #54 Keeper's final sign/broadcast boundary to `enqueueUnsignedMaintenance(...)` using the exact envelope it already computes. Until that is done and tested, schedules stay disabled and #83 remains open.
 
 ## Why Relay B waits
 
 Relay A attempts an eligible signed job immediately. Relay B waits 15 seconds by default, then checks `AutomationGateway.usedJob(jobId)` before transaction signing/broadcast. Normal operation therefore spends one relay signature/transaction. If A is unavailable, B proceeds. If A/B truly race, the Gateway's first-consume/replay boundary still permits one logical execution.
 
-An unknown post-broadcast receipt is `ambiguous`, not an excuse to blindly resubmit.
+An unknown post-broadcast receipt is `ambiguous`, not an excuse for the same relay to blindly resubmit.
 
 ## Runtime
 
@@ -34,22 +60,9 @@ Three Node 22 Lambdas are scheduled by EventBridge (normally once per minute):
 - relay-a
 - relay-b
 
-No VPC/NAT Gateway, Kubernetes, dedicated RDS, or always-on EC2 fleet is created. The workers use the canonical REACTOR maintenance job API and Arc RPC over HTTPS.
+No VPC/NAT Gateway, Kubernetes, dedicated RDS, or always-on EC2 fleet is created. The workers use the canonical REACTOR maintenance queue API and Arc RPC over HTTPS.
 
 CloudWatch Embedded Metric Format logs emit heartbeat, relay balance, consumed-job and failure metrics. Terraform creates Lambda error, missing-heartbeat and low-relay-balance alarms. Logs contain public addresses, job IDs and tx hashes only; never API tokens, private keys, signatures, signed envelopes, or secret RPC URLs.
-
-## Canonical maintenance API contract
-
-The AWS worker deliberately does not decide protocol economics. It expects the canonical REACTOR service to expose an authenticated operator-only queue:
-
-- `GET /ops/maintenance/unsigned` -> one exact unsigned envelope, or `204/404` if none.
-- `POST /ops/maintenance/signed` -> persist the exact KMS-signed envelope.
-- `GET /ops/maintenance/signed` -> one ready signed envelope for compatible relayers, or `204/404`.
-- `POST /ops/maintenance/result` -> persist relay outcome (`consumed`, `already-used`, `replay`, `ambiguous`, `failed`).
-
-Envelope JSON is serialized with `maintenanceEnvelopeToJson`; every relay re-parses and revalidates the action, chain, Gateway, payload hash, snapshot hash, validity window and maintenance signature before simulation/broadcast.
-
-**Until those operator-only queue routes are connected to the existing deterministic Keeper planner / Postgres state, #83 remains incomplete and schedules must remain disabled.** Do not point these Lambdas at a public or client-controlled job source.
 
 ## One-time AWS bootstrap — founder/admin action
 
@@ -102,12 +115,16 @@ Run GitHub Actions workflow `aws-managed-relay` with:
 - apply: `true`
 - enable_schedules: `false`
 
-Terraform creates the 3 KMS keys, isolated IAM roles, Lambdas, EventBridge definitions/alarms, and two Secrets Manager secret containers. It does **not** put secret values into Terraform state.
+Terraform creates the 3 KMS keys, isolated IAM roles, Lambdas, CloudWatch alarms, three role-scoped API-token secret containers, and one RPC secret container. It does **not** put secret values into Terraform state.
 
-Populate these secret values in AWS after the first apply:
+Populate these four secret values in AWS after the first apply:
 
-- `reactor/staging/managed-relay/api-token`
+- `reactor/staging/managed-relay/authorizer-api-token`
+- `reactor/staging/managed-relay/relay-a-api-token`
+- `reactor/staging/managed-relay/relay-b-api-token`
 - `reactor/staging/managed-relay/rpc-url`
+
+Put the same three API token values into the canonical queue service's secret configuration under `MAINTENANCE_AUTHORIZER_TOKEN`, `MAINTENANCE_RELAY_A_TOKEN`, and `MAINTENANCE_RELAY_B_TOKEN`. They must all be different. This is operational secret distribution, never repository content.
 
 The workflow also calls `kms-identities.ts` after apply. Retain its public output as deployment evidence. Confirm all three EVM addresses are distinct and none equal Guardian, launch signer, pricing signer or deployer.
 
@@ -123,12 +140,13 @@ Fund the two derived relay addresses with a modest operational balance only afte
 
 After all of these are true:
 
-1. operator-only maintenance API queue is live;
-2. Secrets Manager API token and RPC URL are populated;
-3. `AutomationGateway` address is independently verified;
-4. KMS authorizer address matches Gateway `jobSigner` configuration;
-5. Relay A/B addresses are distinct and funded;
-6. Arc Mainnet is **not** selected;
+1. existing deterministic Keeper planner publishes its exact jobs into the durable maintenance queue instead of signing/broadcasting them itself;
+2. role-scoped queue API is reachable over the reviewed TLS/private ingress;
+3. Secrets Manager role tokens and RPC URL are populated;
+4. `AutomationGateway` address is independently verified;
+5. KMS authorizer address matches Gateway `jobSigner` configuration;
+6. Relay A/B addresses are distinct and funded;
+7. Arc Mainnet is **not** selected;
 
 run `aws-managed-relay` again with `enable_schedules=true`.
 
@@ -136,10 +154,10 @@ run `aws-managed-relay` again with `enable_schedules=true`.
 
 #83 does not close on local mocks. Record at minimum:
 
-1. real AWS KMS authorizer signs a real short-lived job;
+1. real AWS KMS authorizer signs a real canonical planner job;
 2. Relay A submits it through the deployed `AutomationGateway`;
 3. Relay B cannot double-execute the same job;
-4. deliberately make A unavailable and prove B independently consumes a fresh job;
+4. deliberately make A unavailable and prove B independently consumes a fresh valid job;
 5. retain chain ID, Gateway, authorizer and relay public addresses, tx hashes and CloudWatch run evidence;
 6. measure gas for every supported maintenance action that can be safely exercised.
 
@@ -165,10 +183,11 @@ Factory V1 economics, fee split, curve rules and Top-10 ranking are not changed 
 
 ## Incident actions
 
-- **Compromised relay / noisy relay:** disable its EventBridge rule or Lambda; its KMS key cannot authorize new maintenance jobs. The other relay continues.
-- **Suspected maintenance signer compromise:** pause Gateway with Guardian, disable the authorizer schedule/key, rotate to a new KMS authorizer only through the reviewed Guardian procedure, then invalidate old-job assumptions before unpausing.
-- **RPC outage:** leave ambiguous transactions non-retried until chain state is independently reconciled; switch the RPC secret to the reviewed fallback.
+- **Compromised relay / noisy relay:** disable its EventBridge rule or Lambda and rotate only that relay API token/KMS path if needed. It cannot enqueue or sign a maintenance job. The other relay continues.
+- **Compromised relay API token:** revoke/rotate only that relay token. It cannot access unsigned jobs or post signatures.
+- **Suspected maintenance signer compromise:** pause Gateway with Guardian, disable the authorizer schedule/key, rotate the authorizer token and KMS key through the reviewed Guardian procedure, then invalidate old-job assumptions before unpausing.
+- **RPC outage:** leave ambiguous transactions non-retried by the same relay until chain state is independently reconciled; switch the RPC secret to the reviewed fallback.
 - **AWS account outage:** protocol execution pauses unless another compatible provider is active. Relayers have liveness responsibility only; they cannot redirect protocol pots.
-- **API/job-store failure:** fail closed. Never let a relay synthesize its own maintenance job.
+- **Queue/API failure:** fail closed. Never let a relay or authorizer synthesize its own economic decision.
 
 #51 and #18 remain open until their independent post-merge/release gates are satisfied.
