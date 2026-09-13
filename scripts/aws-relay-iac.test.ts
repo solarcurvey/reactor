@@ -8,7 +8,9 @@ function assert(cond: unknown, msg: string) {
 const root = process.cwd();
 const main = readFileSync(join(root, "infra/aws-relay/main.tf"), "utf8");
 const vars = readFileSync(join(root, "infra/aws-relay/variables.tf"), "utf8");
+const authorizerDeny = readFileSync(join(root, "infra/aws-relay/github-authorizer-deny.tf"), "utf8");
 const build = readFileSync(join(root, "scripts/build-aws-relay-bundle.sh"), "utf8");
+const deploy = readFileSync(join(root, "scripts/deploy-aws-relay-code.sh"), "utf8");
 const handler = readFileSync(join(root, "apps/indexer/src/aws-relay/handler.mjs"), "utf8");
 const deployPolicy = main.slice(main.indexOf('resource "aws_iam_role_policy" "github_deploy"'));
 
@@ -29,10 +31,15 @@ assert(!/vpc_config\s*\{/.test(main), "Lambda stays out of a VPC unless separate
 assert((main.match(/reserved_concurrent_executions\s*=\s*1/g) ?? []).length === 3, "each worker is single-concurrency");
 assert((main.match(/maximum_retry_attempts\s*=\s*0/g) ?? []).length === 3, "schedule retries disabled; next minute is the retry boundary");
 assert((main.match(/REACTOR_RECEIPT_TIMEOUT_MS/g) ?? []).length === 2, "both relays bound receipt wait below Lambda timeout");
-assert(main.includes('Action   = "lambda:UpdateFunctionCode"'), "GitHub OIDC role may deploy reviewed Lambda code");
-assert(!/kms:Sign/.test(deployPolicy), "GitHub deploy role cannot sign with KMS");
+assert(main.includes('Action   = "lambda:UpdateFunctionCode"'), "GitHub OIDC role may deploy reviewed relay Lambda code");
+assert(!/kms:Sign/.test(deployPolicy), "GitHub deploy role cannot directly sign with KMS");
 assert(!/iam:PassRole/.test(deployPolicy), "GitHub deploy role cannot pass runtime roles");
 assert(!/lambda:UpdateFunctionConfiguration/.test(deployPolicy), "GitHub deploy role cannot alter runtime configuration");
+assert(authorizerDeny.includes('Effect   = "Deny"'), "authorizer control has an explicit deny");
+assert(authorizerDeny.includes('Action   = "lambda:*"'), "authorizer deny covers all Lambda control/invoke actions");
+assert(authorizerDeny.includes("aws_lambda_function.authorizer.arn"), "authorizer deny targets the maintenance-authorizer function");
+assert(deploy.includes("for suffix in relay-a relay-b; do"), "code-only deploy helper updates relays only");
+assert(!deploy.includes("for suffix in maintenance-authorizer"), "GitHub deploy helper must never update the maintenance authorizer");
 assert(handler.includes("JOB_SIGNER_PRIVATE_KEY") && handler.includes("forbidden in the AWS managed production path"), "raw prod job key is fail-closed");
 assert(handler.includes('relayDelayMs(role'), "relay B delay is enforced by runtime");
 assert(handler.includes('functionName: "usedJob"'), "relay checks onchain replay state before spending gas");
