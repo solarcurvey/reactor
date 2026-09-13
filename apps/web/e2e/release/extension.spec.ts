@@ -11,6 +11,7 @@ test.describe("MetaMask/Rabby-style extension wallet", () => {
 
     await page.getByPlaceholder("0.0").fill("1");
     await page.getByRole("button", { name: /^Quote$/ }).click();
+    await confirmPrompt(context, extensionId);
     await expect(page.locator("body")).toContainText(/Quoted out:\s+\d/i, { timeout: 15_000 });
     await page.getByRole("button", { name: /Confirm buy/i }).click();
     await expect(page.getByTestId("trade-phase")).toHaveAttribute("data-phase", "awaiting_wallet", { timeout: 10_000 });
@@ -50,6 +51,7 @@ test.describe("MetaMask/Rabby-style extension wallet", () => {
     await expect(page.getByText(/0x7099/i).first()).toBeVisible({ timeout: 10_000 });
     await page.getByPlaceholder("0.0").fill("1");
     await page.getByRole("button", { name: /^Quote$/ }).click();
+    await confirmPrompt(context, extensionId);
     await expect(page.locator("body")).toContainText(/Quoted out:\s+\d/i, { timeout: 15_000 });
     await page.getByRole("button", { name: /Confirm buy/i }).click();
     await confirmPrompt(context, extensionId);

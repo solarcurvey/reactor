@@ -181,7 +181,9 @@ export async function installEip1193(page: Page, opts: WalletOptions = {}) {
             method === "eth_signTypedData" ||
             method === "eth_signTypedData_v4"
           ) {
-            if (state.rejectTx) throw { code: 4001, message: "User rejected the request." };
+            // #68 quote/launch/upload attach a recovered-wallet proof via
+            // personal_sign. rejectTx is the Confirm-buy / eth_sendTransaction
+            // 4001 — do not fail the challenge or Quote never reaches Confirm.
             if (state.locked) throw { code: 4100, message: "Unauthorized." };
             return `0x${"cd".repeat(65)}`;
           }
