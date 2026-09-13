@@ -12,8 +12,9 @@
 | Factory | **V1** — **unchanged** |
 | Intent | Apply founder-locked Industrial Forge: tokens, vessel mark/wordmark, favicon/OG/manifest, product + docs chrome, voice. Keep #49 QA / a11y / inject surface. |
 | Docs | `/docs/brand` is the locked handbook |
-| Close #55 | **No** — remaining: #36 baseline recapture + independent review of the implemented C system |
-| Close #36 | **No** — recapture approved-C pixels in `web-qa`; do not skip or loosen that gate |
+| Close #55 | **No** — remaining: independent review of the implemented C system + exact-head GitHub `web-qa` on a full-tier run |
+| Close #36 | **No** — approved-C pixels recaptured locally; do not skip or loosen `web-qa` |
+| Local `web-qa` | **131 passed** (`pnpm --filter web test:qa`) after `test:update-screenshots` against production `next build` + QA mocks. Isolated web port `43157` (env `next dev` holds `43147`). Contrast pins are C: paper/heat/cool on slag. |
 
 ## Founder decision
 

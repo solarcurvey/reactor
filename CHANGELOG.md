@@ -37,7 +37,7 @@ Founder-locked **Direction C — Industrial Forge** brand (Refs #55). UI QA gate
 
 ### Added / Changed
 
-- Brand: slag / steel / heat tokens, vessel mark + wordmark, favicon / Apple / PWA / OG assets, Industrial Forge chrome on Discover, terminal, Launch, Rewards, THE REACTOR, CORE, docs, toasts. #55 stays open until #36 recaptures visual baselines.
+- Brand: slag / steel / heat tokens, vessel mark + wordmark, favicon / Apple / PWA / OG assets, Industrial Forge chrome on Discover, terminal, Launch, Rewards, THE REACTOR, CORE, docs, toasts. #36 Playwright visual / state / failure baselines recaptured against C. #55 stays open until independent review + exact-head GitHub `web-qa`.
 
 - Key pages prefer indexed HTTP: `/quote-assets` for the launch picker, `/markets?q=` for search, `/markets/:token` for a single market, `/page/token/:token` for market + candles + tape in one hop.
 - Independent RPC reads go through `readContractsBatched`: probe canonical Multicall3, require one successful `multicall`, otherwise `Promise.all`. Arc is not assumed to ship Multicall3.
