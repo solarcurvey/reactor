@@ -29,7 +29,7 @@
 | Fail closed on blocked or stale/unavailable | **Yes** | HTTP matrix + PROD-without-plugins 503 |
 | Never trust browser clear/country/IP | **Yes** | Spoof headers/body still deny |
 | Screen recovered signer, not claimed wallet | **Yes** | Sign-as-BLOCKED + `x-reactor-wallet`/`body.wallet=CLEAR` denies on admit/authorize/quote/upload/signer/BFF. `extractSubjectWallet` returns undefined. CORS does not permit `x-reactor-wallet`. |
-| Real Next/indexer routes | **Yes** | `operator-policy.test.ts`, `operator-policy-bff.test.ts` |
+| Real Next/indexer routes | **Yes** | Helper units plus `scripts/operator-policy-http.test.ts` (real `index.ts` + production `next start`). Full-only CI job `operator-policy-http` required by `ci-ok`. |
 | Denial before payload | **Yes** | Canary signature/tx/upload absent; downstream counter |
 | Public GET reads documented + unblocked | **Yes** | `/markets` `/health` `/ticker` `/operator-policy/challenge` `/operator-policy/status` `/sanctions/screen` |
 | #65 status contract | **Yes** | `GET /operator-policy/status` + `publicStatusView` (no wallet/IP/SDN). PR #75 rebases onto this path. |

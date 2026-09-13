@@ -70,6 +70,7 @@ for (const job of [
   "constants-version-deployments",
   "page-budget",
   "web-production-security",
+  "operator-policy-http",
   "web-qa",
   "live-toasts-ui",
   "postgres-ms-timestamps",
@@ -102,6 +103,8 @@ assert.match(ciYml, /pnpm size:guard/);
 
 // ci-ok must require success (skipped ≠ pass)
 assert.match(ciYml, /test "\$\{\{ needs\.web-production-security\.result \}\}" = success/);
+assert.match(ciYml, /test "\$\{\{ needs\.operator-policy-http\.result \}\}" = success/);
+assert.match(ciYml, /pnpm test:operator-policy-http/);
 assert.match(ciYml, /test "\$\{\{ needs\.web-qa\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.postgres-ms-timestamps\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.live-toasts-ui\.result \}\}" = success/);

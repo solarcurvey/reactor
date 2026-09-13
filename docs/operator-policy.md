@@ -103,4 +103,6 @@ Cosmetic denial of public market/docs reads is out of scope.
 - **LOCAL:** fixture address list (`OPERATOR_POLICY_BLOCKED_WALLETS`) + fixture geo (`x-reactor-geo-fixture`, deny ISOs `FX` / `FY-99` to match #63) unless a **current** `#61` dataset is loaded (`SANCTIONS_DATA_DIR`). Default geo is allow so the demo still launches. Dataset freshness: `OPERATOR_POLICY_DATASET_FRESHNESS=current\|stale\|missing`. The Next launch-pricing BFF forwards recovered-wallet proof only — it does not replay browser geo or country headers.
 - **Production-like** (`REACTOR_ENV=PROD` / `STAGING` / `TESTNET` or `NODE_ENV=production`): official `#66` `sanctions.ts` binds (`indexerSanctionsStore().screen`) and official `#67` `geo-policy-resolve.ts` binds (`evaluateRequestGeo`). Fail closed unless **both** official plugins are bound. Browser country headers still ignored. `GET /sanctions/screen` remains the ungated lookup API.
 
+Production integration (`pnpm test:operator-policy-http`, CI job `operator-policy-http`) starts the real indexer and production Next and sends the blocked-wallet / blocked-geo / allow / stale / spoofed-client matrix through `/quote`, `/launch/authorize`, `/upload`, and Next `/api/launch-pricing`. Helper units remain on `test:lib`.
+
 See [Trust](/docs/trust), [Admission](/docs/admission), [API](/docs/api).
