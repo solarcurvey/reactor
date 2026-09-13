@@ -60,6 +60,13 @@ const EXPECTED: ReadonlyArray<{
     pattern: /Fetch API cannot load https?:\/\/127\.0\.0\.1:43147\/\S+\?_rsc=\S+ due to access control checks/,
     reason: "iPhone WebKit: Next.js ?_rsc= prefetch access-control, then fallback",
   },
+  // Same WebKit access-control report for the #50 indexed client fetch to the
+  // local mock (`connect-src` + CORS `*` are set; navigation still succeeds).
+  {
+    kind: "pageerror",
+    pattern: /Fetch API cannot load https?:\/\/127\.0\.0\.1:18448\/\S+ due to access control checks/,
+    reason: "WebKit: mock indexer :18448 fetch access-control, then fixture/fallback",
+  },
 ];
 
 function isExpected(kind: ConsoleGateFinding["kind"], text: string): boolean {

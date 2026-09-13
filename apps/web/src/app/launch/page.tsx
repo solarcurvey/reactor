@@ -573,7 +573,7 @@ export default function LaunchPage() {
           {mismatchMessage}
         </UntrustedText>
       )}
-      <p data-testid="launch-phase" data-phase={phase} className="mt-2 text-[11px] uppercase tracking-wider text-zinc-500">
+      <p data-testid="launch-phase" data-phase={phase} className="sr-only">
         {phase === "awaiting_wallet" ? "approval/signature" : phase === "pending" ? "submitted/pending" : phase === "quoting" ? "quoting" : phase}
       </p>
       <Button

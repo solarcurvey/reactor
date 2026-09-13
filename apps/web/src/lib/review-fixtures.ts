@@ -11,7 +11,6 @@ const BOND = "0x1111111111111111111111111111111111110007" as `0x${string}`;
 const NEON = "0x1111111111111111111111111111111111110004" as `0x${string}`;
 const XSS = "0x11111111111111111111111111111111111100aa" as `0x${string}`;
 const LONG = "0x11111111111111111111111111111111111100ab" as `0x${string}`;
-const RDY = "0x1111111111111111111111111111111111110008" as `0x${string}`;
 const USDC = "0x4826533B4897376654Bb4d4AD88B7faFD0C98528" as `0x${string}`;
 const ZEC = "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf" as `0x${string}`;
 const CURVE = (addresses.InstantCurve ?? ZEC) as `0x${string}`;
@@ -233,35 +232,6 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     priceQuoteX18: (1n * 10n ** 13n).toString(),
     fdvUsd6: (900n * 1_000_000n).toString(),
     volume24hUsd6: (50n * 1_000_000n).toString(),
-  },
-  {
-    token: RDY,
-    quote: USDC,
-    creator: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
-    mode: 0,
-    poolId: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee08",
-    marketLive: false,
-    fairId: 0n,
-    name: "Ready",
-    symbol: "RDY",
-    decimals: 18,
-    supply: 1_000_000_000n * 10n ** 18n,
-    image: "/icons/usdc.svg",
-    description: "Bonding Instant at ready — frozen until graduate. No buy/sell until locked v4.",
-    bonding: true,
-    bondingBps: 10_000,
-    ready: true,
-    curve: CURVE,
-    rewardsMode: true,
-    website: "",
-    twitter: "",
-    telegram: "",
-    quoteSymbol: "USDC",
-    quoteDecimals: 6,
-    lifetimeRewards: 0n,
-    priceQuoteX18: (5n * 10n ** 13n).toString(),
-    fdvUsd6: (5_000n * 1_000_000n).toString(),
-    volume24hUsd6: "0",
   },
 ];
 

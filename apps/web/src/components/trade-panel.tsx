@@ -489,7 +489,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
                 : `Confirm ${side}`}
         </Button>
       </div>
-      <p data-testid="trade-phase" data-phase={phase} className="mt-2 text-[11px] uppercase tracking-wider text-zinc-500">
+      <p data-testid="trade-phase" data-phase={phase} className="sr-only">
         {PHASE_LABEL[phase]}
       </p>
       {error && (
