@@ -54,12 +54,24 @@ import {
   type MaintenanceHop,
   type MaintenanceJob,
 } from "../../../packages/reactor/src/maintenance-job.ts";
+import { enqueueUnsignedMaintenance } from "./maintenance-queue.ts";
+import { unsignedEnvelopeFromGatewayCalldata } from "./maintenance-planner-bridge.ts";
 
 /**
- * Decision/signer daemon. Onchain Keeper is AutomationGateway.
- * Simulate as the gateway → sign a short-lived MaintenanceJob → any relayer submits.
- * Relayers have no ranking or minOut authority. InstantCurve.graduate stays permissionless.
- * Modes: DRY_RUN | LOCAL | ARC_TESTNET. Chain 5042 (mainnet) is hard-disabled.
+ * Decision/planner daemon. Onchain Keeper is AutomationGateway.
+ *
+ * LOCAL / ARC_TESTNET keep the legacy rehearsal path: simulate as the gateway,
+ * sign a short-lived MaintenanceJob locally, then broadcast through a relayer.
+ * MANAGED_QUEUE is the production-shaped #83 path: it performs the identical
+ * deterministic planning/simulation, but never loads a maintenance/relay private
+ * key. It encodes the typed Gateway call with an empty signature, decodes it back
+ * into the canonical unsigned envelope, verifies the binding, and durably queues
+ * it for the AWS KMS authorizer + independent relays.
+ *
+ * Relayers have no ranking or minOut authority. InstantCurve.graduate stays
+ * permissionless and is not inserted into the signed-maintenance queue.
+ * Modes: DRY_RUN | LOCAL | ARC_TESTNET | MANAGED_QUEUE.
+ * Chain 5042 (mainnet) is hard-disabled in this implementation branch.
  * Never logs private keys. Never submits minOut 0 or 1.
  */
 
@@ -80,10 +92,10 @@ const MAX_JOBS_PER_TICK = Number(process.env.KEEPER_MAX_JOBS_PER_TICK ?? 4);
 const AMBIGUOUS_COOLDOWN_MS = Number(process.env.KEEPER_AMBIGUOUS_MS ?? 10 * 60 * 1000);
 const THRESHOLD = 10_000n;
 
-type Mode = "DRY_RUN" | "LOCAL" | "ARC_TESTNET";
+type Mode = "DRY_RUN" | "LOCAL" | "ARC_TESTNET" | "MANAGED_QUEUE";
 function resolveMode(): Mode {
   const raw = (process.env.KEEPER_MODE ?? "LOCAL").toUpperCase();
-  if (raw === "DRY_RUN" || raw === "LOCAL" || raw === "ARC_TESTNET") return raw;
+  if (raw === "DRY_RUN" || raw === "LOCAL" || raw === "ARC_TESTNET" || raw === "MANAGED_QUEUE") return raw;
   throw new Error(`unknown KEEPER_MODE ${raw}`);
 }
 const MODE = resolveMode();
@@ -264,7 +276,7 @@ function canBroadcast(chainId: number): { ok: boolean; reason?: string } {
   if (chainId === MAINNET_CHAIN) return { ok: false, reason: "mainnet disabled" };
   if (MODE === "DRY_RUN") return { ok: false, reason: "DRY_RUN" };
   if (chainId !== LOCAL_CHAIN) return { ok: false, reason: `refuse chain ${chainId}` };
-  if (MODE === "ARC_TESTNET" || MODE === "LOCAL") return { ok: true };
+  if (MODE === "ARC_TESTNET" || MODE === "LOCAL" || MODE === "MANAGED_QUEUE") return { ok: true };
   return { ok: false, reason: "mode" };
 }
 
@@ -562,8 +574,9 @@ async function tickBody(chainId: number) {
     return;
   }
 
+  const managedQueue = MODE === "MANAGED_QUEUE";
   const gate = canBroadcast(chainId);
-  const keys = resolveKeys(chainId);
+  const keys = managedQueue ? null : resolveKeys(chainId);
   if (!gate.ok) {
     writeBeat({
       ok: true,
@@ -577,36 +590,66 @@ async function tickBody(chainId: number) {
     });
     return;
   }
-  if (!keys) {
+  if (!managedQueue && !keys) {
     writeBeat({ ok: false, reason: "no job signer key", chainId });
     return;
   }
+  if (managedQueue && !jobStore) throw new Error("MANAGED_QUEUE requires durable keeper store");
 
-  const signerAccount = privateKeyToAccount(keys.signer);
-  const relayerAccount = privateKeyToAccount(keys.relayer);
-  const wallet = createWalletClient({ account: relayerAccount, chain, transport: http(RPC) });
+  const signerAccount = keys ? privateKeyToAccount(keys.signer) : null;
+  const relayerAccount = keys ? privateKeyToAccount(keys.relayer) : null;
+  const wallet = relayerAccount ? createWalletClient({ account: relayerAccount, chain, transport: http(RPC) }) : null;
   const gateway = addrs.AutomationGateway as `0x${string}` | undefined;
+  if (managedQueue && !gateway) throw new Error("MANAGED_QUEUE requires AutomationGateway");
   const nowSec = (await client.getBlock()).timestamp;
-  const signJob = (job: MaintenanceJob) =>
-    signerAccount.signTypedData({
+  const signJob = (job: MaintenanceJob): Promise<Hex> => {
+    if (managedQueue) return Promise.resolve("0x" as Hex);
+    if (!signerAccount) throw new Error("job signer unavailable");
+    return signerAccount.signTypedData({
       domain: maintenanceDomain(job.chainId, job.gateway),
       types: MAINTENANCE_JOB_TYPES,
       primaryType: "MaintenanceJob",
       message: job,
     });
+  };
   let ran = 0;
-  const send = (to: `0x${string}`, data: Hex) =>
-    wallet.sendTransaction({ to, data, account: relayerAccount, chain });
-  const keeperFrom = gateway ?? signerAccount.address;
-  const run = async (id: string, to: `0x${string}`, data: Hex) => {
-    if (ran >= MAX_JOBS_PER_TICK) return;
-    if (state.jobs[id]?.status === "done") return;
+  const send = (to: `0x${string}`, data: Hex) => {
+    if (!wallet || !relayerAccount) throw new Error("relayer unavailable");
+    return wallet.sendTransaction({ to, data, account: relayerAccount, chain });
+  };
+  const keeperFrom = gateway ?? signerAccount?.address;
+  if (!keeperFrom) throw new Error("keeper simulation identity unavailable");
+  const run = async (id: string, to: `0x${string}`, data: Hex): Promise<JobState | undefined> => {
+    if (ran >= MAX_JOBS_PER_TICK) return undefined;
+    if (!managedQueue && state.jobs[id]?.status === "done") return state.jobs[id];
+
+    if (managedQueue) {
+      if (!gateway || to.toLowerCase() !== gateway.toLowerCase()) {
+        if (id.startsWith("grad:")) {
+          jobs.push(`${id}:permissionless-not-queued`);
+          return { status: "done", ts: Date.now(), note: "permissionless graduation remains outside managed queue" };
+        }
+        throw new Error(`MANAGED_QUEUE refuses non-Gateway delivery ${id}`);
+      }
+      const envelope = unsignedEnvelopeFromGatewayCalldata(data);
+      const queued = await enqueueUnsignedMaintenance(jobStore!, envelope);
+      const r: JobState = {
+        status: "done",
+        ts: Date.now(),
+        note: queued.inserted ? "queued for KMS authorizer" : "already queued",
+      };
+      jobs.push(`${id}:${queued.inserted ? "queued" : "already-queued"}`);
+      ran += 1;
+      return r;
+    }
+
     const r = await submitOnce(state, id, () => send(to, data));
     jobs.push(`${id}:${r.status}`);
     if (r.status === "done") ran += 1;
     if (r.status === "ambiguous") {
       writeBeat({ ok: false, reason: `ambiguous rpc ${id}`, jobs, chainId, block: block.toString() });
     }
+    return r;
   };
 
   const { quotes, usdc } = await discoverQuotes();
@@ -886,12 +929,9 @@ async function tickBody(chainId: number) {
         snapshotHash: snap,
       });
       const sig = await signJob(job);
-      const r = await submitOnce(state, opId, () =>
-        send(gateway, encodeSubmitEpochCall(job, sig, epoch, targets, weights, valuation, healthH)),
-      );
-      jobs.push(`epoch:${r.status}`);
-      submitted = r.status === "done";
-      if (r.status === "ambiguous") {
+      const r = await run(opId, gateway, encodeSubmitEpochCall(job, sig, epoch, targets, weights, valuation, healthH));
+      submitted = r?.status === "done";
+      if (r?.status === "ambiguous") {
         writeBeat({ ok: false, reason: "ambiguous epoch submit — not retrying", jobs, epoch: epoch.toString() });
         return;
       }
