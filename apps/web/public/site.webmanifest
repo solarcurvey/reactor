@@ -1,7 +1,7 @@
 {
   "name": "REACTOR",
   "short_name": "REACTOR",
-  "description": "Token launch on Arc. Launch markets that pay holders.",
+  "description": "Token launch on Arc. Rewards pay holders; Standard burns.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#12110f",

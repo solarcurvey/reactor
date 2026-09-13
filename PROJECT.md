@@ -4,7 +4,7 @@
 
 - **Token:** $CORE (TestCORE on testnet)
 - **Tagline:** Launch. Reflect. Burn.
-- **Secondary:** Launch markets that pay holders.
+- **Secondary:** Rewards pay holders; Standard burns.
 - **Display:** REACTOR / Built on Arc
 
 Launch a normal ERC-20 into an Official REACTOR Pool (Uniswap v4, 0% LP fee, REACTOR hook). Every official swap charges **3.5% of quote notional** in the quote asset: **2%** holders, **1%** Top-10 flywheel, **0.5%** CORE buy+burn.
@@ -17,7 +17,7 @@ A complete economic loop:
 
 1. Instant (bonding → v4) or Fair launch
 2. Trade on the curve, then the official hooked pool after graduation
-3. Holders claim quote rewards (no staking)
+3. Rewards holders claim quote (no staking); Standard 2% SelfBurns
 4. Designated Keeper CORE / Top-10 / SelfBurn maintenance
 5. UI that shows API ranks + onchain epoch events (not a trustless oracle)
 

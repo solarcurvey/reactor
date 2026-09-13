@@ -46,11 +46,13 @@ UI copy must say **token launch on Arc** on first use.
 | Field | Value |
 | --- | --- |
 | `<title>` | `REACTOR — Token launch on Arc` |
-| Description | `Launch markets that pay holders. Official REACTOR pools on Arc. Not an AI trading terminal.` |
+| Description | `Launch official REACTOR pools on Arc. Rewards pay holders; Standard burns. Not an AI trading terminal.` |
 | OG title | `REACTOR` |
 | OG description | `Token launch markets on Arc. Launch. Reflect. Burn.` |
 
 **AI voice rule (one rule, no contradiction):** the word “AI” is allowed **only** as the first-use metadata sentence `Not an AI trading terminal.` (`BRAND_AI_DISAMBIGUATION` / `BRAND_COPY.description`, plus this collision table). Chrome, CTAs, titles, and OG/social previews (`BRAND_COPY.ogTitle` / `ogDescription`) must not use “AI”. Also do not use in chrome or social: “agents”, “perps”, “super-app”, “messaging layer”, “Reactor Terminal”, “Arc Reactor”, “audited”, “trustless oracle”, fake urgency.
+
+Do **not** say every launch “pays holders.” Standard burns the token-level 2%; Rewards distributes that 2% to holders. Metadata must stay mode-correct.
 
 `THE REACTOR` is the Top-10 flywheel (`/reactor`). `REACTOR` is the launchpad.
 

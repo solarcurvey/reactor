@@ -2,7 +2,7 @@
 
 > Protocol **0.3.4** · Factory **V1** (immutable) · Not audited · No public mainnet
 
-REACTOR is a token launchpad for **Arc**. Creators launch a market that pays holders in the **quote they pick**. Official pools are Uniswap v4 with a **0% LP fee**. The **3.5%** quote-side charge is hook custom accounting: **2% holders / 1% Top-10 / 0.5% CORE**.
+REACTOR is a token launchpad for **Arc**. Creators launch Official REACTOR pools: **Rewards** pay holders in the quote they pick; **Standard** burns that 2%. Official pools are Uniswap v4 with a **0% LP fee**. The **3.5%** quote-side charge is hook custom accounting: **2% holders or SelfBurn / 1% Top-10 / 0.5% CORE**.
 
 This software is **not audited**. There is **no public mainnet**. Local and test use only.
 

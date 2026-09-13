@@ -44,6 +44,19 @@ assert(
   BRAND_VOICE.avoidInChromeAndOg.includes("AI"),
   "chrome/OG still forbid AI as a category claim",
 );
+assert(
+  !/launch markets that pay holders/i.test(BRAND_COPY.description),
+  "description must not imply every launch pays holders",
+);
+assert(
+  /Rewards pay holders/.test(BRAND_COPY.description) &&
+    /Standard burns/.test(BRAND_COPY.description),
+  "description distinguishes Rewards vs Standard",
+);
+assert(
+  !/pay holders/i.test(BRAND_COPY.ogDescription),
+  "OG stays mode-neutral and must not say pay holders",
+);
 
 const layout = readFileSync(fileURLToPath(new URL("../app/layout.tsx", import.meta.url)), "utf8");
 assert(layout.includes("BRAND_COPY.description"), "layout uses canonical description");

@@ -50,7 +50,7 @@ export const BRAND_COPY = {
   category: "Token launch on Arc",
   tagline: "Launch. Reflect. Burn.",
   title: "REACTOR — Token launch on Arc",
-  description: `Launch markets that pay holders. Official REACTOR pools on Arc. ${BRAND_AI_DISAMBIGUATION}`,
+  description: `Launch official REACTOR pools on Arc. Rewards pay holders; Standard burns. ${BRAND_AI_DISAMBIGUATION}`,
   ogTitle: "REACTOR",
   ogDescription: "Token launch markets on Arc. Launch. Reflect. Burn.",
 } as const;

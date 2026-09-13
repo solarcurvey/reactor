@@ -71,7 +71,7 @@ Founder-locked **Industrial Forge** brand (Direction C, issue #55 — **stays op
 
 ### Added / Changed
 
-- Canonical REACTOR identity is Industrial Forge: slag / steel / heat tokens, vessel + hexagonal ember mark, production favicon / app icon / OG / wordmark assets. THE REACTOR and CORE stay the same family with distinct chrome. Product title/description say **token launch on Arc**. The only allowed “AI” string is first-use metadata `Not an AI trading terminal.`; chrome and OG stay AI-free. Handbook: [Brand](docs/brand.md). **Refs #55 #36 #15 #18.** #55 stays open. #36 is closed.
+- Canonical REACTOR identity is Industrial Forge: slag / steel / heat tokens, vessel + hexagonal ember mark, production favicon / app icon / OG / wordmark assets. THE REACTOR and CORE stay the same family with distinct chrome. Product title/description say **token launch on Arc**. Metadata distinguishes **Rewards pay holders; Standard burns** — it does not say every launch pays holders. The only allowed “AI” string is first-use metadata `Not an AI trading terminal.`; chrome and OG stay AI-free. Handbook: [Brand](docs/brand.md). **Refs #55 #36 #15 #18.** #55 stays open. #36 is closed.
 
 - Key pages prefer indexed HTTP: `/quote-assets` for the launch picker, `/markets?q=` for search, `/markets/:token` for a single market, `/page/token/:token` for market + candles + tape in one hop.
 - Independent RPC reads go through `readContractsBatched`: probe canonical Multicall3, require one successful `multicall`, otherwise `Promise.all`. Arc is not assumed to ship Multicall3.
