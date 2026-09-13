@@ -91,7 +91,10 @@ export async function assertNoPolicyLeak(page: Page): Promise<void> {
   const lower = html.toLowerCase();
   expect(lower).not.toMatch(/\b(vpn|proxy|tor|circumvent|bypass|criminal)\b/);
   expect(html).not.toContain("SDN");
-  expect(html).not.toMatch(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
+  /* Documentation TEST-NET examples only. Full HTML includes 127.0.0.1 in CSP. */
+  expect(html).not.toContain("203.0.113");
+  const visible = await page.locator("main").innerText();
+  expect(visible).not.toMatch(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
 }
 
 export async function assertRestrictedLaunch(
