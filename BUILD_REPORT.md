@@ -29,6 +29,18 @@
 | Discover rail sanitizes rank tickers | **Yes** | Same `sanitizeTicker` + `UntrustedText` as THE REACTOR table. Fixture `#10` cannot leave raw `<script>` on `/`. |
 | #80 / #46 / #75 / #44 / #81 preserved | **Yes** | Industrial Forge tokens/components stay. Observability + Restricted-access UX, write-lock, four-state policy matrix stay. Merged #44 `e2e-release-gate` and #81 `ci-decide` stay. Launch/trade kept branded + #75 write-lock (not old UI wholesale). |
 
+## Local matrix (`e105ca2`)
+
+| Suite | Result |
+| --- | --- |
+| `pnpm --filter web test` | **34 passed / 1 skipped** (visual-gate designed states via `?inject=`) |
+| `pnpm test:lib` | Green on prior tip of this rebase (`f1c0a19` / `ac699b6`); units unchanged since |
+| `CI=1` `web-qa` | **140 passed** after branded golden recapture (`1845a6e`) |
+| `e2e-release-gate` | **73 passed** on prior tip of this rebase |
+| Foundry + attack + `test_hookBits` + `size:guard` | Green (Factory runtime **23286**) |
+| Hosted Actions | Fast-tier only on this draft — **not** #40 acceptance |
+| Postgres | Not run here (no Docker/Postgres) |
+
 ## Still open (do not fake)
 
 | Item | Why |
