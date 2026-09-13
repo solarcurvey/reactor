@@ -1,6 +1,8 @@
 # Automation gateway
 
-Maintenance is **not** a privileged EOA calling vaults. `AutomationGateway` is `ReactorGuardian.keeper`. Relayers (Chainlink CRE, Gelato, a standby wallet, anyone) only **deliver** a short-lived EIP-712 `MaintenanceJob`. They have no ranking, route, or floor authority.
+> **Not on current `main`.** This page describes draft **#54** (`AutomationGateway` + signed `MaintenanceJob`). Current `main` uses a designated Keeper daemon with an onchain `keeper` role. See [Keeper](/docs/keeper).
+
+Maintenance is **not** a privileged EOA calling vaults. When **#54** lands, `AutomationGateway` becomes `ReactorGuardian.keeper`. Relayers (Chainlink CRE, Gelato, a standby wallet, anyone) only **deliver** a short-lived EIP-712 `MaintenanceJob`. They have no ranking, route, or floor authority.
 
 ## Four roles (do not collapse)
 

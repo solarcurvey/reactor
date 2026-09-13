@@ -262,8 +262,8 @@ export const DOCS: DocNav[] = [
     title: "Automation",
     group: "Launch",
     file: "automation.md",
-    blurb: "AutomationGateway is keeper. Relayers deliver signed MaintenanceJobs. CRE does not rank.",
-    keywords: "AutomationGateway MaintenanceJob jobSigner relayer CRE Gelato valuationSnapshotHash",
+    blurb: "Draft #54 signed-job gateway. Current main uses a designated Keeper daemon.",
+    keywords: "AutomationGateway MaintenanceJob jobSigner relayer CRE Gelato designated keeper",
   },
   {
     slug: "api",

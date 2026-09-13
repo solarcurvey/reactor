@@ -18,7 +18,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_180px]">
       <article>
-        <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+        <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-400">
           <Link href="/docs" className="hover:text-white">
             Docs
           </Link>
@@ -42,7 +42,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
             <span />
           )}
         </nav>
-        <p className="mt-10 text-[11px] text-zinc-600" data-testid="docs-footer-badges">
+        <p className="mt-10 text-[11px] text-zinc-400" data-testid="docs-footer-badges">
           Protocol {ver.protocolVersion} ({ver.releaseTag}). Factory {ver.factoryVersionLabel}. API {ver.apiVersion}. SDK{" "}
           {ver.sdkVersion}. Source {ver.sourceRelease}. Not audited. No public mainnet. Constants must match
           ReactorConstants.

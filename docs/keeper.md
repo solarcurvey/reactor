@@ -1,6 +1,6 @@
 # Keeper
 
-> Onchain Keeper is `AutomationGateway`. Relayers deliver signed jobs. Not permissionless. Not a bounty. Not Guardian. CRE does not rank Top-10. Mainnet **5042 is disabled**.
+> Designated Keeper. Not permissionless. Not a bounty. Not Guardian. CRE does not rank Top-10. Mainnet **5042 is disabled**. Signed-job `AutomationGateway` is draft **#54**, not current `main`.
 
 See [Automation](/docs/automation). Maintenance is not a privileged EOA calling vaults. There is no `KeeperReserve`, no public settle farming, and no onchain TWAP/Pyth Top-10. Source: `KEEPER_MODEL.md`.
 
@@ -62,7 +62,7 @@ Daemon: `apps/indexer/src/keeper.ts`. Independent `watchdog` (`apps/indexer/src/
 
 `route` and `minOut` are **operational** risk on the Keeper key and its simulator.
 
-A compromised job signer can waste a pot on a bad already-bound route (sandwich / poor `minOut`) within chunk/hop/bucket bounds. A compromised relayer cannot change targets, hops, `minOut`, or amount. Neither can redirect pots to itself, change fees, or empty official LP. Guardian can pause the gateway or replace `keeper` immediately.
+A compromised Keeper key can waste a pot on a bad already-bound route (sandwich / poor `minOut`) within chunk/hop/bucket bounds. It cannot redirect pots to itself, change fees, or empty official LP. Guardian can pause Keeper or replace `keeper` immediately. Signed-job relayer isolation is draft **#54**, not this tree.
 
 ## Retired
 

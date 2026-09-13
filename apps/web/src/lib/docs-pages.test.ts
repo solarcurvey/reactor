@@ -57,6 +57,7 @@ const requiredSlugs = [
   "versioning",
   "changelog",
   "policy",
+  "brand",
   "ci",
   "publicization",
 ];
@@ -113,6 +114,7 @@ assert.match(llms, /\/docs\/incident-response/);
 assert.match(llms, /\/docs\/geo-policy/);
 assert.match(llms, /\/docs\/restricted-access/);
 assert.match(llms, /\/docs\/operator-policy/);
+assert.match(llms, /\/docs\/brand/);
 
 const index = readFileSync(join(docsDir, "index.md"), "utf8");
 assert.match(index, /2% holders/);

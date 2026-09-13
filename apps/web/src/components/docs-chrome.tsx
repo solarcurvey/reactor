@@ -33,7 +33,7 @@ export function DocsChrome({
   return (
     <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[240px_1fr]">
       <aside className="lg:sticky lg:top-16 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-        <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/80" data-testid="docs-version-badges">
+        <p className="rx-kicker" data-testid="docs-version-badges">
           <span data-testid="badge-protocol">Protocol {release.protocolVersion}</span>
           {" · "}
           <span data-testid="badge-factory">Factory {release.factoryVersionLabel}</span>
@@ -56,7 +56,7 @@ export function DocsChrome({
         <nav className="mt-3 space-y-3 text-[13px]" data-testid="docs-sidebar">
           {groups.map(([g, items]) => (
             <div key={g}>
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">{g}</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">{g}</div>
               <ul className="mt-1 space-y-0.5">
                 {items.map((d) => {
                   const href = docHref(d.slug);
