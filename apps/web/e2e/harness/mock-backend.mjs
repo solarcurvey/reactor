@@ -459,6 +459,24 @@ const QUOTE_ASSETS = [
   },
 ];
 
+/** #68 write paths fetch this before quote / launch-pricing / upload. */
+function operatorPolicyChallenge() {
+  const exp = Math.floor(Date.now() / 1000) + 120;
+  return {
+    token: `e2e.5042002.${exp}.nonce.deadbeef`,
+    message: [
+      "REACTOR operator-policy v1",
+      "purpose: operator-policy-write",
+      "chainId: 5042002",
+      "nonce: e2e",
+      `exp: ${exp}`,
+    ].join("\n"),
+    exp,
+    nonce: "e2e",
+    chainId: 5042002,
+  };
+}
+
 function launchAuth(body) {
   const creator = body.creator ?? body.wallet ?? ANVIL_ACCOUNT_0;
   const ticker = String(body.ticker ?? "E2E").toUpperCase();
@@ -494,6 +512,16 @@ function handleIndexer(req, res, url, bodyText) {
   if (url.pathname === "/health") {
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ ok: true, block: blockNumber, e2e: true }));
+    return;
+  }
+  if (url.pathname === "/operator-policy/challenge") {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify(operatorPolicyChallenge()));
+    return;
+  }
+  if (url.pathname === "/operator-policy/status") {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ decision: "ALLOW", reason: "E2E_LOCAL", request_id: "e2e" }));
     return;
   }
   // Keep-alive hello so the live-toast EventSource is not a 404 console.error.
