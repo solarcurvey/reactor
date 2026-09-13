@@ -75,7 +75,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | `solidity + size-guard` | full / main | `FOUNDRY_PROFILE=ci forge test` + Attack suite + CREATE2 `test_hookBits` + `pnpm size:guard` |
 | `web-production-security` | full / main | `pnpm test:restricted` (dev restricted UX + #62 write gate) then `pnpm test:web-security` (production Next + live headers + bundle sentinel + XSS corpus + `restricted-prod` four-state matrix) |
 | `operator-policy-http` | full / main | `pnpm test:operator-policy-http` — real indexer + production Next HTTP matrix (#62). LOCAL `#64` freshness is pinned `#61` fixtures (no live OFAC unless `SANCTIONS_NETWORK=1`). Required by `ci-ok`. |
-| `web-qa` | full / main | `pnpm --filter web test:qa` (production Next visual / a11y / failure-injection). Pixel baselines live on PR #49. |
+| `web-qa` | full / main | `pnpm --filter web test:qa` (production Next visual / a11y / failure-injection). Gate landed on PR #49; current Industrial Forge + #44 chrome goldens live on PR #80. |
 | `live-toasts-ui` | full / main | `pnpm test:live-toasts` identity + Playwright |
 | `obs-ui` | full / main | obs unit + first-party source-map symbolication + configured-DSN vendor proof (`vendor-proof.test.ts`) + production `next start` Playwright `obs-failure-injection.spec.ts` (Web Vitals / six-class runbook / redacted inject) |
 | `postgres-ms-timestamps` | full / main | `test:pg` + `test:pg-lease` (two-worker) + `pg-smoke` |
