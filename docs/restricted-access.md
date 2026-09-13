@@ -13,6 +13,8 @@ Issue **#65** (child of RELEASE GATE **#60**). Server authority is **#62** (`eva
 - Writes (`POST /quote`, `/launch/admit`, `/launch/authorize`, `/upload`) require that recovered proof.
 - Next `GET /api/operator-policy` forwards only the proof header (never a claimed wallet). The provider acquires challenge → `personal_sign` → proof header. Production `next start` fail-closes if the indexer status path is missing.
 
+The indexer process uses official `apps/indexer/src/operator-policy.ts`. `operator-policy-bind.ts` is the #65 test/fixture adapter and delegates to that module when present.
+
 **LOCAL** continues to allow writes when the indexer status path is missing; **production-like** environments fail closed as temporarily unavailable. LOCAL-only demo fixtures: `OPERATOR_POLICY_UX_FIXTURE`, `x-reactor-ux-fixture`, or a page `?fixture=` query (the provider forwards it to the BFF; production ignores it).
 
 ## What the user sees

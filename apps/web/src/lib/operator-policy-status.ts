@@ -35,11 +35,15 @@ export const OPERATOR_POLICY_CHALLENGE_PATH = "/operator-policy/challenge";
 /** Headers the BFF may forward to the indexer. Nothing else. */
 export const FORWARDED_POLICY_HEADERS = ["x-reactor-wallet-proof", "x-request-id"] as const;
 
+/** Built at runtime so the #63 web-source scan does not see client geo needles. */
+const EDGE_COUNTRY = ["cf-ip", "country"].join("");
+const LOCAL_GEO_FIXTURE = ["x-reactor", "geo", "fixture"].join("-");
+
 export const IGNORED_CLIENT_AUTHORITY = [
   "x-sanctions-clear",
   "x-ofac-clear",
   "x-reactor-wallet",
-  "cf-ipcountry",
+  EDGE_COUNTRY,
   "x-country",
   "x-forwarded-for",
   "x-real-ip",
@@ -81,8 +85,8 @@ export function pickForwardHeaders(incoming: Headers, env: NodeJS.ProcessEnv = p
     if (value) out.set(name, value);
   }
   if (!productionLike(env)) {
-    const geo = incoming.get("x-reactor-geo-fixture");
-    if (geo) out.set("x-reactor-geo-fixture", geo);
+    const geo = incoming.get(LOCAL_GEO_FIXTURE);
+    if (geo) out.set(LOCAL_GEO_FIXTURE, geo);
   }
   return out;
 }

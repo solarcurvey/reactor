@@ -413,7 +413,6 @@ export default function LaunchPage() {
                   if (policy.applyWriteError(body)) throw new Error(body.error ?? "upload unavailable");
                   throw new Error(body.error ?? "upload failed");
                 }
->>>>>>> ae71316 (Bind restricted UX to #62 challenge and recovered-wallet proofs.)
                 const next = sanitizeMediaUrl(body.publicUrl ?? body.uri ?? "");
                 if (!next) throw new Error("upload returned a URL the launchpad will not render");
                 setImage(next);

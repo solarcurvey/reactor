@@ -7,13 +7,19 @@
  * challenge — never x-reactor-wallet / body.wallet. No proof → geo DENY
  * wins, else UNAVAILABLE_WALLET_MISSING (not ALLOW).
  *
- * If official `operator-policy.ts` from PR #68 is present, challenge/recover/gate
- * /status delegate to it. Otherwise this module is the compatible bind.
+ * Official `operator-policy.ts` from merged **#68** is on `main` and is what
+ * `apps/indexer/src/index.ts` uses. This file is the #65 test/fixture adapter
+ * (Playwright / bind units). It does not auto-import the official module so
+ * LOCAL fixtures stay deterministic. Call `tryBindOfficialOperatorPolicy`
+ * only when a test wants the canonical #68 implementation.
  */
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { productionHardGatesApply } from "./prod-gates.ts";
+import { evaluateRequestGeo } from "./geo-policy-resolve.ts";
+import { indexerSanctionsStore } from "./sanctions.ts";
+import type { SanctionsStore } from "../../../packages/sanctions/src/index.ts";
 import {
   evaluateOperatorPolicy,
   publicPolicyBody,
@@ -60,11 +66,15 @@ type OfficialBind = {
 let official: OfficialBind | null = null;
 let officialChecked = false;
 let blockedWallets = new Set<string>();
+let officialSanctions: SanctionsStore | null = null;
+let officialSanctionsTried = false;
 
 export function resetOperatorPolicyBindState(): void {
   official = null;
   officialChecked = false;
   blockedWallets = new Set();
+  officialSanctions = null;
+  officialSanctionsTried = false;
 }
 
 export function setFixtureBlockedWallets(addresses: string[]): void {
@@ -159,6 +169,20 @@ function envBlocked(env: NodeJS.ProcessEnv): string[] {
     .filter(Boolean);
 }
 
+function officialScreenAddress(address: string): AddressScreenResult | null {
+  try {
+    if (!officialSanctionsTried) {
+      officialSanctionsTried = true;
+      officialSanctions = indexerSanctionsStore();
+    }
+    if (!officialSanctions) return null;
+    const out = officialSanctions.screen(address);
+    return { decision: out.decision, reason: out.reason, freshness: out.freshness };
+  } catch {
+    return null;
+  }
+}
+
 export function fixtureScreenAddress(address: string, env: NodeJS.ProcessEnv = process.env): AddressScreenResult {
   if (official?.fixtureScreenAddress) return official.fixtureScreenAddress(address, env);
   const freshness = (env.OPERATOR_POLICY_DATASET_FRESHNESS as AddressScreenResult["freshness"] | undefined) ?? "current";
@@ -172,6 +196,9 @@ export function fixtureScreenAddress(address: string, env: NodeJS.ProcessEnv = p
   if (freshness === "stale") {
     return { decision: "unavailable", reason: "stale_dataset", freshness: "stale" };
   }
+  const officialHit = officialScreenAddress(address);
+  if (officialHit?.decision === "blocked") return officialHit;
+  if (productionHardGatesApply(env) && officialHit?.decision === "unavailable") return officialHit;
   return { decision: "clear", freshness: "current" };
 }
 
@@ -208,7 +235,12 @@ export function fixtureEvaluateGeo(headers: HeaderMap, env: NodeJS.ProcessEnv = 
     return { decision: "UNKNOWN", reason: "UNKNOWN_INVALID_CLAIM" };
   }
   if (productionHardGatesApply(env)) {
-    return { decision: "UNKNOWN", reason: "UNKNOWN_UNTRUSTED_SOURCE" };
+    try {
+      const officialGeo = evaluateRequestGeo(headers, env);
+      return { decision: officialGeo.decision, reason: officialGeo.reason };
+    } catch {
+      return { decision: "UNKNOWN", reason: "UNKNOWN_UNTRUSTED_SOURCE" };
+    }
   }
   const fallback = (env.OPERATOR_POLICY_LOCAL_DEFAULT_GEO ?? "ALLOW").toString().toUpperCase();
   if (fallback === "UNKNOWN") return { decision: "UNKNOWN", reason: "UNKNOWN_MISSING_GEO" };
@@ -249,7 +281,6 @@ export async function gateProtectedWrite(input: {
   env?: NodeJS.ProcessEnv;
   surface: string;
 }): Promise<PolicyGateAllow | PolicyGateDeny> {
-  await tryBindOfficialOperatorPolicy();
   if (official?.gateProtectedWrite) {
     return official.gateProtectedWrite(input);
   }
@@ -283,7 +314,6 @@ export async function evaluateOperatorPolicyStatus(input: {
   headers: HeaderMap;
   env?: NodeJS.ProcessEnv;
 }): Promise<OperatorPolicyDecision> {
-  await tryBindOfficialOperatorPolicy();
   const env = input.env ?? process.env;
   const recovered = await recoverSubjectWallet({ headers: input.headers, env });
   const addressScreen: AddressScreenResult = recovered.address
@@ -297,7 +327,6 @@ export async function readOperatorPolicyStatus(input: {
   headers: HeaderMap;
   env?: NodeJS.ProcessEnv;
 }): Promise<{ status: 200 | 403 | 503; body: Record<string, unknown> }> {
-  await tryBindOfficialOperatorPolicy();
   if (official?.readOperatorPolicyStatus) {
     return official.readOperatorPolicyStatus(input);
   }
