@@ -1,5 +1,23 @@
-import { assertAxe, assertBrandPaletteContrast, assertNoHorizontalOverflow, expect, NEON, test, ZCAT } from "./helpers";
+import {
+  assertAxe,
+  assertBrandPaletteContrast,
+  assertNoHorizontalOverflow,
+  expect,
+  NEON,
+  test,
+  ZCAT,
+  type ConsoleGate,
+  type PageDiagnostic,
+} from "./helpers";
 import { CTA, POLICY, mockPolicy } from "./restricted-policy";
+
+/** Chromium logs a console.error for the official deny/unavailable HTTP status. */
+function allowDeniedPolicyFetch(gate: ConsoleGate) {
+  gate.allow(
+    (d: PageDiagnostic) =>
+      /\/api\/operator-policy/.test(d.location ?? "") && /status of (?:403|503)/.test(d.text),
+  );
+}
 
 const pages = [
   { name: "home", path: "/" },
@@ -114,7 +132,8 @@ test("confirm dialog trap", async ({ page }) => {
   await expect(dialog).toHaveCount(0);
 });
 
-test("axe restricted page under geo deny", async ({ page }) => {
+test("axe restricted page under geo deny", async ({ page, consoleGate }) => {
+  allowDeniedPolicyFetch(consoleGate);
   await mockPolicy(page, POLICY.geo);
   await page.goto("/restricted");
   await expect(page.getByRole("heading").first()).toBeVisible();
@@ -123,7 +142,8 @@ test("axe restricted page under geo deny", async ({ page }) => {
   await assertAxe(page);
 });
 
-test("axe launch under geo deny", async ({ page }) => {
+test("axe launch under geo deny", async ({ page, consoleGate }) => {
+  allowDeniedPolicyFetch(consoleGate);
   await mockPolicy(page, POLICY.geo);
   await page.goto("/launch");
   await expect(page.getByTestId("restricted-banner")).toHaveAttribute("data-kind", "geo");
@@ -132,7 +152,8 @@ test("axe launch under geo deny", async ({ page }) => {
   await assertAxe(page);
 });
 
-test("axe token ticket under geo deny", async ({ page }) => {
+test("axe token ticket under geo deny", async ({ page, consoleGate }) => {
+  allowDeniedPolicyFetch(consoleGate);
   await mockPolicy(page, POLICY.geo);
   await page.goto(ZCAT);
   await expect(page.getByTestId("restricted-banner")).toHaveAttribute("data-kind", "geo");
@@ -170,7 +191,8 @@ test("320 CSS px reflow", async ({ page }) => {
   await assertNoHorizontalOverflow(page);
 });
 
-test("denied operator-policy reflow at 320 CSS px and 200% zoom", async ({ page }) => {
+test("denied operator-policy reflow at 320 CSS px and 200% zoom", async ({ page, consoleGate }) => {
+  allowDeniedPolicyFetch(consoleGate);
   await mockPolicy(page, POLICY.geo);
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto("/restricted");

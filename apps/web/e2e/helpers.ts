@@ -4,6 +4,7 @@ import { AXE_CONTRAST_EXCLUDE, brandContrastFailures, findSubAaMutedClass } from
 
 export { test, expect } from "./qa-fixture";
 export type { ConsoleGate } from "./qa-fixture";
+export type { PageDiagnostic } from "./console-gate";
 export { AXE_CONTRAST_EXCLUDE } from "./contrast";
 
 /** Primary visual CI: 1440 desktop, 1280 laptop, 390 iPhone-class, 360 narrow Android. */

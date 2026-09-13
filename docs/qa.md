@@ -48,7 +48,7 @@ Charts and the CORE mark are masked. Live/polling text is hidden.
 
 - Dialog **focus trap** and **restore** (Account modal, confirm trade)
 - **200% zoom** / 320 CSS px — no horizontal overflow, including `/restricted` and a denied operator-policy launch/token
-- `/restricted` (allowed-user QA mock) plus denied geo on `/restricted`, `/launch`, and the token ticket — axe + leftover muted-class assert
+- `/restricted` (allowed-user QA mock) plus denied geo on `/restricted`, `/launch`, and the token ticket — axe + leftover muted-class assert. Denied-state tests allow only the Chromium `403`/`503` resource log for `/api/operator-policy` (not a global console-gate weaken).
 - `prefers-reduced-motion: reduce` disables pulse
 - Live toasts: `role="status"` / `role="alert"` + `aria-live`; SSE reconnect uses a stable event id (no duplicate toast)
 
