@@ -8,7 +8,7 @@
  * simulate routes, or write on Arc Mainnet 5042. Live DON deploy is not claimed.
  */
 import { HTTPCapability, decodeJson, handler, Runner, type HTTPPayload, type Runtime } from "@chainlink/cre-sdk";
-import { handleSignedJobPayload, type SignedJobHttpPayload } from "./handle-signed-job.ts";
+import { handleSignedJobPayload, type SignedJobHttpPayload } from "./cre-handle";
 
 type Config = {
   authorizedEVMAddress: string;
@@ -28,7 +28,7 @@ const onHttpTrigger = (runtime: Runtime<Config>, payload: HTTPPayload): string =
   if (!payload.input || payload.input.length === 0) {
     throw new Error("HTTP trigger payload is empty — expected a signed MaintenanceJob JSON body");
   }
-  const input = decodeJson<SignedJobHttpPayload>(payload.input);
+  const input = decodeJson(payload.input) as SignedJobHttpPayload;
   const result = handleSignedJobPayload(input);
   runtime.log(`jobId=${result.jobId} action=${result.action} jobChainId=${result.jobChainId}`);
   runtime.log(`relayCalldataHash=${result.relayCalldataHash}`);

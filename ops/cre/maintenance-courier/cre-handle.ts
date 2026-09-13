@@ -1,37 +1,28 @@
 /**
- * Node/CI HTTP-trigger courier body (`scripts/cre-workflow-simulate.ts`).
- * Official CRE WASM (`main.ts`) uses `cre-handle.ts` → `encode.ts` so
- * `cre workflow build` can resolve `viem` inside this package. Both paths
- * must produce the same calldata hashes. Never rebuilds hops, minOut, amount,
- * or Top-10 targets.
+ * HTTP-trigger body used by official CRE WASM (`main.ts`).
+ * Stays inside this package so `cre workflow build` can resolve `viem`.
  */
-import { keccak256, toBytes, type Hex } from "viem";
-import {
-  creReport,
-  relayCalldata,
-  type SignedMaintenanceEnvelope,
-} from "../workflow.ts";
-import type { MaintenanceHop, MaintenanceJob } from "../../../packages/reactor/src/maintenance-job.ts";
+import { hashBytes, hashReport, creReport, relayCalldata, type MaintenanceHop, type MaintenanceJob } from "./encode";
 
 export type SignedJobHttpPayload = {
   job: {
     gateway: `0x${string}`;
     chainId: string;
     action: number;
-    payloadHash: Hex;
-    jobId: Hex;
+    payloadHash: `0x${string}`;
+    jobId: `0x${string}`;
     validAfter: string;
     deadline: string;
-    snapshotHash: Hex;
+    snapshotHash: `0x${string}`;
   };
-  signature: Hex;
-  kind: SignedMaintenanceEnvelope["kind"];
+  signature: `0x${string}`;
+  kind: "selfBurn" | "settleQuote" | "submitEpoch" | "top10" | "rollEpoch" | "buyback";
   hops?: Array<{
     adapter: `0x${string}`;
     tokenIn: `0x${string}`;
     tokenOut: `0x${string}`;
     minOut: string;
-    data: Hex;
+    data: `0x${string}`;
   }>;
   quote?: `0x${string}`;
   amount?: string;
@@ -41,12 +32,12 @@ export type SignedJobHttpPayload = {
 export type CourierSimulationResult = {
   kind: "maintenance-job-courier";
   action: number;
-  jobId: Hex;
+  jobId: `0x${string}`;
   jobChainId: string;
-  relayCalldata: Hex;
-  relayCalldataHash: Hex;
-  creOnReport: Hex;
-  creOnReportHash: Hex;
+  relayCalldata: `0x${string}`;
+  relayCalldataHash: `0x${string}`;
+  creOnReport: `0x${string}`;
+  creOnReportHash: `0x${string}`;
   rebuiltMinOut: false;
   rebuiltTargets: false;
   broadcast: false;
@@ -62,7 +53,10 @@ function asHop(h: NonNullable<SignedJobHttpPayload["hops"]>[number]): Maintenanc
   };
 }
 
-export function envelopeFromHttpPayload(input: SignedJobHttpPayload): SignedMaintenanceEnvelope {
+export function handleSignedJobPayload(input: SignedJobHttpPayload): CourierSimulationResult {
+  if (input.kind !== "settleQuote") {
+    throw new Error("simulation courier ships settleQuote; other actions use the same signed job + typed encode*");
+  }
   const job: MaintenanceJob = {
     gateway: input.job.gateway,
     chainId: BigInt(input.job.chainId),
@@ -73,7 +67,7 @@ export function envelopeFromHttpPayload(input: SignedJobHttpPayload): SignedMain
     deadline: BigInt(input.job.deadline),
     snapshotHash: input.job.snapshotHash,
   };
-  return {
+  const env = {
     job,
     signature: input.signature,
     kind: input.kind,
@@ -82,13 +76,6 @@ export function envelopeFromHttpPayload(input: SignedJobHttpPayload): SignedMain
     amount: input.amount === undefined ? undefined : BigInt(input.amount),
     minOut: input.minOut === undefined ? undefined : BigInt(input.minOut),
   };
-}
-
-export function handleSignedJobPayload(input: SignedJobHttpPayload): CourierSimulationResult {
-  if (input.kind !== "settleQuote") {
-    throw new Error("simulation courier ships settleQuote; other actions use the same signed job + typed encode*");
-  }
-  const env = envelopeFromHttpPayload(input);
   const relay = relayCalldata(env);
   const report = creReport(env);
   return {
@@ -97,9 +84,9 @@ export function handleSignedJobPayload(input: SignedJobHttpPayload): CourierSimu
     jobId: env.job.jobId,
     jobChainId: env.job.chainId.toString(),
     relayCalldata: relay,
-    relayCalldataHash: keccak256(toBytes(relay)),
+    relayCalldataHash: hashBytes(relay),
     creOnReport: report,
-    creOnReportHash: keccak256(report),
+    creOnReportHash: hashReport(report),
     rebuiltMinOut: false,
     rebuiltTargets: false,
     broadcast: false,

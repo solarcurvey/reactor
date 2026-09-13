@@ -14,7 +14,7 @@
   },
   "officialCli": {
     "attempted": true,
-    "creVersion": "CRE CLI version v1.29.0\n\n⚠️  Update available! You’re running 1.29.0, but 1.33.0 is the latest.\nRun `cre update` or visit https://github.com/smartcontractkit/cre-cli/releases to upgrade.",
+    "creVersion": "CRE CLI version v1.33.0",
     "command": "cre workflow simulate maintenance-courier --target staging-settings --non-interactive --trigger-index 0 --http-payload @simulation/signed-job-http-payload.json --project-root .",
     "exitCode": 1,
     "authBlocked": true,

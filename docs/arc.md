@@ -36,7 +36,7 @@ PoolManager is **not** deployed on Arc Public Testnet as of this release. Local 
 
 Canonical Multicall3 (`0xcA11bde05977b3631167028862bE2a173976CA11`) is **not assumed** on Arc. `readContractsBatched` probes bytecode, requires one successful `multicall`, and otherwise runs independent `readContract` calls in parallel. Anvil usually has the contract; Arc testnet may not. See [Read path performance](/docs/perf).
 
-Chainlink CRE lists a separate **Arc Testnet** (EIP-155 **1883**) for TypeScript workflows. This repo’s 5042002 demo and 5042 mainnet are not that catalog entry. Authenticated `cre workflow simulate` on 1883 is a remaining #51 external blocker (`ops/cre/simulation/cre-tenant-blocker.json`). CRE production writes to Arc Mainnet **5042 are not available and not claimed**. See `ops/cre/README.md` and [Automation](/docs/automation).
+Chainlink CRE lists a separate **Arc Testnet** (EIP-155 **1883**) for TypeScript workflows. This repo’s 5042002 demo and 5042 mainnet are not that catalog entry. Official `cre workflow build` compiled the signed-job courier for that catalog context (`ops/cre/simulation/cre-workflow-build.json`). Authenticated `cre workflow simulate` on 1883 is still a remaining #51 external blocker (`ops/cre/simulation/cre-tenant-blocker.json`). CRE production writes to Arc Mainnet **5042 are not available and not claimed**. See `ops/cre/README.md` and [Automation](/docs/automation).
 
 ## Mainnet blockers (honest)
 

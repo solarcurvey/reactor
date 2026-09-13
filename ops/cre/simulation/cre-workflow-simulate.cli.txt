@@ -5,10 +5,7 @@ handler.relayCalldataHash=0x5f5d6a2d4c6016311ee4da6bef31e71769661a71bbfc7d50b7cf
 handler.creOnReportHash=0x52fdf649075a599ebe21d9a8cf1847ddace606e98a813333b7812c8203367b53
 handler.broadcast=false
 
-creVersion=CRE CLI version v1.29.0
-
-⚠️  Update available! You’re running 1.29.0, but 1.33.0 is the latest.
-Run `cre update` or visit https://github.com/smartcontractkit/cre-cli/releases to upgrade.
+creVersion=CRE CLI version v1.33.0
 command=cre workflow simulate maintenance-courier --target staging-settings --non-interactive --trigger-index 0 --http-payload @simulation/signed-job-http-payload.json --project-root .
 exitCode=1
 authBlocked=true

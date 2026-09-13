@@ -32,6 +32,8 @@ const SIM = join(ROOT, "ops/cre/simulation");
 const PAYLOAD = join(SIM, "signed-job-http-payload.json");
 const EVIDENCE = join(SIM, "cre-workflow-simulate.json");
 const LOG = join(SIM, "cre-workflow-simulate.cli.txt");
+const BUILD_EVIDENCE = join(SIM, "cre-workflow-build.json");
+const BUILD_LOG = join(SIM, "cre-workflow-build.cli.txt");
 const CRE_PROJECT = join(ROOT, "ops/cre");
 
 /** Anvil #0 — simulation signer only. Not a claimed 1883 / 5042 key. */
@@ -307,11 +309,50 @@ async function main() {
     if (!existsSync(LOG) || !readFileSync(LOG, "utf8").includes(handler.relayCalldataHash)) {
       throw new Error("cre-workflow-simulate.cli.txt must contain the handler calldata hash");
     }
+    if (!existsSync(BUILD_EVIDENCE) || !existsSync(BUILD_LOG)) {
+      throw new Error("committed CRE workflow build artifacts missing");
+    }
+    const committedBuild = readJson(BUILD_EVIDENCE) as {
+      kind?: string;
+      closesSimulateAc?: boolean;
+      officialCli?: { compiled?: boolean; binaryHash?: string; liveDon?: boolean };
+      encodeIdentity?: { identical?: boolean; relayCalldataHash?: string; creOnReportHash?: string };
+    };
+    if (committedBuild.kind !== "cre-cli-workflow-build") {
+      throw new Error("cre-workflow-build.json kind must be cre-cli-workflow-build");
+    }
+    if (committedBuild.closesSimulateAc === true) {
+      throw new Error("official WASM compile must not claim to close the simulate AC");
+    }
+    if (committedBuild.officialCli?.compiled !== true || !committedBuild.officialCli.binaryHash) {
+      throw new Error("committed cre workflow build must record compiled=true and a binary hash");
+    }
+    if (committedBuild.officialCli.liveDon === true) {
+      throw new Error("committed build evidence must not claim a live DON");
+    }
+    if (committedBuild.encodeIdentity?.identical !== true) {
+      throw new Error("CRE WASM encode path must match the Node handler hashes");
+    }
+    if (committedBuild.encodeIdentity.relayCalldataHash !== handler.relayCalldataHash) {
+      throw new Error("build encodeIdentity.relayCalldataHash drifted from Node handler");
+    }
+    if (committedBuild.encodeIdentity.creOnReportHash !== handler.creOnReportHash) {
+      throw new Error("build encodeIdentity.creOnReportHash drifted from Node handler");
+    }
+    const buildLog = readFileSync(BUILD_LOG, "utf8");
+    if (!buildLog.includes("Workflow compiled successfully") || !buildLog.includes(committedBuild.officialCli.binaryHash)) {
+      throw new Error("cre-workflow-build.cli.txt must contain official compile success and the binary hash");
+    }
+    if (!buildLog.includes("not cre workflow simulate")) {
+      throw new Error("build log must keep the honest simulate distinction");
+    }
     console.log("cre workflow simulate verify ok", {
       kind: committedEv.kind,
       jobId: handler.jobId,
       relayCalldataHash: handler.relayCalldataHash,
       officialPresent: official.attempted,
+      officialBuildHash: committedBuild.officialCli.binaryHash,
+      simulateAcClosed: false,
     });
     return;
   }

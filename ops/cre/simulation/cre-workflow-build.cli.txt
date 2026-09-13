@@ -1,0 +1,22 @@
+REACTOR CRE official workflow build log
+recordedAt=2026-09-13
+creVersion=CRE CLI version v1.33.0
+command=cre workflow build maintenance-courier --project-root . --target staging-settings
+workflow=ops/cre/maintenance-courier
+catalog=arc-testnet
+eip155=1883
+broadcast=false
+liveDon=false
+
+--- official CLI ---
+  Compiling workflow...
+✓ Workflow compiled successfully
+  Binary hash: 675c914debdcf89c0220840aa04104d67080c1404ae473168a13c82b577c11d0
+✓ Build output written to /workspace/ops/cre/maintenance-courier/binary.wasm
+exit=0
+
+honest: this is official cre workflow build (WASM compile), not cre workflow simulate.
+honest: cre workflow simulate remains auth-blocked without CRE_API_KEY / cre login.
+honest: live CRE DON on EIP-155 1883 is not claimed.
+honest: Arc Mainnet 5042 CRE production-write is not listed / not used / not claimed.
+honest: repo-local Anvil / Arc Public Testnet demo is 5042002, not CRE catalog 1883.

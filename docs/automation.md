@@ -46,7 +46,7 @@ Two recorded proofs, same `MaintenanceJob` format:
 
 After #73 those proofs run on `.github/workflows/ci.yml`: fast+Solidity `foundry-targeted` `forge test` covers the Foundry contracts; full/main `solidity + size-guard` also re-runs both rehearsal scripts. The indexer unit suite does not spawn `forge` or `anvil`. Encode-only calldata identity is not that proof. See [CI and cost](/docs/ci).
 
-The #51 CRE simulator AC is **not closed**. Authenticated `cre workflow simulate` on catalog 1883 still needs a CRE tenant. See `ops/cre/simulation/cre-tenant-blocker.json`. The HTTP-trigger courier encodes the same `MaintenanceJob`; that is not the simulator PoC.
+The #51 CRE simulator AC is **not closed**. Authenticated `cre workflow simulate` on catalog 1883 still needs a CRE tenant. Official `cre workflow build` (CLI v1.33.0, no tenant) compiled the signed-job courier to WASM — `ops/cre/simulation/cre-workflow-build.json`. That compile is **not** a `Workflow Simulation Result`. See `ops/cre/simulation/cre-tenant-blocker.json`.
 
 Not a live CRE DON. Not claimed Arc Public Testnet. Not Arc Mainnet 5042. No human or AI click in the autonomous loop.
 

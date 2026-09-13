@@ -2,7 +2,7 @@
 
 Maintenance is **not** permissionless. `ReactorGuardian.keeper` is the onchain `AutomationGateway`. Relayers (Chainlink CRE, Gelato, a standby wallet, anyone) only deliver a short-lived EIP-712 `MaintenanceJob`. They have **no decision authority**. There is no bounty, no `KeeperReserve`, no public settle farming.
 
-**Roles — do not collapse:** the **decision service** (ValuationService + route sim + `/pricing/health`) chooses ranks and floors; the **auth signer** (`gateway.jobSigner`) signs that exact job; the **relayer** submits it; **Guardian** pauses / rotates. CRE does **not** decentralize Top-10 ranking. Authenticated `cre workflow simulate` on catalog 1883 is a remaining #51 external blocker (`ops/cre/simulation/cre-tenant-blocker.json`) — not a live DON and not 5042.
+**Roles — do not collapse:** the **decision service** (ValuationService + route sim + `/pricing/health`) chooses ranks and floors; the **auth signer** (`gateway.jobSigner`) signs that exact job; the **relayer** submits it; **Guardian** pauses / rotates. CRE does **not** decentralize Top-10 ranking. Official `cre workflow build` compiled the signed-job courier (`ops/cre/simulation/cre-workflow-build.json`). Authenticated `cre workflow simulate` on catalog 1883 is still a remaining #51 external blocker (`ops/cre/simulation/cre-tenant-blocker.json`) — not a live DON and not 5042.
 
 ## Jobs
 

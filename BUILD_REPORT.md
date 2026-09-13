@@ -15,7 +15,7 @@
 | Intent | Replace privileged Keeper EOA with `AutomationGateway` + short-lived signed `MaintenanceJob`. Relayers (CRE / Gelato / any) deliver only. |
 | Foundry | `AutomationGateway.t.sol` + `AutomationGatewayAuth.t.sol` + `MaintenanceFailover.t.sol` |
 | Indexer / lib | `maintenance-job.test.ts` + #46 obs units + #80 `brand.test.ts` in `test:web-unit` |
-| CRE | Auth-blocked `cre workflow simulate` is **not** the Arc Testnet CRE AC. |
+| CRE | Official `cre workflow build` compiled the signed-job courier (WASM hash in `cre-workflow-build.json`). Auth-blocked `cre workflow simulate` is **not** the Arc Testnet CRE AC. |
 | Replay | Onto `origin/main` `4915f3e` (#80 after #81). Replay commit `dfc97fc`. Restore exact-head `ci-full` so `solidity + size-guard` (failover rehearsal) runs. Playwright `web` / `obs-ui` pins read `docs/version.json` via CJS-safe `e2e/protocol-version.ts` (no `import.meta` in `*.spec.ts`). |
 
 | Mainnet | **Blocked** |
@@ -27,7 +27,7 @@
 | Gateway is `keeper`; typed jobs only | **Yes** | `AutomationGateway.sol` — no `target.call` |
 | EIP-712 job bind + first consume wins | **Yes** | `MaintenanceJob.sol` + auth tests |
 | Dual-relayer failover rehearsal | **Yes** | `MaintenanceFailover.t.sol` + full-tier `solidity + size-guard` |
-| CRE PoC + honest 5042 status | **Partial** | Tenant-blocker recorded. Authenticated Arc Testnet simulate remains the external blocker. |
+| CRE PoC + honest 5042 status | **Partial** | Official `cre workflow build` WASM compile recorded. Authenticated Arc Testnet `cre workflow simulate` remains the external blocker. |
 | Factory V1 | **Yes** | No Factory bytecode change |
 | #80 Industrial Forge preserved | **Yes** | Merged `4915f3e`: Direction C tokens/chrome/assets/docs. **#55 stays open** for audit. |
 | #81 CI path filter preserved | **Yes** | Merged `ff444cb`: `ci-decide.sh` / cheap docs-only path. **#69 stays open**. |
@@ -39,7 +39,7 @@
 | Blocker | Why |
 | --- | --- |
 | Public mainnet (5042) | Hard blocked. No addresses. |
-| Authenticated `cre workflow simulate` | **Remaining #51 AC / external blocker.** Evidence: `ops/cre/simulation/cre-tenant-blocker.json`. |
+| Authenticated `cre workflow simulate` | **Remaining #51 AC / external blocker.** Official `cre workflow build` is compile-only (`ops/cre/simulation/cre-workflow-build.json`) and does not close this. Evidence: `ops/cre/simulation/cre-tenant-blocker.json`. |
 | Close #51 | Stays open until post-merge `Guardian.keeper == AutomationGateway` verify. |
 | Exact-head GitHub Actions | This replay is a new SHA on `4915f3e`. Prior `887672d` / [`34741609138`](https://github.com/solarcurvey/reactor/actions/runs/34741609138) is superseded. Restore `ci-full` and watch exact-head `ci-ok` including `solidity + size-guard`. |
 

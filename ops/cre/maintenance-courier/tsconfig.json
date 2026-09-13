@@ -6,7 +6,9 @@
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": []
+    "allowImportingTsExtensions": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
   },
-  "include": ["./**/*.ts"]
+  "include": ["./main.ts", "./cre-handle.ts", "./encode.ts"]
 }
