@@ -1,7 +1,8 @@
 /**
  * Shared operator-policy fixtures for restricted UX e2e.
  * Import only `@playwright/test` here. Do not import e2e/helpers.ts
- * (axe-core) — apps/web tsconfig includes every `.ts` file under e2e.
+ * (axe-core). apps/web tsconfig excludes `e2e` so Next does not typecheck
+ * Playwright helpers.
  */
 import { spawn } from "node:child_process";
 import { join } from "node:path";
