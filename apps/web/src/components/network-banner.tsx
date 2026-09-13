@@ -14,7 +14,7 @@ export function NetworkBanner() {
       className={`border-b px-4 py-2 text-center text-[12px] ${
         wrong
           ? "border-red-500/30 bg-red-500/10 text-red-100"
-          : "border-cyan-300/15 bg-cyan-300/8 text-cyan-100"
+          : "border-rx-heat/20 bg-rx-heat/10 text-rx-ember"
       }`}
     >
       {wrong

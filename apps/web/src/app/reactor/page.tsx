@@ -60,7 +60,7 @@ export default function ReactorPage() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/8 pb-4">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-200/80">THE REACTOR</p>
+          <p className="rx-kicker">THE REACTOR</p>
           <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">Top-10 flywheel</h1>
           <p className="mt-1 max-w-2xl text-[13px] leading-5 text-zinc-400">
             1% of official quote volume, settled to USDC by the designated REACTOR Keeper, then buy+burn on API-ranked
@@ -89,7 +89,7 @@ export default function ReactorPage() {
         <p className="mt-4 text-[12px] text-zinc-400">{api.data.reason}</p>
       )}
 
-      <div className="mt-5 overflow-x-auto rounded-2xl border border-white/8">
+      <div className="mt-5 overflow-x-auto rounded-[4px] border border-white/10 bg-rx-steel/40">
         <table className="w-full min-w-[640px] text-left text-[13px]" aria-label="Top-10 API ranks">
           <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.16em] text-zinc-400">
             <tr>
@@ -112,7 +112,7 @@ export default function ReactorPage() {
             )}
             {ranks.map((r) => (
               <tr key={r.token} className="border-t border-white/6">
-                <td className="px-3 py-2 tabular-nums text-cyan-100">#{r.rank}</td>
+                <td className="px-3 py-2 font-semibold tabular-nums text-rx-heat">#{r.rank}</td>
                 <td className="px-3 py-2 font-medium text-white">
                   <UntrustedText field="ticker">${sanitizeTicker(r.symbol) || "TKN"}</UntrustedText>
                 </td>

@@ -1,0 +1,90 @@
+/**
+ * REACTOR — Industrial Forge (Direction C). Founder-locked Refs #55.
+ * Heat is the only accent. No cyan leftovers. No glow CTAs.
+ */
+
+:root {
+  --rx-slag: #12110f;
+  --rx-steel: #2a2c2e;
+  --rx-steel-bright: #3a3d41;
+  --rx-vessel: #8a8e92;
+  --rx-heat: #ff6b2b;
+  --rx-heat-hot: #ff8a4a;
+  --rx-ember: #ffb086;
+  --rx-paper: #ece8e1;
+  --rx-muted: #9aa4ad;
+  --rx-ink: #ece8e1;
+  --rx-cta-ink: #12110f;
+  --rx-up: #3dcc8a;
+  --rx-down: #e85d4c;
+  --rx-warn: #e8b86d;
+  --rx-radius-card: 4px;
+  --rx-radius-chip: 2px;
+  --rx-radius-control: 4px;
+  --background: var(--rx-slag);
+  --foreground: var(--rx-paper);
+  --graphite: var(--rx-steel);
+  --ring: var(--rx-heat);
+}
+
+@theme inline {
+  --color-rx-slag: var(--rx-slag);
+  --color-rx-steel: var(--rx-steel);
+  --color-rx-steel-bright: var(--rx-steel-bright);
+  --color-rx-vessel: var(--rx-vessel);
+  --color-rx-heat: var(--rx-heat);
+  --color-rx-heat-hot: var(--rx-heat-hot);
+  --color-rx-ember: var(--rx-ember);
+  --color-rx-paper: var(--rx-paper);
+  --color-rx-muted: var(--rx-muted);
+  --color-rx-ink: var(--rx-ink);
+  --color-rx-up: var(--rx-up);
+  --color-rx-down: var(--rx-down);
+  --color-rx-warn: var(--rx-warn);
+}
+
+.rx-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rx-heat);
+}
+
+.rx-stamp {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rx-muted);
+}
+
+.rx-link {
+  color: var(--rx-ember);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.rx-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--rx-radius-chip);
+  border: 1px solid color-mix(in srgb, var(--rx-heat) 35%, transparent);
+  background: color-mix(in srgb, var(--rx-heat) 12%, transparent);
+  padding: 0.125rem 0.5rem;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rx-ember);
+}
+
+.rx-avatar {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--rx-radius-chip);
+  border: 1px solid color-mix(in srgb, var(--rx-vessel) 40%, transparent);
+  background: var(--rx-steel);
+  color: var(--rx-ember);
+}

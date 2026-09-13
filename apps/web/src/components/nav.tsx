@@ -11,7 +11,7 @@ const links = [
   { href: "/search", label: "Search", wide: true },
   { href: "/launch", label: "Ignite" },
   { href: "/trade", label: "Trade", wide: true },
-  { href: "/reactor", label: "Reactor" },
+  { href: "/reactor", label: "THE REACTOR" },
   { href: "/rewards", label: "Rewards", wide: true },
   { href: "/core", label: "CORE" },
   { href: "/docs", label: "Docs" },
@@ -20,7 +20,7 @@ const links = [
 export function Nav() {
   const path = usePathname();
   return (
-    <header className="sticky top-0 z-40 border-b border-white/6 bg-[#0b0d10]/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-white/8 bg-rx-slag/88 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-3">
         <Link href="/" className="shrink-0" aria-label="REACTOR home">
           <Wordmark compact />
@@ -34,9 +34,9 @@ export function Nav() {
                 href={l.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "shrink-0 rounded-full px-2 py-1.5 text-zinc-400 hover:text-white sm:px-3",
+                  "shrink-0 rounded-[2px] px-2 py-1.5 text-rx-muted hover:text-rx-paper sm:px-3",
                   l.wide && "hidden sm:inline-flex",
-                  active && "bg-white/8 text-white",
+                  active && "bg-white/8 text-rx-paper",
                 )}
               >
                 {l.label}

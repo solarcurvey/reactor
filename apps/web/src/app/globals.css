@@ -1,11 +1,5 @@
 @import "tailwindcss";
-
-:root {
-  --background: #0b0d10;
-  --foreground: #f4f7fb;
-  --graphite: #121418;
-  --ring: #7ee8ff;
-}
+@import "../styles/brand-tokens.css";
 
 @theme inline {
   --color-background: var(--background);
@@ -23,14 +17,16 @@ body {
 
 body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
   background-image:
-    radial-gradient(900px 480px at 50% -10%, rgba(126, 232, 255, 0.09), transparent 55%),
-    radial-gradient(700px 360px at 100% 10%, rgba(80, 140, 180, 0.08), transparent 50%),
-    linear-gradient(#0b0d10, #0b0d10);
+    radial-gradient(820px 420px at 8% -8%, color-mix(in srgb, var(--rx-heat) 16%, transparent), transparent 58%),
+    radial-gradient(640px 320px at 100% 0%, color-mix(in srgb, var(--rx-steel) 55%, transparent), transparent 52%),
+    linear-gradient(var(--rx-slag), var(--rx-slag));
 }
 
 ::selection {
-  background: rgba(126, 232, 255, 0.28);
+  background: color-mix(in srgb, var(--rx-heat) 36%, transparent);
+  color: var(--rx-paper);
 }
 
 .live-toast-motion article {
@@ -53,12 +49,12 @@ body {
   left: 0.75rem;
   top: -3.5rem;
   z-index: 70;
-  border-radius: 999px;
-  background: #7ee8ff;
-  color: #0b0d10;
+  border-radius: var(--rx-radius-chip);
+  background: var(--rx-heat);
+  color: var(--rx-cta-ink);
   padding: 0.45rem 0.9rem;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .skip-link:focus {
@@ -70,7 +66,7 @@ button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid #7ee8ff;
+  outline: 2px solid var(--rx-heat);
   outline-offset: 2px;
 }
 
@@ -101,25 +97,27 @@ select:focus-visible {
 
 .docs-prose h1 {
   font-size: 1.75rem;
-  letter-spacing: -0.02em;
-  color: #fff;
+  letter-spacing: -0.01em;
+  font-weight: 650;
+  color: var(--rx-paper);
 }
 
 .docs-prose h2 {
   margin-top: 1.75rem;
   font-size: 1.15rem;
-  color: #f4f7fb;
+  font-weight: 650;
+  color: var(--rx-paper);
 }
 
 .docs-prose h3 {
   margin-top: 1.25rem;
   font-size: 0.95rem;
-  color: #d4d4d8;
+  color: var(--rx-muted);
 }
 
 .docs-prose code {
-  border-radius: 0.35rem;
-  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--rx-radius-chip);
+  background: color-mix(in srgb, var(--rx-steel) 80%, transparent);
   padding: 0.1rem 0.35rem;
   font-size: 0.8em;
 }

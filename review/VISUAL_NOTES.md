@@ -1,4 +1,6 @@
-# Visual notes — current UI (2026-09-12)
+# Visual notes — Industrial Forge (2026-09-13)
+
+Canonical brand is Direction C. Baselines must match slag / steel / heat + the vessel mark. #36 `web-qa` fails unexplained drift.
 
 CI visual gate is Linux Chromium against the **production `next build`** at 1440 / 1280 / 390 / 360. `review/` captures remain 1440 + 390 (`CAPTURE=1`, `BONDING_TOKEN=0x1111…0004` Neon, `NEXT_PUBLIC_REVIEW_FIXTURES=1`). No review-fixture FDV slider.
 

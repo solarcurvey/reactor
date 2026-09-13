@@ -37,6 +37,7 @@ export const DOCS: { slug: string; title: string; group: string; file: string }[
   { slug: "versioning", title: "Versioning", group: "Reference", file: "versioning.md" },
   { slug: "changelog", title: "Changelog", group: "Reference", file: "changelog.md" },
   { slug: "policy", title: "Docs policy", group: "Reference", file: "policy.md" },
+  { slug: "brand", title: "Brand", group: "Reference", file: "brand.md" },
   { slug: "ci", title: "CI and cost", group: "Reference", file: "ci.md" },
   { slug: "faq", title: "FAQ", group: "Reference", file: "faq.md" },
   { slug: "glossary", title: "Glossary", group: "Reference", file: "glossary.md" },

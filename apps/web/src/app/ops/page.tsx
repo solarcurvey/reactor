@@ -90,7 +90,7 @@ export default function OpsPage() {
   return (
     <div>
       <div className="border-b border-white/8 pb-4">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-200/80">Internal</p>
+        <p className="rx-kicker">Internal</p>
         <h1 className="mt-1 text-2xl font-semibold text-white">Ops</h1>
         <p className="mt-1 max-w-2xl text-[13px] text-zinc-400">
           Internal only — not in public nav. Requires OPS_TOKEN. Keeper / Watchdog / Pricing signer keys stay isolated.

@@ -22,6 +22,7 @@ Any change to the following **must** update the corresponding docs **in the same
 | Exact official-list screening / OFAC ingest | `SANCTIONS.md`, `/docs/sanctions`, `/docs/api`, `/docs/trust` |
 | Geo / jurisdiction policy | `/docs/geo-policy`, `THREAT_MODEL.md`, `/docs/trust`, versioned `apps/indexer/config/geo-policy-us-comprehensive.v*.json` (source + effective date). No UI country lists. |
 | User-facing behavior | matching `/docs` audience page + `UX_REFERENCE.md` if UX |
+| Brand / visual identity / launch assets | [`/docs/brand`](docs/brand.md), `UX_REFERENCE.md`, `PROJECT.md` brand constraints. Founder lock is Direction C; #55 stays open for audit |
 | Deployed addresses / chain / verification | `deployments/registry.json` + `pnpm docs:gen` (never invent mainnet addresses) |
 | Protocol release identity | `docs/version.json`, `CHANGELOG.md`, git tag, `pnpm docs:gen` |
 

@@ -59,7 +59,7 @@ export default function CorePage() {
         <div className="flex items-center gap-4">
           <ReactorCore />
           <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-amber-200/90">GENESIS · not Instant</p>
+            <p className="rx-kicker">GENESIS · not Instant</p>
             <h1 className="text-2xl font-semibold">CORE</h1>
             <p className="mt-1 max-w-xl text-[13px] text-zinc-400">
               Permanent official CORE/USDC pool from genesis — no bonding, no graduation, never Top-10. 1B minted once:

@@ -23,7 +23,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[240px_1fr]">
       <aside className="lg:sticky lg:top-16 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-        <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/80">Docs · 0.3.0</p>
+        <p className="rx-kicker">Docs · 0.3.3</p>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}

@@ -24,7 +24,8 @@ export default function RewardsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Rewards</h1>
+      <p className="rx-kicker">Holders</p>
+      <h1 className="mt-1 text-2xl font-semibold">Rewards</h1>
       <p className="mt-1 max-w-xl text-[13px] text-zinc-400">
         2% of official volume → holders in the quote you chose. No staking. Connect to load claimable balances.
       </p>
@@ -41,7 +42,7 @@ export default function RewardsPage() {
         />
       )}
       {(rows ?? []).length > 0 && (
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-white/8">
+        <div className="mt-4 overflow-x-auto rounded-[4px] border border-white/8">
           <table className="w-full min-w-[520px] text-left text-[13px]">
             <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.16em] text-zinc-400">
               <tr>

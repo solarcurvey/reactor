@@ -44,4 +44,4 @@ Social feed, DMs, NFTs, governance, referrals, creator royalties, platform tradi
 
 ## Brand constraints (clean-room)
 
-Study public launchpad UX hierarchy only. No proprietary copy, assets, logos, or exact text. No Marvel / Iron Man / Stark branding. Do not name the product “Arc Reactor”. Original concentric-ring mark. Dark graphite, luminous energy core, cyan/blue-white glow, crisp white type.
+Study public launchpad UX hierarchy only. No proprietary copy, assets, logos, or exact text. No Marvel / Iron Man / Stark branding. Do not name the product “Arc Reactor”. Canonical identity is **Industrial Forge** (Direction C): steel vessel, hexagonal ember, one heat notch, slag/steel/heat palette. See [`docs/brand.md`](docs/brand.md). Issue #55 stays open until independent audit.
