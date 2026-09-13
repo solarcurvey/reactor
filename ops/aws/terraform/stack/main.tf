@@ -1,8 +1,17 @@
 locals {
   roles = {
-    authorizer = { handler = "authorizerHandler", timeout = 30 }
-    relay-a    = { handler = "relayAHandler", timeout = 55 }
-    relay-b    = { handler = "relayBHandler", timeout = 55 }
+    authorizer = {
+      handler = "authorizerHandler"
+      timeout = 30
+    }
+    relay-a = {
+      handler = "relayAHandler"
+      timeout = 55
+    }
+    relay-b = {
+      handler = "relayBHandler"
+      timeout = 55
+    }
   }
   metric_roles = {
     authorizer = "authorizer"
@@ -19,7 +28,8 @@ data "archive_file" "worker" {
 }
 
 resource "aws_kms_key" "runtime" {
-  for_each                 = local.roles
+  for_each = local.roles
+
   description              = "REACTOR ${var.environment} ${each.key} secp256k1 signing key"
   key_usage                = "SIGN_VERIFY"
   customer_master_key_spec = "ECC_SECG_P256K1"
@@ -28,7 +38,8 @@ resource "aws_kms_key" "runtime" {
 }
 
 resource "aws_kms_alias" "runtime" {
-  for_each      = local.roles
+  for_each = local.roles
+
   name          = "alias/reactor-${var.environment}-${each.key}"
   target_key_id = aws_kms_key.runtime[each.key].key_id
 }
@@ -48,6 +59,7 @@ resource "aws_secretsmanager_secret" "rpc_url" {
 data "aws_iam_policy_document" "lambda_assume" {
   statement {
     actions = ["sts:AssumeRole"]
+
     principals {
       type        = "Service"
       identifiers = ["lambda.amazonaws.com"]
@@ -56,13 +68,15 @@ data "aws_iam_policy_document" "lambda_assume" {
 }
 
 resource "aws_iam_role" "runtime" {
-  for_each           = local.roles
+  for_each = local.roles
+
   name               = "${local.name}-${each.key}"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
 }
 
 resource "aws_iam_role_policy_attachment" "basic_logs" {
-  for_each   = local.roles
+  for_each = local.roles
+
   role       = aws_iam_role.runtime[each.key].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
@@ -85,13 +99,15 @@ data "aws_iam_policy_document" "runtime" {
 
 resource "aws_iam_role_policy" "runtime" {
   for_each = local.roles
-  name     = "${local.name}-${each.key}"
-  role     = aws_iam_role.runtime[each.key].id
-  policy   = data.aws_iam_policy_document.runtime[each.key].json
+
+  name   = "${local.name}-${each.key}"
+  role   = aws_iam_role.runtime[each.key].id
+  policy = data.aws_iam_policy_document.runtime[each.key].json
 }
 
 resource "aws_cloudwatch_log_group" "worker" {
-  for_each          = local.roles
+  for_each = local.roles
+
   name              = "/aws/lambda/${local.name}-${each.key}"
   retention_in_days = var.log_retention_days
 }
@@ -99,30 +115,30 @@ resource "aws_cloudwatch_log_group" "worker" {
 resource "aws_lambda_function" "worker" {
   for_each = local.roles
 
-  function_name = "${local.name}-${each.key}"
-  role          = aws_iam_role.runtime[each.key].arn
-  runtime       = "nodejs22.x"
-  handler       = "worker.${each.value.handler}"
-  filename      = data.archive_file.worker.output_path
-  source_code_hash = data.archive_file.worker.output_base64sha256
-  timeout       = each.value.timeout
-  memory_size   = 256
+  function_name                  = "${local.name}-${each.key}"
+  role                           = aws_iam_role.runtime[each.key].arn
+  runtime                        = "nodejs22.x"
+  handler                        = "worker.${each.value.handler}"
+  filename                       = data.archive_file.worker.output_path
+  source_code_hash               = data.archive_file.worker.output_base64sha256
+  timeout                        = each.value.timeout
+  memory_size                    = 256
   reserved_concurrent_executions = 1
 
   environment {
     variables = {
-      REACTOR_ENV                       = var.environment == "prod" ? "PROD" : "STAGING"
-      MAINTENANCE_CHAIN_ID              = tostring(var.chain_id)
-      MAINTENANCE_GATEWAY_ADDRESS       = var.gateway_address
-      MAINTENANCE_JOB_SIGNER_ADDRESS    = var.job_signer_address
-      MAINTENANCE_API_BASE              = var.maintenance_api_base
-      MAINTENANCE_API_TOKEN_SECRET_ID   = aws_secretsmanager_secret.maintenance_api_token.arn
-      MAINTENANCE_RPC_URL_SECRET_ID     = aws_secretsmanager_secret.rpc_url.arn
-      MAINTENANCE_KMS_KEY_ID            = aws_kms_key.runtime["authorizer"].key_id
-      RELAY_A_KMS_KEY_ID                = aws_kms_key.runtime["relay-a"].key_id
-      RELAY_B_KMS_KEY_ID                = aws_kms_key.runtime["relay-b"].key_id
-      RELAY_B_DELAY_MS                  = tostring(var.relay_b_delay_ms)
-      MAINTENANCE_FORBIDDEN_ADDRESSES   = var.forbidden_addresses
+      REACTOR_ENV                     = var.environment == "prod" ? "PROD" : "STAGING"
+      MAINTENANCE_CHAIN_ID            = tostring(var.chain_id)
+      MAINTENANCE_GATEWAY_ADDRESS     = var.gateway_address
+      MAINTENANCE_JOB_SIGNER_ADDRESS  = var.job_signer_address
+      MAINTENANCE_API_BASE            = var.maintenance_api_base
+      MAINTENANCE_API_TOKEN_SECRET_ID = aws_secretsmanager_secret.maintenance_api_token.arn
+      MAINTENANCE_RPC_URL_SECRET_ID   = aws_secretsmanager_secret.rpc_url.arn
+      MAINTENANCE_KMS_KEY_ID          = aws_kms_key.runtime["authorizer"].key_id
+      RELAY_A_KMS_KEY_ID              = aws_kms_key.runtime["relay-a"].key_id
+      RELAY_B_KMS_KEY_ID              = aws_kms_key.runtime["relay-b"].key_id
+      RELAY_B_DELAY_MS                = tostring(var.relay_b_delay_ms)
+      MAINTENANCE_FORBIDDEN_ADDRESSES = var.forbidden_addresses
     }
   }
 
@@ -130,21 +146,24 @@ resource "aws_lambda_function" "worker" {
 }
 
 resource "aws_cloudwatch_event_rule" "schedule" {
-  for_each            = var.schedules_enabled ? local.roles : {}
+  for_each = var.schedules_enabled ? local.roles : {}
+
   name                = "${local.name}-${each.key}"
   description         = "REACTOR ${each.key} managed-maintenance tick"
   schedule_expression = var.schedule_expression
 }
 
 resource "aws_cloudwatch_event_target" "schedule" {
-  for_each  = var.schedules_enabled ? local.roles : {}
+  for_each = var.schedules_enabled ? local.roles : {}
+
   rule      = aws_cloudwatch_event_rule.schedule[each.key].name
   target_id = each.key
   arn       = aws_lambda_function.worker[each.key].arn
 }
 
 resource "aws_lambda_permission" "events" {
-  for_each      = var.schedules_enabled ? local.roles : {}
+  for_each = var.schedules_enabled ? local.roles : {}
+
   statement_id  = "AllowEventBridge-${each.key}"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.worker[each.key].function_name
@@ -153,7 +172,8 @@ resource "aws_lambda_permission" "events" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
-  for_each            = local.roles
+  for_each = local.roles
+
   alarm_name          = "${local.name}-${each.key}-errors"
   namespace           = "AWS/Lambda"
   metric_name         = "Errors"
@@ -167,7 +187,8 @@ resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "heartbeat" {
-  for_each            = var.schedules_enabled ? local.roles : {}
+  for_each = var.schedules_enabled ? local.roles : {}
+
   alarm_name          = "${local.name}-${each.key}-heartbeat-missing"
   namespace           = "REACTOR/ManagedRelay"
   metric_name         = "Heartbeat"
@@ -181,7 +202,8 @@ resource "aws_cloudwatch_metric_alarm" "heartbeat" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "relay_balance" {
-  for_each            = var.schedules_enabled ? toset(["relay-a", "relay-b"]) : toset([])
+  for_each = var.schedules_enabled ? toset(["relay-a", "relay-b"]) : toset([])
+
   alarm_name          = "${local.name}-${each.key}-low-gas-balance"
   namespace           = "REACTOR/ManagedRelay"
   metric_name         = "RelayGasBalance"
