@@ -20,6 +20,7 @@ External quote USD marks are a configured provider registry with multi-source co
 - Launch authorization and material Top-10 candidates fail closed on provider outage or deviation. Trading continues. Isolated signer still requires the durable store (#26).
 - Guardian-added external quotes must have providers configured and `/pricing/health` ok before launch eligibility.
 - Watchdog reads rejected consensus reasons from `/pricing/health`.
+- Indexed `/page/token` and `/markets/:token` bonding/ready rows bind official InstantCurve (and merge review fixtures) so production trade routes InstantCurve BUY/SELL and Ready graduate. E2E mock serves those reads after #50.
 
 ### Tokenomics
 

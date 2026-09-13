@@ -107,7 +107,7 @@ test.describe("production build — wallet journeys", () => {
     await expect(page.getByRole("heading", { name: /^Ready$/i })).toBeVisible();
     await connectWallet(page);
     await expect(page.getByRole("button", { name: /Graduate to locked v4/i })).toBeVisible();
-    await page.getByRole("button", { name: /Graduate to locked v4/i }).click();
+    await clickTradeAction(page, /Graduate to locked v4/i);
     await expect(page.getByText(/tx 0x/i)).toBeVisible({ timeout: 20_000 });
     const txs = await recordedTxs(page);
     expect(lastTo(txs, ADDR.InstantCurve), "graduate → InstantCurve").toBeTruthy();
@@ -138,7 +138,7 @@ test.describe("production build — wallet journeys", () => {
     await page.goto(`/token/${TOKENS.ZCAT}`);
     await expect(page.getByText(/Holder rewards/i)).toBeVisible();
     await expect(page.getByRole("button", { name: /^Claim$/i })).toBeEnabled({ timeout: 15_000 });
-    await page.getByRole("button", { name: /^Claim$/i }).click({ force: true });
+    await clickTradeAction(page, /^Claim$/i);
     await expect(page.getByText(/Claimed\.|tx 0x/i)).toBeVisible({ timeout: 20_000 });
     const txs = await recordedTxs(page);
     expect(lastTo(txs, TOKENS.ZCAT), "claimRewards on token").toBeTruthy();
