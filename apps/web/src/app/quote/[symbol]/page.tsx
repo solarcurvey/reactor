@@ -48,9 +48,11 @@ export default function QuotePage() {
         <Stat k="Rewards / Buy+Burn" v={`${rewardsN} / ${burnN}`} />
       </div>
 
-      {isLoading && <p className="mt-6 text-sm text-zinc-500">Reading markets…</p>}
+      {isLoading && <p className="mt-6 text-sm text-zinc-400">Reading markets…</p>}
       {!isLoading && markets.length === 0 && (
-        <p className="mt-6 text-sm text-zinc-500">No launches quoted in {sym} yet.</p>
+        <p data-testid="quote-empty" className="mt-6 text-sm text-zinc-400">
+          No launches quoted in {sym} yet.
+        </p>
       )}
 
       <div className="mt-6 space-y-2">
@@ -59,9 +61,9 @@ export default function QuotePage() {
             <Card className="flex items-center justify-between p-3 hover:border-cyan-300/30">
               <div>
                 <div className="font-medium text-white">
-                  {t.name} <span className="font-mono text-xs text-zinc-500">${t.symbol}</span>
+                  {t.name} <span className="font-mono text-xs text-zinc-400">${t.symbol}</span>
                 </div>
-                <div className="text-[11px] uppercase tracking-wider text-zinc-500">
+                <div className="text-[11px] uppercase tracking-wider text-zinc-400">
                   {t.rewardsMode === false ? "BUY+BURN" : `EARNS ${sym}`}
                   {t.bonding ? ` · ${((t.bondingBps ?? 0) / 100).toFixed(0)}% bonded` : t.marketLive ? " · v4" : ""}
                 </div>
@@ -80,7 +82,7 @@ export default function QuotePage() {
 function Stat({ k, v }: { k: string; v: string }) {
   return (
     <Card className="p-3">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{k}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{k}</div>
       <div className="mt-1 text-lg font-medium text-white">{v}</div>
     </Card>
   );

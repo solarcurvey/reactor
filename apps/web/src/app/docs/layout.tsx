@@ -33,7 +33,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
         <nav className="mt-3 space-y-3 text-[13px]">
           {groups.map(([g, items]) => (
             <div key={g}>
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">{g}</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">{g}</div>
               <ul className="mt-1 space-y-0.5">
                 {items.map((d) => {
                   const href = d.slug ? `/docs/${d.slug}` : "/docs";

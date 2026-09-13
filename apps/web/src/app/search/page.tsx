@@ -6,6 +6,8 @@ import { useLaunchTokens } from "@/lib/hooks";
 import { formatUnitsSafe } from "@/lib/utils";
 import { tokenPath } from "@/lib/untrusted-metadata";
 import { UntrustedText } from "@/components/untrusted-text";
+import { ServiceFailure } from "@/components/service-failure";
+import { isServiceUnavailable } from "@/lib/qa-inject";
 
 export default function SearchPage() {
   const [q, setQ] = useState("");
@@ -17,7 +19,7 @@ export default function SearchPage() {
     return () => clearTimeout(t);
   }, [q]);
 
-  const { data, isLoading, isError } = useLaunchTokens({
+  const { data, isLoading, isError, error, refetch } = useLaunchTokens({
     q: debounced,
     stage: stage === "all" ? undefined : stage,
     limit: 80,
@@ -52,9 +54,14 @@ export default function SearchPage() {
           </button>
         ))}
       </div>
-      {isLoading && <p className="mt-6 text-sm text-zinc-500">Loading markets…</p>}
-      {isError && <p className="mt-6 text-sm text-red-300">Indexer unreachable.</p>}
-      {!isLoading && items.length === 0 && <p className="mt-6 text-sm text-zinc-500">No matches.</p>}
+      {isLoading && <p className="mt-6 text-sm text-zinc-400">Loading markets…</p>}
+      {isError && (
+        <ServiceFailure
+          kind={isServiceUnavailable(error) ? error.kind : "indexer"}
+          onRetry={() => refetch()}
+        />
+      )}
+      {!isLoading && items.length === 0 && <p className="mt-6 text-sm text-zinc-400">No matches.</p>}
       <ul className="mt-4 divide-y divide-white/8 rounded-2xl border border-white/8">
         {items.map((t) => (
           <li key={t.token}>
@@ -63,7 +70,7 @@ export default function SearchPage() {
                 <UntrustedText field="name" className="font-medium">
                   {t.name}
                 </UntrustedText>
-                <UntrustedText field="ticker" className="ml-2 font-mono text-[12px] text-zinc-500">
+                <UntrustedText field="ticker" className="ml-2 font-mono text-[12px] text-zinc-400">
                   ${t.symbol}
                 </UntrustedText>
               </span>

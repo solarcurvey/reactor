@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { INDEXER_URL } from "./chain";
 import { streamEndpoint } from "./live-toasts";
 import { applyLiveEventToClient, type LiveEvent } from "./live-cache";
+import { useQaInject } from "@/components/qa-inject-provider";
 
 export type { LiveEvent };
 
@@ -97,9 +98,11 @@ export function useReactorLive() {
 }
 
 export function useReactorStream() {
+  const inject = useQaInject();
   const [last, setLast] = useState<LiveEvent | null>(null);
   const [ok, setOk] = useState(false);
   useEffect(() => {
+    if (inject === "sse") return;
     return subscribeReactorStream((ev) => {
       if (ev.type === "error") {
         setOk(false);
@@ -109,6 +112,6 @@ export function useReactorStream() {
       else if (ev.type !== "ping") setOk(true);
       setLast(ev);
     });
-  }, []);
+  }, [inject]);
   return { last, ok };
 }

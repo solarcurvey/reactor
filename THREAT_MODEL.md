@@ -82,6 +82,7 @@ Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, 
 - `POST /upload` already stream-caps at 2MB.
 - The public Next BFF `/api/launch-pricing` applies the same 16KiB default / 64KiB hard max before proxying.
 - Rate limits (quote / upload / pricing) are separate. Body caps + RPM are not a complete L7 DoS proof.
+- The consumer UI fails visible on indexer / RPC / quote outages (no empty-board disguise, no 0/1 minOut ticket). Review-only `?inject=` is not a production control.
 
 ## Repository / GitHub Actions (not custody)
 

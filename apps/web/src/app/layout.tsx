@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Nav } from "@/components/nav";
 import { NetworkBanner } from "@/components/network-banner";
+import { QaInjectBar } from "@/components/qa-inject-bar";
+import { QaInjectProvider } from "@/components/qa-inject-provider";
+import { LiveToastProvider } from "@/components/live-toasts";
+import { LiveCacheProvider } from "@/lib/sse";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,12 +32,30 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" data-csp-nonce={nonce}>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
+          <a href="#content" className="skip-link">
+            Skip to main content
+          </a>
           <NetworkBanner />
-          <Nav />
-          <main className="mx-auto min-h-[calc(100vh-8rem)] max-w-7xl px-4 py-5 sm:py-6">{children}</main>
-          <footer className="border-t border-white/6 px-4 py-6 text-center text-[11px] uppercase tracking-[0.16em] text-zinc-500">
-            REACTOR · Built on Arc · Not audited · Test / local only
-          </footer>
+          <Suspense fallback={null}>
+            <QaInjectProvider>
+              <LiveCacheProvider>
+                <LiveToastProvider>
+                  <QaInjectBar />
+                  <Nav />
+                  <main
+                    id="content"
+                    tabIndex={-1}
+                    className="mx-auto min-h-[calc(100vh-8rem)] max-w-7xl px-4 py-5 sm:py-6 outline-none"
+                  >
+                    {children}
+                  </main>
+                  <footer className="border-t border-white/6 px-4 py-6 text-center text-[11px] uppercase tracking-[0.16em] text-zinc-400">
+                    REACTOR · Built on Arc · Not audited · Test / local only
+                  </footer>
+                </LiveToastProvider>
+              </LiveCacheProvider>
+            </QaInjectProvider>
+          </Suspense>
         </Providers>
       </body>
     </html>

@@ -1,6 +1,6 @@
 # Visual notes — current UI (2026-09-12)
 
-Recaptured at 1440 and 390 against current UI (`CAPTURE=1`, `BONDING_TOKEN=0x1111…0004` Neon, `NEXT_PUBLIC_REVIEW_FIXTURES=1`). No review-fixture FDV slider.
+CI visual gate is Linux Chromium against the **production `next build`** at 1440 / 1280 / 390 / 360. `review/` captures remain 1440 + 390 (`CAPTURE=1`, `BONDING_TOKEN=0x1111…0004` Neon, `NEXT_PUBLIC_REVIEW_FIXTURES=1`). No review-fixture FDV slider.
 
 | Surface | Notes |
 | --- | --- |
@@ -9,3 +9,4 @@ Recaptured at 1440 and 390 against current UI (`CAPTURE=1`, `BONDING_TOKEN=0x111
 | Bonding token | `/token/0x1111…0004` Neon bonding terminal. No FDV knobs. |
 | CORE | Genesis copy. Never Top-10. Confirmed buy+burn toast is bottom-right, not this page. |
 | THE REACTOR | Offchain ranks / not a trustless oracle. Confirmed `Top10Buy` toast is bottom-right. |
+| Failures | `?inject=` matrix (quote codes, pricing, upload, SSE, empty, invalid, wallet) + `/?qa=1` inject bar. CI `web-qa` (`ci.yml` full/main) owns `toHaveScreenshot` baselines (1440 / 1280 / 390 / 360) and fails on unexpected console errors / hydration / page exceptions. |

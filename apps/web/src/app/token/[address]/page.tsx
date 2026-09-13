@@ -14,6 +14,9 @@ import { quotePath } from "@/lib/untrusted-metadata";
 import { SafeExternalLink } from "@/components/safe-link";
 import { UntrustedText } from "@/components/untrusted-text";
 import { sanitizeDisplayText } from "@/lib/untrusted-metadata";
+import { ServiceFailure } from "@/components/service-failure";
+import { isServiceUnavailable } from "@/lib/qa-inject";
+import { useQaInject } from "@/components/qa-inject-provider";
 
 const INTERVALS = [
   { id: "1m", sec: 60 },
@@ -27,25 +30,38 @@ const INTERVALS = [
 export default function TokenPage() {
   const { address } = useParams<{ address: `0x${string}` }>();
   const [interval, setInterval] = useState<(typeof INTERVALS)[number]["id"]>("5m");
-  const { data: page, isLoading } = useTokenPage(address, interval);
+  const { data: page, isLoading, isError, error, refetch } = useTokenPage(address, interval);
   const { data: core } = useCoreStats();
+  const inject = useQaInject();
   const t = page?.market;
   const tape = page?.swaps;
   const ohlcv = page?.ohlcv;
 
+  if (inject === "token-invalid") {
+    return <ServiceFailure kind="token-invalid" />;
+  }
+
   if (isLoading) {
     return (
       <div aria-busy="true">
-        <p className="text-sm text-zinc-500">Loading token…</p>
+        <p className="text-sm text-zinc-400">Loading token…</p>
         <div className="mt-4 h-48 animate-pulse rounded-2xl bg-white/[0.04]" />
       </div>
+    );
+  }
+  if (isError) {
+    return (
+      <ServiceFailure
+        kind={isServiceUnavailable(error) ? error.kind : "indexer"}
+        onRetry={() => refetch()}
+      />
     );
   }
   if (!t) {
     return (
       <div>
         <h1 className="text-2xl font-semibold">Token not found</h1>
-        <p className="mt-2 text-sm text-zinc-500">This address is not a factory launch on the connected chain.</p>
+        <p className="mt-2 text-sm text-zinc-400">This address is not a factory launch on the connected chain.</p>
         <Link href="/" className="mt-4 inline-block text-sm text-cyan-200 underline">
           Back to the board
         </Link>
@@ -60,7 +76,7 @@ export default function TokenPage() {
           <UntrustedText as="h1" field="name" className="text-2xl font-semibold">
             {t.name}
           </UntrustedText>
-          <UntrustedText field="ticker" className="font-mono text-sm text-zinc-500">
+          <UntrustedText field="ticker" className="font-mono text-sm text-zinc-400">
             ${t.symbol}
           </UntrustedText>
           <Link
@@ -80,13 +96,13 @@ export default function TokenPage() {
           ) : null}
         </div>
         <div className="flex flex-wrap gap-3 text-[11px] uppercase tracking-wider">
-          <Link href="/docs/fees" className="text-zinc-500 hover:text-cyan-200">
+          <Link href="/docs/fees" className="text-zinc-400 hover:text-cyan-200">
             Fees
           </Link>
-          <Link href="/docs/curve" className="text-zinc-500 hover:text-cyan-200">
+          <Link href="/docs/curve" className="text-zinc-400 hover:text-cyan-200">
             Curve
           </Link>
-          <Link href="/trade" className="text-zinc-500 hover:text-cyan-200">
+          <Link href="/trade" className="text-zinc-400 hover:text-cyan-200">
             All markets
           </Link>
         </div>
@@ -96,7 +112,7 @@ export default function TokenPage() {
         <div>
         <Card className="h-64 p-2 sm:h-72">
           <div className="flex items-center justify-between px-2 pt-1">
-            <span className="text-[10px] uppercase tracking-wider text-zinc-500">
+            <span className="text-[10px] uppercase tracking-wider text-zinc-400">
               OHLCV · bonding→v4 · {ohlcv?.sparse ? "sparse" : "continuous"}
             </span>
             <div className="flex gap-1">
@@ -114,7 +130,7 @@ export default function TokenPage() {
             </div>
           </div>
           {(ohlcv?.candles ?? []).length === 0 ? (
-            <div className="grid h-[calc(100%-1.5rem)] place-items-center text-sm text-zinc-500">
+            <div className="grid h-[calc(100%-1.5rem)] place-items-center text-sm text-zinc-400">
               No indexed candles yet. Trades still settle onchain.
             </div>
           ) : (
@@ -122,9 +138,9 @@ export default function TokenPage() {
           )}
         </Card>
         <Card className="mb-3 p-3" id="tape">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Trade tape · /swaps</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Trade tape · /swaps</div>
           {(tape ?? []).length === 0 ? (
-            <p className="mt-2 text-[12px] text-zinc-500">No prints yet. Chart uses candles, not this tape.</p>
+            <p className="mt-2 text-[12px] text-zinc-400">No prints yet. Chart uses candles, not this tape.</p>
           ) : (
             <ul className="mt-2 max-h-40 space-y-1 overflow-auto text-[12px] font-mono text-zinc-300">
               {[...(tape ?? [])].slice(-24).reverse().map((s, i) => (
@@ -144,7 +160,7 @@ export default function TokenPage() {
         <div id="trade">
           {t.bonding && (
             <Card className="mb-3 p-3 text-[13px] text-zinc-300">
-              <div className="flex justify-between text-[11px] uppercase tracking-wider text-zinc-500">
+              <div className="flex justify-between text-[11px] uppercase tracking-wider text-zinc-400">
                 <span>Bonding</span>
                 <span>{((t.bondingBps ?? 0) / 100).toFixed(1)}%</span>
               </div>
@@ -157,7 +173,7 @@ export default function TokenPage() {
                 inventory locks on the curve. Chart continues on v4 after graduation.
               </p>
               {t.devBought && t.devBought > 0n ? (
-                <p className="mt-1 text-[11px] text-zinc-500">
+                <p className="mt-1 text-[11px] text-zinc-400">
                   Creator initial buy: {formatUnitsSafe(t.devBought, t.decimals, 2)} {t.symbol} (disclosed forever)
                 </p>
               ) : null}
@@ -196,7 +212,7 @@ export default function TokenPage() {
               value={`${formatUnitsSafe(t.lifetimeRewards ?? 0n, t.quoteDecimals ?? 18, 4)} ${t.quoteSymbol}`}
             />
           </div>
-          <p className="mt-3 text-[11px] text-zinc-500">
+          <p className="mt-3 text-[11px] text-zinc-400">
             Economics attach to the official market, not the token. CORE burned (global):{" "}
             {core ? formatUnitsSafe(core.lifetimeBurned, 18, 4) : "—"} · LP {shortAddress(addresses.ReactorLiquidityVault)}
           </p>
@@ -210,7 +226,7 @@ export default function TokenPage() {
 function Meta({ label, value, href }: { label: string; value: string; href?: string }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       {href ? (
         <a className="font-mono text-cyan-100 underline-offset-2 hover:underline" href={href} target="_blank" rel="noopener noreferrer">
           {value}

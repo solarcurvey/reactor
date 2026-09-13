@@ -7,7 +7,9 @@
     "build": "next build --turbopack",
     "start": "next start --port 43147",
     "lint": "eslint",
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:qa": "playwright test -c playwright.qa.config.ts",
+    "test:update-screenshots": "playwright test -c playwright.qa.config.ts e2e/visual.spec.ts e2e/states.spec.ts e2e/failures.spec.ts --update-snapshots"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.23",
@@ -27,6 +29,7 @@
     "wagmi": "^3.7.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/eslintrc": "^3",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",

@@ -73,6 +73,7 @@ pnpm docs:links   # fail on broken in-repo /docs slugs and relative files (no ne
 pnpm docs:gen     # regenerate versioning + deployments + changelog pages from config
 pnpm test:ci-cost # CI workflow inventory (no duplicate feature-branch push+PR)
 pnpm size:guard   # Factory runtime ≤ 23,552 (EIP-170 − 1,024)
+pnpm --filter web test:qa   # prod next build + visual matrix + axe + keyboard + failure injection (CI ci.yml job web-qa)
 pnpm safe:genesis # Safe Transaction Builder JSON from deployments/local.json (deployer ≠ Safe)
 ```
 

@@ -6,6 +6,8 @@ import { usePublicClient } from "wagmi";
 import { addresses } from "./addresses";
 import { buyback, core, registry } from "./contracts";
 import { REVIEW_FIXTURES } from "./review-fixtures";
+import { FAILURE_COPY, ServiceUnavailableError } from "./qa-inject";
+import { useQaInject } from "@/components/qa-inject-provider";
 import { indexCalls, readContractsBatched } from "./rpc-batch";
 import {
   CORE_STALE_MS,
@@ -105,21 +107,26 @@ export function unwrapFair(raw: unknown) {
 
 export function useQuotes() {
   const client = usePublicClient();
+  const inject = useQaInject();
   return useQuery({
-    queryKey: qk.quoteAssets,
-    enabled: !!client || REVIEW_FIXTURES,
+    queryKey: [...qk.quoteAssets, inject],
+    enabled: !!client || REVIEW_FIXTURES || inject === "rpc",
     staleTime: QUOTE_ASSETS_STALE_MS,
     refetchOnWindowFocus: EXPENSIVE_REFETCH_ON_FOCUS,
     queryFn: async ({ signal }) => {
-      const items = await loadQuoteAssets(signal);
-      if (items.length) return items;
-      if (REVIEW_FIXTURES) return REVIEW_QUOTES;
+      if (inject === "rpc") {
+        throw new ServiceUnavailableError("rpc", FAILURE_COPY.rpc.body);
+      }
       try {
+        const items = await loadQuoteAssets(signal);
+        if (items.length) return items;
+        if (REVIEW_FIXTURES) return REVIEW_QUOTES;
         if (!client) throw new Error("no client");
         return await readQuotesRpc(client);
       } catch (e) {
+        if (e instanceof ServiceUnavailableError) throw e;
         if (REVIEW_FIXTURES) return REVIEW_QUOTES;
-        throw e;
+        throw new ServiceUnavailableError("rpc", e instanceof Error ? e.message : FAILURE_COPY.rpc.body);
       }
     },
     refetchInterval: 15_000,
@@ -127,10 +134,17 @@ export function useQuotes() {
 }
 
 export function useLaunchTokens(opts: MarketListOpts = {}, flags?: { enabled?: boolean }) {
+  const inject = useQaInject();
   return useQuery({
-    queryKey: qk.markets(opts),
+    queryKey: [...qk.markets(opts), inject],
     enabled: flags?.enabled !== false,
-    queryFn: ({ signal }) => loadLaunchList(opts, signal),
+    queryFn: async ({ signal }) => {
+      if (inject === "indexer") {
+        throw new ServiceUnavailableError("indexer", FAILURE_COPY.indexer.body);
+      }
+      if (inject === "empty") return [] as LaunchToken[];
+      return loadLaunchList(opts, signal);
+    },
     staleTime: INDEXED_STALE_MS,
     refetchOnWindowFocus: EXPENSIVE_REFETCH_ON_FOCUS,
     refetchInterval: 8_000,
@@ -138,11 +152,15 @@ export function useLaunchTokens(opts: MarketListOpts = {}, flags?: { enabled?: b
 }
 
 export function useMarket(address?: string) {
+  const inject = useQaInject();
   return useQuery({
-    queryKey: qk.market(address),
-    enabled: !!address,
+    queryKey: [...qk.market(address), inject],
+    enabled: !!address && inject !== "token-invalid",
     queryFn: async ({ signal }) => {
-      if (!address) return undefined;
+      if (inject === "indexer") {
+        throw new ServiceUnavailableError("indexer", FAILURE_COPY.indexer.body);
+      }
+      if (inject === "token-invalid" || !address) return undefined;
       return loadOneMarket(address, signal);
     },
     staleTime: INDEXED_STALE_MS,
@@ -152,11 +170,17 @@ export function useMarket(address?: string) {
 }
 
 export function useTokenPage(address?: string, interval: string = "5m") {
+  const inject = useQaInject();
   return useQuery({
-    queryKey: qk.tokenPage(address, interval),
-    enabled: !!address,
+    queryKey: [...qk.tokenPage(address, interval), inject],
+    enabled: !!address && inject !== "token-invalid",
     queryFn: async ({ signal }) => {
-      if (!address) return { market: undefined, ohlcv: { candles: [], sparse: true, interval }, swaps: [] };
+      const empty = { market: undefined, ohlcv: { candles: [] as CandlePoint[], sparse: true, interval }, swaps: [] };
+      if (!address || inject === "token-invalid") return empty;
+      if (inject === "indexer") {
+        throw new ServiceUnavailableError("indexer", FAILURE_COPY.indexer.body);
+      }
+      if (inject === "empty") return empty;
       return loadTokenPage(address, interval, signal);
     },
     staleTime: INDEXED_STALE_MS,
@@ -167,13 +191,19 @@ export function useTokenPage(address?: string, interval: string = "5m") {
 
 export function useCoreStats() {
   const client = usePublicClient();
+  const inject = useQaInject();
   return useQuery({
-    queryKey: qk.coreStats,
-    enabled: !!client,
+    queryKey: [...qk.coreStats, inject],
+    enabled: !!client || inject === "rpc",
     staleTime: CORE_STALE_MS,
     refetchOnWindowFocus: EXPENSIVE_REFETCH_ON_FOCUS,
-    queryFn: async ({ signal }) =>
-      readCoreStatsBatched(client!, core, buyback, addresses.USDC, signal),
+    queryFn: async ({ signal }) => {
+      if (inject === "rpc") {
+        throw new ServiceUnavailableError("rpc", FAILURE_COPY.rpc.body);
+      }
+      if (!client) throw new ServiceUnavailableError("rpc", FAILURE_COPY.rpc.body);
+      return readCoreStatsBatched(client, core, buyback, addresses.USDC, signal);
+    },
     refetchInterval: 8_000,
   });
 }
@@ -191,39 +221,60 @@ export function useIndexerHealth() {
 }
 
 export function useCandles(token?: string, interval: string = "5m") {
+  const inject = useQaInject();
   return useQuery({
-    queryKey: qk.candles(token, interval),
+    queryKey: [...qk.candles(token, interval), inject],
     enabled: !!token,
     staleTime: INDEXED_STALE_MS,
-    queryFn: async ({ signal }) => loadCandles(token!, interval, signal),
+    queryFn: async ({ signal }) => {
+      if (inject === "indexer") {
+        throw new ServiceUnavailableError("indexer", FAILURE_COPY.indexer.body);
+      }
+      if (inject === "empty") return { candles: [] as CandlePoint[], sparse: true, interval };
+      return loadCandles(token!, interval, signal);
+    },
     refetchOnWindowFocus: EXPENSIVE_REFETCH_ON_FOCUS,
     refetchInterval: 8_000,
   });
 }
 
 export function useSwapSeries(token?: string) {
+  const inject = useQaInject();
   return useQuery({
-    queryKey: qk.swaps(token),
+    queryKey: [...qk.swaps(token), inject],
     enabled: !!token,
     staleTime: INDEXED_STALE_MS,
-    queryFn: async ({ signal }) => loadSwaps(token!, signal),
+    queryFn: async ({ signal }) => {
+      if (inject === "indexer") {
+        throw new ServiceUnavailableError("indexer", FAILURE_COPY.indexer.body);
+      }
+      if (inject === "empty") return [];
+      return loadSwaps(token!, signal);
+    },
     refetchOnWindowFocus: EXPENSIVE_REFETCH_ON_FOCUS,
     refetchInterval: 8_000,
   });
 }
 
 export function useReactorEvents() {
+  const inject = useQaInject();
   return useQuery({
-    queryKey: qk.reactorEvents,
+    queryKey: [...qk.reactorEvents, inject],
     refetchOnWindowFocus: EXPENSIVE_REFETCH_ON_FOCUS,
-    queryFn: ({ signal }) => loadReactorEvents(signal),
+    queryFn: async ({ signal }) => {
+      if (inject === "indexer") {
+        throw new ServiceUnavailableError("indexer", FAILURE_COPY.indexer.body);
+      }
+      return loadReactorEvents(signal);
+    },
     refetchInterval: 8_000,
   });
 }
 
 export function useTokenByAddress(address?: string) {
+  const inject = useQaInject();
   const { data, ...rest } = useMarket(address);
-  const token_ = useMemo(() => data, [data]);
+  const token_ = useMemo(() => (inject === "token-invalid" ? undefined : data), [data, inject]);
   return { data: token_, ...rest };
 }
 

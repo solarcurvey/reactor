@@ -16,19 +16,19 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_180px]">
       <article>
-        <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+        <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-400">
           <Link href="/docs" className="hover:text-white">
             Docs
           </Link>
         </p>
         <DocsMarkdown source={doc.markdown} />
-        <p className="mt-10 text-[11px] text-zinc-600">
+        <p className="mt-10 text-[11px] text-zinc-400">
           Protocol {ver.protocolVersion} ({ver.releaseTag}). Factory {ver.factoryVersionLabel}. Not audited. No public
           mainnet. Constants must match ReactorConstants.
         </p>
       </article>
       <aside className="hidden lg:block">
-        <div className="sticky top-20 text-[12px] text-zinc-500">
+        <div className="sticky top-20 text-[12px] text-zinc-400">
           <div className="uppercase tracking-wider">On this page</div>
           <ul className="mt-2 space-y-1">
             {toc.map((h) => (

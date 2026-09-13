@@ -63,11 +63,12 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | `foundry-targeted` | fast + Solidity paths | `forge test` (default profile) + `pnpm size:guard` |
 | `solidity + size-guard` | full / main | `FOUNDRY_PROFILE=ci forge test` + Attack suite + CREATE2 `test_hookBits` + `pnpm size:guard` |
 | `web-production-security` | full / main | `pnpm test:web-security` (production Next + live headers + bundle sentinel + XSS corpus) |
+| `web-qa` | full / main | `pnpm --filter web test:qa` (production Next visual / a11y / failure-injection). Pixel baselines live on PR #49. |
 | `live-toasts-ui` | full / main | `pnpm test:live-toasts` identity + Playwright |
 | `postgres-ms-timestamps` | full / main | `test:pg` + `test:pg-lease` (two-worker) + `pg-smoke` |
 | `docs-links` | full / main | `pnpm docs:links` (in-repo slugs/files only; no network). Also in `test:lib` on the fast gate. |
 | `web` | full / main | Playwright smoke + interactive (`e2e/smoke.spec.ts`, `e2e/interactive.spec.ts`). Capture shots stay `CAPTURE=1` local-only. Live-toasts Playwright stays on `live-toasts-ui`. |
-| `ci-ok` | full / main | All of the above full jobs **and** `page-budget` `== success` |
+| `ci-ok` | full / main | All of the above full jobs **and** `page-budget` `== success` (including `web-qa`) |
 
 `keeper-lease-pg` / `two-worker-postgres` is **folded** into `postgres-ms-timestamps` (`test:pg-lease` still runs). Do not add a second Postgres lease workflow.
 
@@ -79,7 +80,7 @@ Open product issues keep their acceptance commands. Attach new heavy jobs to **t
 | --- | --- | --- |
 | #17 (PR #42) | Full GitHub CI — Foundry, size guard, Attack, CREATE2, `docs:links`, Playwright smoke, Safe genesis | `solidity + size-guard` plus full-only `docs-links` and `web`. Cheap `docs:links` and `safe-genesis-builder.test.ts` also run in `test:lib`. Not a second workflow. |
 | #15 / #35 (PR #44) | Production browser + wallet E2E | Add a full-only job (`pnpm test:e2e:release` when that script exists). |
-| #15 / #36 (PR #49) | Visual / a11y / failure-injection | Full-only job (`pnpm --filter web test:qa` when present). |
+| #15 / #36 (PR #49) | Visual / a11y / failure-injection | `web-qa` (full). `pnpm --filter web test:qa`. Do not re-add `.github/workflows/web-qa.yml`. |
 | #15 / #18 | Production-readiness parent | Same full-tier rule. Do not move those commands to optional / `continue-on-error`. |
 | #37 (PR #50) | RPC page-budget | **Required** always-on job `page-budget` (`pnpm test:page-budget`) plus the same file in `test:lib`. Also required by `ci-ok`. Cheap SQLite unit — not a full-only heavy gate. |
 | #39 (PR #46) | Observability | Full-only `obs-ui` job. |
@@ -143,6 +144,7 @@ FOUNDRY_PROFILE=ci bash -lc 'cd contracts && forge test -vv'
 pnpm test:web-security
 pnpm test:live-toasts
 # pnpm --filter web exec playwright test e2e/smoke.spec.ts e2e/interactive.spec.ts
+pnpm --filter web test:qa   # #36 visual / a11y / failure-injection (CI job web-qa)
 # docker compose up -d postgres
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg-lease

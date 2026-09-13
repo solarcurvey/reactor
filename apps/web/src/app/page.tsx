@@ -10,6 +10,8 @@ import { useReactorLive } from "@/lib/sse";
 import { launchPath, quotePath } from "@/lib/untrusted-metadata";
 import { SafeTokenImage } from "@/components/safe-media";
 import { UntrustedText } from "@/components/untrusted-text";
+import { ServiceFailure } from "@/components/service-failure";
+import { isServiceUnavailable } from "@/lib/qa-inject";
 
 const filters = ["Trending", "New", "Bonding", "Rewards", "Buy+Burn", "Batch Fair", "USDC-quoted"] as const;
 
@@ -109,39 +111,39 @@ export default function HomePage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search name / ticker / quote"
-            className="h-8 w-44 rounded-full border border-white/10 bg-black/30 px-3 text-[12px] text-zinc-200 outline-none placeholder:text-zinc-600"
+            className="h-8 w-44 rounded-full border border-white/10 bg-black/30 px-3 text-[12px] text-zinc-200 outline-none placeholder:text-zinc-400"
           />
-          <span className="text-[11px] tabular-nums text-zinc-500">
+          <span data-visual-dynamic className="text-[11px] tabular-nums text-zinc-400">
             {list.length} markets · {live.ok ? "live" : "polling"}
           </span>
         </div>
       </div>
 
       {isLoading && (
-        <div className="mt-6 space-y-2" aria-busy="true">
-          <p className="text-sm text-zinc-500">Loading indexed markets…</p>
+        <div className="mt-6 space-y-2" aria-busy="true" data-testid="markets-loading">
+          <p className="text-sm text-zinc-400">Loading indexed markets…</p>
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="h-11 animate-pulse rounded-xl bg-white/[0.04]" />
           ))}
         </div>
       )}
-      {isError && !REVIEW_FIXTURES && (
-        <div className="mt-8 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
-          Could not read indexed markets. Is the indexer on 127.0.0.1:43148?
-          <div className="mt-2 text-xs text-red-200/80">{error instanceof Error ? error.message : "RPC error"}</div>
-          <button className="mt-3 underline" onClick={() => refetch()}>
-            Retry
-          </button>
-        </div>
+      {isError && (
+        <ServiceFailure
+          kind={isServiceUnavailable(error) ? error.kind : "indexer"}
+          detail={error instanceof Error ? error.message : undefined}
+          onRetry={() => refetch()}
+        />
       )}
       {!isLoading && !isError && list.length === 0 && (
-        <p className="mt-8 text-sm text-zinc-500">No launches yet. Pick a quote and ignite the first official market.</p>
+        <p data-testid="markets-empty" className="mt-8 text-sm text-zinc-400">
+          No launches yet. Pick a quote and ignite the first official market.
+        </p>
       )}
 
       {list.length > 0 && (
         <div className="mt-3 overflow-x-auto rounded-2xl border border-white/8">
           <table className="w-full text-left text-[13px]">
-            <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+            <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.16em] text-zinc-400">
               <tr>
                 <th className="px-3 py-2 font-medium">#</th>
                 <th className="px-3 py-2 font-medium">Token</th>
@@ -159,7 +161,7 @@ export default function HomePage() {
                 const href = launchPath(t);
                 return (
                   <tr key={t.token} className="border-t border-white/6 hover:bg-white/[0.03]">
-                    <td className="px-3 py-2 tabular-nums text-zinc-500">{i + 1}</td>
+                    <td className="px-3 py-2 tabular-nums text-zinc-400">{i + 1}</td>
                     <td className="px-3 py-2">
                       <Link href={href} className="flex items-center gap-2">
                         <span className="grid h-7 w-7 place-items-center overflow-hidden rounded-full border border-white/10 bg-zinc-900 text-[10px] text-cyan-100">
@@ -170,7 +172,7 @@ export default function HomePage() {
                           <UntrustedText field="name" className="font-medium text-white">
                             {t.name}
                           </UntrustedText>
-                          <UntrustedText field="ticker" className="ml-1.5 font-mono text-[11px] text-zinc-500">
+                          <UntrustedText field="ticker" className="ml-1.5 font-mono text-[11px] text-zinc-400">
                             ${t.symbol}
                           </UntrustedText>
                         </span>

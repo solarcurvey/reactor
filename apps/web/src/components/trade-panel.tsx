@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePublicClient, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "viem/actions";
 import { Card } from "./ui/card";
@@ -22,6 +22,10 @@ import {
 import { TxGuardError, resolveTradeWrite, sanitizeRouteHops } from "@/lib/tx-guard";
 import { useOfficialChain } from "@/lib/use-official-chain";
 import { UntrustedText } from "./untrusted-text";
+import { FAILURE_COPY, isQuoteInject } from "@/lib/qa-inject";
+import { useQaInject, useQaScene } from "@/components/qa-inject-provider";
+import { Modal } from "./ui/dialog";
+import { TxStatus } from "./tx-status";
 
 const QUOTE_TTL_MS = 30_000;
 
@@ -45,6 +49,33 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   const [aggregateImpactBps, setAggregateImpactBps] = useState(0);
   const [reactorFeeCount, setReactorFeeCount] = useState(0);
   const { data: quotes } = useQuotes();
+  const inject = useQaInject();
+  const scene = useQaScene();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    if (scene.state === "dialog") setConfirmOpen(true);
+  }, [scene.state]);
+
+  useEffect(() => {
+    if (inject === "wallet-reject") {
+      setError(FAILURE_COPY["wallet-reject"].body);
+      return;
+    }
+    if (inject === "wallet-revert") {
+      setError(FAILURE_COPY["wallet-revert"].body);
+      return;
+    }
+    if (!isQuoteInject(inject)) return;
+    if (inject === "quote-stale") {
+      setQuotedOut(10n ** 16n);
+      setQuotedAt(0);
+      setError(FAILURE_COPY["quote-stale"].body);
+      return;
+    }
+    setQuotedOut(null);
+    setError(FAILURE_COPY[inject].body);
+  }, [inject]);
 
   const quoteDec = t.quoteDecimals ?? 18;
   const usdcRoute = Boolean(payUsdc && t.quote.toLowerCase() !== addresses.USDC.toLowerCase() && userRoute.address);
@@ -78,6 +109,17 @@ export function TradePanel({ t }: { t: LaunchToken }) {
 
   async function refreshQuote() {
     setError(null);
+    if (isQuoteInject(inject)) {
+      if (inject === "quote-stale") {
+        setQuotedOut(10n ** 16n);
+        setQuotedAt(0);
+        setError(FAILURE_COPY["quote-stale"].body);
+        return;
+      }
+      setQuotedOut(null);
+      setError(FAILURE_COPY[inject].body);
+      return;
+    }
     if (!address || !client || parsed === 0n) {
       setQuotedOut(null);
       setMinQuoteOut(null);
@@ -135,6 +177,14 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   async function submit() {
     setError(null);
     setHash(null);
+    if (inject === "wallet-reject") {
+      setError(FAILURE_COPY["wallet-reject"].body);
+      return;
+    }
+    if (inject === "wallet-revert") {
+      setError(FAILURE_COPY["wallet-revert"].body);
+      return;
+    }
     if (!address || !client) {
       setError("Connect a wallet on the local Arc-compatible chain.");
       return;
@@ -248,6 +298,8 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         {(["buy", "sell"] as const).map((s) => (
           <button
             key={s}
+            type="button"
+            aria-pressed={side === s}
             onClick={() => {
               setSide(s);
               setQuotedOut(null);
@@ -276,12 +328,13 @@ export function TradePanel({ t }: { t: LaunchToken }) {
           {side === "buy" ? "Pay USDC (nested route → quote → market)" : "Receive USDC (market → quote → USDC)"}
         </label>
       )}
-      <label className="mb-1 block text-xs uppercase tracking-wider text-zinc-500">
+      <label htmlFor="trade-amount" className="mb-1 block text-xs uppercase tracking-wider text-zinc-400">
         {side === "buy"
           ? `Pay ${usdcRoute ? "USDC" : t.quoteSymbol} (exact in)`
           : `Sell ${t.symbol} (exact in)`}
       </label>
       <Input
+        id="trade-amount"
         value={amount}
         onChange={(e) => {
           setAmount(e.target.value);
@@ -291,7 +344,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         placeholder="0.0"
       />
       {isConnected && ticketWallet && (
-        <p className="mt-1 text-[11px] tabular-nums text-zinc-500">
+        <p className="mt-1 text-[11px] tabular-nums text-zinc-400">
           Bal {formatUnitsSafe(side === "buy" ? ticketWallet.quoteBalance : ticketWallet.tokenBalance, inDec, 4)}{" "}
           {side === "buy" ? (usdcRoute ? "USDC" : t.quoteSymbol) : t.symbol}
           {" · "}allow {formatUnitsSafe(ticketWallet.allowance, inDec, 4)}
@@ -327,7 +380,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
           3.5% final economics (2 / 1 / 0.5)
         </p>
         {usdcRoute && (
-          <p className="font-mono text-[11px] text-zinc-500">
+          <p className="font-mono text-[11px] text-zinc-400">
             Route {liveHops.length ? liveHops.map((h) => `${h.tokenIn.slice(0, 6)}→${h.tokenOut.slice(0, 6)}`).join(" · ") : "quote API — no wallet hop sim"}
           </p>
         )}
@@ -345,9 +398,15 @@ export function TradePanel({ t }: { t: LaunchToken }) {
           </p>
         )}
       </div>
-      <div className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
+      <div className="mt-3 flex items-center gap-2 text-xs text-zinc-400">
         Slippage
-        <Input className="h-8 w-16" value={slippage} onChange={(e) => setSlippage(e.target.value)} /> %
+        <Input
+          className="h-8 w-16"
+          aria-label="Slippage percent"
+          value={slippage}
+          onChange={(e) => setSlippage(e.target.value)}
+        />{" "}
+        %
       </div>
       <div className="mt-4 flex gap-2">
         <Button variant="outline" className="flex-1" onClick={refreshQuote} disabled={!writesEnabled || parsed === 0n}>
@@ -368,15 +427,31 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         </Button>
       </div>
       {error && (
-        <UntrustedText as="p" field="toast" className="mt-3 text-sm text-red-300">
-          {error}
-        </UntrustedText>
+        <p
+          role="alert"
+          data-testid={
+            inject === "wallet-reject" || inject === "wallet-revert" || isQuoteInject(inject)
+              ? `failure-${inject}`
+              : "failure-quote"
+          }
+          className="mt-3 text-sm text-red-300"
+        >
+          <UntrustedText as="span" field="toast">
+            {error}
+          </UntrustedText>
+        </p>
       )}
       {!matched && isConnected && (
         <UntrustedText as="p" field="toast" className="mt-3 text-sm text-red-300">
           {mismatchMessage}
         </UntrustedText>
       )}
+      <TxStatus state={scene.state} />
+      <Modal open={confirmOpen} onOpenChange={setConfirmOpen} title="Confirm trade">
+        <p className="text-[13px] text-zinc-300">
+          Official 3.5% (2 / 1 / 0.5) is taken on quote notional. Incomplete fills revert. No leftover ticket.
+        </p>
+      </Modal>
       {t.ready && t.curve && !t.marketLive && (
         <Button
           className="mt-3 w-full"
@@ -462,13 +537,13 @@ export function RewardsModule({ t }: { t: LaunchToken }) {
 
   return (
     <Card className="p-4">
-      <div className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">Holder rewards</div>
+      <div className="text-[11px] uppercase tracking-[0.16em] text-zinc-400">Holder rewards</div>
       <p className="mt-1 text-[13px] text-zinc-400">
         2% of official-pool quote volume. No staking. Transfers are tax-free.
       </p>
       <p className="mt-2 font-mono text-xl text-white">
         {pending === null ? "—" : formatUnitsSafe(pending, t.quoteDecimals ?? 18, 6)}{" "}
-        <span className="text-base text-zinc-500">{t.quoteSymbol}</span>
+        <span className="text-base text-zinc-400">{t.quoteSymbol}</span>
       </p>
       <div className="mt-4 flex gap-2">
         <Button variant="outline" onClick={refresh} disabled={!isConnected}>

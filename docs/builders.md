@@ -33,4 +33,4 @@ Fair hashes resolved sale params. Instant keeps `INSTANT_CURVE_V1`. Receipt `lau
 | `@reactor/core` | 0.3.3 | Constants, routes, valuation, admission helpers |
 | `@reactor/sdk` | 0.3.3 | `ReactorClient.authorize`, quote ticket helpers |
 
-See [API](/docs/api), [SDK](/docs/sdk), [Examples](/docs/examples), [Quoting](/docs/quoting), [Events](/docs/events).
+See [API](/docs/api), [SDK](/docs/sdk), [Examples](/docs/examples), [Quoting](/docs/quoting), [Events](/docs/events), [UI QA](/docs/qa).

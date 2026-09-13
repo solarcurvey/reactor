@@ -36,7 +36,7 @@ assert.deepEqual(
   `unexpected workflows (duplicate push+PR files must not remain): ${workflowFiles.join(", ")}`,
 );
 
-for (const gone of ["docs-sync.yml", "live-toasts.yml", "keeper-lease-pg.yml"]) {
+for (const gone of ["docs-sync.yml", "live-toasts.yml", "keeper-lease-pg.yml", "web-qa.yml"]) {
   assert.equal(existsSync(join(workflowsDir, gone)), false, `${gone} must be removed (folded into ci.yml)`);
 }
 
@@ -70,6 +70,7 @@ for (const job of [
   "constants-version-deployments",
   "page-budget",
   "web-production-security",
+  "web-qa",
   "live-toasts-ui",
   "postgres-ms-timestamps",
   "solidity + size-guard",
@@ -91,6 +92,7 @@ assert.match(ciYml, /pnpm test:web-security/);
 assert.match(ciYml, /pnpm docs:links/);
 assert.match(ciYml, /e2e\/smoke\.spec\.ts/);
 assert.match(ciYml, /e2e\/interactive\.spec\.ts/);
+assert.match(ciYml, /pnpm --filter web test:qa/);
 assert.match(ciYml, /pnpm --filter indexer test:pg-lease/);
 assert.match(ciYml, /pnpm --filter indexer test:pg/);
 assert.match(ciYml, /e2e\/live-toasts\.spec\.ts/);
@@ -100,6 +102,7 @@ assert.match(ciYml, /pnpm size:guard/);
 
 // ci-ok must require success (skipped ≠ pass)
 assert.match(ciYml, /test "\$\{\{ needs\.web-production-security\.result \}\}" = success/);
+assert.match(ciYml, /test "\$\{\{ needs\.web-qa\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.postgres-ms-timestamps\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.live-toasts-ui\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.solidity\.result \}\}" = success/);
