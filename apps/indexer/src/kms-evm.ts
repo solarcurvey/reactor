@@ -46,8 +46,13 @@ function readDerInteger(bytes: Uint8Array, offset: number): { value: bigint; nex
   if (length <= 0 || next + length > bytes.length) throw new Error("KMS DER invalid INTEGER length");
   let start = next;
   const end = next + length;
-  if (bytes[start] === 0x00 && end - start > 1) start++;
-  if (bytes[start] !== undefined && (bytes[start]! & 0x80) !== 0) throw new Error("KMS DER negative INTEGER");
+  const first = bytes[start]!;
+  if ((first & 0x80) !== 0) throw new Error("KMS DER negative INTEGER");
+  if (first === 0x00 && end - start > 1) {
+    const second = bytes[start + 1]!;
+    if ((second & 0x80) === 0) throw new Error("KMS DER non-canonical INTEGER padding");
+    start++;
+  }
   let value = 0n;
   for (let i = start; i < end; i++) value = (value << 8n) | BigInt(bytes[i]!);
   return { value, next: end };
