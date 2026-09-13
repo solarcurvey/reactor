@@ -48,6 +48,30 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname === "/quote-assets") {
+    json(res, 200, { items: [] });
+    return;
+  }
+
+  const marketOne = /^\/markets\/([^/]+)$/.exec(url.pathname);
+  if (marketOne) {
+    json(res, 200, { item: null });
+    return;
+  }
+
+  const pageToken = /^\/page\/token\/([^/]+)$/.exec(url.pathname);
+  if (pageToken) {
+    json(res, 200, {
+      ok: false,
+      market: null,
+      candles: [],
+      swaps: [],
+      interval: url.searchParams.get("interval") ?? "5m",
+      sparse: true,
+    });
+    return;
+  }
+
   if (url.pathname === "/quote" && req.method === "POST") {
     await readBody(req);
     json(res, 200, {

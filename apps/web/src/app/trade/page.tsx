@@ -37,23 +37,22 @@ export default function TradePage() {
         )}
         <div className="mt-4 divide-y divide-white/6 rounded-2xl border border-white/8">
           {live.map((t) => (
-            <button
+            <div
               key={t.token}
-              onClick={() => setSel(t.token)}
-              className={`flex w-full items-center justify-between px-3 py-2.5 text-left text-sm ${
+              className={`flex items-center justify-between px-3 py-2.5 text-sm ${
                 token?.token === t.token ? "bg-cyan-300/10" : "hover:bg-white/[0.03]"
               }`}
             >
-              <span>
+              <button type="button" onClick={() => setSel(t.token)} className="text-left">
                 <UntrustedText field="ticker" className="font-medium text-white">
                   ${t.symbol}
                 </UntrustedText>
                 <span className="ml-2 text-[11px] text-zinc-400">earns {t.quoteSymbol}</span>
-              </span>
-              <Link href={tokenPath(t.token)} className="text-[11px] text-cyan-200" onClick={(e) => e.stopPropagation()}>
+              </button>
+              <Link href={tokenPath(t.token)} className="text-[11px] text-cyan-200">
                 Detail
               </Link>
-            </button>
+            </div>
           ))}
         </div>
       </div>
