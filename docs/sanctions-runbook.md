@@ -24,7 +24,7 @@ Exact versions on `GET /health` → `sanctions`, `GET /sanctions/health`, and `/
 ## OFAC list update
 
 1. Official files change on Treasury hosts. Scheduled refresh (6h) + startup should pick them up.
-2. Health `dataset.versionId` / `contentHash` / `retrievedAt` / `lastSuccessfulRefreshAt` must move together.
+2. Health `dataset.versionId` / `contentHash` / `retrievedAt` / `lastSuccessfulRefreshAt` must move together. Same addresses with a newer Treasury generation still get a new `versionId` (`sourceGenerationHash`); after restart, freshness ages from that `retrievedAt`.
 3. A valid-but-gutted parse (address count or source bytes collapse) is rejected. Use an explicit shrink override only after human review — never the default.
 4. After activate, confirm a known listed fixture still `blocked` and an unlisted wallet is `clear` only while freshness is `current`.
 
