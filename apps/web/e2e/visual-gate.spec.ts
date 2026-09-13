@@ -60,28 +60,14 @@ test.describe("exact-commit visual gate (#40, coordinate #36)", () => {
     await both(page, "reactor-offline");
 
     await page.unrouteAll();
-    await page.route("**/markets**", async (route) => {
-      await route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "fail" }) });
-    });
-    await page.goto("/search");
-    await expect(page.locator("[data-state='error'], [data-state='offline']").first()).toBeVisible({
-      timeout: 20_000,
-    });
+    // `?inject=indexer` is the designed outage path. A raw 500 is swallowed by
+    // REVIEW_FIXTURES fallback in `loadMarketsPage` and would still paint cards.
+    await page.goto("/search?inject=indexer");
+    await expect(page.getByTestId("failure-indexer")).toBeVisible({ timeout: 20_000 });
     await both(page, "search-error");
 
-    await page.unrouteAll();
-    await page.route("**/markets**", async (route) => {
-      const url = new URL(route.request().url());
-      if (url.searchParams.get("featured") === "1") {
-        await route.fulfill({ json: { bonding: null, volume: null } });
-        return;
-      }
-      await route.fulfill({
-        json: { items: [], total: 0, has_more: false, next_cursor: null, sort: "new", volume_24h_usd6_total: "0" },
-      });
-    });
-    await page.goto("/");
-    await expect(page.locator("[data-state='empty']").first()).toBeVisible({ timeout: 20_000 });
+    await page.goto("/?inject=empty");
+    await expect(page.getByTestId("markets-empty")).toBeVisible({ timeout: 20_000 });
     await both(page, "discover-empty");
   });
 });
