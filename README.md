@@ -96,6 +96,7 @@ GitHub Actions is three-tier (fast PR / full merge-candidate / main). Full gate 
 | `docs/version.json` | Protocol semver source of truth |
 | `FACTORY_VERSIONING.md` | Immutable factories; new launches only |
 | `LAUNCH_ADMISSION.md` | EIP-712 + Turnstile + throttle |
+| `docs/operator-policy.md` | Server-side sanctions/geo gate on operated write paths (#62) |
 | `CORE_GENESIS.md` | CORE 10/90 genesis, vesting, 2.5/1.0 book |
 | `CORE_LIQUIDITY_DESIGN.md` | Single-sided CORE/USDC ticks and lock |
 | `CURVE_DESIGN.md` | Frozen Instant bonding constants and sim |

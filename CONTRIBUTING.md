@@ -14,6 +14,7 @@ Any change to the following **must** update the corresponding docs **in the same
 | Guardian / Keeper powers | `GUARDIAN_MODEL.md`, `KEEPER_MODEL.md`, `PRIVILEGE_MAP.md`, `/docs/guardian` |
 | Routing / adapters / minOut | `ARCHITECTURE.md`, `KEEPER_MODEL.md`, `/docs` builders/fees |
 | Launch admission / signer / ticker rules | `LAUNCH_ADMISSION.md`, `TICKER_REGISTRY.md`, `/docs/tickers`, `/docs/creators` |
+| Operator sanctions/geo policy / write-path enforcement | `/docs/operator-policy`, `/docs/trust`, `/docs/api`, `LAUNCH_ADMISSION.md` (`GET /operator-policy/status` for #65) |
 | API behavior | `/docs/api`, `/docs/builders` |
 | SDK interfaces | `/docs/sdk`, `packages/sdk` |
 | CORE genesis / vest / book | `CORE_GENESIS.md`, `CORE_LIQUIDITY_DESIGN.md`, `/docs/core` |

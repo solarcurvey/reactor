@@ -15,6 +15,7 @@ import {
 } from "./launch-signer.ts";
 import type { Store } from "./db.ts";
 import { assertProductionHardGates } from "./prod-gates.ts";
+import { bindRecoveredIdentity, gateProtectedWrite, tryBindOfficialPolicyPlugins } from "./operator-policy.ts";
 
 const PORT = Number(process.env.PRICING_SIGNER_PORT ?? 43149);
 const LOCAL = (process.env.REACTOR_ENV ?? "").toUpperCase() === "LOCAL";
@@ -61,6 +62,17 @@ const server = createServer(async (req, res) => {
   }
   try {
     const body = (await readJsonBody(req)) as SignRequest;
+    const gate = await gateProtectedWrite({
+      headers: req.headers,
+      body: body as unknown as Record<string, unknown>,
+      surface: "launch.signer",
+    });
+    if (!gate.ok) {
+      res.statusCode = gate.status;
+      res.end(JSON.stringify({ ...gate.body, request_id: rid }));
+      return;
+    }
+    bindRecoveredIdentity(body as unknown as Record<string, unknown>, gate.wallet);
     const store = await durableStore();
     const out = await signAuthorized(store, body, {
       receipt: body.receipt ?? String(req.headers["x-admission-receipt"] ?? ""),
@@ -85,6 +97,7 @@ const server = createServer(async (req, res) => {
 try {
   assertProductionHardGates();
   resolveSignerKey();
+  await tryBindOfficialPolicyPlugins();
 } catch (e) {
   console.error("pricing signer refuse start", e);
   process.exit(1);

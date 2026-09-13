@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePublicClient, useWriteContract } from "wagmi";
+import { usePublicClient, useSignMessage, useWriteContract } from "wagmi";
+import { signOperatorWalletProof } from "@/lib/wallet-proof";
 import { waitForTransactionReceipt } from "viem/actions";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -28,6 +29,7 @@ export default function LaunchPage() {
   const { data: quotes, isError: quotesError, error: quotesErr, refetch: refetchQuotes } = useQuotes();
   const scene = useQaScene();
   const { writeContractAsync, isPending } = useWriteContract();
+  const { signMessageAsync } = useSignMessage();
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
   const [image, setImage] = useState("");
@@ -91,9 +93,10 @@ export default function LaunchPage() {
   const tickerStatus = tickerOverride || tickerRemote || "";
 
   async function authorizeLaunch(quoteAddr: `0x${string}`, ticker: string, mode: "instant" | "fair") {
+    const proof = await signOperatorWalletProof((message) => signMessageAsync({ message }));
     const res = await fetch("/api/launch-pricing", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...proof },
       body: JSON.stringify({
         quote: quoteAddr,
         creator: address,
@@ -136,7 +139,11 @@ export default function LaunchPage() {
       };
       signature?: `0x${string}`;
       error?: string;
+      reason?: string;
     };
+    if (body.decision === "deny" || body.decision === "unavailable") {
+      throw new Error(body.error ?? "REACTOR-operated services are unavailable for this request.");
+    }
     if (body.decision === "CHALLENGE") {
       setNeedsChallenge(true);
       throw new Error(body.error ?? "Complete the Cloudflare Turnstile challenge, then retry. CHALLENGE is not ALLOW.");
@@ -352,7 +359,8 @@ export default function LaunchPage() {
               }
               try {
                 const { INDEXER_URL } = await import("@/lib/chain");
-                const res = await fetch(`${INDEXER_URL}/upload`, { method: "POST", body: file });
+                const proof = await signOperatorWalletProof((message) => signMessageAsync({ message }));
+                const res = await fetch(`${INDEXER_URL}/upload`, { method: "POST", headers: proof, body: file });
                 const body = (await res.json()) as { publicUrl?: string; uri?: string; error?: string };
                 if (!res.ok) throw new Error(body.error ?? "upload failed");
                 const next = sanitizeMediaUrl(body.publicUrl ?? body.uri ?? "");

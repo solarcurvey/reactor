@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePublicClient, useWriteContract } from "wagmi";
+import { usePublicClient, useSignMessage, useWriteContract } from "wagmi";
+import { signOperatorWalletProof } from "@/lib/wallet-proof";
 import { waitForTransactionReceipt } from "viem/actions";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
@@ -33,6 +34,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   const { address, isConnected, writesEnabled, matched, mismatchMessage, chainId } = useOfficialChain();
   const client = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
+  const { signMessageAsync } = useSignMessage();
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [payUsdc, setPayUsdc] = useState(false);
   const [amount, setAmount] = useState("");
@@ -129,9 +131,10 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       return;
     }
     try {
+      const proof = await signOperatorWalletProof((message) => signMessageAsync({ message }));
       const res = await fetch(`${INDEXER_URL}/quote`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...proof },
         body: JSON.stringify({
           kind: side === "buy" ? "BUY" : "SELL",
           token: t.token,
@@ -145,6 +148,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       const q = (await res.json()) as {
         ok?: boolean;
         reason?: string;
+        error?: string;
         amountOut?: string;
         minOut?: string;
         minQuoteOut?: string;
@@ -155,7 +159,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         tx?: { to: string; data: `0x${string}`; functionName: string };
       };
       if (!res.ok || !q.ok || !q.amountOut) {
-        throw new Error(q.reason ?? "Quote API unavailable");
+        throw new Error(q.error ?? q.reason ?? "Quote API unavailable");
       }
       setQuotedOut(BigInt(q.amountOut));
       setQuotedAt(Date.now());

@@ -63,6 +63,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | `foundry-targeted` | fast + Solidity paths | `forge test` (default profile) + `pnpm size:guard` |
 | `solidity + size-guard` | full / main | `FOUNDRY_PROFILE=ci forge test` + Attack suite + CREATE2 `test_hookBits` + `pnpm size:guard` |
 | `web-production-security` | full / main | `pnpm test:web-security` (production Next + live headers + bundle sentinel + XSS corpus) |
+| `operator-policy-http` | full / main | `pnpm test:operator-policy-http` — real indexer + production Next HTTP matrix (#62). Required by `ci-ok`. |
 | `web-qa` | full / main | `pnpm --filter web test:qa` (production Next visual / a11y / failure-injection). Pixel baselines live on PR #49. |
 | `live-toasts-ui` | full / main | `pnpm test:live-toasts` identity + Playwright |
 | `postgres-ms-timestamps` | full / main | `test:pg` + `test:pg-lease` (two-worker) + `pg-smoke` |
@@ -87,6 +88,7 @@ Open product issues keep their acceptance commands. Attach new heavy jobs to **t
 | #38 | Live toasts | `live-toasts-ui` (full). Units also run in `test:lib` on the fast gate. |
 | #41 / TESTING row 51 | Hostile metadata / CSP | Cheap units in `test:lib`; production build + Playwright corpus in `web-production-security`. |
 | #61 (PR #66) | Exact official-list OFAC screening fixtures | Cheap units in `test:lib` (`@reactor/sanctions` + `sanctions-api.test.ts`). Live HTTPS is `SANCTIONS_NETWORK=1` / `test:sanctions:network` only — not a CI job. Do not add a second workflow. |
+| #62 (PR #68) | Operator policy gate | Cheap units in `test:lib` (`sanctions-policy`, `wallet-proof`, `operator-policy`, BFF, status GET). Full-only job `operator-policy-http` starts the real indexer + production Next and hits `/quote`, `/launch/authorize`, `/upload`, Next `/api/launch-pricing`. Official `#66`/`#67` bind via `tryBindOfficialPolicyPlugins`. Official #65 read: `GET /operator-policy/status`. No new workflow. |
 | #35–#41 / #51 / #60 | Existing test requirements | Unchanged in substance. Reachable via `TESTING.md` commands and the full gate. |
 
 Recommended required checks (branch protection): **`constants-version-deployments`** (always present), **`page-budget`** (always present — #37 4k-market HTTP/RPC budgets), and **`ci-ok`** (present on merge-candidate + main; requires `page-budget` success). Do not require a check that the fast tier skips.
@@ -143,6 +145,7 @@ cd contracts && forge test -vv && cd .. && pnpm size:guard
 # Full / merge-candidate:
 FOUNDRY_PROFILE=ci bash -lc 'cd contracts && forge test -vv'
 pnpm test:web-security
+pnpm test:operator-policy-http  # #62 real indexer + production Next HTTP matrix (CI job operator-policy-http)
 pnpm test:live-toasts
 # pnpm --filter web exec playwright test e2e/smoke.spec.ts e2e/interactive.spec.ts
 pnpm --filter web test:qa   # #36 visual / a11y / failure-injection (CI job web-qa)

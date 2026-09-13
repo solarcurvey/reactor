@@ -11,14 +11,14 @@ The indexer can answer “is this exact address string on the last activated off
 | Route | Notes |
 | --- | --- |
 | `GET /sanctions/screen?address=` | `decision`: `blocked` / `clear` / `unavailable`. Includes `datasetVersion`, `freshness`, `disclaimer`. Optional `family` (`evm`, `btc`, …). |
-| `GET /sanctions/dataset` | Active version + freshness. `policyGate` is `null` until a later #60 child. |
+| `GET /sanctions/dataset` | Active version + freshness. `policyGate` stays `null` — this lookup is not the write gate. |
 | `POST /ops/sanctions/refresh` | Ops token. Atomic official HTTPS refresh of **SDN + Consolidated** (classic and advanced). Failure or a valid-but-gutted parse keeps last-known-good. `SANCTIONS_ALLOW_SHRINK=1` is the explicit override. |
 
 Decisions are **not** a boolean. A missing or stale dataset that does not already contain the address returns `unavailable`, never `clear`. A listed address still returns `blocked` even if the snapshot is stale.
 
 ## What this is not
 
-- Not a launch or trade policy gate. Admission does **not** call `screen()` yet. Comments in `apps/indexer/src/admission.ts` point at later #60 children (server policy, geo/IP, UX).
+- Not itself a launch or trade policy gate. `GET /sanctions/screen` stays a public lookup. The write/authorization gate is [operator policy](/docs/operator-policy) (#62), which calls `indexerSanctionsStore().screen` when bound. `admit()` does not call `screen()`.
 - Not chain analysis, KYC, or hop tracing.
 - Not a licensed vendor feed. Source of truth is Treasury/OFAC XML on `treasury.gov` / `ofac.treasury.gov` / `sanctionslistservice.ofac.treas.gov` over **HTTPS**.
 - Not a claim that REACTOR is compliant with the sanctions laws of any jurisdiction.

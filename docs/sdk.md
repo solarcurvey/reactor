@@ -4,7 +4,9 @@
 
 ## Authorize a launch
 
-`ReactorClient.authorize` posts `POST /launch/authorize`. It does **not** talk to the isolated signer.
+`ReactorClient.authorize` / `admit` post to the indexer. They do **not** talk to the isolated signer. The operator-policy gate runs first (recovered EIP-191 wallet proof + trusted geo). Pass `{ token, signature }` from `GET /operator-policy/challenge` + `personal_sign` as the second argument (or `body.walletProof`). A `decision` of `deny` / `unavailable` is not a `LaunchAuthorization`. Client “clear” flags and claimed wallet fields are ignored.
+
+`ReactorClient.operatorPolicyChallenge` / `operatorPolicyStatus` are the public #62/#65 reads. Status is the official minimized decision (`reason` / `kind` / `writesAllowed`). Write gates remain authoritative.
 
 ```ts
 import { ReactorClient } from "@reactor/sdk";
@@ -19,7 +21,7 @@ const out = await client.authorize({
   wallet: "0x…",
   mode: "rewards",
   turnstile: realWidgetToken, // from Cloudflare Turnstile, not a stub
-});
+}, proof); // { token, signature } from GET /operator-policy/challenge + personal_sign
 if (out.decision === "CHALLENGE") {
   // render widget, collect token, retry — CHALLENGE ≠ ALLOW
 }

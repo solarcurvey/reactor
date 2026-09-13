@@ -2,6 +2,10 @@
 
 These are explicit **non-goals** for this hardening pass.
 
+## Official OFAC dataset ingest / trusted geo HMAC (#61 / #63)
+
+This tree’s #62 gate binds merged #66 `sanctions.ts` (`indexerSanctionsStore().screen`) and merged #67 `geo-policy-resolve.ts` (`evaluateRequestGeo`) via `tryBindOfficialPolicyPlugins`. Dataset refresh and geo HMAC live in those modules — not reimplemented here.
+
 ## CircleWarp / CCTP
 
 Cross-chain USDC via Circle CCTP (burn on Ethereum/Base/Arbitrum, mint on Arc, auto-buy). Requires source-chain messengers, attestation, and a dedicated keying model. **Not implemented.**

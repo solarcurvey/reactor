@@ -6,7 +6,9 @@ Offchain `LaunchAdmissionService` (indexer) plus onchain `LaunchAuthorization`.
 
 ## Public flow
 
-`POST /launch/authorize` → admission (ticker / factory / quote / metadata / **real Turnstile** / risk / throttle) → ALLOW receipt with `launchConfigHash` → isolated signer (atomic consume + issuance bucket) → EIP-712.
+`POST /launch/authorize` → **operator policy** (recovered-wallet `#61` screen + trusted geo; fail closed) → admission (ticker / factory / quote / metadata / **real Turnstile** / risk / throttle) → ALLOW receipt with `launchConfigHash` → isolated signer (atomic consume + issuance bucket) → EIP-712.
+
+The policy gate is one shared module (`evaluateOperatorPolicy` / `gateProtectedWrite`). Subject is the EIP-191 recovered signer, not `body.wallet`. Address screen uses merged `#66` `indexerSanctionsStore().screen` when bound. Browser country / “clear” flags are ignored. Public `GET` market/docs paths (including `/sanctions/screen`) are not gated. Immutable contracts remain callable onchain. See `docs/operator-policy.md`. Issue **#62** (parent RELEASE GATE **#60**).
 
 The isolated signer binds `127.0.0.1`. Direct public calls without a receipt fail. Signer requires receipt `launchConfigHash` to match creator, ticker, name, metadata, quote, mode, factory, Factory version, curve/config.
 

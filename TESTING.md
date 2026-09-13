@@ -38,6 +38,11 @@ npx --yes tsx packages/reactor/src/untrusted-metadata.test.ts
 npx --yes tsx scripts/safe-genesis-builder.test.ts  # Safe ≠ deployer, batch A/B, MultiSend (#17)
 pnpm --filter @reactor/sanctions test   # #61 exact official-list parser/store/screen (pinned fixtures, no network)
 # SANCTIONS_NETWORK=1 pnpm test:sanctions:network   # isolated live OFAC HTTPS; not unit CI
+npx --yes tsx packages/reactor/src/sanctions-policy.test.ts
+npx --yes tsx packages/reactor/src/wallet-proof.test.ts
+npx --yes tsx apps/indexer/src/operator-policy.test.ts
+npx --yes tsx apps/web/src/lib/operator-policy-bff.test.ts
+pnpm test:operator-policy-http  # real indexer + production Next HTTP matrix (CI full/main job operator-policy-http)
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
 pnpm docs:links                 # in-repo /docs slugs + relative files (CI docs-links job; no network)
 pnpm test:web-unit              # top10 / marketdata / limited-json / fee-legs / constants-sync
@@ -277,6 +282,7 @@ pnpm --filter indexer watchdog
 | 57 | Full GitHub CI on the #69 three-tier `ci.yml`: Solidity / size guard / Attack / CREATE2, backend + web unit + Safe genesis via `test:lib`, `docs:check` + `docs:links`, Playwright smoke + interactive (`web`), Postgres | `.github/workflows/ci.yml`, `docs/ci.md`, `scripts/docs-links.ts`, `scripts/safe-genesis-builder.test.ts` |
 | 58 | Visual / a11y / failure-injection gate; CI fails on unexplained screenshot, serious axe diffs, color-contrast, leftover `text-zinc-500|600|700`, or unexpected console/pageerror | `e2e/visual.spec.ts`, `e2e/states.spec.ts`, `e2e/a11y.spec.ts`, `e2e/failures.spec.ts`, `qa-inject.test.ts`, `e2e/contrast.test.ts`, `e2e/console-gate.test.ts` |
 | 59 | Trusted geo policy (#63): ALLOW/DENY/UNKNOWN + reason codes; production HMAC edge only; LOCAL fixture cannot load production deny ISOs; region fail-closed; `UA-14`/`UA-09` oblast UNKNOWN (FAQ 1009); precise `UA-DPR`/`UA-LPR` still DENY; SY not blanket-denied; VPN best-effort; no UI country list | `packages/reactor/src/geo-policy.test.ts`, `apps/indexer/src/geo-policy.test.ts` |
+| 60 | Operator policy gate (#62): recovered wallet proof; sign-as-BLOCKED + claim CLEAR still denies; blocked geo / allow / stale dataset / missing proof / public GET reads + `GET /operator-policy/status` (#65 contract) / denial before signer/upload/tx payload. Official `#66` `indexerSanctionsStore().screen` + `#67` `evaluateRequestGeo` bind against `apps/indexer/src` (LOCAL FX DENY; HMAC `UA-14` oblast UNKNOWN; HMAC `UA-DPR` DENY). Production HTTP: real indexer + `next start` matrix (`pnpm test:operator-policy-http`, full-only job `operator-policy-http`). | `packages/reactor/src/sanctions-policy.test.ts`, `packages/reactor/src/wallet-proof.test.ts`, `apps/indexer/src/operator-policy.test.ts`, `apps/web/src/lib/operator-policy-bff.test.ts`, `scripts/operator-policy-http.test.ts` |
 
 ## Arc smoke
 

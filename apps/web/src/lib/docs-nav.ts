@@ -21,6 +21,7 @@ export const DOCS: { slug: string; title: string; group: string; file: string }[
   { slug: "tickers", title: "Ticker registry", group: "Launch", file: "tickers.md" },
   { slug: "admission", title: "Launch admission", group: "Launch", file: "admission.md" },
   { slug: "sanctions", title: "Address screening", group: "Launch", file: "sanctions.md" },
+  { slug: "operator-policy", title: "Operator policy", group: "Launch", file: "operator-policy.md" },
   { slug: "guardian", title: "Guardian", group: "Launch", file: "guardian.md" },
   { slug: "keeper", title: "Keeper", group: "Launch", file: "keeper.md" },
   { slug: "api", title: "API", group: "Builders", file: "api.md" },

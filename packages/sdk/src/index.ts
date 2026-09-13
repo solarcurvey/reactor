@@ -22,6 +22,20 @@ export type ReactorClientOpts = {
 export class ReactorClient {
   constructor(private opts: ReactorClientOpts) {}
 
+  async operatorPolicyChallenge() {
+    const r = await fetch(`${this.opts.baseUrl}/operator-policy/challenge`);
+    return r.json();
+  }
+
+  async operatorPolicyStatus(proof?: { token: string; signature: string }) {
+    const headers: Record<string, string> = {};
+    if (proof?.token && proof?.signature) {
+      headers["x-reactor-wallet-proof"] = JSON.stringify({ token: proof.token, signature: proof.signature });
+    }
+    const r = await fetch(`${this.opts.baseUrl}/operator-policy/status`, { headers });
+    return r.json();
+  }
+
   async ticker(raw: string) {
     const r = await fetch(`${this.opts.baseUrl}/ticker/${encodeURIComponent(raw)}`);
     return r.json();
@@ -67,17 +81,34 @@ export class ReactorClient {
     return r.json();
   }
 
-  async admit(body: Record<string, unknown>) {
+  async admit(body: Record<string, unknown>, proof?: { token: string; signature: string }) {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (this.opts.apiKey) headers["x-partner-key"] = this.opts.apiKey;
+    const p =
+      proof ??
+      (body.walletProof && typeof body.walletProof === "object"
+        ? (body.walletProof as { token: string; signature: string })
+        : undefined);
+    if (p?.token && p?.signature) {
+      headers["x-reactor-wallet-proof"] = JSON.stringify({ token: p.token, signature: p.signature });
+    }
     const r = await fetch(`${this.opts.baseUrl}/launch/admit`, { method: "POST", headers, body: JSON.stringify(body) });
     return r.json();
   }
 
-  async authorize(body: Record<string, unknown>) {
+  async authorize(body: Record<string, unknown>, proof?: { token: string; signature: string }) {
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    const p =
+      proof ??
+      (body.walletProof && typeof body.walletProof === "object"
+        ? (body.walletProof as { token: string; signature: string })
+        : undefined);
+    if (p?.token && p?.signature) {
+      headers["x-reactor-wallet-proof"] = JSON.stringify({ token: p.token, signature: p.signature });
+    }
     const r = await fetch(`${this.opts.baseUrl}/launch/authorize`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify(body),
     });
     return r.json();

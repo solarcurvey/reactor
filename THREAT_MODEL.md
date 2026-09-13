@@ -45,6 +45,7 @@ Hostile-reader notes for Codex / external review. **Not an audit.**
 8. **Guardian cannot** withdraw, mint, change fee BPS, set Top-10, or take fee exemption as a wallet. See `GUARDIAN_MODEL.md`.
 9. **FoT / rebase quotes:** `creditRewards` / vault `accrue` measure actual received; shortfall reverts. Rebasing quotes are unsupported (document + do not register).
 16. **Keeper lease fence** — one `leader_locks` row; live leader renews `lease_until` without changing acquire `ts`; send is refused if renew fails. See `KEEPER_MODEL.md` and `/docs/keeper`.
+17. **Operator policy gate (#62)** — one shared offchain decision on REACTOR-operated write/authorization paths (`/launch/admit`, `/launch/authorize`, isolated signer, `/quote`, `/upload`, Next `/api/launch-pricing`). Fail closed on blocked wallet, blocked geo, or stale/unavailable required policy. Browser clear/country/IP flags are not authority. Does **not** block direct onchain use of public contracts. Not a legal/OFAC-compliance opinion. See `/docs/operator-policy`.
 
 ## Offchain indexer (not custody)
 
@@ -84,7 +85,7 @@ Postgres is the production store. SQLite is local-only and uses 64-bit INTEGER, 
 - Rate limits (quote / upload / pricing) are separate. Body caps + RPM are not a complete L7 DoS proof.
 - The consumer UI fails visible on indexer / RPC / quote outages (no empty-board disguise, no 0/1 minOut ticket). Review-only `?inject=` is not a production control.
 - **Exact official-list screening (`@reactor/sanctions`)** loads Treasury/OFAC HTTPS XML into a local index. Per-request screening does not call a third-party API. A missing or stale snapshot is `unavailable`, never `clear`. A listed address can still be `blocked` on last-known-good. This is **not** OFAC compliance, not hop attribution, and not a launch/trade policy gate (RELEASE GATE #60 children). Atomic refresh must not replace last-known-good with a partial parse. Host allowlist is Treasury/OFAC HTTPS only.
-- **Geo policy (#63)** is a server-side ALLOW / DENY / UNKNOWN evaluator. Production geo is a signed reverse-proxy / deployment-edge claim (`GEO_EDGE_SECRET`). Client country headers are ignored. LOCAL cannot activate the production deny revision. The evaluator is **not** yet an HTTP gate (#62). VPN/proxy/Tor is best-effort only. Residual: a compromised edge can mint any country; a missing or oblast-only Ukraine region (`UA-14` / `UA-09`) is UNKNOWN, not a country-wide or whole-oblast deny (FAQ 1009). Not a legal opinion. Not OFAC-compliance.
+- **Geo policy (#63)** is a server-side ALLOW / DENY / UNKNOWN evaluator. Production geo is a signed reverse-proxy / deployment-edge claim (`GEO_EDGE_SECRET`). Client country headers are ignored. LOCAL cannot activate the production deny revision. HTTP write enforcement is operator policy (#62). VPN/proxy/Tor is best-effort only. Residual: a compromised edge can mint any country; a missing or oblast-only Ukraine region (`UA-14` / `UA-09`) is UNKNOWN, not a country-wide or whole-oblast deny (FAQ 1009). Not a legal opinion. Not OFAC-compliance.
 
 ## Repository / GitHub Actions (not custody)
 

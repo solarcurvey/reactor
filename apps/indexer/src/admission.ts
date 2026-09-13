@@ -333,11 +333,10 @@ export async function persistReceipt(store: Store, issued: { id: string; receipt
 }
 
 export async function admit(store: Store, input: AdmitInput): Promise<AdmitResult> {
-  // RELEASE GATE #60 children (not this PR / #61):
-  // - server policy gate: deny when screen(wallet) === "blocked"; fail-closed on unavailable/stale
-  // - geo/IP controls
-  // - UX copy for blocked / unavailable
-  // Exact-address screening lives in @reactor/sanctions. Do not treat a missing dataset as clear.
+  // RELEASE GATE #60: write-path policy gate is operator-policy.ts (Refs #62), before this function.
+  // Exact-address screening lives in @reactor/sanctions / GET /sanctions/screen. Do not treat a missing dataset as clear.
+  // This function does not call screen() — deny when screen(wallet) === "blocked" is the #62 gate.
+  // Remaining #60 children: geo/IP (#63) + UX (#65).
   const level = await issuanceLevel(store);
   const parsed = tryNormalizeTicker(input.ticker ?? "");
   if (!parsed.ok) return { decision: "DENY", reasons: [parsed.reason], level };

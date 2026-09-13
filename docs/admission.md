@@ -4,7 +4,7 @@
 
 `POST /launch/authorize` is the public path. Direct isolated-signer calls without an ALLOW receipt fail. Public JSON POSTs (`/launch/authorize`, `/launch/admit`) are stream-capped at **16KiB** default / **64KiB** hard max (Content-Length and chunked); oversize is **413**.
 
-Exact official-list wallet screening exists as `@reactor/sanctions` / `GET /sanctions/screen` (Refs #61). Admission does **not** call it yet — server policy gate, geo/IP, and UX are later RELEASE GATE #60 children. Do not read a missing screen as ALLOW.
+**Operator policy (issue #62)** runs first on admit, authorize, and the isolated signer. The screened subject is the **recovered EIP-191 signer** of `GET /operator-policy/challenge` — not `body.wallet` / `x-reactor-wallet`. Address screen uses `#61` `indexerSanctionsStore().screen` / `GET /sanctions/screen` when that plugin is bound (lookup API stays ungated). Trusted geo is the other input. Deny is **403**; stale/unavailable required policy is **503**. Missing/invalid proof is **403**. No receipt or signature is issued. Browser country / “clear” / claimed-wallet flags are ignored. This does not block direct onchain Factory calls. See [Operator policy](/docs/operator-policy) and [Address screening](/docs/sanctions).
 
 ## Flow
 

@@ -210,6 +210,10 @@ Economics / 3.5% / Factory V1 / no mainnet: unchanged.
 | Isolated signer unbounded parse | **FIXED** | Same reader (not a public API) |
 | Upload 2MB | Unchanged | Already streamed |
 
+## Operator policy (#62)
+
+Shared offchain gate on REACTOR-operated write/authorization HTTP. Fail closed. Browser flags are not authority. Does not block public contracts. Address screen binds merged #66 `indexerSanctionsStore().screen`. Trusted geo binds merged #67 `evaluateRequestGeo`. Issue stays open until independent verify.
+
 ## Remaining risks / mainnet blockers
 
 - Uniswap v4-core BUSL, non-production until June 2027; **no official v4 PoolManager on Arc Testnet** at last probe.
