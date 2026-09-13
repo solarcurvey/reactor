@@ -20,6 +20,7 @@ Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy,
 - Activity is a feed with explorer links, not RPC-polled tables.
 - Board / search / token page / quote picker read the indexer (`/markets`, `/page/token`, `/quote-assets`). Search is SQL `q` + `stage`, not a client filter of the full board. Token page is one aggregated hop. Live swap tickets stay `POST /quote` (30s, fail-closed) — not a cached mark. Expensive catalog/CORE/wallet reads do not refetch on window focus. SSE trade prints patch cached rows; they do not refetch the board.
 - Confirmed CORE and Top-10 buy+burn land as **bottom-right** toasts after indexer SSE commit (not mempool, not epoch submit, not Standard SelfBurn). Dedupe is `(chainId, tx, logIndex, eventKind)` and survives dismiss. Auto-dismiss pauses on hover/focus. Safe-area insets. `prefers-reduced-motion` skips the enter animation. Explorer tx link.
+- Internal `/ops` shows official-list dataset version, content hash, freshness, and operator/geo policy versions. Not in public nav.
 
 ## Failures (visible, not empty)
 

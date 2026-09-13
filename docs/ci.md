@@ -25,7 +25,7 @@ Product work for [#17](https://github.com/solarcurvey/reactor/issues/17) landed 
 | Merge-candidate | `11fdadb` | [`34727535121`](https://github.com/solarcurvey/reactor/actions/runs/34727535121) | exact-head `ci-ok` success |
 | Post-merge `main` | `80d3cac` | [`34727638255`](https://github.com/solarcurvey/reactor/actions/runs/34727638255) | `ci-ok` success |
 
-Later integrated closes: #37 after #50 `e5fd745` / [`34727279555`](https://github.com/solarcurvey/reactor/actions/runs/34727279555); #36 after #49 `ad7b457` / [`34729758795`](https://github.com/solarcurvey/reactor/actions/runs/34729758795); #61 after #66 `d08aa1c` / [`34731099571`](https://github.com/solarcurvey/reactor/actions/runs/34731099571); #63 after #67 `e712617` / [`34731788819`](https://github.com/solarcurvey/reactor/actions/runs/34731788819) (founder closed after post-merge verify); #62 after #68 `2002aed` / [`34733128955`](https://github.com/solarcurvey/reactor/actions/runs/34733128955). **#17 stays open** until this docs PR merges + post-merge docs/CI. **#60 / #64 / #65 / #69 stay open.**
+Later integrated closes: #37 after #50 `e5fd745` / [`34727279555`](https://github.com/solarcurvey/reactor/actions/runs/34727279555); #36 after #49 `ad7b457` / [`34729758795`](https://github.com/solarcurvey/reactor/actions/runs/34729758795); #61 after #66 `d08aa1c` / [`34731099571`](https://github.com/solarcurvey/reactor/actions/runs/34731099571); #63 after #67 `e712617` / [`34731788819`](https://github.com/solarcurvey/reactor/actions/runs/34731788819) (founder closed after post-merge verify); #62 after #68 `2002aed` / [`34733128955`](https://github.com/solarcurvey/reactor/actions/runs/34733128955). **#17 stays open** until #79 post-merge docs/CI. **#60 / #64 / #65 / #69 stay open.**
 
 ## Triggers (and the one exception)
 
@@ -74,7 +74,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | `foundry-targeted` | fast + Solidity paths | `forge test` (default profile) + `pnpm size:guard` |
 | `solidity + size-guard` | full / main | `FOUNDRY_PROFILE=ci forge test` + Attack suite + CREATE2 `test_hookBits` + `pnpm size:guard` |
 | `web-production-security` | full / main | `pnpm test:web-security` (production Next + live headers + bundle sentinel + XSS corpus) |
-| `operator-policy-http` | full / main | `pnpm test:operator-policy-http` — real indexer + production Next HTTP matrix (#62). Required by `ci-ok`. |
+| `operator-policy-http` | full / main | `pnpm test:operator-policy-http` — real indexer + production Next HTTP matrix (#62). LOCAL `#64` freshness is pinned `#61` fixtures (no live OFAC unless `SANCTIONS_NETWORK=1`). Required by `ci-ok`. |
 | `web-qa` | full / main | `pnpm --filter web test:qa` (production Next visual / a11y / failure-injection). Pixel baselines live on PR #49. |
 | `live-toasts-ui` | full / main | `pnpm test:live-toasts` identity + Playwright |
 | `postgres-ms-timestamps` | full / main | `test:pg` + `test:pg-lease` (two-worker) + `pg-smoke` |
@@ -90,7 +90,7 @@ Open product issues keep their acceptance commands. Attach new heavy jobs to **t
 
 | Issue / PR | Gate | Slot |
 | --- | --- | --- |
-| #17 (merged #42) | Full GitHub CI — Foundry, size guard, Attack, CREATE2, `docs:links`, Playwright smoke, Safe genesis | Landed. Accepted `11fdadb` / `34727535121` then `80d3cac` / `34727638255`. Gates remain on this workflow. **#17 stays open** until the docs evidence PR merges + post-merge docs/CI. |
+| #17 (merged #42) | Full GitHub CI — Foundry, size guard, Attack, CREATE2, `docs:links`, Playwright smoke, Safe genesis | Landed. Accepted `11fdadb` / `34727535121` then `80d3cac` / `34727638255`. Gates remain on this workflow. **#17 stays open** until #79 post-merge docs/CI. |
 | #15 / #35 (PR #44) | Production browser + wallet E2E | Add a full-only job (`pnpm test:e2e:release` when that script exists). |
 | #15 / #36 (merged #49, closed) | Visual / a11y / failure-injection | `web-qa` (full). Closed after `ad7b457` / `34729758795`. |
 | #15 / #18 | Production-readiness parent | Same full-tier rule. Do not move those commands to optional / `continue-on-error`. |

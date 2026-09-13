@@ -1,10 +1,47 @@
-# BUILD REPORT — Cite accepted #17 / #42 CI evidence (docs-only)
+# BUILD REPORT — Sanctions freshness, audit, alerts, runbook (Refs #64)
 
-**Status:** Docs-only replay onto `origin/main` `2002aed` (#68 after #67 / #66). **Refs #17**. Do not `Fixes #17`. Product work already landed via **#42** on `80d3cac`. Preserves integrated #62 operator-policy docs from #68, #63 geo-policy docs from #67, and #61 screening docs from #66. Current-status: #61 / #62 / #63 / #36 / #37 closed; **#17 stays open** until this docs PR merges and post-merge docs/CI is green; **#60 / #64 / #65 / #69 stay open**.
+**Status:** Same PR **#70** / same branch `cursor/sanctions-ops-freshness-8fcc`, rebased onto `origin/main` `35552f6` after **#79** (#17 evidence docs) and **#68** (`2002aed`, #62 operator policy) and **#67** (#63 trusted geo/IP) and **#66** (#61 official-list screening) on #49 / #42 / #50. Independent audit follow-ups: recovered-identity-only gate + LOCAL/test-only fixture fallback; same-address refresh generation is restart-safe. Issue **#64 stays open** — use `Refs #64`, do not auto-close. Official `#61` refresh binds via `apps/indexer/src/sanctions.ts`. Official `#62` `operator-policy.ts` is the gated subject (not the wallet-proof fallback).
+**Not audited. Not mainnet.**
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Persist official-list version/hash/retrieved/last-success; 7-day SLA fail-closed; startup + scheduled refresh keeps last-known-good; health + `/ops` name dataset + policy versions; minimized audit; alerts; operator runbook. HTTP identity is #62 recovered EIP-191 only. Fixture refresh LOCAL/test-only. Same-address refresh writes a new #61-style generation so restart freshness ages from t1. |
+| Rebase | Onto `origin/main` `35552f6` after **#79** (#17 evidence) / **#68** (#62) / **#67** (#63) / **#66** (#61). Docs conflicts kept #79 accepted #17/#42 runs + closed #36/#37/#61/#62/#63 status, #62 `gateProtectedWrite` + challenge/status, #67 `evaluateRequestGeo`, #61 lookup, **and** #64 freshness. `applySanctionsOpsGate` loads merged `operator-policy.ts` (`recoverSubjectWallet` / `gateProtectedWrite`). Shared `#61` store is rebound via `bindOperatorPolicyProviders` so the gate does not construct a second ingest. Ops persist is `SANCTIONS_DATA_DIR/ops`. TESTING row 59 geo; 60 #62; 61 #64. |
+| Indexer / lib | `sanctions-ops.test.ts` + `sanctions-audit.test.ts` + indexer `sanctions-ops.test.ts` + `pnpm docs:check` |
+| Foundry | Not re-run this pass (ops/docs only) |
+| Docs | `/docs/sanctions-ops`, runbook, incident-response, trust, API, builders, TESTING row 61 |
+| Mainnet | **Blocked** |
+
+## Closed this run (#64 ACs — issue stays open)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Bad/partial refresh never replaces last-known-good | **Yes** | `packages/reactor/src/sanctions-ops.test.ts` (empty, thrown, truncated, `partial_refresh` inject) |
+| Stale policy fails protected writes (#62 codes) | **Yes** | Same file + indexer test: `UNAVAILABLE_DATASET_STALE` on quote/admit/authorize/upload |
+| Health/dashboard names exact dataset + policy versions | **Yes** | `GET /health` / `/sanctions/health` / `/ops` + web `/ops` card |
+| Logging/redaction | **Yes** | `sanctions-audit.test.ts` (Anvil key, 65-byte sig, IP, body, mnemonic) |
+| Failure injection → alert + degraded health | **Yes** | `refresh_fail` / `stale` / `policy_fail` raise `sanctions_*` and `degraded` |
+| Runbook linked from incident-response | **Yes** | `docs/incident-response.md` → `docs/sanctions-runbook.md` |
+| No automated complaint override | **Yes** | `NO_AUTOMATED_OVERRIDE`; explicit review is queued, not applied |
+| Close #64 | **No** | Stays open until independent audit + post-merge verify |
+| Claimed-wallet spoof cannot gate/log identity | **Yes** | `extractWallet()` is a no-op (same as #68 `extractSubjectWallet`). Subject is #68 `wallet-proof` / `recoverOfficialSubject`. Spoofed `body.wallet` / `x-reactor-wallet` ignored; not `DENY_ADDRESS_BLOCKED` |
+| Fixture fallback LOCAL/test-only | **Yes** | `allowFixtureSanctionsRefresh` uses `productionHardGatesApply`. Bound `#61` store on LOCAL loads pinned OFAC XML (no live treasury.gov unless `SANCTIONS_NETWORK=1`) so `#64` ops freshness is current. Shared-store rebind keeps `#62` LOCAL fixture screen when the dataset is empty (`OPERATOR_POLICY_BLOCKED_WALLETS` + `OPERATOR_POLICY_DATASET_FRESHNESS`) so `operator-policy-http` still gets `DENY_ADDRESS_BLOCKED`. STAGING/TESTNET/PROD/PRODUCTION refuse fixtures even with `SANCTIONS_FIXTURE=1` |
+| Same-address refresh restart-safe | **Yes** | t0 refresh → t1 same addresses → new `OfficialListRegistry`/`createSanctionsOps` `loadFromDisk` ages from t1. Version id is `ofac-<content16>-<gen12>` or official #61 id. Adapter keeps generation metadata. |
+
+---
+
+# Prior — Cite accepted #17 / #42 CI evidence (docs-only #79)
+
+**Status:** Docs-only replay onto `origin/main` `2002aed` (#68 after #67 / #66), squash-merged as **#79** (`35552f6`). **Refs #17**. Do not `Fixes #17`. Product work already landed via **#42** on `80d3cac`. Preserves integrated #62 operator-policy docs from #68, #63 geo-policy docs from #67, and #61 screening docs from #66. Current-status: #61 / #62 / #63 / #36 / #37 closed; **#17 stays open** until post-merge docs/CI is green; **#60 / #64 / #65 / #69 stay open**.
 **Not audited. Not mainnet.**
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
-## This HEAD
+## That HEAD
 
 | Item | Value |
 | --- | --- |
@@ -18,18 +55,18 @@
 | #61 / #66 | **Closed.** Merged `d08aa1c` / [`34731099571`](https://github.com/solarcurvey/reactor/actions/runs/34731099571) |
 | #63 / #67 | **Closed.** Founder closed after post-merge verify. Merged `e712617` / [`34731788819`](https://github.com/solarcurvey/reactor/actions/runs/34731788819) |
 | #62 / #68 | **Closed.** Merged `2002aed` / [`34733128955`](https://github.com/solarcurvey/reactor/actions/runs/34733128955) |
-| #17 | **Stays open** until this docs PR merges + post-merge docs/CI |
+| #17 | **Stays open** until #79 post-merge docs/CI |
 | #60 / #64 / #65 / #69 | **Stay open.** |
 | Mainnet | **Blocked** |
 
-## Closed this run (docs only)
+## Closed that run (docs only)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
 | Cite accepted #17 / #42 runs | **Yes** | Merge-candidate `11fdadb` / `34727535121`; post-merge `80d3cac` / `34727638255`. Older greens are **not** the closer. |
 | Record #37 / #36 / #61 / #63 / #62 closed | **Yes** | #50 `e5fd745` / `34727279555`; #49 `ad7b457` / `34729758795`; #66 `d08aa1c` / `34731099571`; #67 `e712617` / `34731788819`; #68 `2002aed` / `34733128955` |
 | Preserve #66 / #67 / #68 docs | **Yes** | Operator-policy / geo / screening Priors below keep #68 AC table, HMAC / revision 3 / SY / FAQ 1009, and #61 parser / 85% floor / `screen()`. |
-| `Fixes #17` | **No** | Refs only. Close #17 after this docs PR merges and post-merge docs/CI is green. |
+| `Fixes #17` | **No** | Refs only. Close #17 after #79 post-merge docs/CI is green. |
 | Claim #60 / #64 / #65 / #69 closed | **No** | Stay open. |
 | Frozen economics / arch | **Yes** | No contract / fee / Factory / hook edits |
 
@@ -113,6 +150,44 @@
 | Independent audit 2026-09-12: stale `SY` blanket deny | **Fixed** | Removed `SY` from jurisdictions; `programNotes` + regression `signed({ country: "SY" })` → ALLOW. Targeted Syrian persons stay #61/#62. |
 | Independent re-audit: whole-oblast `UA-14`/`UA-09` DENY | **Fixed this HEAD** | FAQ 1009. Oblast codes/names → UNKNOWN. Precise covered-region fixture → DENY. |
 | Close #63 | **Yes (later)** | Founder closed after post-merge verify. `e712617` / [`34731788819`](https://github.com/solarcurvey/reactor/actions/runs/34731788819). |
+
+---
+
+# Prior — Trusted geo / jurisdiction policy (#63 / merged #67)
+
+**Status:** Merged **#67** on `origin/main` `e712617`. Issue **#63 stays open** until independent audit + post-merge verify. Do not auto-close.  
+**Not audited. Not mainnet.**  
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## That HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Server-side geo policy interface: ALLOW / DENY / UNKNOWN + reason codes; trusted edge HMAC; versioned comprehensive-jurisdiction file with source + effective date; LOCAL fixtures that cannot load production denylists. |
+| Indexer / lib | `packages/reactor/src/geo-policy.test.ts` + `apps/indexer/src/geo-policy.test.ts` + `pnpm docs:check` |
+| Foundry | Not re-run this pass (offchain policy only) |
+| Rebase | Onto `origin/main` `d08aa1c` after squash-merged **#66** (exact official-list OFAC screening / #61). Founder re-audit: SY + oblast overblocks closed; #63 stays open until #62/#65 consume. |
+| Mainnet | **Blocked** |
+
+## Closed that run (#63 ACs — issue stays open)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| One server interface ALLOW / DENY / UNKNOWN + reasons | **Yes** | `evaluateGeoPolicy` / `evaluateRequestGeo` |
+| Production geo from trusted edge only | **Yes** | HMAC headers; unsigned `CF-IPCountry` ignored |
+| Versioned deny policy + source / effective date | **Yes** | `geo-policy-us-comprehensive.v1.json` **revision 3** / 2026-09-12. `CU`/`IR`/`KP` only. `SY` is `not_comprehensive` (E.O. 14312 / 2025-07-01; part 542 removed). Clear Syrian geo → ALLOW. |
+| Region-level when metadata exists; else conservative UNKNOWN | **Yes** | UA without region → `UNKNOWN_REGION_METADATA_UNAVAILABLE` |
+| E.O. 14065 oblast vs Covered Region (FAQ 1009) | **Yes** | `UA-14` / `UA-09` / `Donetsk Oblast` / `Luhansk Oblast` → UNKNOWN, not DENY. Precise signed `UA-DPR` / `UA-LPR` or `DNR`/`DPR`/`LNR`/`LPR` / People's Republic names → DENY. Documented in `/docs/geo-policy`. |
+| VPN/Tor best-effort only | **Yes** | `confidence: "best_effort"`; T1 → UNKNOWN |
+| LOCAL/test fixtures; no accidental production list | **Yes** | Fixture `FX`/`FY`; `GEO_DENY_COUNTRIES` ignored on LOCAL |
+| No UI country checks | **Yes** | Web source scan in `geo-policy.test.ts` |
+| Docs + tests same change | **Yes** | `/docs/geo-policy`, trust, THREAT_MODEL, AUDIT_HANDOFF, TESTING row 59 |
+| #61 / #62 / #64 / #65 | **Not that PR** | Out of scope |
+| Independent audit 2026-09-12: stale `SY` blanket deny | **Fixed** | Removed `SY` from jurisdictions; `programNotes` + regression `signed({ country: "SY" })` → ALLOW. Targeted Syrian persons stay #61/#62. |
+| Independent re-audit: whole-oblast `UA-14`/`UA-09` DENY | **Fixed** | FAQ 1009. Oblast codes/names → UNKNOWN. Precise covered-region fixture → DENY. |
+| Close #63 | **No** | Founder re-audit closed SY + oblast overblocks. Stays open until #62 enforcement + #65 UX consume, then post-merge verify. |
 
 ---
 
@@ -203,7 +278,7 @@ Full-only job `web-qa` (`pnpm --filter web test:qa`) plus cheap units in `test:l
 | Docs | `/docs/ci` before/after inventory. `TESTING.md`, `CONTRIBUTING.md`, `AUDIT_HANDOFF.md`. |
 | Mainnet | **Blocked** |
 
-## Closed this run (#69 ACs — issue stays open)
+## Closed that run (#69 ACs — issue stays open)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |

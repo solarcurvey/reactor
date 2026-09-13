@@ -118,6 +118,7 @@ GitHub Actions is three-tier (fast PR / full merge-candidate / main). Full gate 
 | `PRIVILEGE_MAP.md` | Guardian / Keeper / one-time slots |
 | `HARDENING_REPORT.md` | P0/P1 findings and proof |
 | `docs/publicization.md` | Repo visibility checklist (Refs #72). Do not publicize without founder instruction. AC1 is advertised refs; Support purge/GC is an accepted residual. |
+| `docs/sanctions-runbook.md` | Official-list freshness / incident playbook (#64) |
 
 ## License
 
