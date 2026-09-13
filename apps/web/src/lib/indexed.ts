@@ -162,6 +162,9 @@ export function mergeLaunchFixtures(items: LaunchToken[]): LaunchToken[] {
       lifetimeRewards: emptyRewards ? f.lifetimeRewards : t.lifetimeRewards,
       bonding: t.bonding || f.bonding,
       bondingBps: t.bondingBps || f.bondingBps,
+      ready: Boolean(t.ready || f.ready),
+      curve: t.curve || f.curve,
+      quote: f.quote || t.quote,
     });
   });
   const seen = new Set(merged.map((t) => t.token.toLowerCase()));
@@ -252,9 +255,11 @@ export async function loadTokenPage(address: string, interval: string, signal?: 
     sparse?: boolean;
   }>(`/page/token/${address}?interval=${encodeURIComponent(interval)}`, { signal });
   if (got.ok && got.body.ok && got.body.market) {
+    const row = marketRowToLaunch(got.body.market);
+    const market = REVIEW_FIXTURES ? mergeLaunchFixtures([row])[0] : row;
     const candles = got.body.candles ?? [];
     return {
-      market: marketRowToLaunch(got.body.market),
+      market,
       ohlcv: { candles, sparse: Boolean(got.body.sparse), interval: got.body.interval ?? interval },
       swaps: got.body.swaps ?? [],
     };
