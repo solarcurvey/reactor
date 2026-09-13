@@ -1,4 +1,23 @@
+<<<<<<< HEAD
 # BUILD REPORT — Industrial Forge brand implementation (Refs #55)
+=======
+# BUILD REPORT — Handbook rebase onto main #46 / #75 (Refs #14)
+
+**Status:** Same draft PR **#48** / same branch `cursor/extensive-gitbook-docs-afa6`, rebased onto `origin/main` `789eb5c` (merged **#46** after **#75** `4207356`). Issue **#14 stays open**. Do **not** claim AC complete — known gaps remain (body full-text search, broken-link CI, docs visual/code-copy, version badge matrix).
+**Not audited. Not mainnet.**
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.4** from current `main` `docs/version.json` — stacked #46 0.3.4 is now on main; do not restore 0.3.3 |
+| Factory | **V1** — **unchanged** |
+| Intent | Keep the #14 handbook corpus. Fold landed #46 observability + #75 `/docs/restricted-access` plus #70 sanctions-ops / runbook / incident-response and #44 `e2e-release-gate` into the handbook. Drop duplicated stacked #46 commits. |
+| Merge-train | Stacked #54 AutomationGateway remains on this branch. Do **not** merge #48 as a shortcut for #54. #46 has landed independently. |
+
+---
+
+# Prior — Protocol 0.3.4 frontend observability (merged #46)
+>>>>>>> 74df148 (Record handbook rebase onto main #70.)
 
 **Status:** Implementation PR for issue **#55**. Founder (Davis) locked **Direction C — Industrial Forge**. This pass applies C to production surfaces and assets. Rebased onto `origin/main` `ff444cb` after squash-merged **#81** / #69 (docs-only path filter), **#46** / #39 (production observability), **#75** / #65 (restricted-access UX), **#44** / #35 (wallet E2E), **#70** / #64 (sanctions freshness), **#79** / #17 CI-evidence docs, **#68** / #62, **#67** / #63, **#66** / #61. **Do not close #55** until independent audit. Issue **#36 is closed** (`ad7b457`, post-merge `34729758795`); `web-qa` remains required and covers the approved-C state — do not weaken that gate. #81 `ci-decide` / `ci-ok` (docs-only cheap path; force-full still executes every required job), #39 observability (`obs-ui`, error boundaries, release SHA, vendor-proof) and #65 `/restricted` UX (denied-policy a11y/reflow, four-state matrix, hydration fixes), #35 `e2e-release-gate` and #64 sanctions-ops docs/runbook plus #66/#67/#68/#79 policy/CI-evidence content are preserved. Brand chrome is additive on those surfaces: `/restricted` kicker is `rx-kicker` (heat, no cyan), links and deny banners use 0–4px radius; amber remains the semantic warning, not a Direction B accent. #46 error boundaries keep `obs-ui` / release SHA / `traceId` and use heat kickers (no leftover cyan/pills). `SupportRef` and error mono use `text-zinc-400` (not zinc-500). Copy, testids, and policy behavior are unchanged.
 **Not audited. Not mainnet.**

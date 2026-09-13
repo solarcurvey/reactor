@@ -30,6 +30,9 @@ const requiredSlugs = [
   "security",
   "web-security",
   "geo-policy",
+  "sanctions-ops",
+  "sanctions-runbook",
+  "incident-response",
   "tickers",
   "admission",
   "sanctions",
@@ -103,6 +106,9 @@ assert.match(llms, /\/docs\/ci/);
 assert.match(llms, /\/docs\/perf/);
 assert.match(llms, /\/docs\/qa/);
 assert.match(llms, /\/docs\/sanctions/);
+assert.match(llms, /\/docs\/sanctions-ops/);
+assert.match(llms, /\/docs\/sanctions-runbook/);
+assert.match(llms, /\/docs\/incident-response/);
 assert.match(llms, /\/docs\/geo-policy/);
 assert.match(llms, /\/docs\/operator-policy/);
 
