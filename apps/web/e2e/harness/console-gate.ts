@@ -57,14 +57,16 @@ const EXPECTED: ReadonlyArray<{
   // is reported as an access-control failure, then Next navigates fully.
   {
     kind: "pageerror",
-    pattern: /Fetch API cannot load https?:\/\/127\.0\.0\.1:43147\/\S+\?_rsc=\S+ due to access control checks/,
+    pattern: /(?:Fetch API cannot load https?:\/\/)?127\.0\.0\.1:43147\/\S+\?_rsc=\S+ due to access control checks/,
     reason: "iPhone WebKit: Next.js ?_rsc= prefetch access-control, then fallback",
   },
   // Same WebKit access-control report for the #50 indexed client fetch to the
   // local mock (`connect-src` + CORS `*` are set; navigation still succeeds).
+  // WebKit sometimes omits the "Fetch API cannot load https://" prefix and
+  // reports `/127.0.0.1:18448/stream due to access control checks.`
   {
     kind: "pageerror",
-    pattern: /Fetch API cannot load https?:\/\/127\.0\.0\.1:18448\/\S+ due to access control checks/,
+    pattern: /(?:Fetch API cannot load https?:\/\/)?127\.0\.0\.1:18448\/\S+ due to access control checks/,
     reason: "WebKit: mock indexer :18448 fetch access-control, then fixture/fallback",
   },
 ];
