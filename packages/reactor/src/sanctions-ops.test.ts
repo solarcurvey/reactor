@@ -10,11 +10,14 @@ import {
   SANCTIONS_DATASET_SLA_MS,
   SANCTIONS_REFRESH_FAILURE_ALERT_THRESHOLD,
   SanctionsOps,
+  adaptOfficialRefreshPayload,
   assessDatasetFreshness,
   completenessError,
+  datasetVersionId,
   fixtureRefreshPayload,
   resolveGatedSubject,
   reviewOverride,
+  sourceGenerationHash,
 } from "./sanctions-ops.ts";
 import { hashWallet } from "./sanctions-audit.ts";
 import { OPERATOR_POLICY_ID } from "./sanctions-policy.ts";
@@ -107,6 +110,7 @@ const t0 = Date.parse("2026-09-12T00:00:00.000Z");
         },
       ],
       contentHash: "aa",
+      sourceGenerationHash: "bb",
       parserVersion: "1.0.0",
       addressCount: 10,
       slaId: "ofac-official-list-v1" as const,
@@ -304,6 +308,90 @@ const t0 = Date.parse("2026-09-12T00:00:00.000Z");
   assert(claimedOnly.audit.subject === null, "claimed-only audit has no wallet subject");
   assert(claimedOnly.audit.reason !== "DENY_ADDRESS_BLOCKED", "audit decision is not address-blocked");
 
+  rmSync(dir, { recursive: true, force: true });
+}
+
+{
+  const dir = mkdtempSync(join(tmpdir(), "sanctions-generation-"));
+  const t1 = Date.parse("2026-09-12T12:00:00.000Z");
+  const payloadT0 = fixtureRefreshPayload(new Date(t0).toISOString());
+  const a = new OfficialListRegistry({ dataDir: dir, now: () => t0 });
+  const first = a.activate(payloadT0);
+  assert(first.ok, "t0 activate");
+  const hash0 = first.ok ? first.snapshot.version.contentHash : "";
+  const id0 = first.ok ? first.snapshot.version.id : "";
+  assert(id0.includes("-") && id0.split("-").length >= 3, `generation id has content+generation parts: ${id0}`);
+
+  const payloadT1 = fixtureRefreshPayload(new Date(t1).toISOString(), payloadT0.addresses.length, payloadT0.sources[0]!.byteLength);
+  const b = new OfficialListRegistry({ dataDir: dir, now: () => t1 });
+  b.loadFromDisk();
+  const second = b.activate(payloadT1);
+  assert(second.ok, "t1 same-address refresh activates");
+  assert(second.ok && second.snapshot.version.contentHash === hash0, "address-set contentHash unchanged");
+  assert(second.ok && second.snapshot.version.id !== id0, "generation id advances when retrieval metadata changes");
+  assert(second.ok && second.snapshot.version.retrievedAt === new Date(t1).toISOString(), "in-memory retrievedAt is t1");
+  assert(second.ok && second.snapshot.version.sources[0]?.retrievedAt === new Date(t1).toISOString(), "in-memory source retrievedAt is t1");
+
+  const reloaded = new OfficialListRegistry({ dataDir: dir, now: () => t1 });
+  const disk = reloaded.loadFromDisk();
+  assert(disk, "fresh process loads disk");
+  assert(disk.version.retrievedAt === new Date(t1).toISOString(), "persisted retrievedAt is t1, not t0");
+  assert(disk.version.id === (second.ok ? second.snapshot.version.id : ""), "pointer targets t1 generation");
+  assert(reloaded.freshness() === "current", "freshness after reload is current from t1");
+
+  const late = new OfficialListRegistry({
+    dataDir: dir,
+    now: () => t1 + SANCTIONS_DATASET_SLA_MS + 1,
+  });
+  late.loadFromDisk();
+  assert(late.freshness() === "stale", "ages from persisted t1, not a lost in-memory t0");
+  const ops = new SanctionsOps({ dataDir: dir, now: () => t1 + SANCTIONS_DATASET_SLA_MS + 1 });
+  const gated = ops.gateProtectedWrite({ action: "quote", recoveredWallet: WALLET });
+  assert(!gated.ok && "reason" in gated.decision && gated.decision.reason === "UNAVAILABLE_DATASET_STALE", "restart-stale write fails closed from t1");
+
+  rmSync(dir, { recursive: true, force: true });
+}
+
+{
+  const t1Iso = "2026-09-12T12:00:00.000Z";
+  const t0Iso = new Date(t0).toISOString();
+  const addresses = fixtureRefreshPayload(t0Iso).addresses;
+  const sourcesT1 = fixtureRefreshPayload(t1Iso).sources.map((s) => ({
+    ...s,
+    etag: '"gen-1"',
+    lastModified: "Sat, 12 Sep 2026 12:00:00 GMT",
+    publishDate: "09/12/2026",
+  }));
+  const officialId = datasetVersionId("c".repeat(64), sourceGenerationHash(sourcesT1, t1Iso));
+  const officialGen = sourceGenerationHash(sourcesT1, t1Iso);
+  const adapted = adaptOfficialRefreshPayload({
+    version: {
+      id: officialId,
+      retrievedAt: t1Iso,
+      sources: sourcesT1,
+      contentHash: "c".repeat(64),
+      sourceGenerationHash: officialGen,
+    },
+    index: addresses,
+  });
+  assert(adapted.retrievedAt === t1Iso, "adapter keeps official retrievedAt");
+  assert(adapted.officialVersionId === officialId, "adapter keeps official version id");
+  assert(adapted.officialSourceGenerationHash === officialGen, "adapter keeps official generation hash");
+  assert(adapted.sources[0]?.etag === '"gen-1"', "adapter keeps source ETag");
+  assert(adapted.addresses.length === addresses.length, "adapter copies address set");
+
+  const dir = mkdtempSync(join(tmpdir(), "sanctions-adapter-gen-"));
+  const first = new OfficialListRegistry({ dataDir: dir, now: () => t0 }).activate(fixtureRefreshPayload(t0Iso));
+  assert(first.ok, "t0 seed for adapter");
+  const id0 = first.ok ? first.snapshot.version.id : "";
+  const second = new OfficialListRegistry({ dataDir: dir, now: () => Date.parse(t1Iso) }).activate(adapted);
+  assert(second.ok, "adapted official generation activates");
+  assert(second.ok && second.snapshot.version.id === officialId, "activate preserves official #61 version id");
+  assert(second.ok && second.snapshot.version.id !== id0, "official generation is not address-only identity");
+  assert(second.ok && second.snapshot.version.sourceGenerationHash === officialGen, "official generation hash stored");
+  const disk = new OfficialListRegistry({ dataDir: dir, now: () => Date.parse(t1Iso) }).loadFromDisk();
+  assert(disk?.version.retrievedAt === t1Iso, "adapted generation retrievedAt survives restart");
+  assert(disk?.version.id === officialId, "adapted generation id survives restart");
   rmSync(dir, { recursive: true, force: true });
 }
 

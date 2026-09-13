@@ -10,7 +10,7 @@ UI and docs center **CHOOSE WHAT YOUR TOKEN EARNS** / **WHAT SHOULD YOUR TOKEN E
 
 ## Sanctions ops (#64)
 
-Official-list freshness is fail-closed on REACTOR-operated writes. Last-known-good is retained on a bad refresh. Audit lines hash wallets and drop raw IP / signatures / bodies. No automated override on complaint. Runbook: `docs/sanctions-runbook.md`.
+Official-list freshness is fail-closed on REACTOR-operated writes. Last-known-good is retained on a bad refresh. Same-address refreshes persist a new source-generation so restart freshness ages from the latest `retrievedAt`. Audit lines hash wallets and drop raw IP / signatures / bodies. No automated override on complaint. Runbook: `docs/sanctions-runbook.md`.
 
 ## P0 status
 

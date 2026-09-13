@@ -20,6 +20,10 @@ The gated and logged subject is the **same verified EIP-191 signer as #68** (`pa
 
 Active version, content hash, retrieved time, official source metadata, and last successful refresh are persisted under `SANCTIONS_DATA_DIR` (`current.json`, `refresh-state.json`, `versions/<id>/`).
 
+Version identity matches **#61 source-generation**: `ofac-<contentHash16>-<generationHash12>`. Address-set `contentHash` is stable when the canonical keys are unchanged. A later official fetch with the **same addresses** still persists a new immutable generation (`retrievedAt` + per-source ETag / Last-Modified / publish date / body hash). `current.json` also stores `retrievedAt` and `sourceGenerationHash`. After a process restart, freshness ages from the latest generation — not the first time those addresses were seen.
+
+When the official `#61` module is present, `adaptOfficialRefreshPayload` keeps that generation id / hash / retrievedAt. It does **not** collapse the snapshot to address-only identity.
+
 Refresh runs at **process start** and on a **6 hour** schedule (`SANCTIONS_REFRESH_INTERVAL_MS`). A bad, partial, or gutted replacement does **not** swing `current.json`. Last-known-good stays active; health is **degraded**. Completeness floor: keep ≥85% of prior addresses; each source body must stay ≥50% of prior bytes. `allowCatastrophicShrink` is an explicit operator exception, not a complaint path.
 
 When the official `#61` module is present, refresh binds to it. **Fixture fallback is LOCAL / explicit test only** (`REACTOR_ENV=LOCAL` or `SANCTIONS_FIXTURE=1` outside production-like envs). `PROD`, `PRODUCTION`, `STAGING`, and `TESTNET` (and `NODE_ENV=production`) require the official source; a missing or broken plugin reports unavailable/stale. `SANCTIONS_FIXTURE=1` cannot override those hard-gated envs.

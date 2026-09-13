@@ -12,6 +12,7 @@ import {
   SANCTIONS_DATASET_SLA_MS,
   SANCTIONS_REFRESH_INTERVAL_MS,
   SanctionsOps,
+  adaptOfficialRefreshPayload,
   fixtureRefreshPayload,
   type FailureInject,
   type RefreshPayload,
@@ -233,10 +234,27 @@ async function tryOfficialFetcher(): Promise<(() => Promise<RefreshPayload>) | u
       opsRefreshSanctions?: (store: { active?: () => { version?: RefreshPayload } }) => Promise<{
         ok: boolean;
         error?: string;
-        version?: { id: string; retrievedAt: string; sources: RefreshPayload["sources"]; contentHash: string; addressCount: number };
+        version?: {
+          id: string;
+          retrievedAt: string;
+          sources: RefreshPayload["sources"];
+          contentHash: string;
+          sourceGenerationHash?: string;
+          addressCount: number;
+        };
       }>;
       indexerSanctionsStore?: () => {
-        active: () => { version: { retrievedAt: string; sources: RefreshPayload["sources"]; contentHash: string; addressCount: number }; index: Map<string, { family: string; canonicalKey: string }> } | null;
+        active: () => {
+          version: {
+            id?: string;
+            retrievedAt: string;
+            sources: RefreshPayload["sources"];
+            contentHash: string;
+            sourceGenerationHash?: string;
+            addressCount: number;
+          };
+          index: Map<string, { family: string; canonicalKey: string; display?: string }>;
+        } | null;
       };
     };
     if (typeof mod.opsRefreshSanctions === "function" && typeof mod.indexerSanctionsStore === "function") {
@@ -246,11 +264,16 @@ async function tryOfficialFetcher(): Promise<(() => Promise<RefreshPayload>) | u
         if (!result.ok) throw new Error(result.error ?? "official refresh failed");
         const active = store.active();
         if (!active) throw new Error("official refresh did not activate");
-        return {
-          retrievedAt: active.version.retrievedAt,
-          sources: active.version.sources,
-          addresses: [...active.index.values()].map((a) => ({ family: a.family, canonicalKey: a.canonicalKey })),
-        };
+        return adaptOfficialRefreshPayload({
+          version: {
+            id: result.version?.id ?? active.version.id,
+            retrievedAt: active.version.retrievedAt,
+            sources: active.version.sources,
+            contentHash: active.version.contentHash,
+            sourceGenerationHash: active.version.sourceGenerationHash,
+          },
+          index: active.index.values(),
+        });
       };
     }
   } catch {

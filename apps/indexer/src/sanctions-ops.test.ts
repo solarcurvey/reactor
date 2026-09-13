@@ -16,7 +16,7 @@ import {
   walletProofChainId,
   walletProofSecret,
 } from "./sanctions-ops.ts";
-import { fixtureRefreshPayload } from "../../../packages/reactor/src/sanctions-ops.ts";
+import { adaptOfficialRefreshPayload, fixtureRefreshPayload } from "../../../packages/reactor/src/sanctions-ops.ts";
 import { hashWallet } from "../../../packages/reactor/src/sanctions-audit.ts";
 import { OPERATOR_POLICY_ID } from "../../../packages/reactor/src/sanctions-policy.ts";
 import { issueWalletProofChallenge } from "../../../packages/reactor/src/wallet-proof.ts";
@@ -233,6 +233,50 @@ const t0 = Date.parse("2026-09-12T00:00:00.000Z");
     }
   }
   rmSync(root, { recursive: true, force: true });
+}
+
+{
+  const dir = mkdtempSync(join(tmpdir(), "idx-sanctions-generation-"));
+  const t1 = Date.parse("2026-09-12T12:00:00.000Z");
+  const t0Iso = new Date(t0).toISOString();
+  const t1Iso = new Date(t1).toISOString();
+  const first = await createSanctionsOps(null, { REACTOR_ENV: "LOCAL" }, {
+    dataDir: dir,
+    now: () => t0,
+    fetchOfficialList: async () => fixtureRefreshPayload(t0Iso),
+  });
+  const seed = await first.refresh();
+  assert(seed.ok, "t0 indexer refresh");
+  const id0 = seed.ok ? seed.version.id : "";
+
+  const official = adaptOfficialRefreshPayload({
+    version: {
+      id: "ofac-official-gen-t1",
+      retrievedAt: t1Iso,
+      sources: fixtureRefreshPayload(t1Iso).sources,
+      sourceGenerationHash: "official-generation-t1",
+    },
+    index: fixtureRefreshPayload(t1Iso).addresses,
+  });
+  const second = await createSanctionsOps(null, { REACTOR_ENV: "LOCAL" }, {
+    dataDir: dir,
+    now: () => t1,
+    fetchOfficialList: async () => official,
+  });
+  const refreshed = await second.refresh();
+  assert(refreshed.ok, "t1 same-address official refresh");
+  assert(refreshed.ok && refreshed.version.id === "ofac-official-gen-t1", "indexer adapter preserves official generation id");
+  assert(refreshed.ok && refreshed.version.id !== id0, "indexer does not collapse to address-only id");
+
+  const restarted = await createSanctionsOps(null, { REACTOR_ENV: "LOCAL" }, {
+    dataDir: dir,
+    now: () => t1,
+  });
+  assert(restarted.health().dataset.retrievedAt === t1Iso, "new process freshness ages from t1");
+  assert(restarted.health().dataset.versionId === "ofac-official-gen-t1", "new process loads official generation");
+  assert(restarted.health().freshness === "current", "t1 is still inside SLA after restart");
+
+  rmSync(dir, { recursive: true, force: true });
 }
 
 console.log("indexer sanctions-ops tests ok");

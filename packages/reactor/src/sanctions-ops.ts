@@ -70,6 +70,8 @@ export type DatasetVersion = {
   lastSuccessfulRefreshAt?: string;
   sources: SourceFetchMeta[];
   contentHash: string;
+  /** Retrieval/source-generation identity. Same addresses, new fetch → new id. */
+  sourceGenerationHash: string;
   parserVersion: string;
   addressCount: number;
   slaId: typeof SANCTIONS_DATASET_SLA_ID;
@@ -94,6 +96,10 @@ export type RefreshPayload = {
   addresses: OfficialAddress[];
   retrievedAt: string;
   warningCount?: number;
+  /** Official #61 version id. Preserved when adapting; never recomputed from addresses only. */
+  officialVersionId?: string;
+  /** Official #61 source-generation hash. Preserved when adapting. */
+  officialSourceGenerationHash?: string;
 };
 
 export type ActivateResult =
@@ -144,9 +150,62 @@ function sha256Hex(s: string): string {
   return createHash("sha256").update(s).digest("hex");
 }
 
-function datasetContentHash(addresses: OfficialAddress[]): string {
+export function datasetContentHash(addresses: OfficialAddress[]): string {
   const keys = [...addresses.map((a) => a.canonicalKey)].sort();
   return sha256Hex(keys.join("\n"));
+}
+
+/** Hash of retrieval + per-source publication/HTTP metadata. Same addresses, new fetch → new generation. */
+export function sourceGenerationHash(sources: SourceFetchMeta[], retrievedAt: string): string {
+  const rows = [...sources]
+    .map((s) => ({
+      id: s.id,
+      url: s.url,
+      retrievedAt: s.retrievedAt,
+      contentHash: s.contentHash,
+      etag: s.etag ?? "",
+      lastModified: s.lastModified ?? "",
+      publishDate: s.publishDate ?? "",
+      byteLength: s.byteLength,
+      recordCount: s.recordCount ?? null,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  return sha256Hex(JSON.stringify({ retrievedAt, sources: rows }));
+}
+
+/** Same shape as #61 `datasetVersionId`. Content hash alone is not a generation. */
+export function datasetVersionId(contentHash: string, generationHash: string): string {
+  return `ofac-${contentHash.slice(0, 16)}-${generationHash.slice(0, 12)}`;
+}
+
+export type OfficialActiveSnapshot = {
+  version: {
+    id?: string;
+    retrievedAt: string;
+    sources: SourceFetchMeta[];
+    contentHash?: string;
+    sourceGenerationHash?: string;
+    addressCount?: number;
+  };
+  index: Iterable<{ family: string; canonicalKey: string; display?: string }>;
+};
+
+/**
+ * Adapt an official #61 store snapshot into a #64 refresh payload.
+ * Preserves retrievedAt, sources, and generation identity — does not collapse to address-only id.
+ */
+export function adaptOfficialRefreshPayload(active: OfficialActiveSnapshot): RefreshPayload {
+  return {
+    retrievedAt: active.version.retrievedAt,
+    sources: active.version.sources,
+    addresses: [...active.index].map((a) => ({
+      family: a.family,
+      canonicalKey: a.canonicalKey,
+      display: a.display,
+    })),
+    officialVersionId: active.version.id,
+    officialSourceGenerationHash: active.version.sourceGenerationHash,
+  };
 }
 
 function writeAtomic(path: string, body: string) {
@@ -280,9 +339,13 @@ export class OfficialListRegistry {
   loadFromDisk(): DatasetSnapshot | null {
     const persistedRefresh = readJson<RefreshState>(join(this.dataDir, "refresh-state.json"));
     if (persistedRefresh) this.refresh = persistedRefresh;
-    const pointer = readJson<{ versionId?: string; activatedAt?: string; lastSuccessfulRefreshAt?: string }>(
-      join(this.dataDir, "current.json"),
-    );
+    const pointer = readJson<{
+      versionId?: string;
+      retrievedAt?: string;
+      sourceGenerationHash?: string;
+      activatedAt?: string;
+      lastSuccessfulRefreshAt?: string;
+    }>(join(this.dataDir, "current.json"));
     if (!pointer?.versionId) {
       this.current = null;
       return null;
@@ -293,8 +356,13 @@ export class OfficialListRegistry {
       this.current = null;
       return null;
     }
+    if (pointer.retrievedAt) data.version.retrievedAt = pointer.retrievedAt;
+    if (pointer.sourceGenerationHash) data.version.sourceGenerationHash = pointer.sourceGenerationHash;
     if (pointer.activatedAt) data.version.activatedAt = pointer.activatedAt;
     if (pointer.lastSuccessfulRefreshAt) data.version.lastSuccessfulRefreshAt = pointer.lastSuccessfulRefreshAt;
+    if (!data.version.sourceGenerationHash) {
+      data.version.sourceGenerationHash = sourceGenerationHash(data.version.sources ?? [], data.version.retrievedAt);
+    }
     this.current = { version: data.version, addresses: data.addresses };
     return this.current;
   }
@@ -309,11 +377,13 @@ export class OfficialListRegistry {
     if (err) return { ok: false, error: err, preserved: prior };
 
     const contentHash = datasetContentHash(input.addresses);
+    const generationHash = input.officialSourceGenerationHash ?? sourceGenerationHash(input.sources, input.retrievedAt);
     const version: DatasetVersion = {
-      id: `ofac-${contentHash.slice(0, 16)}`,
+      id: input.officialVersionId ?? datasetVersionId(contentHash, generationHash),
       retrievedAt: input.retrievedAt,
       sources: input.sources,
       contentHash,
+      sourceGenerationHash: generationHash,
       parserVersion: PARSER_VERSION,
       addressCount: input.addresses.length,
       slaId: SANCTIONS_DATASET_SLA_ID,
@@ -331,8 +401,18 @@ export class OfficialListRegistry {
       if (reload.addresses.length !== input.addresses.length || reload.version.contentHash !== contentHash) {
         throw new Error("persisted dataset failed round-trip validation");
       }
+      if (reload.version.retrievedAt !== input.retrievedAt || reload.version.sourceGenerationHash !== generationHash) {
+        throw new Error("persisted generation metadata failed round-trip validation");
+      }
       mkdirSync(dirname(dest), { recursive: true });
       if (existsSync(dest)) {
+        const existing = readJson<{ version?: DatasetVersion }>(join(dest, "dataset.json"));
+        if (
+          existing?.version?.sourceGenerationHash !== generationHash ||
+          existing?.version?.retrievedAt !== input.retrievedAt
+        ) {
+          throw new Error("version id collision with different retrieval metadata");
+        }
         rmSync(tmpRoot, { recursive: true, force: true });
       } else {
         renameSync(tmpRoot, dest);
@@ -340,7 +420,13 @@ export class OfficialListRegistry {
       const activatedAt = new Date(this.now()).toISOString();
       writeAtomic(
         join(this.dataDir, "current.json"),
-        JSON.stringify({ versionId: version.id, activatedAt, lastSuccessfulRefreshAt: activatedAt }),
+        JSON.stringify({
+          versionId: version.id,
+          retrievedAt: input.retrievedAt,
+          sourceGenerationHash: generationHash,
+          activatedAt,
+          lastSuccessfulRefreshAt: activatedAt,
+        }),
       );
       version.activatedAt = activatedAt;
       version.lastSuccessfulRefreshAt = activatedAt;
