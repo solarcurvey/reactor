@@ -65,7 +65,7 @@ Keeper / Launch signer / Guardian **private keys**, Turnstile/admission HMAC sec
 
 `apps/web/src/lib/tx-guard.test.ts` — metadata cannot become `to` / recipient; indexer `tx` discarded; chain mismatch throws.
 
-`pnpm test:web-security` — **production** `next build` + `next start`, live response-header assertions, client-bundle sentinel, and Playwright XSS corpus on home / search / token terminal / trade / reactor activity / launch toasts.
+`pnpm test:web-security` — **production** `next build` + `next start`, live response-header assertions, client-bundle sentinel, Playwright XSS corpus on home / search / token terminal / trade / reactor activity / launch toasts, and the #65 restricted-access matrix (`e2e/restricted-prod.spec.ts`: blocked wallet / geo / stale / allow on desktop + 390px, fail-closed, ignored LOCAL flags, real #62 write-gate bypass).
 
 ## Restricted access (operated services)
 

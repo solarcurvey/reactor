@@ -14,7 +14,7 @@ Official **#62 / PR #68** and **#64 / PR #70** are on `main`. This branch binds 
 | Factory | **V1** — **unchanged** |
 | Intent | Dedicated `/restricted` production state, disable operated write CTAs before wallet prompts, honest disclosure of hosted sanctions/geo controls and what they cannot do on permissionless chain reads. |
 | Server dependency | Official #62 / #68 `apps/indexer/src/operator-policy.ts` + `packages/reactor/src/sanctions-policy.ts`. Decision read is `GET /operator-policy/status` (`readOperatorPolicyStatus` / same `evaluateOperatorPolicy` as write gates). No proof → `UNAVAILABLE_WALLET_MISSING` unless geo is independently `DENY`. Challenge is not a decision. Subject is the EIP-191 signer. Claimed browser wallet is ignored. |
-| Tests | Verify incoming after rebase onto `cc82cd4` (#70). Prior local on `35552f6`: `pnpm test:lib` green; Playwright `e2e/restricted.spec.ts` **7/7**; `pnpm test:web-security` **4/4**. LOCAL page `?fixture=` is forwarded by the provider; production ignores it. |
+| Tests | Production AC matrix in `e2e/restricted-prod.spec.ts` (wallet / geo / stale / allow, desktop + 390px, fail-closed, ignored LOCAL flags, real #62 write-gate bypass) via `pnpm test:web-security`. Dev path `pnpm test:restricted`. Verify incoming on this HEAD. |
 | Rebase | Onto `origin/main` `cc82cd4` (merged **#70** after **#79** / **#68**). Same PR **#75** / same branch. Official #61/#62 plugins and #64 ops are on `main`. #63 geo core is on `main` via #67 and **stays open** until this UX lands. Indexer uses canonical `operator-policy.ts`; bind is the #65 test/fixture adapter. |
 
 | Mainnet | **Blocked** |
@@ -30,7 +30,7 @@ Official **#62 / PR #68** and **#64 / PR #70** are on `main`. This branch binds 
 | No IP / screening leak | **Yes** | Minimized `publicPolicyView` / official `publicStatusView` |
 | No VPN / bypass guidance | **Yes** | `copyContainsForbiddenGuidance` |
 | Honest onchain-cannot-censor disclosure | **Yes** | `RESTRICTED_DISCLOSURE` |
-| Docs match #61–#64 | **Yes (copy)** | Restricted-access / trust / FAQ / index disclose 7-day SLA fail-closed, last-known-good, no hop analytics, no dataset hash in the browser. Production-build four-state matrix remains an open founder AC. |
+| Docs match #61–#64 | **Yes** | Restricted-access / trust / FAQ / index disclose 7-day SLA fail-closed, last-known-good, no hop analytics, no dataset hash in the browser. Production `next start` four-state matrix is in `e2e/restricted-prod.spec.ts`. |
 | Bind to #62 / #68 | **Yes** | Official `operator-policy.ts` on `main` |
 | Close #65 / #63 | **No** | Stay open until #75 merges + post-merge verify. `Refs #65`. |
 

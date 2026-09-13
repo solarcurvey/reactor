@@ -8,7 +8,11 @@ This is **not** an onchain pause. Immutable public contracts remain callable. Th
 
 Issue **#65** (child of RELEASE GATE **#60**). Server authority is **#62** (`evaluateOperatorPolicy`, merged **#68** on `main` `2002aed`), with address screening **#61** / **#66**, trusted geo **#63** / **#67**, and official-list freshness **#64** / merged **#70** (`cc82cd4`). This branch binds the launchpad to the official recovered-wallet model:
 
-- `GET /operator-policy/status` is the official decision read (same `evaluateOperatorPolicy` as write gates). Optional `x-reactor-wallet-proof` screens the recovered signer. Claimed `wallet` / country / `clear` are ignored.
+- **#61 / #66** exact official-list OFAC address matching (`GET /sanctions/screen`). Not hop / cluster / exposure analytics. Not a compliance certification. Lookup stays public; it is not itself the write gate.
+- **#63 / #67** trusted geo (`evaluateRequestGeo`). Production country/region only from a verified edge HMAC. Browser `CF-IPCountry` / `X-Country` are ignored. Syria (`SY`) is not blanket-denied. Donetsk / Luhansk oblasts (`UA-14` / `UA-09`) are UNKNOWN ([OFAC FAQ 1009](https://ofac.treasury.gov/faqs/1009)), not whole-oblast DENY.
+- **#62 / #68** `evaluateOperatorPolicy` on REACTOR-operated writes. Subject is the recovered EIP-191 signer. Claimed `wallet` / country / `clear` are ignored.
+- **#64 / #70** 7-day official-list SLA. Stale or missing data fails operated writes (`UNAVAILABLE_DATASET_STALE`). Recovered identity only. No automated override on a user complaint.
+- `GET /operator-policy/status` is the official decision read (same `evaluateOperatorPolicy` as write gates). Optional `x-reactor-wallet-proof` screens the recovered signer.
 - `GET /operator-policy/challenge` issues an HMAC + EIP-191 message (`REACTOR operator-policy v1`, purpose `operator-policy-write`). It is not a decision.
 - Writes (`POST /quote`, `/launch/admit`, `/launch/authorize`, `/upload`) require that recovered proof.
 - Next `GET /api/operator-policy` forwards only the proof header (never a claimed wallet). The provider acquires challenge → `personal_sign` → proof header. Production `next start` fail-closes if the indexer status path is missing.
@@ -16,6 +20,8 @@ Issue **#65** (child of RELEASE GATE **#60**). Server authority is **#62** (`eva
 The indexer process uses official `apps/indexer/src/operator-policy.ts`. `operator-policy-bind.ts` is the #65 test/fixture adapter and delegates to that module when present.
 
 **LOCAL** continues to allow writes when the indexer status path is missing; **production-like** environments fail closed as temporarily unavailable. LOCAL-only demo fixtures: `OPERATOR_POLICY_UX_FIXTURE`, `x-reactor-ux-fixture`, or a page `?fixture=` query (the provider forwards it to the BFF; production ignores it).
+
+Production `next build` + `next start` coverage lives in `e2e/restricted-prod.spec.ts` (`pnpm test:web-security`): blocked wallet, blocked geo, stale/unavailable, and allowed user on desktop and 390px mobile (CTA/banner layout), plus fail-closed / ignored LOCAL flags and the real #62 client-allow → write-gate 403 bypass. Dev/`next dev` coverage stays in `e2e/restricted.spec.ts` (`pnpm test:restricted`).
 
 ## What the user sees
 

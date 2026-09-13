@@ -24,6 +24,7 @@
     "test:sanctions": "pnpm --filter @reactor/sanctions test",
     "test:sanctions:network": "SANCTIONS_NETWORK=1 pnpm --filter @reactor/sanctions test:network",
     "test:restricted": "pnpm --filter web exec playwright test e2e/restricted.spec.ts",
+    "test:restricted-prod": "pnpm --filter web exec playwright test -c playwright.prod-security.config.ts e2e/restricted-prod.spec.ts",
     "test:web-security": "tsx apps/web/src/lib/secret-sentinel.test.ts && tsx apps/web/src/lib/tx-guard.test.ts && tsx apps/web/src/lib/security-headers.test.ts && NEXT_PUBLIC_REVIEW_FIXTURES=1 pnpm --filter web build && tsx scripts/scan-client-bundle.ts && pnpm --filter web exec playwright test -c playwright.prod-security.config.ts",
     "test:operator-policy-http": "tsx scripts/operator-policy-http.test.ts",
     "signer": "pnpm --filter indexer signer"

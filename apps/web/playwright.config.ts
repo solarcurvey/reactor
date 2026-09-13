@@ -12,6 +12,7 @@ export default defineConfig({
     /a11y\.spec\.ts/,
     /failures\.spec\.ts/,
     /prod-security\.spec\.ts/,
+    /restricted-prod\.spec\.ts/,
     /release\//,
     /harness\//,
   ],
