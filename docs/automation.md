@@ -60,13 +60,13 @@ Implementation lives in `apps/indexer/src/aws-relay/`; infrastructure lives in `
 - Production code refuses raw `JOB_SIGNER_PRIVATE_KEY`, `KEEPER_PRIVATE_KEY`, or `RELAYER_PRIVATE_KEY` fallbacks in this managed path.
 - KMS DER ECDSA output is parsed, low-s normalized and locally recovery-verified before use.
 - Relays independently recompute the signed action payload/snapshot and exact `AutomationGateway.onReport` calldata; endpoint-supplied calldata is not blindly trusted.
-- Relay A is immediate. Relay B waits 15 seconds by default, then checks `usedJob(jobId)` and avoids a second broadcast if A already consumed the job.
+- Relay A is immediate. Relay B waits 15 seconds **only when a pending envelope exists**, then checks `usedJob(jobId)` and avoids a second broadcast if A already consumed the job. Idle ticks return immediately.
 - Both relays preflight the exact Gateway call before signing a transaction.
 - Each Lambda has reserved concurrency 1; scheduled async retries are disabled. The next one-minute tick is the retry boundary, preventing overlapping invocation storms.
-- GitHub OIDC may replace reviewed Lambda **code only** on the three named functions. It cannot sign with KMS, pass roles, edit IAM, or alter Lambda configuration. The default OIDC subject is exact `main`, not all repository refs.
+- GitHub OIDC is deliberately **relay-code-only**. An explicit `lambda:*` deny prevents that role from controlling or invoking the maintenance-authorizer Lambda; authorizer code/config changes remain on the human-reviewed Terraform/admin path. This matters because control of authorizer code would indirectly grant use of its KMS signing authority.
 - There is no VPC/NAT Gateway, dedicated RDS, Kubernetes, or always-on EC2 requirement for this executor.
 
-Build: `pnpm build:aws-relay`. Cheap cryptographic/IaC gates: `pnpm test:aws-relay`. The manual code-only deployment workflow is `.github/workflows/deploy-aws-relay.yml` after the one-time human Terraform bootstrap.
+Build: `pnpm build:aws-relay`. Cheap cryptographic/IaC gates: `pnpm test:aws-relay`, which also assembles the Lambda ZIP. `scripts/deploy-aws-relay-code.sh` updates Relay A/B only; #69 keeps deployment wiring inside the single existing `.github/workflows/ci.yml` if/when that manual OIDC gate is added. The maintenance authorizer is never GitHub code-deployed.
 
 The remaining production gates are intentionally external: authenticated canonical plan/envelope persistence, real AWS KMS-derived addresses, Arc Public Testnet A/B failover/replay transactions + gas measurements, and final Guardian/Gateway onchain state. Until those are recorded, #83 stays open.
 
