@@ -60,16 +60,14 @@ const EXPECTED: ReadonlyArray<{
     pattern: /(?:Fetch API cannot load https?:\/\/)?127\.0\.0\.1:43147\/\S+\?_rsc=\S+ due to access control checks/,
     reason: "iPhone WebKit: Next.js ?_rsc= prefetch access-control, then fallback",
   },
-  // WebKit EventSource / public indexer GETs to the mock. Exact CI text is
+  // WebKit EventSource to the mock SSE hello. Exact CI text is
   // `/127.0.0.1:18448/stream due to access control checks.` (no Fetch API
-  // prefix). CORS/`connect-src` are set; journeys still resolve. iPhone
-  // home also reports `/markets?limit=80` the same way (run 34734308703).
-  // Named public GET/SSE only — not a generic `:18448` or 404 allowlist.
+  // prefix). CORS/`connect-src` are set; journeys still resolve. Other
+  // `:18448` paths stay unexpected.
   {
     kind: "pageerror",
-    pattern:
-      /(?:Fetch API cannot load https?:\/\/)?127\.0\.0\.1:18448\/(?:stream|markets|quote-assets|operator-policy\/[a-z]+)(?:\?\S*)? due to access control checks/,
-    reason: "WebKit: mock indexer GET/SSE access-control, then fixture/fallback",
+    pattern: /(?:Fetch API cannot load https?:\/\/)?127\.0\.0\.1:18448\/stream(?:\?\S*)? due to access control checks/,
+    reason: "WebKit: mock indexer EventSource /stream access-control, then fixture/fallback",
   },
 ];
 
