@@ -15,7 +15,7 @@
 | Intent | Replace privileged Keeper EOA with `AutomationGateway` + short-lived signed `MaintenanceJob`. Relayers (CRE / Gelato / any) deliver only. |
 | Foundry | `AutomationGateway.t.sol` + `AutomationGatewayAuth.t.sol` + `MaintenanceFailover.t.sol` |
 | Indexer / lib | `maintenance-job.test.ts` + #46 obs units + #80 `brand.test.ts` in `test:web-unit` |
-| CRE | Official `cre workflow build` compiled the signed-job courier (WASM hash in `cre-workflow-build.json`). Auth-blocked `cre workflow simulate` is **not** the Arc Testnet CRE AC. |
+| CRE | Official `cre workflow build` compiled the signed-job courier (WASM hash in `cre-workflow-build.json`). Public CI `--verify` pin-checks committed evidence / `cre-tenant-blocker.json` — it is **not** a successful `cre workflow simulate`. Auth-blocked simulate remains the Arc Testnet CRE AC. |
 | Replay | Onto `origin/main` `922f909` (#48 handbook after #80 / #81). `pnpm docs:gen` after that rebase (llms.txt twins only; versioning/deployments/changelog already matched 0.4.0). Restore exact-head `ci-full` so `solidity + size-guard` (failover rehearsal) runs. Playwright `web` / `obs-ui` pins read `docs/version.json` via CJS-safe `e2e/protocol-version.ts` (do not import `release-identity` / `import.meta`). |
 
 | Mainnet | **Blocked** |
@@ -40,7 +40,7 @@
 | Blocker | Why |
 | --- | --- |
 | Public mainnet (5042) | Hard blocked. No addresses. |
-| Authenticated `cre workflow simulate` | **Remaining #51 AC / external blocker.** Official `cre workflow build` is compile-only (`ops/cre/simulation/cre-workflow-build.json`) and does not close this. Evidence: `ops/cre/simulation/cre-tenant-blocker.json`. |
+| Authenticated `cre workflow simulate` | **Remaining #51 AC / external blocker.** Official `cre workflow build` is compile-only (`ops/cre/simulation/cre-workflow-build.json`) and does not close this. Public CI `--verify` pin-checks committed evidence / tenant-blocker — not a simulate PoC. Evidence: `ops/cre/simulation/cre-tenant-blocker.json` (`closed:false`). |
 | Close #51 | Stays open until post-merge `Guardian.keeper == AutomationGateway` verify. |
 | Exact-head GitHub Actions | Watch `ci-ok` on the post-`docs:gen` SHA (label `ci-full`). Prior `e428af4` failed `constants-version-deployments` on stale `llms.txt` (`0.3.4`) and `obs-ui` on CJS `import.meta` via `loadProtocolVersion()`. Prior heads on `4915f3e` are superseded. |
 

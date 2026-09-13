@@ -72,7 +72,7 @@ The generic indexer unit suite (`pnpm --filter indexer test`) does **not** spawn
 
 ```bash
 npx --yes tsx packages/reactor/src/maintenance-job.test.ts
-# signed MaintenanceJob CRE simulate (official CLI if logged in; else recorded handler)
+# pin-check committed CRE evidence / tenant-blocker (not a CRE simulate PoC)
 pnpm exec tsx scripts/cre-workflow-simulate.ts --verify
 # requires Foundry — also CI full/main solidity + size-guard
 npx --yes tsx scripts/maintenance-failover.ts

@@ -1,16 +1,18 @@
 #!/usr/bin/env npx tsx
 /**
- * Record CRE workflow simulation evidence for a signed MaintenanceJob.
+ * Record / pin-verify CRE *evidence* for a signed MaintenanceJob.
  *
- * Tries official `cre workflow simulate` (local WASM simulator; live DON not
- * required). That CLI requires a CRE login or CRE_API_KEY. This environment
- * usually has neither — the refusal is recorded, not faked.
+ * Public CI `--verify` does **not** run a secret-bearing `cre workflow simulate`.
+ * It pin-checks committed courier hashes plus `cre-tenant-blocker.json`.
+ * A green CI step is not a successful Chainlink CRE simulation.
  *
- * Always runs the same HTTP-trigger courier handler (`handle-signed-job.ts`)
- * against the signed payload so the job interface is exercised and hashed.
+ * --write (default): refresh committed evidence (may try official CLI locally).
+ * --verify: pin-check committed JSON/log + tenant-blocker (CI / test:lib).
  *
- * --write (default): refresh committed evidence.
- * --verify: recompute and require committed JSON/log to match (CI).
+ * Future success path (do not invent): if `cre-tenant-blocker.json` is later
+ * committed with `closed:true`, `--verify` pin-checks that the committed
+ * `cre-workflow-simulate.json` has `compiled=true` and
+ * `workflowSimulationResult=true`. Public CI still does not hold CRE_API_KEY.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -34,6 +36,7 @@ const EVIDENCE = join(SIM, "cre-workflow-simulate.json");
 const LOG = join(SIM, "cre-workflow-simulate.cli.txt");
 const BUILD_EVIDENCE = join(SIM, "cre-workflow-build.json");
 const BUILD_LOG = join(SIM, "cre-workflow-build.cli.txt");
+const BLOCKER = join(SIM, "cre-tenant-blocker.json");
 const CRE_PROJECT = join(ROOT, "ops/cre");
 
 /** Anvil #0 — simulation signer only. Not a claimed 1883 / 5042 key. */
@@ -281,11 +284,12 @@ async function main() {
   const log = renderLog({ official, handler });
 
   if (verify) {
-    if (!existsSync(PAYLOAD) || !existsSync(EVIDENCE) || !existsSync(LOG)) {
-      throw new Error("committed CRE simulate artifacts missing — run without --verify to write them");
+    if (!existsSync(PAYLOAD) || !existsSync(EVIDENCE) || !existsSync(LOG) || !existsSync(BLOCKER)) {
+      throw new Error("committed CRE evidence / tenant-blocker missing — run without --verify to write them");
     }
     const committedPayload = readJson(PAYLOAD) as SignedJobHttpPayload;
     const committedEv = readJson(EVIDENCE) as Record<string, unknown>;
+    const blocker = readJson(BLOCKER) as { closed?: boolean };
     if (JSON.stringify(committedPayload) !== JSON.stringify(payload)) {
       throw new Error("signed-job-http-payload.json drifted from deterministic signer");
     }
@@ -296,14 +300,39 @@ async function main() {
     if (committedHandler.creOnReportHash !== handler.creOnReportHash) {
       throw new Error("committed creOnReportHash drifted");
     }
-    const committedOfficial = committedEv.officialCli as { attempted?: boolean; authBlocked?: boolean; compiled?: boolean };
-    if (committedOfficial?.compiled === true) {
-      throw new Error("committed evidence must not claim WASM compile unless independently reproduced");
+    const committedOfficial = committedEv.officialCli as {
+      attempted?: boolean;
+      authBlocked?: boolean;
+      compiled?: boolean;
+      workflowSimulationResult?: boolean;
+    };
+    if (blocker.closed === true) {
+      // Pin-verify a later committed success artifact. Public CI still does
+      // not run a secret-bearing tenant simulate.
+      if (committedOfficial?.compiled !== true) {
+        throw new Error("tenant-blocker closed:true requires committed compiled=true");
+      }
+      if (committedOfficial?.workflowSimulationResult !== true) {
+        throw new Error("tenant-blocker closed:true requires committed Workflow Simulation Result");
+      }
+      if (committedEv.kind !== "cre-cli-workflow-simulate") {
+        throw new Error("tenant-blocker closed:true requires kind cre-cli-workflow-simulate");
+      }
+    } else {
+      if (blocker.closed !== false) {
+        throw new Error("cre-tenant-blocker.json must set closed:false until authenticated simulate is committed");
+      }
+      if (committedOfficial?.compiled === true) {
+        throw new Error("blocker still open; committed simulate evidence must not claim compiled=true");
+      }
+      if (committedOfficial?.workflowSimulationResult === true) {
+        throw new Error("blocker still open; committed evidence must not claim a Workflow Simulation Result");
+      }
+      if (!String(committedEv.kind).includes("auth-blocked")) {
+        throw new Error("blocker still open; committed kind must record auth-blocked evidence");
+      }
     }
-    if (String(committedEv.kind).includes("cre-cli-workflow-simulate") && committedOfficial?.compiled !== true) {
-      throw new Error("kind claims official simulate success but compiled is not true");
-    }
-    if (official.attempted && official.authBlocked !== committedOfficial?.authBlocked) {
+    if (official.attempted && official.authBlocked !== committedOfficial?.authBlocked && blocker.closed !== true) {
       throw new Error("official CLI authBlocked flag drifted from committed evidence");
     }
     if (!existsSync(LOG) || !readFileSync(LOG, "utf8").includes(handler.relayCalldataHash)) {
@@ -346,13 +375,15 @@ async function main() {
     if (!buildLog.includes("not cre workflow simulate")) {
       throw new Error("build log must keep the honest simulate distinction");
     }
-    console.log("cre workflow simulate verify ok", {
+    console.log("committed CRE evidence / tenant-blocker verify ok", {
       kind: committedEv.kind,
+      blockerClosed: blocker.closed,
       jobId: handler.jobId,
       relayCalldataHash: handler.relayCalldataHash,
       officialPresent: official.attempted,
       officialBuildHash: committedBuild.officialCli.binaryHash,
-      simulateAcClosed: false,
+      simulateAcClosed: blocker.closed === true,
+      note: "public CI pin-checks committed files; this is not a CRE simulate PoC",
     });
     return;
   }

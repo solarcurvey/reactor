@@ -181,7 +181,7 @@ jobs:
         run: REQUIRE_FORGE=1 npx --yes tsx scripts/maintenance-failover.ts
       - name: Autonomous dual-relayer (deployed Gateway, no AI)
         run: REQUIRE_ANVIL=1 npx --yes tsx scripts/autonomous-relay-failover.ts
-      - name: CRE workflow simulate (signed MaintenanceJob)
+      - name: Verify committed CRE evidence / tenant-blocker (not a CRE simulate)
         run: pnpm exec tsx scripts/cre-workflow-simulate.ts --verify
 
   web-production-security:

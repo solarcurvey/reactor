@@ -21,7 +21,7 @@ Automation gateway (signed jobs; relayers cannot steer):
 forge test --match-contract AutomationGateway -vv
 forge test --match-contract MaintenanceFailover -vv
 npx --yes tsx packages/reactor/src/maintenance-job.test.ts
-pnpm exec tsx scripts/cre-workflow-simulate.ts --verify  # signed-job courier + honest auth-blocked CLI; not the CRE tenant AC
+pnpm exec tsx scripts/cre-workflow-simulate.ts --verify  # pin-check committed CRE evidence / tenant-blocker; not a CRE simulate PoC
 npx --yes tsx scripts/maintenance-failover.ts   # requires Foundry; CI full/main job solidity + size-guard
 REQUIRE_ANVIL=1 npx --yes tsx scripts/autonomous-relay-failover.ts  # deployed Gateway + two relayers
 # Indexer unit suite does not spawn forge or anvil.
@@ -96,7 +96,7 @@ pnpm test:e2e:release           # production `next build`/`next start` + EIP-119
 
 Three-tier GitHub Actions (Refs #69): fast PR / full merge-candidate / main post-merge. #17 leftover extras (`docs:links`, Playwright smoke + interactive job `web`) are full-only jobs on the same `ci.yml`. Operator inventory: [`/docs/ci`](docs/ci.md). Do not add a feature-branch `push` + `pull_request` pair.
 
-#51 Foundry proofs stay on the #73 single workflow (no second `push`+`pull_request` file). Fast PR + Solidity paths: `foundry-targeted` `forge test` includes `AutomationGateway` / `MaintenanceFailover`. Full/main job `solidity + size-guard` re-runs `forge test` plus `scripts/maintenance-failover.ts`, `scripts/autonomous-relay-failover.ts`, and `scripts/cre-workflow-simulate.ts --verify` (signed MaintenanceJob interface; auth-blocked official CLI is not the tenant AC). `pnpm test:lib` also runs `--verify`. Row **60** is merged #68 / #62 operator-policy. Row **61** is merged #70 / #64 sanctions-ops. Row **62** is merged #75 / #65 restricted-access UX. Row **63** is AutomationGateway. Issue **#51 stays open**. `pnpm --filter indexer test` must not spawn `forge` or `anvil`.
+#51 Foundry proofs stay on the #73 single workflow (no second `push`+`pull_request` file). Fast PR + Solidity paths: `foundry-targeted` `forge test` includes `AutomationGateway` / `MaintenanceFailover`. Full/main job `solidity + size-guard` re-runs `forge test` plus `scripts/maintenance-failover.ts`, `scripts/autonomous-relay-failover.ts`, and `scripts/cre-workflow-simulate.ts --verify` (pin-check of committed CRE evidence / `cre-tenant-blocker.json`; public CI does not run a tenant simulate and does not close the CRE AC). `pnpm test:lib` also runs `--verify`. Row **60** is merged #68 / #62 operator-policy. Row **61** is merged #70 / #64 sanctions-ops. Row **62** is merged #75 / #65 restricted-access UX. Row **63** is AutomationGateway. Issue **#51 stays open**. `pnpm --filter indexer test` must not spawn `forge` or `anvil`.
 
 
 Public-fork hardening (Refs #72) is `scripts/ci-public-harden.test.ts` inside `pnpm test:lib`. It does not skip Foundry, `docs:check`, `test:web-security`, or `live-toasts-ui`. Personal-mailbox trailers were remapped 2026-09-12. AC1 is advertised refs only; residual dangling SHAs are accepted. Do not publicize without founder instruction — see `/docs/publicization`.
