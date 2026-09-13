@@ -10,8 +10,8 @@ A **skipped job is not a pass**. Required release jobs must execute their accept
 
 | Tier | When | What runs |
 | --- | --- | --- |
-| **Fast PR** | Every meaningful `pull_request` update (draft included) | `pnpm test:lib` (indexer + web unit + cheap security + Safe genesis builder + `docs:check` + `docs:links` + this page’s invariants + #61 sanctions fixtures) plus visible `page-budget` (`pnpm test:page-budget`). Targeted Foundry + `size:guard` **only** when Solidity paths change. |
-| **Full merge-candidate** | Non-draft PR (`ready_for_review` / later `synchronize`), label **`ci-full`**, or `workflow_dispatch` (default **full**) | Fast commands **plus** production Next / hostile-metadata (`pnpm test:web-security`), `live-toasts-ui`, full Foundry (`FOUNDRY_PROFILE=ci`, Attack suite, CREATE2 `test_hookBits`, `size:guard`), Postgres `test:pg` + two-worker `test:pg-lease` + `pg-smoke`, `docs:links` (explicit job), Playwright smoke + interactive (`web`). Path filters do **not** skip these. |
+| **Fast PR** | Every meaningful `pull_request` update (draft included) | `pnpm test:lib` (indexer + web unit + cheap security + Safe genesis builder + `docs:check` + `docs:links` + this page’s invariants + #61 sanctions fixtures + #63 geo-policy tests) plus visible `page-budget` (`pnpm test:page-budget`). Targeted Foundry + `size:guard` **only** when Solidity paths change. |
+| **Full merge-candidate** | Non-draft PR (`ready_for_review` / later `synchronize`), label **`ci-full`**, or `workflow_dispatch` (default **full**) | Fast commands **plus** production Next / hostile-metadata (`pnpm test:web-security`), `web-qa` (visual / a11y / failure-injection), `live-toasts-ui`, full Foundry (`FOUNDRY_PROFILE=ci`, Attack suite, CREATE2 `test_hookBits`, `size:guard`), Postgres `test:pg` + two-worker `test:pg-lease` + `pg-smoke`, `docs:links` (explicit job), Playwright smoke + interactive (`web`), #35 `e2e-release-gate` (`pnpm test:e2e:release`). Path filters do **not** skip these. |
 | **Main post-merge** | `push` to **`main`** only | The same full gate, once, on the merged SHA. |
 
 Docs-only / Solidity-only / web-only drafts do not launch unrelated heavy matrices (no production `next build`, Playwright, Postgres, or CI-fuzz Foundry). On a **final merge candidate** those filters are ignored so #15 / #17 / #18 gates still run.
@@ -69,7 +69,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | Job | Tier | Commands (must execute) |
 | --- | --- | --- |
 | `decide-tier` | always | Classify SHA + paths. Cheap. |
-| `constants-version-deployments` | always | `pnpm test:lib` (includes `docs:check` + `docs:links` + `safe-genesis-builder.test.ts` + #61 sanctions fixtures) |
+| `constants-version-deployments` | always | `pnpm test:lib` (includes `docs:check` + `docs:links` + `safe-genesis-builder.test.ts` + #61 sanctions fixtures + #63 geo-policy tests) |
 | `page-budget` | always | `pnpm test:page-budget` (4k-market HTTP/RPC budgets; also in `test:lib`) |
 | `foundry-targeted` | fast + Solidity paths | `forge test` (default profile) + `pnpm size:guard` |
 | `solidity + size-guard` | full / main | `FOUNDRY_PROFILE=ci forge test` + Attack suite + CREATE2 `test_hookBits` + `pnpm size:guard` |
@@ -80,7 +80,8 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | `postgres-ms-timestamps` | full / main | `test:pg` + `test:pg-lease` (two-worker) + `pg-smoke` |
 | `docs-links` | full / main | `pnpm docs:links` (in-repo slugs/files only; no network). Also in `test:lib` on the fast gate. |
 | `web` | full / main | Playwright smoke + interactive (`e2e/smoke.spec.ts`, `e2e/interactive.spec.ts`). Capture shots stay `CAPTURE=1` local-only. Live-toasts Playwright stays on `live-toasts-ui`. |
-| `ci-ok` | full / main | All of the above full jobs **and** `page-budget` `== success` (including `web-qa`) |
+| `e2e-release-gate` | full / main | `pnpm test:e2e:release` (production Next + EIP-1193 / MV3 wallet; `xvfb-run`) |
+| `ci-ok` | full / main | All of the above full jobs **and** `page-budget` `== success` (including `web-qa` and `e2e-release-gate`) |
 
 `keeper-lease-pg` / `two-worker-postgres` is **folded** into `postgres-ms-timestamps` (`test:pg-lease` still runs). Do not add a second Postgres lease workflow.
 
@@ -90,9 +91,9 @@ Open product issues keep their acceptance commands. Attach new heavy jobs to **t
 
 | Issue / PR | Gate | Slot |
 | --- | --- | --- |
-| #17 (merged #42) | Full GitHub CI — Foundry, size guard, Attack, CREATE2, `docs:links`, Playwright smoke, Safe genesis | Landed. Accepted `11fdadb` / `34727535121` then `80d3cac` / `34727638255`. Gates remain on this workflow. **#17 stays open** until #79 post-merge docs/CI. |
-| #15 / #35 (PR #44) | Production browser + wallet E2E | Add a full-only job (`pnpm test:e2e:release` when that script exists). |
-| #15 / #36 (merged #49, closed) | Visual / a11y / failure-injection | `web-qa` (full). Closed after `ad7b457` / `34729758795`. |
+| #17 (merged #42) | Full GitHub CI — Foundry, size guard, Attack, CREATE2, `docs:links`, Playwright smoke, Safe genesis | Landed. Accepted `11fdadb` / `34727535121` then `80d3cac` / `34727638255`. Gates remain on this workflow. **#17 stays open** until post-merge docs/CI after #79. |
+| #15 / #35 (PR #44) | Production browser + wallet E2E | `e2e-release-gate` (full) — `pnpm test:e2e:release`. Do **not** add `e2e-release.yml`. |
+| #15 / #36 (merged #49, closed) | Visual / a11y / failure-injection | `web-qa` (full). Closed after `ad7b457` / `34729758795`. Do not re-add `.github/workflows/web-qa.yml`. |
 | #15 / #18 | Production-readiness parent | Same full-tier rule. Do not move those commands to optional / `continue-on-error`. |
 | #37 (merged #50, closed) | RPC page-budget | Required always-on `page-budget`. Closed after `e5fd745` / `34727279555`. |
 | #39 (PR #46) | Observability | Full-only `obs-ui` job. |
@@ -149,7 +150,7 @@ Tiny isolated VMs that only repeated `pnpm install` were combined (`keeper-lease
 ## Local equivalent
 
 ```bash
-pnpm test:lib          # fast gate (includes #61 sanctions fixtures + test:ci-cost + ci-public-harden + safe-genesis + docs:check + docs:links + page-budget)
+pnpm test:lib          # fast gate (includes #61 sanctions fixtures + #63 geo-policy tests + test:ci-cost + ci-public-harden + safe-genesis + docs:check + docs:links + page-budget)
 pnpm test:page-budget  # visible #37 fast job (same file as in test:lib)
 pnpm docs:links        # in-repo /docs slugs + relative files (no network)
 pnpm test:web-unit     # web lib unit (also inside test:lib)
@@ -162,6 +163,7 @@ pnpm test:operator-policy-http  # #62 real indexer + production Next HTTP matrix
 pnpm test:live-toasts
 # pnpm --filter web exec playwright test e2e/smoke.spec.ts e2e/interactive.spec.ts
 pnpm --filter web test:qa   # #36 visual / a11y / failure-injection (CI job web-qa)
+pnpm test:e2e:release   # #35 full-only; Chromium/Firefox/WebKit + extension
 # docker compose up -d postgres
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg-lease

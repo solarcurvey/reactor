@@ -1,7 +1,6 @@
 "use client";
 
 import { useAccount } from "wagmi";
-import { WalletButton } from "@/components/wallet-button";
 import { Card } from "@/components/ui/card";
 import { formatUnitsSafe, shortAddress } from "@/lib/utils";
 import { REVIEW_FIXTURES } from "@/lib/review-fixtures";
@@ -41,7 +40,6 @@ export default function WalletPage() {
           <span className="text-[13px] text-zinc-400">USDC allowance (router)</span>
           <span className="font-mono text-sm">{snap ? formatUnitsSafe(snap.usdcAllowance, 6, 2) : "—"}</span>
         </div>
-        <WalletButton />
       </Card>
       {REVIEW_FIXTURES && (
         <Card className="mt-3 space-y-2 p-4">

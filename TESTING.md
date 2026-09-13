@@ -59,6 +59,8 @@ tsx apps/web/e2e/contrast.test.ts
 pnpm test:web-security          # production next build/start: live headers, bundle sentinel, XSS corpus
 # CI full/main: .github/workflows/ci.yml job web-production-security
 # CI full/main: .github/workflows/ci.yml job web-qa. #36 closed after #49 post-merge `ad7b457` / 34729758795.
+pnpm test:e2e:release           # production `next build`/`next start` + EIP-1193 wallet gate (issue #35)
+# CI full/main: .github/workflows/ci.yml job e2e-release-gate. Do not add e2e-release.yml.
 # Real Postgres (docker compose postgres on :54329, or local 5432)
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
@@ -184,6 +186,28 @@ pnpm --filter web test:update-screenshots   # Linux Chromium only — same as Ac
 
 `playwright.qa.config.ts` builds with `e2e/harness/start-web.mjs` (shared #35 path), `qa-mock.mjs`, and `qa-rpc.mjs` (JSON-RPC stub on the compiled RPC URL — not Anvil). Viewports include 1280 laptop and 360 Android. `?inject=` covers quote 429/413/5xx/stale/expired/noroute, pricing, upload, SSE, empty, invalid token/ticker, wallet reject/revert. Axe `color-contrast` is on (only canvas / visual-mask / visual-dynamic excluded); muted text is `text-zinc-400` and leftover `text-zinc-500|600|700` fails `assertNoSubAaMutedText`. The shared console/pageerror fixture fails the run on unexpected `console.error`, hydration warnings, and uncaught page exceptions (narrow inject allowlists only). Production builds omit the flags and ignore inject. See `/docs/qa`. Issue **#36 closed** after #49 post-merge `ad7b457` / [`34729758795`](https://github.com/solarcurvey/reactor/actions/runs/34729758795).
 
+### Production-build browser + wallet gate (issue #35)
+
+Release gate against **`next build` + `next start`**, not `next dev`. Chromium / Firefox / WebKit. Deterministic EIP-1193 fixture (Anvil #0 **address only** — no private key, no mainnet keys). Mock JSON-RPC `:18545` + indexer `:18448` so CI does not need Anvil, a Factory deploy, or the isolated signer. After #50 the mock serves the indexed read path (`GET /quote-assets`, `GET /markets/:token`, `GET /page/token/:token`) so Chromium does not log those as 404 `console.error`. After #68 the same mock serves public `GET /operator-policy/challenge` and `GET /operator-policy/status` so Launch / Quote / upload can attach `x-reactor-wallet-proof` (the EIP-1193 fixture auto-signs `personal_sign`; `rejectTx` is Confirm-buy / `eth_sendTransaction` only; the mock does not verify the signature). The MV3 extension prompt must Confirm the challenge `personal_sign` after Quote, then Confirm the trade. Mock JSON responses keep the echoed `Origin` (`json()` uses `setHeader` + `writeHead(status)` so Node does not wipe CORS). WebKit `/markets` must succeed as CORS, not as a console-gate allowlist.
+
+```bash
+pnpm test:e2e:release
+# apps/web: pnpm test:release
+# CI full/main: .github/workflows/ci.yml job e2e-release-gate
+# Do not recreate .github/workflows/e2e-release.yml (folded in #73).
+```
+
+Journeys: graduated BUY/SELL (`ReactorRouter.swap`), bonding BUY/SELL (`InstantCurve`), nested USDC BUY+SELL (`UserRouteExecutor.buy` / `.sell` calldata + result hash), ready `graduate`, Instant launch (`Factory`), rewards claim, wrong-chain switch, user-rejected connect/tx (EIP-1193 `4001`). Asserts frozen 3.5% / 2/1/0.5 and **no creator FDV knobs**. Desktop plus iPhone-class and narrow-Android production projects.
+
+Release-candidate extras (Chromium):
+
+- MetaMask/Rabby-style **unpacked MV3 extension** (`e2e/extension`, project `chromium-extension`) — connect/confirm/reject/lock/account switch through a real prompt page (`notification.html`). Provider is injected in the MAIN world at `document_start`. CI wraps the suite in `xvfb-run` so Chromium new-headless can load MV3. Anvil #0/#1 **addresses only**.
+- Edge file `e2e/release/edge.spec.ts`: disconnect/reconnect, account/chain change mid-flow, locked wallet, insufficient funds/allowance, revert, dropped tx, quote TTL, quote expiry while the wallet prompt is held, double-submit lock, full `idle → quoting → approval/signature → submitted/pending → confirmed`, Dev Buy happy + authorize-down failure.
+- One Playwright worker (`fullyParallel: false`). The mock JSON-RPC/indexer is shared; receipt / allowance / launch-auth controls must not race.
+- Shared console/pageerror gate (`e2e/harness/console-gate.ts`) on every release-gate page (EIP-1193 `wallet.ts` and MV3 `extension.ts` fixtures). Records `page.on('console')` error-level messages and `page.on('pageerror')`. Documented allowlist only: Chromium HTTP 503 on `/api/launch-pricing` (Dev Buy authorize-down, fail-closed); Next.js RSC prefetch fallback on iPhone WebKit / Firefox home (`?_rsc=` access-control `pageerror` on WebKit; full navigation still works); WebKit EventSource to mock `/stream` (exact `/127.0.0.1:18448/stream due to access control checks`, optional `Fetch API` prefix — other `:18448` paths stay unexpected; indexed GETs echo Origin). The home+launch journey waits for mock `GET /markets` to finish before leaving `/` so iPhone WebKit does not abort that fetch. Header `WalletButton` is the only connect/Account control; `/wallet` is a status card. Teardown fails with the captured diagnostics. Trace / screenshot / network stay retain-on-failure.
+
+Issue **#35 stays open** until merge + post-merge verify. Live Anvil demo remains `pnpm --filter indexer demo`.
+
 Keeper / watchdog (do not treat as onchain):
 
 ```bash
@@ -271,6 +295,8 @@ pnpm --filter indexer watchdog
 | 46 | Nested official fee legs from scored winner + compound 688 bps; maintenance `exemptOfficialLegs[]` | `quote.test.ts`, `quote-api.test.ts`, `quote-integrity.test.ts` |
 | 47 | Trade ticket does not sum nested fee amounts across quote tokens/decimals (ZEC-8 vs ZCAT-18) | `apps/web/src/lib/fee-legs.test.ts` |
 | 48 | `external_price_marks.kind` is schema v10 after #23 v9 `current_supply`; real v8→v10 and v9→v10 upgrades | `schema.test.ts`, `pg-ms-timestamps.test.ts` |
+| 49 | Production Next + EIP-1193 wallet E2E release gate (desktop + iPhone/Android, BUY/SELL/nested BUY+SELL `UserRouteExecutor` calldata, bonding/graduated/launch/rewards, wrong-chain, reject). Unexpected `console.error` / `pageerror` fail teardown (`e2e/harness/console-gate.ts`) | `apps/web/e2e/release/journeys.spec.ts`, `playwright.release.config.ts`, `e2e/harness/console-gate.ts`, `pnpm test:e2e:release` |
+| 49b | Extension wallet + edge (lock/switch/disconnect, revert, allowance, quote TTL, drop, double-submit, Dev Buy); same console/pageerror gate on the extension page fixture; `docs:check` rejects leftover conflict markers | `e2e/release/edge.spec.ts`, `e2e/release/extension.spec.ts`, `e2e/extension/`, `e2e/harness/console-gate.ts`, `scripts/sync-docs.ts` |
 | 49 | Top-10 ranks from indexer ValuationService snapshot (schema v11); no `discoverTop10` Factory RPC | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts`, `apps/web/src/lib/marketdata.test.ts` |
 | 50 | Top-10 snapshot TTL: healthy → age past 15m → refresh fails → API pauses and Keeper refuses; indexed `quote_lp` liquidity arm; no mint-supply fallback after v9 | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts` |
 | 51 | Untrusted token metadata (no raw HTML, URL scheme allowlist, media policy) + production CSP (nonce `script-src`, live headers, bundle sentinel, browser XSS corpus, tx-guard / chain mismatch) | `untrusted-metadata.test.ts`, `security-headers.test.ts`, `tx-guard.test.ts`, `secret-sentinel.test.ts`, `e2e/prod-security.spec.ts`, `admission-unit.test.ts` |

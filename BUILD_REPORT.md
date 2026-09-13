@@ -1,8 +1,8 @@
-# BUILD REPORT — Sanctions freshness, audit, alerts, runbook (Refs #64)
+# BUILD REPORT — Production-build browser + wallet E2E release gate (#35)
 
-**Status:** Same PR **#70** / same branch `cursor/sanctions-ops-freshness-8fcc`, rebased onto `origin/main` `35552f6` after **#79** (#17 evidence docs) and **#68** (`2002aed`, #62 operator policy) and **#67** (#63 trusted geo/IP) and **#66** (#61 official-list screening) on #49 / #42 / #50. Independent audit follow-ups: recovered-identity-only gate + LOCAL/test-only fixture fallback; same-address refresh generation is restart-safe. Issue **#64 stays open** — use `Refs #64`, do not auto-close. Official `#61` refresh binds via `apps/indexer/src/sanctions.ts`. Official `#62` `operator-policy.ts` is the gated subject (not the wallet-proof fallback).
-**Not audited. Not mainnet.**
-**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+**Status:** Child of #15. Refs #35 / Refs #15 only (do not `Fixes` / `Closes` #35 or #15). Continues landing the production E2E gate for #15. Rebased onto `origin/main` `cc82cd4` (#70 sanctions ops after #79 / `35552f6` / #68 / `2002aed`). Frozen economics / architecture. **Not audited. Not mainnet.**
+
+**Economics / 3.5% / 2/1/0.5 / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
 ## This HEAD
 
@@ -10,34 +10,72 @@
 | --- | --- |
 | Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
-| Intent | Persist official-list version/hash/retrieved/last-success; 7-day SLA fail-closed; startup + scheduled refresh keeps last-known-good; health + `/ops` name dataset + policy versions; minimized audit; alerts; operator runbook. HTTP identity is #62 recovered EIP-191 only. Fixture refresh LOCAL/test-only. Same-address refresh writes a new #61-style generation so restart freshness ages from t1. |
-| Rebase | Onto `origin/main` `35552f6` after **#79** (#17 evidence) / **#68** (#62) / **#67** (#63) / **#66** (#61). Docs conflicts kept #79 accepted #17/#42 runs + closed #36/#37/#61/#62/#63 status, #62 `gateProtectedWrite` + challenge/status, #67 `evaluateRequestGeo`, #61 lookup, **and** #64 freshness. `applySanctionsOpsGate` loads merged `operator-policy.ts` (`recoverSubjectWallet` / `gateProtectedWrite`). Shared `#61` store is rebound via `bindOperatorPolicyProviders` so the gate does not construct a second ingest. Ops persist is `SANCTIONS_DATA_DIR/ops`. TESTING row 59 geo; 60 #62; 61 #64. |
-| Indexer / lib | `sanctions-ops.test.ts` + `sanctions-audit.test.ts` + indexer `sanctions-ops.test.ts` + `pnpm docs:check` |
-| Foundry | Not re-run this pass (ops/docs only) |
-| Docs | `/docs/sanctions-ops`, runbook, incident-response, trust, API, builders, TESTING row 61 |
+| Intent | Production `next build` + `next start` Playwright release gate with a deterministic EIP-1193 wallet fixture **and** a MetaMask/Rabby-style unpacked MV3 extension. Browser matrix Chromium / Firefox / WebKit plus iPhone-class and narrow-Android. Nested USDC BUY+SELL assert `UserRouteExecutor` target/calldata/result. Shared `console.error` / `pageerror` fixture fails teardown. No Anvil private keys, no mainnet keys, no isolated signer. |
+| Proof | Rebased onto `main` `cc82cd4` (#70 sanctions freshness after #79 / #68 / #67 / #66 / #49 / #42 / #50 / #58). Kept #70 freshness/audit/alerts/runbook (`#64` stays open). Kept #79 accepted #17 / #42 evidence (`11fdadb` / `34727535121`, `80d3cac` / `34727638255`). Kept #68 operator-policy / wallet-proof. Kept #67 geo-policy tests in `test:lib`. Kept #66 `@reactor/sanctions` fixtures in `test:lib`. Kept #49 `web-qa` (visual / a11y / failure-injection). Ticket/launch phase lines use visible `text-zinc-400` (same AA muted floor as #49 — do not hide the line and do not weaken `assertNoSubAaMutedText`). Disconnect stays in the #49 Account modal. `/wallet` is a status card only — the header `WalletButton` is the single connect/account control (`wallet-menu-trigger` is unique). Ready graduate token stays on the E2E mock only — not an extra Discover fixture card. Rewards wallet copy waits until mount. WalletButton keeps the SSR Connect tree until hydrate so a second `page.goto` after EIP-1193 connect cannot React-418. Kept #42 `docs-links` / Playwright `web` / Safe genesis / solc prefetch. Kept #50 indexed search / `useSwapSeries` / `readTicketWallet` / always-on `page-budget`. Live quote default stays **30s** (`?? 30_000`); E2E short TTL is `NEXT_PUBLIC_QUOTE_TTL_MS` only. Mock indexer serves `#50` `GET /quote-assets`, `GET /markets/:token`, and `GET /page/token/:token`, plus `#68` `GET /operator-policy/challenge` and `GET /operator-policy/status` so quote/launch/upload can attach a wallet proof. EIP-1193 `rejectTx` is Confirm-buy / `eth_sendTransaction` only (challenge `personal_sign` auto-signs). Extension Quote Confirm covers the proof, then Confirm covers the trade. WebKit console-gate stays pinned to exact `/127.0.0.1:18448/stream` pageerror only. Home+launch waits for mock `GET /markets` before leaving `/` so iPhone WebKit does not abort that fetch and mis-report it as CORS. Indexed bonding/ready rows bind official `InstantCurve`; REVIEW_FIXTURES merge restores `curve` / `ready` / fixture quote on `/page/token` so BUY/graduate do not fall through to the router. `ci-ok` requires `e2e-release-gate` **and** `web-qa` **and** `page-budget`. #35 stays open until post-merge. **Refs #35 / Refs #15 only.** |
+| Review shots | Refreshed for the visible AA `text-zinc-400` phase line (including quote-413 / wallet-revert / tx-reverted 1440). Discover board stays on the #49 fixture set (Ready is mock-only). Disconnect stays in the Account modal. `/wallet` no longer duplicates the header wallet control. |
 | Mainnet | **Blocked** |
 
-## Closed this run (#64 ACs — issue stays open)
+## Closed this run (#35 implementation)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
-| Bad/partial refresh never replaces last-known-good | **Yes** | `packages/reactor/src/sanctions-ops.test.ts` (empty, thrown, truncated, `partial_refresh` inject) |
-| Stale policy fails protected writes (#62 codes) | **Yes** | Same file + indexer test: `UNAVAILABLE_DATASET_STALE` on quote/admit/authorize/upload |
-| Health/dashboard names exact dataset + policy versions | **Yes** | `GET /health` / `/sanctions/health` / `/ops` + web `/ops` card |
-| Logging/redaction | **Yes** | `sanctions-audit.test.ts` (Anvil key, 65-byte sig, IP, body, mnemonic) |
-| Failure injection → alert + degraded health | **Yes** | `refresh_fail` / `stale` / `policy_fail` raise `sanctions_*` and `degraded` |
-| Runbook linked from incident-response | **Yes** | `docs/incident-response.md` → `docs/sanctions-runbook.md` |
-| No automated complaint override | **Yes** | `NO_AUTOMATED_OVERRIDE`; explicit review is queued, not applied |
-| Close #64 | **No** | Stays open until independent audit + post-merge verify |
-| Claimed-wallet spoof cannot gate/log identity | **Yes** | `extractWallet()` is a no-op (same as #68 `extractSubjectWallet`). Subject is #68 `wallet-proof` / `recoverOfficialSubject`. Spoofed `body.wallet` / `x-reactor-wallet` ignored; not `DENY_ADDRESS_BLOCKED` |
-| Fixture fallback LOCAL/test-only | **Yes** | `allowFixtureSanctionsRefresh` uses `productionHardGatesApply`. Bound `#61` store on LOCAL loads pinned OFAC XML (no live treasury.gov unless `SANCTIONS_NETWORK=1`) so `#64` ops freshness is current. Shared-store rebind keeps `#62` LOCAL fixture screen when the dataset is empty (`OPERATOR_POLICY_BLOCKED_WALLETS` + `OPERATOR_POLICY_DATASET_FRESHNESS`) so `operator-policy-http` still gets `DENY_ADDRESS_BLOCKED`. STAGING/TESTNET/PROD/PRODUCTION refuse fixtures even with `SANCTIONS_FIXTURE=1` |
-| Same-address refresh restart-safe | **Yes** | t0 refresh → t1 same addresses → new `OfficialListRegistry`/`createSanctionsOps` `loadFromDisk` ages from t1. Version id is `ofac-<content16>-<gen12>` or official #61 id. Adapter keeps generation metadata. |
+| Playwright against production Next | **Yes** | `playwright.release.config.ts` starts `e2e/harness/start-web.mjs` (`next build` then `next start :43147`). Mock indexer `:18448` (valid TCP port). Unblocked `next build` (launch `Link`, search `ticker`, tape `source`, OHLCV `Time`, exclude `e2e/` from app tsconfig). After #43, `live-toasts.ts` must import `./utils` — a `.ts` suffix fails `next build` (`allowImportingTsExtensions`). |
+| Browser matrix | **Yes** | Desktop Chromium / Firefox / WebKit plus iPhone-class and narrow-Android production projects |
+| Deterministic EIP-1193 wallet | **Yes** | `e2e/harness/wallet.ts` — Anvil #0/#1 **addresses only**, sessionStorage, EIP-6963 MetaMask+Rabby announce |
+| Extension wallet (MetaMask/Rabby-style) | **Yes** | `e2e/extension` MV3 + `chromium-extension` project. Prompt: connect/confirm/reject/lock/account |
+| Full ticket lifecycle | **Yes** | `data-testid=trade-phase` idle → quoting → approval/signature → submitted/pending → confirmed |
+| Edge: switch/disconnect/lock/revert/allowance/TTL/drop/double-submit | **Yes** | `e2e/release/edge.spec.ts` |
+| Dev Buy happy + failure | **Yes** | Factory `launchAndBuy`; authorize-down 503 |
+| Shared suite flake | **Not this PR** | #59 on `main` injects `withFakeLeaseTime`. This branch does not widen TTL/renew on wall-clock and does not reintroduce a competing lease-test strategy. |
+| BUY / SELL / nested / bonding / graduated | **Yes** | Router / InstantCurve / UserRouteExecutor `to` assertions |
+| Launch + rewards | **Yes** | Factory Instant + `claimRewards` |
+| Wrong-chain / reject | **Yes** | chainId 1 banner + switch; connect/tx `4001` |
+| Frozen 3.5% / no FDV knobs | **Yes** | Launch + ticket copy asserts |
+| Unexpected console.error / pageerror fail the suite | **Yes** | Shared `attachConsoleGate` on EIP-1193 and extension page fixtures. Records error-level `console` + `pageerror`. Documented allowlist: Chromium HTTP 503 on `/api/launch-pricing` (Dev Buy authorize-down); Next.js RSC prefetch fallback (iPhone WebKit + Firefox) / WebKit `?_rsc=` access-control; WebKit EventSource `/stream` access-control only (not `/markets` — mock JSON echoes Origin so indexed GETs are real CORS). Home+launch waits for mock `GET /markets` before `/launch`. Mock `/stream` and `json()` echo the request `Origin`. Teardown throws captured diagnostics. Trace/screenshot/network stay retain-on-failure. |
+| Folded into #73 `ci.yml` | **Yes** | Full-only `e2e-release-gate`. `ci-ok` requires it **and** #49 `web-qa` **and** always-on `page-budget` from #50 **and** #42 `docs-links` / `web`. `scripts/ci-cost.test.ts` forbids `e2e-release.yml` and `web-qa.yml`. |
+| Docs | **Yes** | `TESTING.md` §41 + table 49/49b, `AUDIT_HANDOFF.md`, `docs/builders.md`, `docs/ci.md`, `CHANGELOG` Unreleased, `pnpm docs:gen`. `docs:check` rejects leftover conflict markers. |
 
 ---
 
-# Prior — Cite accepted #17 / #42 CI evidence (docs-only #79)
+# Prior — Sanctions freshness, audit, alerts, runbook (merged #70, Refs #64)
 
-**Status:** Docs-only replay onto `origin/main` `2002aed` (#68 after #67 / #66), squash-merged as **#79** (`35552f6`). **Refs #17**. Do not `Fixes #17`. Product work already landed via **#42** on `80d3cac`. Preserves integrated #62 operator-policy docs from #68, #63 geo-policy docs from #67, and #61 screening docs from #66. Current-status: #61 / #62 / #63 / #36 / #37 closed; **#17 stays open** until post-merge docs/CI is green; **#60 / #64 / #65 / #69 stay open**.
+**Status:** Squash-merged **#70** (`cc82cd4`) on `origin/main`. Same work as `cursor/sanctions-ops-freshness-8fcc`, rebased onto `35552f6` after **#79** / **#68** / **#67** / **#66**. Issue **#64 stays open** — use `Refs #64`, do not auto-close. Official `#61` refresh binds via `apps/indexer/src/sanctions.ts`. Official `#62` `operator-policy.ts` is the gated subject.
+**Not audited. Not mainnet.**
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## That HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Persist official-list version/hash/retrieved/last-success; 7-day SLA fail-closed; startup + scheduled refresh keeps last-known-good; health + `/ops` name dataset + policy versions; minimized audit; alerts; operator runbook. HTTP identity is #62 recovered EIP-191 only. Fixture refresh LOCAL/test-only. Same-address refresh writes a new #61-style generation so restart freshness ages from t1. |
+| Rebase | Onto `origin/main` `35552f6` after **#79** (#17 evidence) / **#68** (#62) / **#67** (#63) / **#66** (#61). Docs conflicts kept #79 accepted #17/#42 runs + closed #36/#37/#61/#62/#63 status, #62 `gateProtectedWrite` + challenge/status, #67 `evaluateRequestGeo`, #61 lookup, **and** #64 freshness. `applySanctionsOpsGate` loads merged `operator-policy.ts` (`recoverSubjectWallet` / `gateProtectedWrite`). Shared `#61` store is rebound via `bindOperatorPolicyProviders` so the gate does not construct a second ingest. Ops persist is `SANCTIONS_DATA_DIR/ops`. TESTING row 61. |
+| Indexer / lib | `sanctions-ops.test.ts` + `sanctions-audit.test.ts` + indexer `sanctions-ops.test.ts` + `pnpm docs:check` |
+| Docs | `/docs/sanctions-ops`, runbook, incident-response, trust, API, builders, TESTING row 61 |
+| Mainnet | **Blocked** |
+
+## Closed that run (#64 ACs — issue stays open)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Bad/partial refresh never replaces last-known-good | **Yes** | `packages/reactor/src/sanctions-ops.test.ts` |
+| Stale policy fails protected writes (#62 codes) | **Yes** | `UNAVAILABLE_DATASET_STALE` on quote/admit/authorize/upload |
+| Health/dashboard names exact dataset + policy versions | **Yes** | `GET /health` / `/sanctions/health` / `/ops` + web `/ops` card |
+| Logging/redaction | **Yes** | `sanctions-audit.test.ts` |
+| Failure injection → alert + degraded health | **Yes** | `refresh_fail` / `stale` / `policy_fail` raise `sanctions_*` and `degraded` |
+| Runbook linked from incident-response | **Yes** | `docs/incident-response.md` → `docs/sanctions-runbook.md` |
+| No automated complaint override | **Yes** | `NO_AUTOMATED_OVERRIDE` |
+| Close #64 | **No** | Stays open until independent audit + post-merge verify |
+| Claimed-wallet spoof cannot gate/log identity | **Yes** | `extractWallet()` is a no-op. Subject is #68 `wallet-proof` / `recoverOfficialSubject` |
+| Fixture fallback LOCAL/test-only | **Yes** | Bound `#61` store on LOCAL loads pinned OFAC XML unless `SANCTIONS_NETWORK=1`. Shared-store rebind keeps `#62` LOCAL fixture screen |
+| Same-address refresh restart-safe | **Yes** | Version id is `ofac-<content16>-<gen12>` or official #61 id |
+
+---
+
+# Prior — Cite accepted #17 / #42 CI evidence (docs-only, merged #79)
+
+**Status:** Squash-merged **#79** (`35552f6`) on `origin/main`. **Refs #17**. Do not `Fixes #17`. Product work already landed via **#42** on `80d3cac`. Preserves integrated #62 operator-policy docs from #68, #63 geo-policy docs from #67, and #61 screening docs from #66. Current-status: #61 / #62 / #63 / #36 / #37 closed; **#17 stays open** until post-merge docs/CI after #79; **#60 / #64 / #65 / #69 stay open**.
 **Not audited. Not mainnet.**
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
@@ -55,7 +93,7 @@
 | #61 / #66 | **Closed.** Merged `d08aa1c` / [`34731099571`](https://github.com/solarcurvey/reactor/actions/runs/34731099571) |
 | #63 / #67 | **Closed.** Founder closed after post-merge verify. Merged `e712617` / [`34731788819`](https://github.com/solarcurvey/reactor/actions/runs/34731788819) |
 | #62 / #68 | **Closed.** Merged `2002aed` / [`34733128955`](https://github.com/solarcurvey/reactor/actions/runs/34733128955) |
-| #17 | **Stays open** until #79 post-merge docs/CI |
+| #17 | **Stays open** until post-merge docs/CI after #79 |
 | #60 / #64 / #65 / #69 | **Stay open.** |
 | Mainnet | **Blocked** |
 
@@ -66,7 +104,7 @@
 | Cite accepted #17 / #42 runs | **Yes** | Merge-candidate `11fdadb` / `34727535121`; post-merge `80d3cac` / `34727638255`. Older greens are **not** the closer. |
 | Record #37 / #36 / #61 / #63 / #62 closed | **Yes** | #50 `e5fd745` / `34727279555`; #49 `ad7b457` / `34729758795`; #66 `d08aa1c` / `34731099571`; #67 `e712617` / `34731788819`; #68 `2002aed` / `34733128955` |
 | Preserve #66 / #67 / #68 docs | **Yes** | Operator-policy / geo / screening Priors below keep #68 AC table, HMAC / revision 3 / SY / FAQ 1009, and #61 parser / 85% floor / `screen()`. |
-| `Fixes #17` | **No** | Refs only. Close #17 after #79 post-merge docs/CI is green. |
+| `Fixes #17` | **No** | Refs only. Close #17 after post-merge docs/CI is green. |
 | Claim #60 / #64 / #65 / #69 closed | **No** | Stay open. |
 | Frozen economics / arch | **Yes** | No contract / fee / Factory / hook edits |
 
@@ -193,7 +231,15 @@
 
 # Prior — Exact official-list sanctions screening (Refs #61)
 
-**Status:** Squash-merged **#66** (`d08aa1c`) on `origin/main`. Issue **#61 closed** after post-merge [`34731099571`](https://github.com/solarcurvey/reactor/actions/runs/34731099571). Parent RELEASE GATE **#60** stays open.
+**Status:** Squash-merged **#66** (`d08aa1c`) on `origin/main`. Issue **#61 closed** after post-merge [`34731099571`](https://github.com/solarcurvey/reactor/actions/runs/34731099571). Parent RELEASE GATE **#60** stays open. Issue **#61 stays open** until post-merge verify (parent RELEASE GATE **#60**). Do not auto-close. **Status:** Merged **#42** on `origin/main` `80d3cac` after **#50** `e5fd745` / **#58** `c03c698`. Issue **#17 stays open**. **Not audited. Not mainnet.** Tokenomics unchanged. ---
+
+# Prior — Eliminate RPC waterfalls (#37 / #50)
+
+**Status:** Merged **#50** on `origin/main` `e5fd745` after **#58** `c03c698`. Issue **#37 stays open**. **Not audited. Not mainnet.** Tokenomics unchanged. ---
+
+# Prior — Exact official-list sanctions screening (Refs #61 / merged #66)
+
+**Status:** Landed on `origin/main` as **`d08aa1c`** (#66) after **#49** (UI QA) on #42 / #50 / #58. Issue **#61 stays open** until post-merge verify (parent RELEASE GATE **#60**). Do not auto-close.
 **Not audited. Not mainnet. Not a legal/OFAC compliance claim.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Protocol release remains 0.3.3** — do not restore a pre-rewrite version.

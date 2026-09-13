@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { useLaunchTokens, usePendingRewards } from "@/lib/hooks";
@@ -8,11 +9,18 @@ import Link from "next/link";
 import { tokenPath } from "@/lib/untrusted-metadata";
 import { ServiceFailure } from "@/components/service-failure";
 import { isServiceUnavailable } from "@/lib/qa-inject";
+import { UntrustedText } from "@/components/untrusted-text";
 
 export default function RewardsPage() {
   const { address, isConnected } = useAccount();
   const { data: tokens, isLoading, isError, error, refetch } = useLaunchTokens();
   const { data: rows } = usePendingRewards(tokens, address);
+  // Wagmi `isConnected` is client-only. Gate wallet copy so SSR HTML matches the first client paint (React 418).
+  const [walletReady, setWalletReady] = useState(false);
+  useEffect(() => {
+    setWalletReady(true);
+  }, []);
+  const showDisconnected = walletReady && !isConnected;
 
   return (
     <div>
@@ -20,7 +28,7 @@ export default function RewardsPage() {
       <p className="mt-1 max-w-xl text-[13px] text-zinc-400">
         2% of official volume → holders in the quote you chose. No staking. Connect to load claimable balances.
       </p>
-      {!isConnected && (
+      {showDisconnected && (
         <p className="mt-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 text-[13px] text-zinc-400">
           Wallet disconnected — showing markets with claimable = 0. Connect to read your balances.
         </p>
@@ -45,7 +53,9 @@ export default function RewardsPage() {
             <tbody>
               {(rows ?? []).map((r) => (
                 <tr key={r.token} className="border-t border-white/6">
-                  <td className="px-3 py-2 font-medium text-white">${r.symbol}</td>
+                  <td className="px-3 py-2 font-medium text-white">
+                    <UntrustedText field="ticker">${r.symbol}</UntrustedText>
+                  </td>
                   <td className="px-3 py-2 font-mono text-zinc-300">
                     {formatUnitsSafe(r.pending, r.dec, 6)} {r.quote}
                   </td>
@@ -60,7 +70,7 @@ export default function RewardsPage() {
           </table>
         </div>
       )}
-      {isConnected && (rows ?? []).length === 0 && !isLoading && (
+      {walletReady && isConnected && (rows ?? []).length === 0 && !isLoading && (
         <p className="mt-6 text-sm text-zinc-400">No launch tokens indexed on this factory yet.</p>
       )}
     </div>

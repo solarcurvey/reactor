@@ -1,4 +1,5 @@
 import type { LaunchToken } from "@/lib/indexed";
+import { addresses } from "./addresses";
 
 export const REVIEW_FIXTURES = process.env.NEXT_PUBLIC_REVIEW_FIXTURES === "1";
 
@@ -12,6 +13,7 @@ const XSS = "0x11111111111111111111111111111111111100aa" as `0x${string}`;
 const LONG = "0x11111111111111111111111111111111111100ab" as `0x${string}`;
 const USDC = "0x4826533B4897376654Bb4d4AD88B7faFD0C98528" as `0x${string}`;
 const ZEC = "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf" as `0x${string}`;
+const CURVE = (addresses.InstantCurve ?? ZEC) as `0x${string}`;
 
 export const XSS_TOKEN = XSS;
 export const LONG_TOKEN = LONG;
@@ -111,6 +113,7 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     description: "Nested CAT/ZCAT Instant. Earns ZCAT. Route is USDC to ZEC to ZCAT to CAT — not CAT/USDC.",
     bonding: true,
     bondingBps: 4120,
+    curve: CURVE,
     rewardsMode: false,
     website: "",
     twitter: "",
@@ -138,6 +141,7 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     description: "USDC bonding Instant — 61% to graduation.",
     bonding: true,
     bondingBps: 6100,
+    curve: CURVE,
     rewardsMode: true,
     website: "",
     twitter: "",
@@ -165,6 +169,7 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     description: "USDC bonding Instant — protocol curve. No FDV knobs.",
     bonding: true,
     bondingBps: 1640,
+    curve: CURVE,
     rewardsMode: true,
     website: "",
     twitter: "",

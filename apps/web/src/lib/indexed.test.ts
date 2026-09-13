@@ -55,6 +55,43 @@ function assert(cond: unknown, msg: string) {
   assert(t.quoteSymbol === "USDC" && t.lifetimeRewards === 5n, "quote + rewards");
 }
 
+{
+  const bonding = marketRowToLaunch({
+    token: "0x0000000000000000000000000000000000000001",
+    quote: "0xusdc",
+    creator: "0xcr",
+    fair_id: "0",
+    market_live: 0,
+    stage: "bonding",
+    bonding_bps: 1640,
+    symbol: "NEON",
+    name: "Neon",
+    ticker: "NEON",
+    decimals: 18,
+    current_supply: "1000",
+    quote_symbol: "USDC",
+    quote_decimals: 6,
+  });
+  assert(bonding.bonding && bonding.curve, "bonding indexed row binds official InstantCurve");
+  const ready = marketRowToLaunch({
+    token: "0x0000000000000000000000000000000000000008",
+    quote: "0xusdc",
+    creator: "0xcr",
+    fair_id: "0",
+    market_live: 0,
+    stage: "ready",
+    bonding_bps: 10000,
+    symbol: "RDY",
+    name: "Ready",
+    ticker: "RDY",
+    decimals: 18,
+    current_supply: "1000",
+    quote_symbol: "USDC",
+    quote_decimals: 6,
+  });
+  assert(ready.ready && ready.curve && !ready.marketLive, "ready indexed row stays frozen and binds InstantCurve");
+}
+
 assert(marketsQueryPath({ q: "cat", stage: "bonding", limit: 20 }) === "/markets?q=cat&stage=bonding&limit=20", "search path");
 assert(marketsQueryPath({ stage: "all" }) === "/markets?limit=80", "all is not a stage filter");
 assert(tickerStatusLabel({ ticker: "CAT", available: true }) === "CAT available · 24h lock on success", "available");
@@ -64,7 +101,12 @@ assert(tickerStatusLabel({ error: "bad ticker" }) === "bad ticker", "error");
 
 {
   const ticket = readFileSync(new URL("../components/trade-panel.tsx", import.meta.url), "utf8");
-  assert(ticket.includes("QUOTE_TTL_MS = 30_000"), "live quote TTL stays 30s");
+  assert(
+    ticket.includes("QUOTE_TTL_MS = Number(process.env.NEXT_PUBLIC_QUOTE_TTL_MS ?? 30_000)") ||
+      ticket.includes("QUOTE_TTL_MS = 30_000"),
+    "live quote TTL stays 30s",
+  );
+  assert(!/\?\? 2_?500/.test(ticket), "E2E short TTL is env-only, not the production default");
   assert(!ticket.includes("useQuery"), "quote tickets stay in component state, not TanStack cache");
   const hooks = readFileSync(new URL("./hooks.ts", import.meta.url), "utf8");
   const indexed = readFileSync(new URL("./indexed.ts", import.meta.url), "utf8");

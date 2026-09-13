@@ -62,6 +62,7 @@ A protocol `0.1.1` / `0.2.0` bump does not rewrite Factory V1. A different 3.5% 
 - Protocol semver vs `package.json` / CHANGELOG / generated pages
 - `deployments/local.json` vs web + indexer copies
 - Stale `docs/versioning.md`, `docs/deployments.md`, `docs/changelog.md`
+- Tracked docs / `BUILD_REPORT.md` still contain `<<<<<<<` / `>>>>>>>` conflict markers
 - A mainnet (5042) address appearing in generated tables
 
 Do not “fix” a red check by editing generated markdown. Edit `docs/version.json` / `deployments/registry.json` / the Solidity source and regenerate.
@@ -79,7 +80,8 @@ pnpm test:lib            # indexer + web unit + #61 sanctions fixtures + docs:ch
 pnpm test:ci-cost        # workflow inventory / no duplicate push+PR / fail-safe paths
 pnpm test:web-unit       # web lib unit (also in test:lib)
 pnpm --filter web test:qa  # visual / a11y / failure-injection (CI ci.yml job web-qa, full/main)
+pnpm test:e2e:release    # #35 production Next + wallet E2E (full/main job e2e-release-gate)
 cd contracts && forge test
 ```
 
-GitHub Actions is three-tier (Refs #69): fast PR (`test:lib` + always-on `page-budget`), full merge-candidate (`ready_for_review`, label `ci-full`, or `workflow_dispatch`), main post-merge once. #17 leftover extras (`docs:links`, Playwright smoke + interactive) and #36 `web-qa` are full-only jobs on this same `ci.yml`. Do not add a feature-branch `push` + `pull_request` pair. Operator + before/after inventory: [`/docs/ci`](docs/ci.md).
+GitHub Actions is three-tier (Refs #69): fast PR (`test:lib` + always-on `page-budget`), full merge-candidate (`ready_for_review`, label `ci-full`, or `workflow_dispatch`), main post-merge once. #17 leftover extras (`docs:links`, Playwright smoke + interactive), #36 `web-qa`, and the #35 `e2e-release-gate` are full-only jobs on this same `ci.yml`. Do not add a feature-branch `push` + `pull_request` pair. Operator + before/after inventory: [`/docs/ci`](docs/ci.md).

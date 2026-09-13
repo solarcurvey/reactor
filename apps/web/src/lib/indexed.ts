@@ -1,5 +1,5 @@
 import { throwIfAborted } from "./abort";
-import { CATEGORY_LABELS } from "./addresses";
+import { CATEGORY_LABELS, addresses } from "./addresses";
 import { INDEXER_URL } from "./chain";
 import type { MarketListOpts } from "./query";
 import { FIXTURE_REACTOR_EVENTS, FIXTURE_TOKENS, FIXTURE_XSS_SWAPS, REVIEW_FIXTURES } from "./review-fixtures";
@@ -99,6 +99,10 @@ function cleanLaunch(t: LaunchToken): LaunchToken {
 
 export function marketRowToLaunch(m: Record<string, unknown>): LaunchToken {
   const fairId = BigInt(String(m.fair_id ?? m.fairId ?? 0));
+  const stage = String(m.stage ?? "");
+  const bonding = stage === "bonding";
+  const ready = stage === "ready";
+  const curveFromRow = sanitizeAddress(String(m.curve ?? m.instant_curve ?? "")) as `0x${string}` | "";
   return cleanLaunch({
     token: String(m.token ?? m.address) as `0x${string}`,
     quote: String(m.quote ?? "0x") as `0x${string}`,
@@ -122,12 +126,12 @@ export function marketRowToLaunch(m: Record<string, unknown>): LaunchToken {
     quoteDecimals: Number(m.quote_decimals ?? m.quoteDecimals ?? 18),
     lifetimeRewards: BigInt(String(m.lifetime_rewards || "0")),
     rewardsMode: Number(m.rewards_mode ?? 1) !== 0,
-    bonding: String(m.stage) === "bonding",
+    bonding,
     bondingBps: Number(m.bonding_bps ?? 0),
     realQuote: BigInt(String(m.real_quote || "0")),
     gradTarget: BigInt(String(m.grad_target || "0")),
-    ready: String(m.stage) === "ready",
-    curve: undefined,
+    ready,
+    curve: curveFromRow || ((bonding || ready) && addresses.InstantCurve ? addresses.InstantCurve : undefined),
     priceQuoteX18: String(m.price_quote_x18 ?? "0"),
     fdvUsd6: String(m.fdv_usd6 ?? "0"),
     volume24hUsd6: String(m.volume_24h_usd6 ?? "0"),
@@ -162,6 +166,9 @@ export function mergeLaunchFixtures(items: LaunchToken[]): LaunchToken[] {
       lifetimeRewards: emptyRewards ? f.lifetimeRewards : t.lifetimeRewards,
       bonding: t.bonding || f.bonding,
       bondingBps: t.bondingBps || f.bondingBps,
+      ready: Boolean(t.ready || f.ready),
+      curve: t.curve || f.curve,
+      quote: f.quote || t.quote,
     });
   });
   const seen = new Set(merged.map((t) => t.token.toLowerCase()));
@@ -252,9 +259,11 @@ export async function loadTokenPage(address: string, interval: string, signal?: 
     sparse?: boolean;
   }>(`/page/token/${address}?interval=${encodeURIComponent(interval)}`, { signal });
   if (got.ok && got.body.ok && got.body.market) {
+    const row = marketRowToLaunch(got.body.market);
+    const market = REVIEW_FIXTURES ? mergeLaunchFixtures([row])[0] : row;
     const candles = got.body.candles ?? [];
     return {
-      market: marketRowToLaunch(got.body.market),
+      market,
       ohlcv: { candles, sparse: Boolean(got.body.sparse), interval: got.body.interval ?? interval },
       swaps: got.body.swaps ?? [],
     };

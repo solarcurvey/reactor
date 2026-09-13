@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePublicClient, useSignMessage, useWriteContract } from "wagmi";
 import { signOperatorWalletProof } from "@/lib/wallet-proof";
 import { waitForTransactionReceipt } from "viem/actions";
@@ -28,13 +28,28 @@ import { useQaInject, useQaScene } from "@/components/qa-inject-provider";
 import { Modal } from "./ui/dialog";
 import { TxStatus } from "./tx-status";
 
-const QUOTE_TTL_MS = 30_000;
+const QUOTE_TTL_MS = Number(process.env.NEXT_PUBLIC_QUOTE_TTL_MS ?? 30_000);
+const TX_WAIT_MS = Number(process.env.NEXT_PUBLIC_TX_WAIT_MS ?? 60_000);
+
+type TradePhase = "idle" | "quoting" | "awaiting_wallet" | "pending" | "confirmed";
+
+const PHASE_LABEL: Record<TradePhase, string> = {
+  idle: "idle",
+  quoting: "quoting",
+  awaiting_wallet: "approval/signature",
+  pending: "submitted/pending",
+  confirmed: "confirmed",
+};
 
 export function TradePanel({ t }: { t: LaunchToken }) {
   const { address, isConnected, writesEnabled, matched, mismatchMessage, chainId } = useOfficialChain();
   const client = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
   const { signMessageAsync } = useSignMessage();
+  const submitLock = useRef(false);
+  const [phase, setPhase] = useState<TradePhase>("idle");
+  const [quotedFor, setQuotedFor] = useState<string | null>(null);
+  const [quotedChain, setQuotedChain] = useState<number | null>(null);
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [payUsdc, setPayUsdc] = useState(false);
   const [amount, setAmount] = useState("");
@@ -130,6 +145,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       setReactorFeeCount(0);
       return;
     }
+    setPhase("quoting");
     try {
       const proof = await signOperatorWalletProof((message) => signMessageAsync({ message }));
       const res = await fetch(`${INDEXER_URL}/quote`, {
@@ -163,22 +179,28 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       }
       setQuotedOut(BigInt(q.amountOut));
       setQuotedAt(Date.now());
+      setQuotedFor(address);
+      setQuotedChain(chainId ?? null);
       setLiveHops(q.hops ? sanitizeRouteHops(q.hops) : []);
       setFeeLegs(q.feeLegs ?? []);
       setAggregateImpactBps(q.aggregateProtocolImpactBps ?? 0);
       setReactorFeeCount(q.reactorFeeCount ?? q.feeLegs?.filter((f) => f.reactorOfficial && !f.feeExempt).length ?? 0);
       void q.tx;
+      setPhase("idle");
       // First-leg floor is quote units from the atomic preview — never tokenIn / minOut.
       if (q.minQuoteOut) setMinQuoteOut(BigInt(q.minQuoteOut));
       else if (side === "sell" && q.minOut) setMinQuoteOut(BigInt(q.minOut));
       else setMinQuoteOut(null);
     } catch (e) {
       setQuotedOut(null);
+      setPhase("idle");
       setError(e instanceof Error ? e.message : "Quote failed. Size may be larger than remaining depth.");
     }
   }
 
   async function submit() {
+    if (submitLock.current) return;
+    submitLock.current = true;
     setError(null);
     setHash(null);
     if (inject === "wallet-reject") {
@@ -190,14 +212,17 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       return;
     }
     if (!address || !client) {
+      submitLock.current = false;
       setError("Connect a wallet on the local Arc-compatible chain.");
       return;
     }
     if (!writesEnabled) {
+      submitLock.current = false;
       setError(mismatchMessage);
       return;
     }
     if (parsed === 0n) {
+      submitLock.current = false;
       setError("Enter an amount.");
       return;
     }
@@ -211,6 +236,14 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       }
       if (Date.now() - quotedAt > QUOTE_TTL_MS) {
         setError("Quote went stale. Re-quoted — confirm again.");
+        return;
+      }
+      if (quotedFor && address.toLowerCase() !== quotedFor.toLowerCase()) {
+        setError("Account changed. Re-quote.");
+        return;
+      }
+      if (quotedChain != null && chainId != null && chainId !== quotedChain) {
+        setError("Network changed. Re-quote.");
         return;
       }
       const slipBps = BigInt(Math.max(1, Math.floor(Number(slippage || "1") * 100)));
@@ -238,6 +271,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         return;
       }
       const asset = side === "buy" ? (usdcRoute ? addresses.USDC : write.quote) : write.token;
+      setPhase("awaiting_wallet");
       const fresh = await readTicketWallet(client, {
         owner: address,
         quote: write.quote,
@@ -253,7 +287,19 @@ export function TradePanel({ t }: { t: LaunchToken }) {
           functionName: "approve",
           args: [write.to, parsed * 4n],
         });
-        await waitForTransactionReceipt(client, { hash: approveHash });
+        setPhase("pending");
+        const approveReceipt = await waitForTransactionReceipt(client, {
+          hash: approveHash,
+          timeout: TX_WAIT_MS,
+          pollingInterval: 200,
+        });
+        if (approveReceipt.status === "reverted") throw new Error("Transaction reverted.");
+        setPhase("awaiting_wallet");
+      }
+      if (Date.now() - quotedAt > QUOTE_TTL_MS) {
+        setError("Quote went stale. Re-quoted — confirm again.");
+        setPhase("idle");
+        return;
       }
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 300);
       const tx =
@@ -286,10 +332,21 @@ export function TradePanel({ t }: { t: LaunchToken }) {
                   write.recipient,
                 ],
               });
-      await waitForTransactionReceipt(client, { hash: tx });
+      setPhase("pending");
+      const receipt = await waitForTransactionReceipt(client, { hash: tx, timeout: TX_WAIT_MS, pollingInterval: 200 });
+      if (receipt.status === "reverted") throw new Error("Transaction reverted.");
       setHash(tx);
+      setPhase("confirmed");
     } catch (e) {
-      setError(e instanceof TxGuardError || e instanceof Error ? e.message : "Trade failed.");
+      const msg = e instanceof TxGuardError || e instanceof Error ? e.message : "Trade failed.";
+      setPhase("idle");
+      if (/timed out|timeout/i.test(msg)) {
+        setError("Transaction dropped or replaced. Re-quote and retry.");
+      } else {
+        setError(msg);
+      }
+    } finally {
+      submitLock.current = false;
     }
   }
 
@@ -412,24 +469,29 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         />{" "}
         %
       </div>
-      <div className="mt-4 flex gap-2">
-        <Button variant="outline" className="flex-1" onClick={refreshQuote} disabled={!writesEnabled || parsed === 0n}>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <Button variant="outline" className="flex-1" onClick={refreshQuote} disabled={!writesEnabled || parsed === 0n || phase === "awaiting_wallet" || phase === "pending"}>
           Quote
         </Button>
         <Button
           className="flex-1"
           onClick={submit}
-          disabled={!writesEnabled || isPending || (!t.marketLive && !t.bonding)}
+          disabled={!writesEnabled || isPending || phase === "awaiting_wallet" || phase === "pending" || (!t.marketLive && !t.bonding)}
         >
           {!matched
             ? "Wrong network"
             : !t.marketLive && !t.bonding
               ? "Market not live"
-              : isPending
+              : phase === "awaiting_wallet"
+                ? "Awaiting signature…"
+                : phase === "pending" || isPending
                 ? "Pending…"
                 : `Confirm ${side}`}
         </Button>
       </div>
+      <p data-testid="trade-phase" data-phase={phase} className="mt-2 text-[11px] uppercase tracking-wider text-zinc-400">
+        {PHASE_LABEL[phase]}
+      </p>
       {error && (
         <p
           role="alert"

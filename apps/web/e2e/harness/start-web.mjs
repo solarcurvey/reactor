@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Production Next build + start for the E2E release gate.
+ * Production Next build + start for the #35 E2E release gate and #36 QA gate.
  * NEXT_PUBLIC_* must be present at build time.
  */
 import { spawn } from "node:child_process";
@@ -17,6 +17,9 @@ const env = {
   NEXT_PUBLIC_QA_INJECT: process.env.NEXT_PUBLIC_QA_INJECT ?? "1",
   NEXT_PUBLIC_INDEXER_URL: INDEXER_URL,
   NEXT_PUBLIC_RPC_URL: RPC_URL,
+  // Release gate sets short TTL via playwright.release.config.ts. QA / default stay 30s.
+  NEXT_PUBLIC_QUOTE_TTL_MS: process.env.NEXT_PUBLIC_QUOTE_TTL_MS ?? "30000",
+  NEXT_PUBLIC_TX_WAIT_MS: process.env.NEXT_PUBLIC_TX_WAIT_MS ?? "60000",
   INDEXER_URL,
   NODE_ENV: "production",
 };

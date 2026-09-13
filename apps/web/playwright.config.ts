@@ -6,7 +6,15 @@ const ci = !!process.env.CI;
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: [/visual\.spec\.ts/, /states\.spec\.ts/, /a11y\.spec\.ts/, /failures\.spec\.ts/, /prod-security\.spec\.ts/],
+  testIgnore: [
+    /visual\.spec\.ts/,
+    /states\.spec\.ts/,
+    /a11y\.spec\.ts/,
+    /failures\.spec\.ts/,
+    /prod-security\.spec\.ts/,
+    /release\//,
+    /harness\//,
+  ],
   fullyParallel: true,
   forbidOnly: ci,
   retries: ci ? 1 : 0,
