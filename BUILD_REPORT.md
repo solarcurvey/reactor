@@ -1,6 +1,6 @@
 # BUILD REPORT — Exact official-list sanctions screening (Refs #61)
 
-**Status:** Branch `cursor/ofac-sanctions-dataset-1a33` / PR **#66**, rebased onto `origin/main` `80d3cac` after **#42** (full GitHub CI extras on #50 / #58). Issue **#61 stays open** until merge **and** post-merge verify (parent RELEASE GATE **#60**). Do not auto-close.  
+**Status:** Branch `cursor/ofac-sanctions-dataset-1a33` / PR **#66**, rebased onto `origin/main` `ad7b457` after **#49** (UI QA) on #42 / #50 / #58. Issue **#61 stays open** until merge **and** post-merge verify (parent RELEASE GATE **#60**). Do not auto-close.  
 **Not audited. Not mainnet. Not a legal/OFAC compliance claim.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Protocol release remains 0.3.3** — do not restore a pre-rewrite version.
@@ -9,7 +9,7 @@
 
 **Re-audit pass (freshness durability):** version id includes `sourceGenerationHash` (retrievedAt + source HTTP/publication metadata), not only the address-set `contentHash`. A same-address refresh persists t1 metadata; `loadFromDisk()` freshness ages from t1.
 
-**Rebase (after #42 / `80d3cac`):** replayed the #61 commits onto `origin/main` `80d3cac`. Conflicts (docs/`package.json`/`ci.yml` only — no economics rewrite): `package.json` / indexer `test` keep **#61** sanctions fixtures **and** #42 `safe-genesis-builder.test.ts` / `docs:links` / `test:web-unit` **and** #50 `indexed` / `page-budget` / `page-reads` / `rpc-batch`; `TESTING.md` row 52 stays #61 (rows 53–56 are #50; row 57 is #42); `docs/ci.md` keeps always-on `page-budget`, full-only `docs-links` / Playwright `web`, **and** the #61 `test:lib` fixture slot; `BUILD_REPORT.md` / `AUDIT_HANDOFF.md` keep the #61, #42, and earlier amendments. `#73` single `ci.yml` + `#72/#74/#76/#77` harden kept (`contents: read`, `persist-credentials: false`, no `pull_request_target`). Live OFAC HTTPS stays `SANCTIONS_NETWORK=1` / `test:sanctions:network` — not a second workflow. Do not restore `docs-sync.yml`.
+**Rebase (after #49 / `ad7b457`):** replayed the #61 commits onto `origin/main` `ad7b457`. Conflicts (docs/`package.json` only — no economics rewrite): `package.json` `test:lib` keeps **#61** sanctions fixtures **and** #49 `qa-inject` / console-gate / contrast **and** #42 `safe-genesis` / `docs:links` / `test:web-unit` **and** #50 `indexed` / `page-budget`; `TESTING.md` row 52 stays #61 (53–56 #50, 57 #42, 58 #49); `docs/trust.md` keeps fail-visible UI + screening; `docs/ci.md` keeps always-on `page-budget`, full-only `web-qa` / `docs-links` / Playwright `web`, **and** the #61 fixture slot; `AUDIT_HANDOFF.md` / `BUILD_REPORT.md` keep #61 + #49 + earlier amendments. `#73` single `ci.yml` + `#72/#74/#76/#77` harden kept. Live OFAC HTTPS stays `SANCTIONS_NETWORK=1` / `test:sanctions:network` — not a second workflow. Do not restore `docs-sync.yml` or `web-qa.yml`.
 
 ## This HEAD
 
