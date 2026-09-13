@@ -23,7 +23,9 @@ import {
   setFixtureDatasetFreshness,
   setFixtureLocalDefaultGeo,
   tryBindOfficialPolicyPlugins,
+  walletProofSecret,
 } from "./operator-policy.ts";
+import { signGeoClaim } from "./geo-edge.ts";
 import { OPERATOR_POLICY_DISCLAIMER } from "../../../packages/reactor/src/sanctions-policy.ts";
 
 const CLAIMED_CLEAR = "0x1111111111111111111111111111111111111111";
@@ -103,6 +105,33 @@ async function signProof(account: { signMessage: (a: { message: string }) => Pro
   if ("error" in issued) throw new Error(issued.error);
   const signature = await account.signMessage({ message: issued.message });
   return JSON.stringify({ token: issued.token, signature });
+}
+
+const GEO_EDGE_SECRET = "geo-edge-secret-ok!!";
+
+function signedOfficialGeoHeaders(parts: {
+  country: string;
+  region?: string;
+  regionName?: string;
+  nowMs?: number;
+}): Record<string, string> {
+  const ts = String(Math.floor((parts.nowMs ?? Date.now()) / 1000));
+  const country = parts.country;
+  const region = parts.region ?? "";
+  const regionName = parts.regionName ?? "";
+  const anonymizer = "none";
+  const ip = "203.0.113.10";
+  const mac = signGeoClaim(GEO_EDGE_SECRET, { ts, country, region, regionName, anonymizer, ip });
+  const headers: Record<string, string> = {
+    "x-reactor-geo-ts": ts,
+    "x-reactor-geo-country": country,
+    "x-reactor-geo-region": region,
+    "x-reactor-geo-anonymizer": anonymizer,
+    "x-reactor-geo-ip": ip,
+    "x-reactor-geo-mac": mac,
+  };
+  if (regionName) headers["x-reactor-geo-region-name"] = regionName;
+  return headers;
 }
 
 async function spoofHeaders(signer: typeof blockedAcct, extra: Record<string, string> = {}): Promise<Record<string, string>> {
@@ -470,6 +499,61 @@ try {
         headers: await spoofHeaders(clearAcct),
       });
       assertAllowed(allow, downstream, before, CLEAR);
+
+      const officialFx = await hit(srv.url, {
+        method: "POST",
+        path: "/quote",
+        body: spoofBody(),
+        headers: await spoofHeaders(clearAcct, { "x-reactor-geo-fixture": "FX" }),
+      });
+      assertDenied(officialFx, "DENY_GEO_BLOCKED", downstream, before + 1);
+
+      const prodGeoEnv = {
+        ...process.env,
+        REACTOR_ENV: "PROD",
+        GEO_EDGE_SECRET,
+        OPERATOR_POLICY_HMAC_SECRET: walletProofSecret(process.env),
+      } as NodeJS.ProcessEnv;
+      const oblast = await gateProtectedWrite({
+        headers: {
+          "x-reactor-wallet-proof": await signProof(clearAcct),
+          "x-reactor-wallet": CLAIMED_CLEAR,
+          "cf-ipcountry": "UA",
+          ...signedOfficialGeoHeaders({ country: "UA", region: "UA-14" }),
+        },
+        env: prodGeoEnv,
+        surface: "quote",
+      });
+      assert(
+        !oblast.ok && oblast.decision.reason === "UNAVAILABLE_GEO_POLICY",
+        `official HMAC UA-14 oblast UNKNOWN ${JSON.stringify(oblast.ok ? oblast.decision : oblast.body)}`,
+      );
+
+      const dpr = await gateProtectedWrite({
+        headers: {
+          "x-reactor-wallet-proof": await signProof(clearAcct),
+          "x-reactor-wallet": CLAIMED_CLEAR,
+          "cf-ipcountry": "UA",
+          ...signedOfficialGeoHeaders({ country: "UA", region: "UA-DPR" }),
+        },
+        env: prodGeoEnv,
+        surface: "quote",
+      });
+      assert(
+        !dpr.ok && dpr.decision.reason === "DENY_GEO_BLOCKED",
+        `official HMAC UA-DPR DENY ${JSON.stringify(dpr.ok ? dpr.decision : dpr.body)}`,
+      );
+
+      const usAllow = await gateProtectedWrite({
+        headers: {
+          "x-reactor-wallet-proof": await signProof(clearAcct),
+          "cf-ipcountry": "IR",
+          ...signedOfficialGeoHeaders({ country: "US" }),
+        },
+        env: prodGeoEnv,
+        surface: "quote",
+      });
+      assert(usAllow.ok && usAllow.wallet === CLEAR, `official HMAC US ALLOW ${JSON.stringify(usAllow.ok ? usAllow.decision : usAllow)}`);
     } finally {
       if (prevDataDir === undefined) delete process.env.SANCTIONS_DATA_DIR;
       else process.env.SANCTIONS_DATA_DIR = prevDataDir;
