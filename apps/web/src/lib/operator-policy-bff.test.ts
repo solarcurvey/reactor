@@ -151,7 +151,7 @@ async function main() {
       );
       assert(forwarded["x-reactor-wallet-proof"]?.includes("token"), "proof forwarded");
       assert(!forwarded["x-reactor-wallet"], "claimed wallet header stripped");
-      assert(forwarded["x-reactor-geo-fixture"] === "US", "trusted fixture forwarded");
+      assert(!forwarded["x-reactor-geo-fixture"], "browser geo fixture is not replayed through Next");
       assert(!forwarded["x-sanctions-clear"], "clear flag not forwarded as authority");
       assert(!forwarded["cf-ipcountry"], "browser country not forwarded as authority");
     }
