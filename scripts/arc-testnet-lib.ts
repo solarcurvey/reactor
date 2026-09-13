@@ -337,3 +337,67 @@ export function waitingAddressFromEnv(env: NodeJS.ProcessEnv = process.env): `0x
   if (a && /^0x[a-fA-F0-9]{40}$/.test(a)) return a as `0x${string}`;
   return undefined;
 }
+
+export type ProdPathReport = {
+  claimedProdPath: false;
+  claimedDump: boolean;
+  verificationUrl?: string;
+  chainId?: number;
+  factoryCodeBytes?: number;
+  deployerBalanceWei?: string;
+  indexerProdStart?: { ok: false; detail: string };
+  gateFailures: string[];
+  blockers: string[];
+  notes: string[];
+};
+
+/** Honest PROD-path inventory. Never sets claimedProdPath. */
+export function assembleProdPathReport(input: {
+  claimedDump: boolean;
+  verificationUrl?: string;
+  chainId?: number;
+  factoryCodeBytes?: number;
+  deployerBalanceWei?: string;
+  indexerProdStart?: { ok: false; detail: string };
+  gateFailures: string[];
+  launchSignerIsDeployer: boolean;
+  keeperIsDeployer: boolean;
+  walletConnectConfigured: boolean;
+}): ProdPathReport {
+  const blockers: string[] = [];
+  if (!input.claimedDump) blockers.push("no claimed deployments/arc-testnet.json + verificationUrl");
+  for (const f of input.gateFailures) blockers.push(`PROD hard gate: ${f}`);
+  if (input.launchSignerIsDeployer) {
+    blockers.push(
+      "on-chain LaunchSigner/PricingSigner is the funded deployer EOA — isolated signer ≠ deployer needs Guardian setPricingSigner before PROD authorize",
+    );
+  }
+  if (input.keeperIsDeployer) {
+    blockers.push("on-chain Keeper is the funded deployer EOA — launch signer must not reuse the keeper key");
+  }
+  if (!input.walletConnectConfigured) {
+    blockers.push("NEXT_PUBLIC_WALLETCONNECT_ID unset; Next connectors are wagmi injected() only — this VM has no browser wallet");
+  }
+  if (input.indexerProdStart && !input.indexerProdStart.ok) {
+    blockers.push(`PROD indexer refuse start: ${input.indexerProdStart.detail}`);
+  }
+  blockers.push("no Safe genesis (Guardian is not a production Safe)");
+  blockers.push("Circle faucet automation still RECAPTCHA_ERROR — not a PROD gate, funding is already on-chain");
+  const notes = [
+    "LOCAL authorize Instant RHRSL + Fair RHRFL is recorded. That is not full PROD.",
+    "Do not set SIGNER_INLINE in PROD. Do not reuse Anvil #0. Do not invent Turnstile keys.",
+    "claimedProdPath stays false until Turnstile + isolated signer ≠ deployer ≠ Keeper + browser/wallet path are human-confirmed.",
+  ];
+  return {
+    claimedProdPath: false,
+    claimedDump: input.claimedDump,
+    verificationUrl: input.verificationUrl,
+    chainId: input.chainId,
+    factoryCodeBytes: input.factoryCodeBytes,
+    deployerBalanceWei: input.deployerBalanceWei,
+    indexerProdStart: input.indexerProdStart,
+    gateFailures: input.gateFailures,
+    blockers,
+    notes,
+  };
+}

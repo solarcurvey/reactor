@@ -72,6 +72,6 @@
 
 **Where is the sanctions runbook?** [Sanctions runbook](/docs/sanctions-runbook), linked from [Incident response](/docs/incident-response).
 
-**Is REACTOR live on Arc Public Testnet?** #16 rehearsal recorded Factory `0xB48D1B397834eBcccb8961041d827487097e0535`, Instant + Fair smoke, and a LOCAL authorize Instant RHRSL + Fair RHRFL path on [testnet.arcscan.app](https://testnet.arcscan.app). Addresses: `docs/deployments.md`. Quote is Mock USDC-6, not canonical `0x3600…0000`. Guardian is a disposable EOA, not a Safe. LOCAL authorize is not full PROD. Not audited. No mainnet. Keep #16 open for human AC.
+**Is REACTOR live on Arc Public Testnet?** #16 rehearsal recorded Factory `0xB48D1B397834eBcccb8961041d827487097e0535`, Instant + Fair smoke, and a LOCAL authorize Instant RHRSL + Fair RHRFL path on [testnet.arcscan.app](https://testnet.arcscan.app). Addresses: `docs/deployments.md`. Quote is Mock USDC-6, not canonical `0x3600…0000`. Guardian is a disposable EOA, not a Safe. LOCAL authorize is not full PROD. `claimedProdPath` in `deployments/arc-testnet-prod-path.json` stays false until Turnstile + isolated signer ≠ deployer ≠ Keeper + a real wallet are present. Not audited. No mainnet. Keep #16 open for human AC.
 
 See [Troubleshooting](/docs/troubleshooting), [Glossary](/docs/glossary), [Trust](/docs/trust), [Observability](/docs/observability), [CI and cost](/docs/ci).

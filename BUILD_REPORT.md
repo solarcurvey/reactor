@@ -22,7 +22,7 @@
 | Workflows | Inherited merged **#46** / **#75** / **#44** / **#70** / **#79** / **#68** / **#67** / **#66** / **#49** / **#42** / **#50** / **#73** `.github/workflows/ci.yml` (three-tier + page-budget + `web-qa` + `e2e-release-gate` + `obs-ui` + `docs:links` + sanctions/geo/operator-policy/restricted-access fixtures). Prefer main for CI. Do not rewrite decide-tier. Actions billing empty-step failures are not AC failures. |
 | Mainnet | **Blocked** |
 
-Keep **#16 open** until Instant + Fair explorer AC are human-confirmed. Guardian-signed Factory smoke (`pnpm arc:smoke`) is recorded. LOCAL authorize Instant RHRSL + Fair RHRFL (`pnpm arc:wallet-harness`) used `POST /launch/authorize` → `launchStandard` / `createFairLaunch` → `POST /quote` → `UserRouteExecutor`. Blockscout `status=ok` / `result=success`. Full PROD still needs Turnstile + isolated signer ≠ deployer. No Safe genesis.
+Keep **#16 open** until Instant + Fair explorer AC are human-confirmed. Guardian-signed Factory smoke (`pnpm arc:smoke`) is recorded. LOCAL authorize Instant RHRSL + Fair RHRFL (`pnpm arc:wallet-harness`) used `POST /launch/authorize` → `launchStandard` / `createFairLaunch` → `POST /quote` → `UserRouteExecutor`. Blockscout `status=ok` / `result=success`. `pnpm arc:prod-web` wrote env examples + `deployments/arc-testnet-prod-path.json` (`claimedProdPath: false`). Full PROD still needs Turnstile + isolated signer ≠ deployer ≠ Keeper + browser/wallet. No Safe genesis. Do not invent those keys.
 
 ---
 

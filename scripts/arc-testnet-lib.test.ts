@@ -6,6 +6,7 @@ import {
   faucetBlockerSummary,
   isAnvil0Key,
   productionQuoteBody,
+  assembleProdPathReport,
   redactSecrets,
   refuseMainnet,
   ANVIL0_PK,
@@ -86,5 +87,23 @@ const sellBody = productionQuoteBody({ ...buyBody, side: "SELL", token: buyBody.
 assert.equal(sellBody.kind, "SELL");
 assert.equal(sellBody.tokenIn, buyBody.token);
 assert.equal(sellBody.tokenOut.toLowerCase(), buyBody.tokenIn.toLowerCase());
+
+const prodPath = assembleProdPathReport({
+  claimedDump: true,
+  verificationUrl: "https://testnet.arcscan.app/tx/0xabc",
+  chainId: ARC_TESTNET_CHAIN_ID,
+  factoryCodeBytes: 23286,
+  deployerBalanceWei: "1",
+  indexerProdStart: { ok: false, detail: "PRODUCTION_HARD_GATES: refuse start/launch — TURNSTILE_SECRET" },
+  gateFailures: ["TURNSTILE_SECRET", "PRICING_SIGNER_PK"],
+  launchSignerIsDeployer: true,
+  keeperIsDeployer: true,
+  walletConnectConfigured: false,
+});
+assert.equal(prodPath.claimedProdPath, false);
+assert.ok(prodPath.blockers.some((b) => /TURNSTILE_SECRET/.test(b)));
+assert.ok(prodPath.blockers.some((b) => /isolated signer/.test(b)));
+assert.ok(prodPath.blockers.some((b) => /injected/.test(b)));
+assert.doesNotMatch(prodPath.blockers.join(" "), /claimedProdPath stays true/i);
 
 console.log("arc-testnet-lib tests ok");

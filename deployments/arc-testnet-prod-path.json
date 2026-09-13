@@ -1,0 +1,37 @@
+{
+  "claimedProdPath": false,
+  "claimedDump": true,
+  "verificationUrl": "https://testnet.arcscan.app/tx/0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67",
+  "chainId": 5042002,
+  "factoryCodeBytes": 23286,
+  "deployerBalanceWei": "8823539617000000000",
+  "indexerProdStart": {
+    "ok": false,
+    "detail": "PRODUCTION_HARD_GATES: refuse start/launch — TURNSTILE_SECRET; NEXT_PUBLIC_TURNSTILE_SITE_KEY (or TURNSTILE_SITE_KEY); PRICING_SIGNER_PK; SIGNER_INTERNAL_TOKEN; ADMISSION_HMAC_SECRET (indexer exit 1)"
+  },
+  "gateFailures": [
+    "TURNSTILE_SECRET",
+    "NEXT_PUBLIC_TURNSTILE_SITE_KEY (or TURNSTILE_SITE_KEY)",
+    "PRICING_SIGNER_PK",
+    "SIGNER_INTERNAL_TOKEN",
+    "ADMISSION_HMAC_SECRET"
+  ],
+  "blockers": [
+    "PROD hard gate: TURNSTILE_SECRET",
+    "PROD hard gate: NEXT_PUBLIC_TURNSTILE_SITE_KEY (or TURNSTILE_SITE_KEY)",
+    "PROD hard gate: PRICING_SIGNER_PK",
+    "PROD hard gate: SIGNER_INTERNAL_TOKEN",
+    "PROD hard gate: ADMISSION_HMAC_SECRET",
+    "on-chain LaunchSigner/PricingSigner is the funded deployer EOA — isolated signer ≠ deployer needs Guardian setPricingSigner before PROD authorize",
+    "on-chain Keeper is the funded deployer EOA — launch signer must not reuse the keeper key",
+    "NEXT_PUBLIC_WALLETCONNECT_ID unset; Next connectors are wagmi injected() only — this VM has no browser wallet",
+    "PROD indexer refuse start: PRODUCTION_HARD_GATES: refuse start/launch — TURNSTILE_SECRET; NEXT_PUBLIC_TURNSTILE_SITE_KEY (or TURNSTILE_SITE_KEY); PRICING_SIGNER_PK; SIGNER_INTERNAL_TOKEN; ADMISSION_HMAC_SECRET (indexer exit 1)",
+    "no Safe genesis (Guardian is not a production Safe)",
+    "Circle faucet automation still RECAPTCHA_ERROR — not a PROD gate, funding is already on-chain"
+  ],
+  "notes": [
+    "LOCAL authorize Instant RHRSL + Fair RHRFL is recorded. That is not full PROD.",
+    "Do not set SIGNER_INLINE in PROD. Do not reuse Anvil #0. Do not invent Turnstile keys.",
+    "claimedProdPath stays false until Turnstile + isolated signer ≠ deployer ≠ Keeper + browser/wallet path are human-confirmed."
+  ]
+}

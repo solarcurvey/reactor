@@ -48,7 +48,7 @@ Chainlink CRE lists a separate **Arc Testnet** (EIP-155 **1883**) for TypeScript
 
 `pnpm arc:wallet-harness` ran the LOCAL authorize Instant RHRSL + Fair RHRFL path (same ABIs as the Next app: `POST /launch/authorize` → `launchStandard` / `createFairLaunch` → `POST /quote` → `UserRouteExecutor`). Evidence: `deployments/arc-testnet-journey.json`. Direct Factory smoke does **not** replace that path. LOCAL is not full PROD.
 
-`pnpm arc:prod-web` writes `deployments/arc-testnet.env.example`.
+`pnpm arc:prod-web` writes `deployments/arc-testnet.env.example` and `deployments/arc-testnet-prod-path.json`. `claimedProdPath` stays **false**. Honest blockers: Cloudflare Turnstile site/secret, isolated launch signer ≠ deployer ≠ Keeper (on-chain LaunchSigner/Keeper are still the funded EOA), `SIGNER_INLINE` forbidden, `SIGNER_INTERNAL_TOKEN` + `ADMISSION_HMAC_SECRET`, no WalletConnect / injected browser wallet in this VM, no Safe genesis. Do not invent those keys. LOCAL authorize is not this path.
 
 Circle faucet automation still receives GraphQL `RECAPTCHA_ERROR`. This rehearsal was funded from a box throwaway wallet. Runbook: `scripts/arc-testnet-runbook.md`. Keep [#16](https://github.com/solarcurvey/reactor/issues/16) open until human AC is met.
 

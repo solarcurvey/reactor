@@ -71,7 +71,7 @@ Production-shaped Guardian = Safe ≠ deployer: `SAFE_GENESIS=true` + `pnpm safe
 ```bash
 cp deployments/arc-testnet.env.example .env.production
 # fill Turnstile, isolated signer PK (≠ deployer ≠ Keeper), HMAC, R2
-pnpm arc:prod-web                 # writes env examples; refuses claimed=true without explorer URL
+pnpm arc:prod-web                 # writes env examples + deployments/arc-testnet-prod-path.json; claimedProdPath stays false without those secrets
 REACTOR_ENV=PROD pnpm --filter indexer signer
 REACTOR_ENV=PROD pnpm --filter indexer dev
 REACTOR_ENV=PROD pnpm --filter web build && pnpm --filter web start
