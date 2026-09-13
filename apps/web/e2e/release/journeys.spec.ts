@@ -157,7 +157,7 @@ test.describe("wrong chain + user reject", () => {
       await expect(page.getByText(/Wrong network/i)).toBeVisible();
       await expect(page.getByTestId("wallet-switch")).toBeVisible();
       await page.getByTestId("wallet-switch").click();
-      await expect(page.getByTestId("wallet-menu-trigger")).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByRole("banner").getByTestId("wallet-menu-trigger")).toBeVisible({ timeout: 15_000 });
       await expect(page.getByText(/Wrong network/i)).toHaveCount(0);
     });
   });
