@@ -29,8 +29,11 @@ const requiredSlugs = [
   "trust",
   "security",
   "web-security",
+  "geo-policy",
   "tickers",
   "admission",
+  "sanctions",
+  "operator-policy",
   "guardian",
   "keeper",
   "automation",
@@ -99,6 +102,9 @@ assert.match(llms, /\/docs\/troubleshooting/);
 assert.match(llms, /\/docs\/ci/);
 assert.match(llms, /\/docs\/perf/);
 assert.match(llms, /\/docs\/qa/);
+assert.match(llms, /\/docs\/sanctions/);
+assert.match(llms, /\/docs\/geo-policy/);
+assert.match(llms, /\/docs\/operator-policy/);
 
 const index = readFileSync(join(docsDir, "index.md"), "utf8");
 assert.match(index, /2% holders/);
