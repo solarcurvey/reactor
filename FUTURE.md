@@ -22,6 +22,16 @@ Professional trading-terminal charts (order tape, depth, multi-timeframe). Token
 
 CCA factory `0x000000001F26a0044BaA66024e7b6599c61963F8` has been observed with code on Arc Testnet historically, but it cannot mint an Official REACTOR Pool (0% LP + this hook). V1 ships **Batch Fair Launch** instead. Genuine CCA is a future infra decision, not a rename.
 
+## RELEASE GATE #60 children (after #61)
+
+`@reactor/sanctions` is exact official-list ingestion + lookup only. **Not implemented here:**
+
+- Server policy gate (deny launch/trade on `blocked`; fail-closed on `unavailable`)
+- Geo/IP controls
+- UX copy for blocked / unavailable
+
+Do not treat `GET /sanctions/screen` as a compliance product.
+
 ## Arc Public Testnet / mainnet
 
 No dedicated funded test key is assumed in this environment. **Do not claim Arc Testnet or mainnet deployment.** Local Anvil chain 5042002 only unless a later run produces real explorer txs.

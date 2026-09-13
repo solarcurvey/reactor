@@ -33,8 +33,11 @@ import { consensusForAsset } from "../../../packages/reactor/src/pricing.ts";
 import { assetsToPrice, loadPriceRegistry, loadQuoteAssetRows, loadVerifiedVenueUsd6 } from "./price-registry.ts";
 import { assertProductionHardGates } from "./prod-gates.ts";
 import { assertSharpWorks } from "./sharp-check.ts";
+import { indexerSanctionsStore, opsRefreshSanctions, sanctionsLookup } from "./sanctions.ts";
 
 const PORT = Number(process.env.INDEXER_PORT ?? 43148);
+/** Exact official-list lookup only. Not a #60 policy gate. */
+const sanctions = indexerSanctionsStore();
 const addrs = deployment.addresses as Record<string, string>;
 const RPC = process.env.RPC_URL ?? process.env.NEXT_PUBLIC_RPC_URL ?? deployment.rpc;
 const client = rpcFromEnv(deployment.chainId, RPC);
@@ -331,6 +334,20 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.setHeader("Cache-Control", "public, max-age=86400");
     res.end(file.buf);
+    return;
+  }
+  if (url.pathname === "/sanctions/screen" || url.pathname === "/sanctions/dataset") {
+    const out = sanctionsLookup(sanctions, { method: req.method, pathname: url.pathname, searchParams: url.searchParams });
+    json(res, out.status, { ...out.body, request_id: rid }, rid);
+    return;
+  }
+  if (url.pathname === "/ops/sanctions/refresh" && req.method === "POST") {
+    if (!opsOk(req)) {
+      json(res, 401, { error: "ops auth required", request_id: rid }, rid);
+      return;
+    }
+    const result = await opsRefreshSanctions(sanctions);
+    json(res, result.ok ? 200 : 422, { ...result, request_id: rid, disclaimer: "Exact official-list refresh only. Not legal/OFAC compliance." }, rid);
     return;
   }
   if (url.pathname === "/health") {

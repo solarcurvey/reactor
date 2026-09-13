@@ -110,6 +110,8 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: ./.github/actions/setup-pnpm
+      # Includes @reactor/sanctions fixtures via test:lib. Live OFAC HTTPS is
+      # pnpm test:sanctions:network (SANCTIONS_NETWORK=1) — not this job.
       - name: Unit + docs:check + docs:links + cheap security + CI-cost invariants
         run: pnpm test:lib
 

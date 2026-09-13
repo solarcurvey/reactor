@@ -1,37 +1,50 @@
-# BUILD REPORT — UI QA visual / a11y / failure-injection gate
+# BUILD REPORT — Exact official-list sanctions screening (Refs #61)
 
-**Status:** Issue [#36](https://github.com/solarcurvey/reactor/issues/36) **stays open** until merge + post-merge verify. Same branch/PR, rebased onto `origin/main` `80d3cac` (#42 full GitHub CI extras after #50 `e5fd745` / #58 / #73 / #77 / #76 / #74 / #59 / #47 / #43). Child of #15. `web-qa.yml` is folded into `.github/workflows/ci.yml` job `web-qa` (full/main only). `page-budget` stays the always-on #37 job. #42 `docs-links` + Playwright `web` + Safe genesis stay. Pixel baselines stay on this PR. QA injects wrap `load*` — do not restore the old N+1 `/markets` board. QA gates unchanged.
-**Not audited. Not mainnet.**  
-**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+**Status:** Branch `cursor/ofac-sanctions-dataset-1a33` / PR **#66**, rebased onto `origin/main` `ad7b457` after **#49** (UI QA) on #42 / #50 / #58. Issue **#61 stays open** until merge **and** post-merge verify (parent RELEASE GATE **#60**). Do not auto-close.  
+**Not audited. Not mainnet. Not a legal/OFAC compliance claim.**  
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
+**Protocol release remains 0.3.3** — do not restore a pre-rewrite version.
+
+**Re-audit pass (source integrity):** default refresh is SDN **and** Consolidated (classic + advanced). Completeness floor is **85%** of prior addresses and per-source counts, plus a 50% per-source byte floor. `allowCatastrophicShrink` / `SANCTIONS_ALLOW_SHRINK=1` is the only override.
+
+**Re-audit pass (freshness durability):** version id includes `sourceGenerationHash` (retrievedAt + source HTTP/publication metadata), not only the address-set `contentHash`. A same-address refresh persists t1 metadata; `loadFromDisk()` freshness ages from t1.
+
+**Rebase (after #49 / `ad7b457`):** replayed the #61 commits onto `origin/main` `ad7b457`. Conflicts (docs/`package.json` only — no economics rewrite): `package.json` `test:lib` keeps **#61** sanctions fixtures **and** #49 `qa-inject` / console-gate / contrast **and** #42 `safe-genesis` / `docs:links` / `test:web-unit` **and** #50 `indexed` / `page-budget`; `TESTING.md` row 52 stays #61 (53–56 #50, 57 #42, 58 #49); `docs/trust.md` keeps fail-visible UI + screening; `docs/ci.md` keeps always-on `page-budget`, full-only `web-qa` / `docs-links` / Playwright `web`, **and** the #61 fixture slot; `AUDIT_HANDOFF.md` / `BUILD_REPORT.md` keep #61 + #49 + earlier amendments. `#73` single `ci.yml` + `#72/#74/#76/#77` harden kept. Live OFAC HTTPS stays `SANCTIONS_NETWORK=1` / `test:sanctions:network` — not a second workflow. Do not restore `docs-sync.yml` or `web-qa.yml`.
 
 ## This HEAD
 
 | Item | Value |
 | --- | --- |
-| Protocol release | **0.3.3** — unchanged |
-| Factory | **V1** — unchanged |
-| Intent | Close independent-audit AC gaps: 1280 + narrow Android, full state matrix, dialog/zoom/motion/toast a11y, richer injects, production `next build`, console/pageerror/hydration gate. |
-| Web | `pnpm --filter web test:qa` (`playwright.qa.config.ts`) · `tsx apps/web/src/lib/qa-inject.test.ts` · `tsx apps/web/e2e/console-gate.test.ts` · `tsx apps/web/e2e/contrast.test.ts` |
-| Foundry | Not re-run (UI only) |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | #61 ingestion + exact `screen()` library/API from official Treasury/OFAC machine-readable sources. Atomic last-known-good. Explicit `blocked` / `clear` / `unavailable`. |
+| Indexer / lib | `packages/sanctions` parser/store/screen + `apps/indexer` `GET /sanctions/screen` + `GET /sanctions/dataset` + ops refresh |
+| Foundry | Not re-run (no Solidity) |
 | Mainnet | **Blocked** |
 
-## Addresses this run (#36 stays open)
+## Closed this run (#61 ACs — issue stays open)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
-| Visual CI 1280 laptop + 360 Android | **Yes** | `VIEWPORTS` 1440 / 1280 / 390 / 360; matrix shots at 1440 + 360 |
-| Full state matrix | **Yes** | `e2e/states.spec.ts` — Discover loading/empty/search/filter, launch ticker/upload/Standard/Rewards/Dev Buy, tx pending/confirmed/reverted, wallet menu, dialogs, toasts, quote ecosystem, invalid token |
-| Dialog trap / 200% / reduced-motion / toast semantics | **Yes** | `e2e/a11y.spec.ts` + Radix `Modal` + `LiveToastProvider` |
-| Failure inject beyond indexer/rpc/quote | **Yes** | quote 429/413/5xx/stale/expired/noroute, pricing, upload, SSE no-dupe, empty, invalid token/ticker, wallet reject/revert |
-| Gate vs production `next build` | **Yes** | `playwright.qa.config.ts` + `e2e/harness/start-web.mjs` + `qa-mock.mjs` (same ports as #35). After #43, `live-toasts.ts` imports `./utils` (no `.ts` suffix) so `next build` typecheck passes. |
-| Console / hydration / pageerror | **Yes** | Auto fixture in `e2e/qa-fixture.ts` via `e2e/helpers.ts`. Fails on `console.error`, hydration warnings, `pageerror`. Narrow `INJECT_CONSOLE_ALLOWS` only. Attachments on failure. Harness `qa-rpc.mjs` answers wagmi probes so missing Anvil is not `ERR_CONNECTION_REFUSED`. |
-| Color-contrast automation | **Yes** | Axe `color-contrast` enabled on production surfaces. Excludes only `canvas` / `[data-visual-mask]` / `[data-visual-dynamic]`. `e2e/contrast.ts` pins brand token AA. Production muted text is `text-zinc-400`; leftover `text-zinc-500|600|700` fails `assertNoSubAaMutedText` (Axe misses gradient-backed labels). Review-fixture candles compute `sparse` from fixture rows so token shots stay stable. |
-| Folded into #73 `ci.yml` | **Yes** | Deleted `.github/workflows/web-qa.yml`. Full-only job `web-qa` + `ci-ok` requires success. Pixel baselines stay on this PR. Billing / spending-limit reds ≠ AC fail. |
-| Rebase onto #58 (`c03c698`) | **Yes** | Prefer main for overlapping lint/type (`ohlcv-chart.tsx` `UTCTimestamp`). Keep #36 visual / a11y / failure-injection / console / contrast gates. |
-| Merge onto #50 (`e5fd745`) | **Yes** | Keep indexed `load*` / `LiveCacheProvider` / `page-budget` + `web-qa`. Port `?inject=` onto hooks. `ci-ok` requires both jobs. Ready for review. |
-| Rebase onto #42 (`80d3cac`) | **Yes** | Keep #42 `docs:links` / Playwright `web` / Safe genesis. `ci-ok` still requires `web-qa` + `page-budget`. Ready for review. |
-| Keep #36 open | **Yes** | PR **Addresses #36** — not Fixes. Post-merge verify still required. |
-| Frozen economics | **Yes** | No fee/split/curve/Factory edits |
+| Parser regression (EVM case, duplicates, malformed, non-EVM families) | **Yes** | `packages/sanctions/src/normalize.test.ts`, `parse.test.ts` |
+| Default refresh includes Consolidated; consolidated-only address blocked | **Yes** | `refresh.test.ts` (TRX + XRP after default source set) |
+| Atomic update; last-known-good on bad **or** valid-but-gutted parse | **Yes** | `store.test.ts` 10→1 floor; `refresh.test.ts` `truncated_valid.xml` |
+| Explicit shrink override only | **Yes** | `allowCatastrophicShrink` / `--allow-shrink` / `SANCTIONS_ALLOW_SHRINK=1` |
+| Server-usable lookup + dataset version/freshness | **Yes** | `screen.test.ts`, `http.test.ts`, `apps/indexer/src/sanctions-api.test.ts`, `GET /sanctions/screen` |
+| CI fixtures; network refresh isolated | **Yes** | unit scripts + `pnpm --filter indexer test`; `test:sanctions:network` / `SANCTIONS_NETWORK=1` only |
+| Docs / runbook; no compliance / hop claim | **Yes** | `SANCTIONS.md`, `/docs/sanctions`, trust, API, admission hooks for later #60 children |
+| Full #60 gate / geo / UX | **No** | Intentionally out of scope. Comments only. |
+| Close #61 | **No** | Stays open for re-audit. `Refs #61`. |
+
+---
+
+# Prior — merged #49 UI QA visual / a11y / failure-injection (#36)
+
+**Status:** Merged **#49** (`ad7b457`) on `origin/main`. Issue **#36 stays open** until post-merge verify. Do not auto-close.  
+**Not audited. Not mainnet.**  
+**Architecture / economics / Factory V1: unchanged.**
+
+Full-only job `web-qa` (`pnpm --filter web test:qa`) plus cheap units in `test:lib` (`qa-inject`, console-gate, contrast). `ci-ok` requires `web-qa`. Pixel baselines live on #49.
 
 ---
 

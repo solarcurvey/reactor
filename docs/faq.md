@@ -32,6 +32,8 @@
 
 **Where is the Safe JSON?** `deployments/safe-genesis-builder.json`. Deployer ≠ Guardian. Fill env and regenerate.
 
+**Are you OFAC compliant?** No such claim. `GET /sanctions/screen` is exact official-list address matching only (Treasury/OFAC XML). `unavailable` is not `clear`. No hop attribution. Not a launch/trade gate yet. See [Address screening](/docs/sanctions).
+
 **Is this repository public?** Not unless the founder flips visibility. Do not publicize without that instruction. The operator checklist is [Repo publicization](/docs/publicization) (Refs #72). Personal-mailbox trailers were remapped to GitHub noreply on advertised refs; residual GitHub dangling objects are accepted. Agents must not flip visibility.
 
 **What does CI run?** Fast PR: `pnpm test:lib` (indexer + web unit + `docs:check` + `docs:links` + cheap security). Full merge-candidate / main: that plus Foundry (`FOUNDRY_PROFILE=ci`, Attack suite, CREATE2, size guard), production Next security, live-toasts, Postgres, and Playwright smoke + interactive. See [CI and cost](/docs/ci).

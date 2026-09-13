@@ -89,6 +89,7 @@ GitHub Actions is three-tier (fast PR / full merge-candidate / main). Full gate 
 
 | File | Contents |
 | --- | --- |
+| `SANCTIONS.md` | Exact official-list address screening (not OFAC compliance) |
 | `TICKER_REGISTRY.md` | Global ticker lock + normalize |
 | `CONTRIBUTING.md` | Docs-mandatory policy + release/tag rules |
 | `CHANGELOG.md` | Production protocol releases (baseline 0.1.0) |

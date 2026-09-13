@@ -166,6 +166,13 @@ assert.deepEqual(paths(["--files"], "apps/indexer/src/keeper.ts\n"), {
   docs_only: "false",
 });
 
+assert.deepEqual(paths(["--files"], "packages/sanctions/src/screen.ts\n"), {
+  solidity: "false",
+  web: "false",
+  indexer: "true",
+  docs_only: "false",
+});
+
 const mixed = paths(["--files"], "docs/ci.md\ncontracts/src/ReactorHook.sol\n");
 assert.equal(mixed.solidity, "true");
 assert.equal(mixed.docs_only, "false");

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Sanctions xmlns="https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/ADVANCED_XML">
+  <DateOfIssue>
+    <Year>2026</Year>
+    <Month>09</Month>
+    <Day>12</Day>
+  </DateOfIssue>
+  <ReferenceValueSets>
+    <FeatureTypeValues>
+      <FeatureType ID="344">
+        <Name>Digital Currency Address - ETH</Name>
+      </FeatureType>
+      <FeatureType ID="345">
+        <Name>Digital Currency Address - XBT</Name>
+      </FeatureType>
+      <FeatureType ID="346">
+        <Name>Digital Currency Address - XMR</Name>
+      </FeatureType>
+      <FeatureType ID="8">
+        <Name>Passport</Name>
+      </FeatureType>
+    </FeatureTypeValues>
+  </ReferenceValueSets>
+  <DistinctParties>
+    <DistinctParty>
+      <Profile ID="900010">
+        <Identity>
+          <Alias>
+            <DocumentedName>
+              <DocumentedNamePart>
+                <NamePartValue>ACME ADVANCED DESK</NamePartValue>
+              </DocumentedNamePart>
+            </DocumentedName>
+          </Alias>
+        </Identity>
+        <Feature>
+          <FeatureTypeID>344</FeatureTypeID>
+          <FeatureVersion>
+            <VersionDetail>0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</VersionDetail>
+          </FeatureVersion>
+        </Feature>
+        <Feature>
+          <FeatureTypeID>346</FeatureTypeID>
+          <FeatureVersion>
+            <VersionDetail>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</VersionDetail>
+          </FeatureVersion>
+        </Feature>
+        <Feature>
+          <FeatureTypeID>8</FeatureTypeID>
+          <FeatureVersion>
+            <VersionDetail>ZZ9999999</VersionDetail>
+          </FeatureVersion>
+        </Feature>
+      </Profile>
+    </DistinctParty>
+  </DistinctParties>
+</Sanctions>

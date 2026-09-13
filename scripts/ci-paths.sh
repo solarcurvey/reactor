@@ -62,7 +62,7 @@ is_web() {
 is_indexer() {
   local f="$1"
   case "$f" in
-    apps/indexer/*|packages/reactor/*|packages/sdk/*|scripts/safe-genesis-builder.ts|scripts/safe-genesis-builder.test.ts)
+    apps/indexer/*|packages/reactor/*|packages/sdk/*|packages/sanctions/*|scripts/safe-genesis-builder.ts|scripts/safe-genesis-builder.test.ts)
       return 0 ;;
     *) return 1 ;;
   esac

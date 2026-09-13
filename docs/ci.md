@@ -10,7 +10,7 @@ A **skipped job is not a pass**. Required release jobs must execute their accept
 
 | Tier | When | What runs |
 | --- | --- | --- |
-| **Fast PR** | Every meaningful `pull_request` update (draft included) | `pnpm test:lib` (indexer + web unit + cheap security + Safe genesis builder + `docs:check` + `docs:links` + this page’s invariants) plus visible `page-budget` (`pnpm test:page-budget`). Targeted Foundry + `size:guard` **only** when Solidity paths change. |
+| **Fast PR** | Every meaningful `pull_request` update (draft included) | `pnpm test:lib` (indexer + web unit + cheap security + Safe genesis builder + `docs:check` + `docs:links` + this page’s invariants + #61 sanctions fixtures) plus visible `page-budget` (`pnpm test:page-budget`). Targeted Foundry + `size:guard` **only** when Solidity paths change. |
 | **Full merge-candidate** | Non-draft PR (`ready_for_review` / later `synchronize`), label **`ci-full`**, or `workflow_dispatch` (default **full**) | Fast commands **plus** production Next / hostile-metadata (`pnpm test:web-security`), `live-toasts-ui`, full Foundry (`FOUNDRY_PROFILE=ci`, Attack suite, CREATE2 `test_hookBits`, `size:guard`), Postgres `test:pg` + two-worker `test:pg-lease` + `pg-smoke`, `docs:links` (explicit job), Playwright smoke + interactive (`web`). Path filters do **not** skip these. |
 | **Main post-merge** | `push` to **`main`** only | The same full gate, once, on the merged SHA. |
 
@@ -50,7 +50,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | --- | --- |
 | Solidity | `contracts/**`, `scripts/size-guard.ts` |
 | Web | `apps/web/**`, `packages/reactor/**`, `packages/sdk/**`, `scripts/scan-client-bundle.ts` |
-| Indexer | `apps/indexer/**`, `packages/reactor/**`, `packages/sdk/**` |
+| Indexer | `apps/indexer/**`, `packages/reactor/**`, `packages/sdk/**`, `packages/sanctions/**` |
 | Docs-only | every file is `docs/**` or `*.md` (or license/gitignore) |
 
 ## Jobs and commands
@@ -58,7 +58,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | Job | Tier | Commands (must execute) |
 | --- | --- | --- |
 | `decide-tier` | always | Classify SHA + paths. Cheap. |
-| `constants-version-deployments` | always | `pnpm test:lib` (includes `docs:check` + `docs:links` + `safe-genesis-builder.test.ts`) |
+| `constants-version-deployments` | always | `pnpm test:lib` (includes `docs:check` + `docs:links` + `safe-genesis-builder.test.ts` + #61 sanctions fixtures) |
 | `page-budget` | always | `pnpm test:page-budget` (4k-market HTTP/RPC budgets; also in `test:lib`) |
 | `foundry-targeted` | fast + Solidity paths | `forge test` (default profile) + `pnpm size:guard` |
 | `solidity + size-guard` | full / main | `FOUNDRY_PROFILE=ci forge test` + Attack suite + CREATE2 `test_hookBits` + `pnpm size:guard` |
@@ -86,6 +86,7 @@ Open product issues keep their acceptance commands. Attach new heavy jobs to **t
 | #39 (PR #46) | Observability | Full-only `obs-ui` job. |
 | #38 | Live toasts | `live-toasts-ui` (full). Units also run in `test:lib` on the fast gate. |
 | #41 / TESTING row 51 | Hostile metadata / CSP | Cheap units in `test:lib`; production build + Playwright corpus in `web-production-security`. |
+| #61 (PR #66) | Exact official-list OFAC screening fixtures | Cheap units in `test:lib` (`@reactor/sanctions` + `sanctions-api.test.ts`). Live HTTPS is `SANCTIONS_NETWORK=1` / `test:sanctions:network` only — not a CI job. Do not add a second workflow. |
 | #35–#41 / #51 / #60 | Existing test requirements | Unchanged in substance. Reachable via `TESTING.md` commands and the full gate. |
 
 Recommended required checks (branch protection): **`constants-version-deployments`** (always present), **`page-budget`** (always present — #37 4k-market HTTP/RPC budgets), and **`ci-ok`** (present on merge-candidate + main; requires `page-budget` success). Do not require a check that the fast tier skips.
@@ -133,7 +134,7 @@ Tiny isolated VMs that only repeated `pnpm install` were combined (`keeper-lease
 ## Local equivalent
 
 ```bash
-pnpm test:lib          # fast gate (includes test:ci-cost + ci-public-harden + safe-genesis + docs:check + docs:links + page-budget)
+pnpm test:lib          # fast gate (includes #61 sanctions fixtures + test:ci-cost + ci-public-harden + safe-genesis + docs:check + docs:links + page-budget)
 pnpm test:page-budget  # visible #37 fast job (same file as in test:lib)
 pnpm docs:links        # in-repo /docs slugs + relative files (no network)
 pnpm test:web-unit     # web lib unit (also inside test:lib)

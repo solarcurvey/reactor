@@ -18,6 +18,7 @@ Any change to the following **must** update the corresponding docs **in the same
 | SDK interfaces | `/docs/sdk`, `packages/sdk` |
 | CORE genesis / vest / book | `CORE_GENESIS.md`, `CORE_LIQUIDITY_DESIGN.md`, `/docs/core` |
 | Backend trust assumptions | `THREAT_MODEL.md`, `/docs/index` (Trust), `AUDIT_HANDOFF.md` |
+| Exact official-list screening / OFAC ingest | `SANCTIONS.md`, `/docs/sanctions`, `/docs/api`, `/docs/trust` |
 | User-facing behavior | matching `/docs` audience page + `UX_REFERENCE.md` if UX |
 | Deployed addresses / chain / verification | `deployments/registry.json` + `pnpm docs:gen` (never invent mainnet addresses) |
 | Protocol release identity | `docs/version.json`, `CHANGELOG.md`, git tag, `pnpm docs:gen` |
@@ -72,7 +73,7 @@ See `AGENTS.md`. Security > cleverness. Do not change tokenomics to make a test 
 ```bash
 pnpm docs:check          # version + constants + deployments
 pnpm docs:links          # in-repo docs slugs + relative files (no network)
-pnpm test:lib            # indexer + web unit + docs:check + docs:links + safe-genesis + page-budget + CI-cost + public-fork harden
+pnpm test:lib            # indexer + web unit + #61 sanctions fixtures + docs:check + docs:links + safe-genesis + page-budget + CI-cost + public-fork harden
 pnpm test:ci-cost        # workflow inventory / no duplicate push+PR / fail-safe paths
 pnpm test:web-unit       # web lib unit (also in test:lib)
 pnpm --filter web test:qa  # visual / a11y / failure-injection (CI ci.yml job web-qa, full/main)
