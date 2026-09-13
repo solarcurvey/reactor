@@ -113,6 +113,9 @@ const ALL_REASONS = Object.keys(USER_POLICY_MESSAGES) as OperatorPolicyReason[];
   assert(corpus.includes("calling immutable public contracts"), "honest onchain limit");
   assert(RESTRICTED_DISCLOSURE.whatExists.some((l) => l.includes("Wallet-list")), "discloses wallet-list control");
   assert(RESTRICTED_DISCLOSURE.whatExists.some((l) => l.includes("geographic")), "discloses geo control");
+  assert(RESTRICTED_DISCLOSURE.whatExists.some((l) => l.includes("7-day SLA")), "discloses #64 freshness SLA");
+  assert(RESTRICTED_DISCLOSURE.whatExists.some((l) => l.includes("never treated as clear")), "stale is not clear");
+  assert(RESTRICTED_DISCLOSURE.whatExists.some((l) => l.includes("not blockchain exposure")), "not hop analytics");
 }
 
 {

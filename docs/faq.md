@@ -26,7 +26,7 @@
 
 **Why did launch / quote / upload return 403 or 503 with `DENY_*` / `UNAVAILABLE_*`?** REACTOR-operated write and authorization paths enforce a server-side sanctions/geo policy (recovered wallet proof + trusted geo). Client “clear” flags and claimed `wallet` / `x-reactor-wallet` values do not override it. `GET /operator-policy/status` returns the same minimized decision for the launchpad UX. Public `GET /markets` and docs stay readable. Onchain contracts are not paused. See [Operator policy](/docs/operator-policy).
 
-**Why is Confirm / Launch disabled with “Unavailable”?** REACTOR-operated services refused this request, account, or location — or required access checks are temporarily down. The UI does not accuse anyone of unlawful conduct. Public markets and docs stay readable. Onchain contracts are not paused. See [Restricted access](/docs/restricted-access).
+**Why is Confirm / Launch disabled with “Unavailable”?** REACTOR-operated services refused this request, account, or location — or required access checks are temporarily down. Temporary includes a missing or older-than-7-day official-list snapshot (#64). The UI does not accuse anyone of unlawful conduct. Public markets and docs stay readable. Onchain contracts are not paused. See [Restricted access](/docs/restricted-access) and [Sanctions ops](/docs/sanctions-ops).
 
 **Why is script-src nonce'd?** Production CSP does not allow `'unsafe-inline'` scripts. A leftover `'unsafe-inline'` remains on `style-src` only (React / fonts / Tailwind). See [Browser security](/docs/web-security).
 
@@ -38,7 +38,7 @@
 
 **Where is the Safe JSON?** `deployments/safe-genesis-builder.json`. Deployer ≠ Guardian. Fill env and regenerate.
 
-**Are you OFAC compliant?** No such claim. `GET /sanctions/screen` is exact official-list address matching only (Treasury/OFAC XML). `unavailable` is not `clear`. No hop attribution. Not a launch/trade gate yet. See [Address screening](/docs/sanctions).
+**Are you OFAC compliant?** No such claim. `GET /sanctions/screen` is exact official-list address matching only (Treasury/OFAC XML) — not hop / cluster / exposure analytics. `unavailable` is not `clear`. Operated write assistance is gated by [operator policy](/docs/operator-policy) using that lookup, trusted geo, and the 7-day freshness SLA. Public contracts remain callable onchain. See [Address screening](/docs/sanctions), [Sanctions ops](/docs/sanctions-ops), and [Restricted access](/docs/restricted-access).
 
 **Is this repository public?** Not unless the founder flips visibility. Do not publicize without that instruction. The operator checklist is [Repo publicization](/docs/publicization) (Refs #72). Personal-mailbox trailers were remapped to GitHub noreply on advertised refs; residual GitHub dangling objects are accepted. Agents must not flip visibility.
 

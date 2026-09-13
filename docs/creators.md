@@ -18,7 +18,7 @@ Supply is **1B / 18**. Instant: 79.31% on the bonding curve, 20.69% locked v4 at
 
 ## Admission is mandatory
 
-Every launch, including USDC, goes through `POST /launch/authorize`. REACTOR-operated admit / authorize / upload / quote paths also run the [operator policy](/docs/operator-policy) gate (recovered wallet proof + trusted geo) **before** a receipt or signature. That is a hosted-service control, not an onchain block.
+Every launch, including USDC, goes through `POST /launch/authorize`. REACTOR-operated admit / authorize / upload / quote paths also run the [operator policy](/docs/operator-policy) gate (recovered wallet proof + trusted geo + official-list freshness) **before** a receipt or signature. A stale or missing official-list snapshot fail-closes those writes as temporarily unavailable. That is a hosted-service control, not an onchain block.
 
 1. The launch page renders a **real Cloudflare Turnstile** widget (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`). There is no `window.turnstileToken` stub.
 2. Admission returns **ALLOW**, **CHALLENGE**, or **DENY**. CHALLENGE is **not** a signature.

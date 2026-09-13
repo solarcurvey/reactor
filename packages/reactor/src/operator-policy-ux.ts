@@ -65,6 +65,8 @@ export const RESTRICTED_DISCLOSURE = {
   whatExists: [
     "REACTOR-operated write assistance (launch authorization, quote tickets, uploads, and similar hosted paths) may refuse a request.",
     "Wallet-list screening and geographic restriction are server-side inputs to that hosted decision.",
+    "Exact official-list matching is not blockchain exposure or hop analytics.",
+    "Official-list freshness uses a 7-day SLA. Stale or missing data is never treated as clear; operated writes fail closed as temporarily unavailable.",
     "If required checks cannot run, operated writes fail closed (temporarily unavailable).",
   ],
   whatCannot: [

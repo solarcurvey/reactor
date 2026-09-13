@@ -4,7 +4,7 @@
 **Not audited. Not mainnet.**
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
-Official **#62 / PR #68** is on `main`. This branch binds launchpad UX to `GET /operator-policy/status` (same `evaluateOperatorPolicy` as write gates) and `GET /operator-policy/challenge` (signing helper only). **#63** geo core is accepted on #67; founder **reopened #63** until this user-visible restricted state lands via #65 / #75.
+Official **#62 / PR #68** and **#64 / PR #70** are on `main`. This branch binds launchpad UX to `GET /operator-policy/status` (same `evaluateOperatorPolicy` as write gates) and `GET /operator-policy/challenge` (signing helper only). Disclosure matches merged #64: stale/missing official-list fail-closes operated writes and surfaces as temporarily unavailable. **#63** geo core is accepted on #67; founder **reopened #63** until this user-visible restricted state lands via #65 / #75.
 
 ## This HEAD (#65)
 
@@ -30,6 +30,7 @@ Official **#62 / PR #68** is on `main`. This branch binds launchpad UX to `GET /
 | No IP / screening leak | **Yes** | Minimized `publicPolicyView` / official `publicStatusView` |
 | No VPN / bypass guidance | **Yes** | `copyContainsForbiddenGuidance` |
 | Honest onchain-cannot-censor disclosure | **Yes** | `RESTRICTED_DISCLOSURE` |
+| Docs match #61–#64 | **Yes (copy)** | Restricted-access / trust / FAQ / index disclose 7-day SLA fail-closed, last-known-good, no hop analytics, no dataset hash in the browser. Production-build four-state matrix remains an open founder AC. |
 | Bind to #62 / #68 | **Yes** | Official `operator-policy.ts` on `main` |
 | Close #65 / #63 | **No** | Stay open until #75 merges + post-merge verify. `Refs #65`. |
 
