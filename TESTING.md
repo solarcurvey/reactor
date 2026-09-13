@@ -58,7 +58,7 @@ tsx apps/web/e2e/contrast.test.ts
 # CI full/main: .github/workflows/ci.yml job live-toasts-ui. Fast PR: identity unit via test:lib. #38 stays open until post-merge verify.
 pnpm test:web-security          # production next build/start: live headers, bundle sentinel, XSS corpus
 # CI full/main: .github/workflows/ci.yml job web-production-security
-# CI full/main: .github/workflows/ci.yml job web-qa. #36 stays open until merge + post-merge verify.
+# CI full/main: .github/workflows/ci.yml job web-qa. #36 closed after #49 post-merge `ad7b457` / 34729758795.
 # Real Postgres (docker compose postgres on :54329, or local 5432)
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
@@ -182,7 +182,7 @@ CI=1 pnpm --filter web test:qa
 pnpm --filter web test:update-screenshots   # Linux Chromium only — same as Actions; against next build
 ```
 
-`playwright.qa.config.ts` builds with `e2e/harness/start-web.mjs` (shared #35 path), `qa-mock.mjs`, and `qa-rpc.mjs` (JSON-RPC stub on the compiled RPC URL — not Anvil). Viewports include 1280 laptop and 360 Android. `?inject=` covers quote 429/413/5xx/stale/expired/noroute, pricing, upload, SSE, empty, invalid token/ticker, wallet reject/revert. Axe `color-contrast` is on (only canvas / visual-mask / visual-dynamic excluded); muted text is `text-zinc-400` and leftover `text-zinc-500|600|700` fails `assertNoSubAaMutedText`. The shared console/pageerror fixture fails the run on unexpected `console.error`, hydration warnings, and uncaught page exceptions (narrow inject allowlists only). Production builds omit the flags and ignore inject. See `/docs/qa`. Issue **#36 stays open** until merge + post-merge verify.
+`playwright.qa.config.ts` builds with `e2e/harness/start-web.mjs` (shared #35 path), `qa-mock.mjs`, and `qa-rpc.mjs` (JSON-RPC stub on the compiled RPC URL — not Anvil). Viewports include 1280 laptop and 360 Android. `?inject=` covers quote 429/413/5xx/stale/expired/noroute, pricing, upload, SSE, empty, invalid token/ticker, wallet reject/revert. Axe `color-contrast` is on (only canvas / visual-mask / visual-dynamic excluded); muted text is `text-zinc-400` and leftover `text-zinc-500|600|700` fails `assertNoSubAaMutedText`. The shared console/pageerror fixture fails the run on unexpected `console.error`, hydration warnings, and uncaught page exceptions (narrow inject allowlists only). Production builds omit the flags and ignore inject. See `/docs/qa`. Issue **#36 closed** after #49 post-merge `ad7b457` / [`34729758795`](https://github.com/solarcurvey/reactor/actions/runs/34729758795).
 
 Keeper / watchdog (do not treat as onchain):
 

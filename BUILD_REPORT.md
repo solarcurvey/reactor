@@ -1,10 +1,47 @@
-# BUILD REPORT — Operator policy gate (Refs #62)
+# BUILD REPORT — Cite accepted #17 / #42 CI evidence (docs-only)
 
-**Status:** Draft PR for independent re-audit. Issue **#62 stays open** until post-merge verify. Do not claim closed. Child of RELEASE GATE **#60**. Rebased onto combined `origin/main` `e712617` after squash-merged **#66** + **#67**. Address screen binds `#66` `indexerSanctionsStore().screen`. Trusted geo binds `#67` `evaluateRequestGeo`.
+**Status:** Docs-only replay onto `origin/main` `2002aed` (#68 after #67 / #66). **Refs #17**. Do not `Fixes #17`. Product work already landed via **#42** on `80d3cac`. Preserves integrated #62 operator-policy docs from #68, #63 geo-policy docs from #67, and #61 screening docs from #66. Current-status: #61 / #62 / #63 / #36 / #37 closed; **#17 stays open** until this docs PR merges and post-merge docs/CI is green; **#60 / #64 / #65 / #69 stay open**.
+**Not audited. Not mainnet.**
+**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Evidence / docs sync only. No workflow, test, or tokenomics edits. |
+| Merge-candidate #42 | `11fdadb` / [`34727535121`](https://github.com/solarcurvey/reactor/actions/runs/34727535121) — exact-head `ci-ok` **success** |
+| Post-merge #42 | `80d3cac` / [`34727638255`](https://github.com/solarcurvey/reactor/actions/runs/34727638255) — `ci-ok` **success** on integrated `main` |
+| #37 / #50 | **Closed.** Post-merge `e5fd745` / [`34727279555`](https://github.com/solarcurvey/reactor/actions/runs/34727279555) |
+| #36 / #49 | **Closed.** Merged `ad7b457` / [`34729758795`](https://github.com/solarcurvey/reactor/actions/runs/34729758795) (`web-qa` executed) |
+| #61 / #66 | **Closed.** Merged `d08aa1c` / [`34731099571`](https://github.com/solarcurvey/reactor/actions/runs/34731099571) |
+| #63 / #67 | **Closed.** Founder closed after post-merge verify. Merged `e712617` / [`34731788819`](https://github.com/solarcurvey/reactor/actions/runs/34731788819) |
+| #62 / #68 | **Closed.** Merged `2002aed` / [`34733128955`](https://github.com/solarcurvey/reactor/actions/runs/34733128955) |
+| #17 | **Stays open** until this docs PR merges + post-merge docs/CI |
+| #60 / #64 / #65 / #69 | **Stay open.** |
+| Mainnet | **Blocked** |
+
+## Closed this run (docs only)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Cite accepted #17 / #42 runs | **Yes** | Merge-candidate `11fdadb` / `34727535121`; post-merge `80d3cac` / `34727638255`. Older greens are **not** the closer. |
+| Record #37 / #36 / #61 / #63 / #62 closed | **Yes** | #50 `e5fd745` / `34727279555`; #49 `ad7b457` / `34729758795`; #66 `d08aa1c` / `34731099571`; #67 `e712617` / `34731788819`; #68 `2002aed` / `34733128955` |
+| Preserve #66 / #67 / #68 docs | **Yes** | Operator-policy / geo / screening Priors below keep #68 AC table, HMAC / revision 3 / SY / FAQ 1009, and #61 parser / 85% floor / `screen()`. |
+| `Fixes #17` | **No** | Refs only. Close #17 after this docs PR merges and post-merge docs/CI is green. |
+| Claim #60 / #64 / #65 / #69 closed | **No** | Stay open. |
+| Frozen economics / arch | **Yes** | No contract / fee / Factory / hook edits |
+
+---
+
+# Prior — merged #68 operator policy gate (#62 closed)
+
+**Status:** Squash-merged **#68** (`2002aed`) on `origin/main`. Issue **#62 closed** after post-merge [`34733128955`](https://github.com/solarcurvey/reactor/actions/runs/34733128955). Child of RELEASE GATE **#60** (stays open). Address screen binds `#66` `indexerSanctionsStore().screen`. Trusted geo binds `#67` `evaluateRequestGeo`.
 **Not audited. Not mainnet.**
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.** No new Guardian power.
 
-## This HEAD
+## That HEAD
 
 | Item | Value |
 | --- | --- |
@@ -20,7 +57,7 @@
 | Tests | Unit matrix + production-shaped indexer HTTP + Next `/api/launch-pricing` BFF. Denial before signer/upload/tx canary payloads. Status GET matrix. Official `#66` `sanctions.ts` + `#67` `geo-policy-resolve.ts` bind against `apps/indexer/src` (LOCAL FX DENY via official evaluator; HMAC `UA-14` oblast UNKNOWN; HMAC `UA-DPR` DENY). |
 | Docs | `/docs/operator-policy`, trust, API, admission, FAQ, builders, SDK, TESTING row 60, `/docs/ci` |
 
-## Closed this run (#62 ACs — issue stays open)
+## Closed that run (#62 ACs — issue closed after post-merge)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
@@ -37,12 +74,51 @@
 | No economics redesign / no onchain-block claim | **Yes** | Disclaimer on every denial |
 | Preserve #66 screening APIs | **Yes** | `GET /sanctions/screen`, `GET /sanctions/dataset`, `indexerSanctionsStore().screen` |
 | Official #66+#67 plugin path | **Yes** | `tryBindOfficialPolicyPlugins` against `apps/indexer/src` binds both. Official `evaluateRequestGeo` exercised: LOCAL FX DENY, HMAC oblast UNKNOWN, HMAC covered-region DENY. |
+| Close #62 | **Yes (later)** | Post-merge `2002aed` / [`34733128955`](https://github.com/solarcurvey/reactor/actions/runs/34733128955). Parent **#60** and **#64 / #65** stay open. |
+
+---
+
+# Prior — merged #67 trusted geo / jurisdiction policy (#63 closed)
+
+**Status:** Merged **#67** (`e712617`) on `origin/main` after #66. Core geo layer accepted on post-merge [`34731788819`](https://github.com/solarcurvey/reactor/actions/runs/34731788819). Issue [#63](https://github.com/solarcurvey/reactor/issues/63) **closed** after founder post-merge verify.
+**Not audited. Not mainnet.**
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## That HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Server-side geo policy interface: ALLOW / DENY / UNKNOWN + reason codes; trusted edge HMAC; versioned comprehensive-jurisdiction file with source + effective date; LOCAL fixtures that cannot load production denylists. |
+| Indexer / lib | `packages/reactor/src/geo-policy.test.ts` + `apps/indexer/src/geo-policy.test.ts` + `pnpm docs:check` |
+| Foundry | Not re-run this pass (offchain policy only) |
+| Rebase | Onto `origin/main` `d08aa1c55bdfc20f9d93cc33446f9c5542a7d1da` after squash-merged **#66** (exact official-list OFAC screening / #61). Same PR **#67** / same branch. Founder re-audit: SY + oblast overblocks closed. Protocol **0.3.3** / Factory **V1** unchanged. |
+| Mainnet | **Blocked** |
+
+## Closed that run (#63 ACs — issue closed after post-merge)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| One server interface ALLOW / DENY / UNKNOWN + reasons | **Yes** | `evaluateGeoPolicy` / `evaluateRequestGeo` |
+| Production geo from trusted edge only | **Yes** | HMAC headers; unsigned `CF-IPCountry` ignored |
+| Versioned deny policy + source / effective date | **Yes** | `geo-policy-us-comprehensive.v1.json` **revision 3** / 2026-09-12. `CU`/`IR`/`KP` only. `SY` is `not_comprehensive` (E.O. 14312 / 2025-07-01; part 542 removed). Clear Syrian geo → ALLOW. |
+| Region-level when metadata exists; else conservative UNKNOWN | **Yes** | UA without region → `UNKNOWN_REGION_METADATA_UNAVAILABLE` |
+| E.O. 14065 oblast vs Covered Region (FAQ 1009) | **Yes (this HEAD)** | `UA-14` / `UA-09` / `Donetsk Oblast` / `Luhansk Oblast` → UNKNOWN, not DENY. Precise signed `UA-DPR` / `UA-LPR` or `DNR`/`DPR`/`LNR`/`LPR` / People's Republic names → DENY. Documented in `/docs/geo-policy`. |
+| VPN/Tor best-effort only | **Yes** | `confidence: "best_effort"`; T1 → UNKNOWN |
+| LOCAL/test fixtures; no accidental production list | **Yes** | Fixture `FX`/`FY`; `GEO_DENY_COUNTRIES` ignored on LOCAL |
+| No UI country checks | **Yes** | Web source scan in `geo-policy.test.ts` |
+| Docs + tests same change | **Yes** | `/docs/geo-policy`, trust, THREAT_MODEL, AUDIT_HANDOFF, TESTING row 59 |
+| #61 / #62 / #64 / #65 | **Not this PR** | Out of scope of #67. #61 and #62 later closed; #64 / #65 stay open. |
+| Independent audit 2026-09-12: stale `SY` blanket deny | **Fixed** | Removed `SY` from jurisdictions; `programNotes` + regression `signed({ country: "SY" })` → ALLOW. Targeted Syrian persons stay #61/#62. |
+| Independent re-audit: whole-oblast `UA-14`/`UA-09` DENY | **Fixed this HEAD** | FAQ 1009. Oblast codes/names → UNKNOWN. Precise covered-region fixture → DENY. |
+| Close #63 | **Yes (later)** | Founder closed after post-merge verify. `e712617` / [`34731788819`](https://github.com/solarcurvey/reactor/actions/runs/34731788819). |
 
 ---
 
 # Prior — Exact official-list sanctions screening (Refs #61)
 
-**Status:** Squash-merged **#66** (`d08aa1c`) on `origin/main`. Issue **#61 stays open** until post-merge verify (parent RELEASE GATE **#60**). Do not auto-close.  
+**Status:** Squash-merged **#66** (`d08aa1c`) on `origin/main`. Issue **#61 closed** after post-merge [`34731099571`](https://github.com/solarcurvey/reactor/actions/runs/34731099571). Parent RELEASE GATE **#60** stays open.
 **Not audited. Not mainnet. Not a legal/OFAC compliance claim.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Protocol release remains 0.3.3** — do not restore a pre-rewrite version.
@@ -64,7 +140,7 @@
 | Foundry | Not re-run (no Solidity) |
 | Mainnet | **Blocked** |
 
-## Closed this run (#61 ACs — issue stays open)
+## Closed that run (#61 ACs — issue closed after post-merge)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
@@ -76,13 +152,13 @@
 | CI fixtures; network refresh isolated | **Yes** | unit scripts + `pnpm --filter indexer test`; `test:sanctions:network` / `SANCTIONS_NETWORK=1` only |
 | Docs / runbook; no compliance / hop claim | **Yes** | `SANCTIONS.md`, `/docs/sanctions`, trust, API, admission hooks for later #60 children |
 | Full #60 gate / geo / UX | **No** | Intentionally out of scope. Comments only. |
-| Close #61 | **No** | Stays open for re-audit. `Refs #61`. |
+| Close #61 | **Yes (later)** | Post-merge `d08aa1c` / [`34731099571`](https://github.com/solarcurvey/reactor/actions/runs/34731099571). Parent **#60** stays open. |
 
 ---
 
 # Prior — merged #49 UI QA visual / a11y / failure-injection (#36)
 
-**Status:** Merged **#49** (`ad7b457`) on `origin/main`. Issue **#36 stays open** until post-merge verify. Do not auto-close.  
+**Status:** Merged **#49** (`ad7b457`) on `origin/main`. Issue **#36 closed** after post-merge [`34729758795`](https://github.com/solarcurvey/reactor/actions/runs/34729758795) (`web-qa` executed).
 **Not audited. Not mainnet.**  
 **Architecture / economics / Factory V1: unchanged.**
 
@@ -94,7 +170,7 @@ Full-only job `web-qa` (`pnpm --filter web test:qa`) plus cheap units in `test:l
 | --- | --- |
 | Public mainnet (5042) | Hard blocked. No addresses. |
 | Claim Arc Multicall3 exists | Probe only. Do not hardcode yes. |
-| Close #37 | **Stays open** until merge + post-merge verify. Do not close from BUILD_REPORT. `Refs #37`. |
+| Close #37 | **Closed** after #50 `e5fd745` / [`34727279555`](https://github.com/solarcurvey/reactor/actions/runs/34727279555). |
 | Close #10 | Stays open (merged #53). Do not `Fixes #10`. |
 | Top-10 as onchain oracle | Frozen offchain by design. TTL is offchain policy. |
 
