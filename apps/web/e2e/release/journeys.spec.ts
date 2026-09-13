@@ -44,7 +44,7 @@ test.describe("production build — wallet journeys", () => {
   test("connect deterministic EIP-1193 wallet (Anvil #0, no key)", async ({ page }) => {
     await page.goto("/wallet");
     await connectWallet(page);
-    // Wallet page card (visible on mobile). The in-card WalletButton copy is `hidden sm:inline`.
+    // Header WalletButton is the only connect/account control; the card is status/balances.
     await expect(page.locator("main").getByText(/0xf39F/i).first()).toBeVisible();
     await expect(page.locator("body")).toContainText(/5042002/);
     await expect(page.getByText(ANVIL_ACCOUNT_0)).toHaveCount(0);
@@ -157,7 +157,7 @@ test.describe("wrong chain + user reject", () => {
       await expect(page.getByText(/Wrong network/i)).toBeVisible();
       await expect(page.getByTestId("wallet-switch")).toBeVisible();
       await page.getByTestId("wallet-switch").click();
-      await expect(page.getByRole("banner").getByTestId("wallet-menu-trigger")).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByTestId("wallet-menu-trigger")).toBeVisible({ timeout: 15_000 });
       await expect(page.getByText(/Wrong network/i)).toHaveCount(0);
     });
   });

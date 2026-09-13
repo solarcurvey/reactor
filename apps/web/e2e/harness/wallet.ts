@@ -313,9 +313,9 @@ export async function recordedTxs(page: Page): Promise<RecordedTx[]> {
 }
 
 export async function connectWallet(page: Page) {
-  const connected = page.getByRole("banner").getByTestId("wallet-menu-trigger");
+  const connected = page.getByTestId("wallet-menu-trigger");
   if (await connected.isVisible().catch(() => false)) return;
-  const connect = page.getByRole("banner").getByTestId("wallet-connect").or(page.getByRole("banner").getByRole("button", { name: /Connect wallet/i })).first();
+  const connect = page.getByTestId("wallet-connect").or(page.getByRole("button", { name: /Connect wallet/i }));
   await expect(connect).toBeVisible({ timeout: 20_000 });
   await expect(connect).toBeEnabled();
   await connect.click();
@@ -323,14 +323,14 @@ export async function connectWallet(page: Page) {
 }
 
 export async function disconnectWallet(page: Page) {
-  const headerDisconnect = page.getByRole("banner").getByTestId("wallet-disconnect");
-  if (await headerDisconnect.isVisible().catch(() => false)) {
-    await headerDisconnect.click();
+  const header = page.getByTestId("wallet-disconnect");
+  if (await header.isVisible().catch(() => false)) {
+    await header.click();
     return;
   }
-  await page.getByRole("banner").getByTestId("wallet-menu-trigger").click();
-  await expect(page.getByTestId("wallet-disconnect").first()).toBeVisible();
-  await page.getByTestId("wallet-disconnect").first().click();
+  await page.getByTestId("wallet-menu-trigger").click();
+  await expect(page.getByTestId("wallet-disconnect")).toBeVisible();
+  await page.getByTestId("wallet-disconnect").click();
 }
 
 /** Mobile viewports can leave Quote / the USDC-route label over Confirm after scroll. */

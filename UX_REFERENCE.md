@@ -4,7 +4,7 @@ Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy,
 
 ## Layout density
 
-- Header: mark, Discover, Launch/IGNITE, Rewards, CORE, compact wallet.
+- Header: mark, Discover, Launch/IGNITE, Rewards, CORE, compact wallet. Connect / Account / Disconnect live only in that header control (Disconnect inside the Account modal). `/wallet` is a status + balances card — it does not mount a second wallet button.
 - Home is a **board**, not a landing page: live filters, dense token cards, one featured rail.
 - Cards: icon, ticker, quote badge, FDV/mcap (`current_supply` × mark — tracks remaining onchain `totalSupply` after `burn()`, not the initial 1B mint, not a live ≡), 24h, volume, spark. One primary action.
 - Token page is **trading-first**: chart + ticket above fold; social/meta below. Social links render only after the URL allowlist (`noopener noreferrer nofollow`). Images use `SafeTokenImage` (first-party media only).

@@ -27,6 +27,15 @@ for (const p of pages) {
   });
 }
 
+test("one canonical wallet control", async ({ page }) => {
+  await page.goto("/wallet");
+  await expect(page.getByTestId("wallet-connect")).toHaveCount(1);
+  await expect(page.getByTestId("wallet-menu-trigger")).toHaveCount(0);
+  await page.goto("/?state=wallet-connected");
+  await expect(page.getByTestId("wallet-menu-trigger")).toHaveCount(1);
+  await expect(page.getByTestId("wallet-connect")).toHaveCount(0);
+});
+
 test("keyboard skip link and primary nav", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /Choose what your token earns/i })).toBeVisible();
