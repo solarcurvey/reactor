@@ -96,6 +96,7 @@ assert.match(llms, /\/docs\/economics/);
 assert.match(llms, /\/docs\/security/);
 assert.match(llms, /\/docs\/troubleshooting/);
 assert.match(llms, /\/docs\/ci/);
+assert.match(llms, /\/docs\/perf/);
 
 const index = readFileSync(join(docsDir, "index.md"), "utf8");
 assert.match(index, /2% holders/);
