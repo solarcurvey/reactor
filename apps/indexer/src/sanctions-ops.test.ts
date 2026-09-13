@@ -146,7 +146,7 @@ const t0 = Date.parse("2026-09-12T00:00:00.000Z");
   });
   assert(recovered.address === undefined, "claimed wallets are not recovered identity");
   assert(recovered.reason === "wallet_missing", "claimed wallets without proof are wallet_missing");
-  assert(recovered.source === "wallet-proof" || recovered.source === "operator-policy", "identity source is #68 interface");
+  assert(recovered.source === "operator-policy", "identity source is merged #62 operator-policy.ts");
 
   const claimedOnly = await applySanctionsOpsGate({
     ops,

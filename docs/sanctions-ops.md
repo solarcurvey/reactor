@@ -14,7 +14,7 @@ Protected writes (`POST /quote`, `/upload`, `/launch/admit`, `/launch/authorize`
 
 #64 owns freshness, health, alerts, and the minimized audit line. It does **not** invent a wallet from the browser.
 
-The gated and logged subject is the **same verified EIP-191 signer as #68** (`packages/reactor/src/wallet-proof.ts`). `extractWallet()` is a no-op (same as #68 `extractSubjectWallet`) and never reads `body.wallet` / `x-reactor-wallet`. When `apps/indexer/src/operator-policy.ts` is present, `recoverSubjectWallet` / shared `gateProtectedWrite` win. `body.wallet`, `body.creator`, `body.recipient`, `body.account`, and `x-reactor-wallet` are recorded as ignored client signals. Without a recovered proof the write fails closed (`UNAVAILABLE_WALLET_MISSING`) — a spoofed listed wallet is **not** `DENY_ADDRESS_BLOCKED`.
+The gated and logged subject is the **merged #62 recovered EIP-191 signer**. `apps/indexer/src/operator-policy.ts` is on `main`; `recoverOfficialSubject` / `applySanctionsOpsGate` load `recoverSubjectWallet` and `gateProtectedWrite` from that module (not the wallet-proof fallback). `extractWallet()` is a no-op (same as #62 `extractSubjectWallet`) and never reads `body.wallet` / `x-reactor-wallet`. Claimed `body.wallet` / `body.creator` / `body.recipient` / `body.account` / `x-reactor-wallet` are ignored client signals. Without a recovered proof the write fails closed (`UNAVAILABLE_WALLET_MISSING`) — a spoofed listed wallet is **not** `DENY_ADDRESS_BLOCKED`.
 
 ## Persist + refresh
 

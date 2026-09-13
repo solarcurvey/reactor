@@ -11,7 +11,7 @@
 | Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
 | Intent | Persist official-list version/hash/retrieved/last-success; 7-day SLA fail-closed; startup + scheduled refresh keeps last-known-good; health + `/ops` name dataset + policy versions; minimized audit; alerts; operator runbook. HTTP identity is #62 recovered EIP-191 only. Fixture refresh LOCAL/test-only. Same-address refresh writes a new #61-style generation so restart freshness ages from t1. |
-| Rebase | Onto `origin/main` `e712617` after **#67** (#63 geo) on **#66** (#61). Docs conflicts kept #67 `evaluateRequestGeo`, #61 lookup (`GET /sanctions/screen`), **and** #64 freshness. Official refresh binds the shared in-memory store; ops persist is `SANCTIONS_DATA_DIR/ops`. TESTING row 59 is geo; row 60 is #64. |
+| Rebase | Onto `origin/main` `2002aed` after **#68** (#62) / **#67** (#63) / **#66** (#61). Docs conflicts kept #62 `gateProtectedWrite` + challenge/status, #67 `evaluateRequestGeo`, #61 lookup, **and** #64 freshness. `applySanctionsOpsGate` loads merged `operator-policy.ts` (`recoverSubjectWallet` / `gateProtectedWrite`). Shared `#61` store is rebound via `bindOperatorPolicyProviders` so the gate does not construct a second ingest. Ops persist is `SANCTIONS_DATA_DIR/ops`. TESTING row 59 geo; 60 #62; 61 #64. |
 | Indexer / lib | `sanctions-ops.test.ts` + `sanctions-audit.test.ts` + indexer `sanctions-ops.test.ts` + `pnpm docs:check` |
 | Foundry | Not re-run this pass (ops/docs only) |
 | Docs | `/docs/sanctions-ops`, runbook, incident-response, trust, API, builders, TESTING row 61 |

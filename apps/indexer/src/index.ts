@@ -36,12 +36,14 @@ import { assertSharpWorks } from "./sharp-check.ts";
 import { indexerSanctionsStore, sanctionsLookup } from "./sanctions.ts";
 import {
   CORS_POLICY_HEADERS,
+  bindOperatorPolicyProviders,
   bindRecoveredIdentity,
   gateProtectedWrite,
   issueOperatorWalletChallenge,
   readOperatorPolicyStatus,
   tryBindOfficialPolicyPlugins,
 } from "./operator-policy.ts";
+import { evaluateRequestGeo } from "./geo-policy-resolve.ts";
 import {
   SANCTIONS_REFRESH_INTERVAL_MS,
   applySanctionsOpsGate,
@@ -801,6 +803,16 @@ async function loop(store: Store) {
 assertProductionHardGates();
 await assertSharpWorks();
 await tryBindOfficialPolicyPlugins();
+bindOperatorPolicyProviders({
+  screenAddress: (address) => {
+    const r = sanctions.screen(address);
+    return { decision: r.decision, reason: r.reason, freshness: r.freshness };
+  },
+  evaluateGeo: (headers, env) => {
+    const r = evaluateRequestGeo(headers, env);
+    return { decision: r.decision, reason: r.reason };
+  },
+});
 
 const store = await openStore();
 sanctionsOps = await createSanctionsOps(store, process.env, { officialStore: sanctions });
