@@ -1,0 +1,43 @@
+{
+  "recorded": "2026-09-13",
+  "kind": "external-blocker-cre-tenant-auth",
+  "ac": "Optional CRE interoperability — authenticated cre workflow simulate (not a #54 merge blocker; production path is #83)",
+  "closed": false,
+  "mergeBlocker": false,
+  "productionPath": "#83 AWS KMS authorizer + dual managed relays",
+  "officialWasmCompile": {
+    "closed": true,
+    "command": "cre workflow build",
+    "evidence": "ops/cre/simulation/cre-workflow-build.json",
+    "note": "Official offline WASM compile is not cre workflow simulate and does not close this AC."
+  },
+  "doNotTreatAsAc": [
+    "ops/cre/simulation/cre-workflow-simulate.cli.txt",
+    "ops/cre/simulation/cre-workflow-simulate.json",
+    "ops/cre/simulation/cre-workflow-build.cli.txt",
+    "ops/cre/simulation/cre-workflow-build.json",
+    "ops/cre/simulation/arc-testnet-poc.json"
+  ],
+  "required": "Optional interoperability: authenticated `cre workflow simulate` with compiled=true and a Workflow Simulation Result, using the signed MaintenanceJob HTTP payload on CRE catalog arc-testnet (EIP-155 1883). Live DON not required. Not a #54 merge blocker after #83. Production autonomous path and KMS/key model live in #83. This file stays closed:false until a real simulate artifact is committed. Arc Mainnet 5042 production-write remains unclaimed.",
+  "blocker": {
+    "creCli": "v1.33.0",
+    "creWhoami": "not logged in and no CRE_API_KEY set",
+    "creLoginNonInteractive": "login is not supported in non-interactive mode, use CRE_API_KEY instead",
+    "publicCiSecrets": "ci.yml ships no secrets (Refs #74 / #72)",
+    "githubSecretsList": "this agent cannot read Actions secrets (403)",
+    "environment": "cloud agent has no CRE tenant; official simulate PersistentPreRun requires credentials even for local WASM execution"
+  },
+  "unstick": {
+    "createKey": "https://app.chain.link (Account Settings) → CRE_API_KEY",
+    "command": "cd ops/cre && cre workflow simulate maintenance-courier --target staging-settings --non-interactive --trigger-index 0 --http-payload @simulation/signed-job-http-payload.json",
+    "broadcast": false,
+    "note": "Do not add CRE_API_KEY to the public ci.yml. Do not invent a 1883 Gateway or explorer hash. Official `cre workflow build` already compiles this courier (see cre-workflow-build.json)."
+  },
+  "networks": {
+    "creCatalogName": "arc-testnet",
+    "creArcTestnetEip155": 1883,
+    "repoLocal": 5042002,
+    "repoArcMainnet": 5042,
+    "creArcMainnetProductionWrite": "not listed / not used / not claimed"
+  }
+}

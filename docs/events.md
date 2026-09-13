@@ -14,6 +14,7 @@ Onchain logs are the journal. The indexer is a cache. Event rows and the ingest 
 | `OfficialPoolCreated` / `GraduationCompleted` | Official pool UPSERT + `OFFICIAL_REACTOR_V4` venue |
 | `CurveBuy` / `CurveSell` / `SwapFeeAccrued` / `Swap` | Trades + candles + 24h incremental roll |
 | `RewardClaimed` / `SelfBurn*` / `Top10Buy` / `Flywheel*` / `BuybackExecuted` / `COREBurned` | Attribution side tables. They do **not** subtract supply a second time |
+| `JobConsumed` | `AutomationGateway` first-wins consume of a signed `MaintenanceJob` |
 | `Burned` / `Transfer` to zero | Public `burn()`. RPC fetch uses already-indexed tokens plus `TokenCreated` addresses from this window (same-window `burn()` is not missed). Writes share the `persistTickBatch` transaction with the cursor. Canonical `(chain_id, tx, log_index, event_kind)` — Transfer and Burned are two logs |
 | Tick `totalSupply()` | Bounded reconcile even when at head (CORE + recently burned + newly created + rotating page). Corrects missed / same-tx burns. `current_supply` tracks this; not a live ≡ |
 

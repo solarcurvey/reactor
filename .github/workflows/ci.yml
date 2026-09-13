@@ -177,6 +177,12 @@ jobs:
         run: forge test --match-path test/unit/LockAndBuyback.t.sol --match-test test_hookBits -vv
       - name: EIP-170 size guard (Factory runtime ≤ 23,552)
         run: pnpm size:guard
+      - name: Dual-relayer rehearsal (consume + Replay)
+        run: REQUIRE_FORGE=1 npx --yes tsx scripts/maintenance-failover.ts
+      - name: Autonomous dual-relayer (deployed Gateway, no AI)
+        run: REQUIRE_ANVIL=1 npx --yes tsx scripts/autonomous-relay-failover.ts
+      - name: Verify committed CRE evidence / tenant-blocker (not a CRE simulate)
+        run: pnpm exec tsx scripts/cre-workflow-simulate.ts --verify
 
   web-production-security:
     name: web-production-security

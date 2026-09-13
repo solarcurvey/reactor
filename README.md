@@ -9,7 +9,7 @@ Visual identity is **Industrial Forge** (founder-locked Direction C). Vessel mar
 
 > This repository is **not audited**. Do not deploy to Arc Mainnet (chain 5042).
 
-Protocol release **0.3.4** (`v0.3.4`). Factory **V1** (`FACTORY_VERSION = 1`, immutable). Source of truth: `docs/version.json`. Changelog: `CHANGELOG.md`. Docs policy: `CONTRIBUTING.md`.
+Protocol release **0.4.0** (`v0.4.0`). Factory **V1** (`FACTORY_VERSION = 1`, immutable). Source of truth: `docs/version.json`. Changelog: `CHANGELOG.md`. Docs policy: `CONTRIBUTING.md`.
 
 ## Quick start (local Arc-compatible demo)
 

@@ -19,6 +19,7 @@ import {
   resolveLeaseIntervals,
   stillLeader,
   withBroadcastFence,
+  withSignAndBroadcastFence,
   withLeaderLock,
   LeaderLeaseLostError,
   KEEPER_LOCK_NAME,
@@ -165,6 +166,30 @@ await withFakeLeaseTime(async (time) => {
     return "outer-ok";
   }, { ttlMs: 5_000 });
   assert(blocked === "outer-ok", "outer leader completed");
+}
+
+{
+  const lease = await acquireLeaderLease(store, "sign-fence", 5_000);
+  assert(lease, "signer lease");
+  let signed = false;
+  const out = await withSignAndBroadcastFence(store, lease, async () => {
+    signed = true;
+    return "signed-and-sent";
+  });
+  assert(out === "signed-and-sent" && signed, "live leader may sign+relay inside the fence");
+  await store.releaseLease(KEEPER_LOCK_NAME, lease.owner, lease.fence);
+  const stale = { name: KEEPER_LOCK_NAME, owner: "sign-fence", fence: lease.fence, ttlMs: 5_000 };
+  let staleSigned = false;
+  let threw = false;
+  try {
+    await withSignAndBroadcastFence(store, stale, async () => {
+      staleSigned = true;
+      return "nope";
+    });
+  } catch (e) {
+    threw = e instanceof LeaderLeaseLostError;
+  }
+  assert(threw && !staleSigned, "#6 fence: lost lease refuses sign and broadcast");
 }
 
 await store.close();

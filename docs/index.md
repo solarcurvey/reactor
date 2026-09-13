@@ -90,7 +90,7 @@ See [Trust](/docs/trust) for the rest of the handbook list.
 ## Trust, said plainly
 
 - Guardian can pause and quarantine. Guardian cannot steal LP or rewrite the 2/1/0.5 split.
-- Keeper maintains pots with simulated `minOut`. Keeper cannot configure. One leadership lease — atomic `leader_locks` only. Live leaders renew; a lost fence refuses broadcast (no split-brain). Signed-job `AutomationGateway` is draft **#54**, not current `main`. CRE does not rank Top-10.
+- `AutomationGateway` maintains pots from signed jobs. Relayers cannot configure or substitute ranks. One leadership lease — atomic `leader_locks` only. Live leaders renew; a lost fence refuses sign+broadcast (no split-brain). CRE does not rank Top-10.
 - Launch Signer is isolated. Every launch, including USDC, needs a short-lived authorization that already passed admission. If the durable store is unavailable, the signer returns 503 and does not sign.
 - Indexer prices and charts are not onchain truth. Event rows and the ingest cursor commit together; a crash does not persist one without the other.
 - Quote tickets are **one `UserRouteQuoter` eth_call** per candidate. The selected path, `amountOut`, hop kinds, `minOut`s, `feeLegs[]`, and terminal official/bonding result are the **same** `pickBest` winner. `PreviewRoute` is `plannedHops + 1`. Nested official 3.5% legs compound to 6.88% for two hops. `minOut` is never 0 or 1. SELL uses two floors from that preview: `minQuoteOut` (first-leg quote) and `minOut` (final USDC).

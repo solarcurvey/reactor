@@ -53,7 +53,7 @@ Indexer `GET /m/<id>.webp` adds `X-Content-Type-Options: nosniff` and `Content-S
 
 ## Client-bundle secrets
 
-Keeper / Launch signer / Guardian **private keys**, Turnstile/admission HMAC secrets, R2 secrets, deployer / Arc testnet keys, and `RPC_URL_FALLBACK` / `OPS_TOKEN` are server-only. They must not appear as `NEXT_PUBLIC_*` or in `.next/static` assets. Public contract **addresses** (including Guardian / Keeper EOAs on the demo deployment) are onchain identity, not secrets.
+Job-signer / Launch signer / Guardian **private keys**, Turnstile/admission HMAC secrets, R2 secrets, deployer / Arc testnet keys, and `RPC_URL_FALLBACK` / `OPS_TOKEN` are server-only. They must not appear as `NEXT_PUBLIC_*` or in `.next/static` assets. Public contract **addresses** (including Guardian and the `AutomationGateway` keeper slot on a live local deploy) are onchain identity, not secrets.
 
 `secret-sentinel.test.ts` walks `apps/web/src`. `scripts/scan-client-bundle.ts` walks the production client assets after `next build`.
 

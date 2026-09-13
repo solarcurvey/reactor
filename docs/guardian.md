@@ -11,8 +11,9 @@ There is no owner, admin, proxy admin, upgrader, governor, or treasury owner. Se
 - Pause / unpause launches (`pauseLaunches`)
 - Pause / unpause Keeper (`pauseKeeper`)
 - Emergency trading / safe-mode pause (`pauseTrading` — curve + official v4 swaps)
-- Replace Keeper (`setKeeper`) — designated Keeper on current `main`; `AutomationGateway` is draft **#54**
-- Rotate launch-pricing / launch signers (distinct from Keeper). Gateway `jobSigner` rotate lands with **#54**
+- Replace Keeper (`setKeeper`) — this draft sets `keeper` to `AutomationGateway`
+- Rotate launch-pricing / launch signers (distinct from Keeper)
+- Rotate `AutomationGateway.jobSigner` and pause the gateway
 - Replace launch-pricing signer (`setPricingSigner`)
 - Replace Launch Signer (`setLaunchSigner`, ≠ Keeper ≠ Guardian Safe)
 - Bind global ticker registry (`bindTickerRegistry`, one-time)

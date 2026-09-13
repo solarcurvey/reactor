@@ -21,7 +21,8 @@ Hostile-reader notes for Codex / external review. **Not an audit.**
 | Malicious hook caller | Charge unofficial pools, steal deltas |
 | Malicious quote | Fee-on-transfer, rebase, 6-vs-18 confusion |
 | Compromised Guardian | Halt launches/trading/Keeper; quarantine quotes; disable adapters. Cannot withdraw LP or redirect pots. |
-| Compromised Keeper | Waste a pot on a bad route/`minOut` within hop/bucket bounds. Cannot config, withdraw, or change fees. |
+| Compromised job signer | Waste a pot on a bad **signed** route/`minOut` within hop/bucket bounds. Cannot config, withdraw, or change fees. |
+| Compromised relayer (CRE / Gelato / EOA) | Can only deliver an already-signed job. Cannot change ranks, hops, minOut, or amount. First consume wins. |
 | Overlapping Keepers | Two daemons both believing they are leader after a ~50s lease expires mid-tick. Mitigated by renew + fence; residual TOCTOU between last renew and RPC send. |
 | Compromised registry admin | Retired — quotes are Guardian (external) or factory-native. |
 | PoolManager (Uniswap) | Trusted v4 singleton; BUSL; not our code |

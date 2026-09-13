@@ -57,6 +57,12 @@ contract SafeGenesisBatch is Script {
         address launchSigner = vm.envOr("EXPECTED_LAUNCH_SIGNER", pricingSigner);
         address tickers = vm.envAddress("TICKER_REGISTRY");
         require(launchSigner != keeper && launchSigner != safe && launchSigner != deployer, "launch key reuse");
+        address gateway = vm.envOr("AUTOMATION_GATEWAY", address(0));
+        address jobSigner = vm.envOr("EXPECTED_JOB_SIGNER", address(0));
+        if (gateway != address(0)) {
+            require(keeper == gateway, "EXPECTED_KEEPER must be AutomationGateway");
+            require(jobSigner != safe && jobSigner != deployer && jobSigner != address(0), "job signer reuse");
+        }
         _log(
             "setPricingSigner",
             address(auth),
@@ -155,6 +161,13 @@ contract SafeGenesisBatch is Script {
         );
         _log("sealProtocolVaults", router, abi.encodeWithSelector(ReactorRouter.sealProtocolVaults.selector));
         _log("bindRouteExecutor", curve, abi.encodeWithSelector(InstantCurve.bindRouteExecutor.selector, userRouter));
+        if (gateway != address(0)) {
+            _log(
+                "setKeeper AutomationGateway",
+                address(auth),
+                abi.encodeWithSelector(ReactorGuardian.setKeeper.selector, gateway)
+            );
+        }
         console2.log("VERIFY - run VerifyGenesis / verifyFullyWired while still paused");
         console2.log("BATCH B - vesting T0 + unpause (only after verify)");
         _log("activateLaunch", vesting, abi.encodeWithSelector(CoreVesting.activateLaunch.selector));

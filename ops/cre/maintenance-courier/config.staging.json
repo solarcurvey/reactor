@@ -1,0 +1,9 @@
+{
+  "authorizedEVMAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "creCatalogChain": "arc-testnet",
+  "creCatalogChainId": 1883,
+  "repoLocalChainId": 5042002,
+  "arcMainnet": 5042,
+  "broadcast": false,
+  "note": "Courier only. Delivers a pre-signed MaintenanceJob. Does not rank or rebuild minOut. Not 5042."
+}

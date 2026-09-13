@@ -120,6 +120,7 @@ await seedWindowTrades(store, NESTED, ZCAT, 5n * 10n ** 17n);
 
 const first = await computeTop10Epoch(store, { coreAddresses: [CORE], nowSec: now });
 assert(first.source === TOP10_SOURCE, "source");
+assert(typeof first.valuationSnapshotHash === "string" && first.valuationSnapshotHash.startsWith("0x"), "snapshot hash");
 assert(!first.pauseEpoch, `first pause ${first.reason}`);
 assert(first.rows.every((r) => r.token !== CORE.toLowerCase()), "CORE excluded data-plane");
 assert(first.rows.every((r) => r.token !== BOND.toLowerCase()), "bonding excluded");

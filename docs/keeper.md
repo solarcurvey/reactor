@@ -1,6 +1,6 @@
 # Keeper
 
-> Designated Keeper. Not permissionless. Not a bounty. Not Guardian. CRE does not rank Top-10. Mainnet **5042 is disabled**. Signed-job `AutomationGateway` is draft **#54**, not current `main`.
+> Onchain Keeper is `AutomationGateway`. Relayers deliver signed jobs. Not permissionless. Not a bounty. Not Guardian. CRE does not rank Top-10. Mainnet **5042 is disabled**.
 
 See [Automation](/docs/automation). Maintenance is not a privileged EOA calling vaults. There is no `KeeperReserve`, no public settle farming, and no onchain TWAP/Pyth Top-10. Source: `KEEPER_MODEL.md`.
 
@@ -22,6 +22,8 @@ Each job takes a **20% chunk** (`MAX_CHUNK_BPS = 2000`) + `KEEPER_COOLDOWN = 5 m
 Top-10 jobs execute the **frozen onchain epoch**, not a later API refresh. The daemon reads the same indexer `GET /top10` snapshot the public route proxies. Accept uses `acceptTop10Snapshot`: `pauseEpoch` **or** `computedTs` older than `TOP10_SNAPSHOT_TTL_SEC` (15 minutes) refuses submit. A stalled ranker cannot keep a stale healthy payload live. See [Top-10](/docs/top-10).
 
 `submitOnce` — if the RPC is ambiguous (timeout after broadcast), do not resubmit.
+
+Dual relayers of the same signed `jobId` are first-wins on `AutomationGateway`. The second is `Replay` and does not move pots. Local-forge evidence: `ops/cre/simulation/failover-rehearsal.json` via `scripts/maintenance-failover.ts`. Autonomous deployed-Gateway evidence (signer service + failover liveness + simultaneous race, no AI): `ops/cre/simulation/autonomous-relay-failover.json` via `scripts/autonomous-relay-failover.ts`. Those rehearsals are Gateway consume/Replay proofs. Production KMS authorizer + dual managed relays live in **#83**. Authenticated CRE simulate is optional interoperability, not the production path.
 
 ## Leadership
 

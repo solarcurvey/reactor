@@ -17,7 +17,7 @@ CI fails if this page and `ReactorConstants` disagree. All JSON may include `req
 | GET | `/swaps/:token` | Bounded `limit`, `before_id` |
 | GET | `/quote-assets` | Registered quotes |
 | GET | `/valuation` | One ValuationService (nested multiply + ancestry). Consumes accepted consensus only. |
-| GET | `/top10` | Canonical epoch candidates from ValuationService + persisted `current_supply`. Snapshot TTL 15m (`computedTs`); stale + failed refresh pauses. No per-request Factory RPC. |
+| GET | `/top10` | Canonical epoch candidates from ValuationService + persisted `current_supply`. Snapshot TTL 15m (`computedTs`); stale + failed refresh pauses. Includes `valuationSnapshotHash` for `AutomationGateway.submitEpoch`. No per-request Factory RPC. Not a CRE oracle. |
 | GET | `/pricing/health` | Per-asset consensus, accepted/rejected observations, Arc sanity from the verified `route_venues` executable mark (not a synthetic `markets` row). 503 in PROD when an important mark fails. |
 | GET | `/stream` | SSE named events after persist commit. Clients patch cached board / token-page rows — do not refetch `/markets` on every print. `hello` includes `head` (hub id at attach) and `last` (resume cursor from `?after=` / `Last-Event-ID`). First-session toasts use `id > head`; reconnect must not raise that cutoff. `core` / `Top10Buy` rows carry `(chainId, tx, logIndex, eventKind)`. Accruals and `EpochSubmitted` (`top10`) are not buy+burn confirms. |
 | GET | `/operator-policy/challenge` | Short-lived EIP-191 message + HMAC token for write-path wallet binding. Public. |
