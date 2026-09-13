@@ -14,6 +14,7 @@ const requiredSlugs = [
   "traders",
   "creators",
   "builders",
+  "qa",
   "economics",
   "lifecycle",
   "curve",
@@ -97,6 +98,7 @@ assert.match(llms, /\/docs\/security/);
 assert.match(llms, /\/docs\/troubleshooting/);
 assert.match(llms, /\/docs\/ci/);
 assert.match(llms, /\/docs\/perf/);
+assert.match(llms, /\/docs\/qa/);
 
 const index = readFileSync(join(docsDir, "index.md"), "utf8");
 assert.match(index, /2% holders/);

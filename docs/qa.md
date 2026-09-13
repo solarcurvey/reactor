@@ -82,4 +82,4 @@ Keyboard specs cover skip-to-main, filter chips, launch quote buttons, and the b
 
 Production (no inject): a down indexer is an **error**, not an empty board. Fixtures still fill the review board when the indexer is empty.
 
-See [Traders](/docs/traders) · [Trust](/docs/trust) · `TESTING.md` · `UX_REFERENCE.md`.
+See [Traders](/docs/traders) · [Trust](/docs/trust) · [CI and cost](/docs/ci) · `TESTING.md` · `UX_REFERENCE.md`.
