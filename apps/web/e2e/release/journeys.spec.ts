@@ -31,7 +31,17 @@ function assertUserRoute(tx: { to: string; data: string; hash: string } | undefi
 
 test.describe("production build — wallet journeys", () => {
   test("home + launch economics stay frozen (no FDV knobs)", async ({ page }) => {
+    // iPhone WebKit reports an aborted cross-origin GET as
+    // `Fetch API cannot load …/markets?limit=80 due to access control checks`
+    // (run 34734308703). CORS/`connect-src` are set; leaving home while the
+    // board query is in flight is the trigger. Wait for the mock `/markets`
+    // response before `/launch` so the console-gate stays pinned to `/stream`.
+    const markets = page.waitForResponse(
+      (res) => /127\.0\.0\.1:18448\/markets(?:\?|$)/.test(res.url()) && res.ok(),
+      { timeout: 15_000 },
+    );
     await page.goto("/");
+    await markets;
     await expect(page.getByRole("heading", { name: /Choose what your token earns/i })).toBeVisible();
     await page.goto("/launch");
     await expect(page.getByRole("heading", { name: /Ignite a market/i })).toBeVisible();
