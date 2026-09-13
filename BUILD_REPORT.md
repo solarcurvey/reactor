@@ -1,19 +1,48 @@
-# BUILD REPORT — Handbook rebase onto main #80 (Refs #14)
+# BUILD REPORT — Issue #16 isolated EOA-guardian redeploy (docs)
 
-**Status:** Same draft PR **#48** / same branch `cursor/extensive-gitbook-docs-afa6`, rebased onto `origin/main` `4915f3e` (squash-merged **#80** Industrial Forge). The four #14 AC surfaces (body search, `docs:links`, docs-copy + visual baselines, badge matrix) are **implemented; full hosted proof pending**. Handbook chrome muted copy is `text-zinc-400` (AA floor) — do not restore `text-zinc-500` on `/docs`. Issue **#14 stays open**. **#54 is not a prerequisite.** Do not merge #48. Do not close #14.
+**Status:** Continue draft **#52**. Protocol **0.3.4**. Factory **V1** unchanged. **#16 stays open.** Isolated `SAFE_GENESIS=true` **constructors are live** on 5042002: Guardian `0xc04ceecDC38e73c52aB6c3Cdc6552Be089d3a934` (`guardian()` = Davis EOA `0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406`), Factory `0x94a6DBEB77E346BA7c7532DA01c11DB14A3b95CA`, deployer `0x3E00CE2Dc40FaFB0D2dA4A5e6004278Fdf65AAF5`. First create [`0x7955fda2…`](https://testnet.arcscan.app/tx/0x7955fda2d6a590d83e188daa509a7112ddb70bc126e325a5bd644761d0921e27). Last create [`0x05164100…`](https://testnet.arcscan.app/tx/0x051641005b9193f512cbf30d600f1e24b6ab038daac6b19015e8cd7b5de71ee5). `launchesPaused=true`. On-chain launchSigner/pricingSigner still = keeper until HW genesis. Dump: `deployments/arc-testnet-isolated.json`. No Instant/Fair smoke hashes. `claimedProdPath` stays **false**. 2026-09-12 `0x2CdF…` / `0xB48D…` remains SUPERSEDED.
 **Not audited. Not mainnet.**
-**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
-
-| Item | Value |
-| --- | --- |
-| Protocol release | **0.3.4** from current `main` `docs/version.json` |
-| Factory | **V1** — **unchanged** |
-| Intent | Keep the #14 handbook corpus. Preserve #80 Forge chrome (`rx-kicker` / `rx-link` / tokens / assets) additively with body search, badges, and nav blurbs. Do not take main’s title-only docs search. |
-| Merge-train | #54 AutomationGateway is **not** stacked. Handbook documents current `main`. #80 brand is on this tip. |
+**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
 ---
 
-# Prior — Industrial Forge brand implementation (Refs #55, merged #80)
+# Prior — Issue #16 Arc Public Testnet rehearsal (SUPERSEDED dump)
+
+**Status:** Rebased onto `origin/main` `922f909` (squash-merged **#48** handbook after **#80** Industrial Forge / **#81** / **#46** / **#75** / **#44**). Same draft PR #52 / same branch. Protocol **0.3.4**. Factory **V1** unchanged. **#16 stays open.** LOCAL authorize Instant RHRSL + Fair RHRFL explorer hashes are in `deployments/arc-testnet-journey.json` (Blockscout `result=success`, `claimedArcTestnet: true`, now `superseded: true`). `blockers` lists the LOCAL/non-PROD gaps (`authorizeEnv: LOCAL`, no Turnstile, disposable signer = deployer, Mock USDC-6, not production Next+wallet) plus the lost-key redeploy. Not full PROD. `claimedProdPath` stays **false**.
+**Not audited. Not mainnet.**
+**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.4** (`docs/version.json`) — **unchanged this PR** |
+| Factory | **V1** — **unchanged** |
+| Intent | Full Arc Public Testnet deploy + Instant/Fair smoke (`Addresses #16`). |
+| Deployer | `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E` (`cast wallet new`, PK never committed; funded ~10 native USDC in [`0x788ce4a4…`](https://testnet.arcscan.app/tx/0x788ce4a45faacc534568a54e252255c25796eaf7d9137cb63f0d4eaf2457f2a8)) |
+| Chain 5042002 | **Verified** live `eth_chainId` `0x4cef52` on `https://rpc.testnet.arc.network` |
+| Factory | `0xB48D1B397834eBcccb8961041d827487097e0535` — [create tx](https://testnet.arcscan.app/tx/0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67) |
+| Instant RHRSI | `0x62A7aDF0deb2c1918603e9834dD9ACe07CDA2f87` launch [`0xde5fb884…`](https://testnet.arcscan.app/tx/0xde5fb884a0495f15715963a710d3e1efd3f93237c22978ee351e15d726c77f6f) buy [`0xf50b7715…`](https://testnet.arcscan.app/tx/0xf50b7715ed981d379c9c37cf6badb227e047e15b2e932cd194088a8fa73886b3) sell [`0x71d6f3ec…`](https://testnet.arcscan.app/tx/0x71d6f3ecbfd4c3a7de02d2fb5f477d6c22a40bec12115ea951c99731565e25cd) |
+| Fair RHRFA | `0x077322bE71C871F7134a9bb97e8f85A3991497c6` create [`0xb1a993e9…`](https://testnet.arcscan.app/tx/0xb1a993e9ce3c4261e1b2c6ee5b6cc92ca2fced4c9029b6960eabcbb979f0f46f) bid [`0xf2d8b9a3…`](https://testnet.arcscan.app/tx/0xf2d8b9a3f2407f037196506d4081c33f8787bcc62d1cff541f9f0c20bef362cb) finalize [`0xe839d3d2…`](https://testnet.arcscan.app/tx/0xe839d3d2230bb20448117149e61fed7c92ebe4307fcebeb886b8e65ca49d24c5) claim [`0x78f3f4ad…`](https://testnet.arcscan.app/tx/0x78f3f4adefe400cb452b022d15f2c0fcf99e44ca16abae29c553d83bb1e42ffb) |
+| LOCAL authorize Instant RHRSL | `0xf93a49eBc9B669891F29F87bCC151188Eb715e12` launch [`0xcb57af89…`](https://testnet.arcscan.app/tx/0xcb57af89340e0d94b20855bfe5af5114faf0f6c7d78496b38b315c2316c3994c) buy [`0xff40b4a2…`](https://testnet.arcscan.app/tx/0xff40b4a2ff1a04c9d1055ed7e07ae75fbb7cdefb923187db448087a6292040aa) sell [`0x9d8565d9…`](https://testnet.arcscan.app/tx/0x9d8565d93649cf7452e50837f51b431942019a416e987c4f467585fa4a0a44ff) |
+| LOCAL authorize Fair RHRFL | `0x7B52a009560f55978E82E50aD24FDC3f0e1F86E0` fairId 2 create [`0x07822d45…`](https://testnet.arcscan.app/tx/0x07822d45ef32794b8e16a739b9588601f9c8307730fd5e1575f43e381bbc4c58) bid [`0x71b51af2…`](https://testnet.arcscan.app/tx/0x71b51af2d936fb3daa4d9ab6248f48998131a690b094f5f927a488c1743dac33) finalize [`0xa7580c21…`](https://testnet.arcscan.app/tx/0xa7580c21d0051eb8c2355b859948578e81da983418403c4a4a91552d5501e190) claim [`0xd27d86b7…`](https://testnet.arcscan.app/tx/0xd27d86b7b2309b2296e54ca18ff0a31aa20bdb5f4c0b8a61011c2c836d9a522f) |
+| Quote | Mock USDC-6 `0x44CBe037ABFA8696E4466cA9D278Dbbe44B932dC` (labeled). Canonical `0x3600…0000` is not the Instant/Fair quote. |
+| PoolManager | Official v4-core BUSL `0xC320E526477A9A9c8919A0A8200eAB38fE55033f` — rehearsal deploy, not a Circle-provided manager |
+| Addresses | `deployments/arc-testnet.json` → `docs/deployments.md` |
+| Workflows | Inherited merged **#48** / **#80** / **#81** / **#46** / **#75** / **#44** / **#70** / **#79** / **#68** / **#67** / **#66** / **#49** / **#42** / **#50** / **#73** `.github/workflows/ci.yml` (`ci-decide.sh` docs-only cheap path + three-tier + page-budget + `web-qa` + `e2e-release-gate` + `obs-ui` + `docs:links` + handbook docs-copy/visual + sanctions/geo/operator-policy/restricted-access fixtures). Prefer main for CI. Do not rewrite decide-tier. Actions billing empty-step failures are not AC failures. |
+| Mainnet | **Blocked** |
+
+Keep **#16 open**. Guardian-signed Factory smoke and LOCAL authorize Instant RHRSL + Fair RHRFL on the **SUPERSEDED** dump stay recorded. Isolated PROD-path constructors happen off-PR on the ops box; Davis HW-signs genesis. `claimedProdPath` stays false until Instant/Fair smoke on the **new** deploy + Turnstile + wallet UI ACs. Do not invent new Guardian/Factory addresses or secrets.
+
+---
+
+# Prior — GitBook-quality REACTOR handbook (merged #48, Refs #14)
+
+**Status:** Squash-merged **#48** (`922f909`) on `origin/main`. The four #14 AC surfaces (body search, `docs:links`, docs-copy + visual baselines, badge matrix) landed with handbook chrome muted copy `text-zinc-400` (AA floor) — do not restore `text-zinc-500` on `/docs`. Issue **#14** close is a founder decision. **#54 is not a prerequisite.**
+**Not audited. Not mainnet.**
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+---
+
+# Prior — Industrial Forge brand implementation (merged #80, Refs #55)
 
 **Status:** Implementation PR for issue **#55**. Founder (Davis) locked **Direction C — Industrial Forge**. This pass applies C to production surfaces and assets. Rebased onto `origin/main` `ff444cb` after squash-merged **#81** / #69 (docs-only path filter), **#46** / #39 (production observability), **#75** / #65 (restricted-access UX), **#44** / #35 (wallet E2E), **#70** / #64 (sanctions freshness), **#79** / #17 CI-evidence docs, **#68** / #62, **#67** / #63, **#66** / #61. **Do not close #55** until independent audit. Issue **#36 is closed** (`ad7b457`, post-merge `34729758795`); `web-qa` remains required and covers the approved-C state — do not weaken that gate. #81 `ci-decide` / `ci-ok` (docs-only cheap path; force-full still executes every required job), #39 observability (`obs-ui`, error boundaries, release SHA, vendor-proof) and #65 `/restricted` UX (denied-policy a11y/reflow, four-state matrix, hydration fixes), #35 `e2e-release-gate` and #64 sanctions-ops docs/runbook plus #66/#67/#68/#79 policy/CI-evidence content are preserved. Brand chrome is additive on those surfaces: `/restricted` kicker is `rx-kicker` (heat, no cyan), links and deny banners use 0–4px radius; amber remains the semantic warning, not a Direction B accent. #46 error boundaries keep `obs-ui` / release SHA / `traceId` and use heat kickers (no leftover cyan/pills). `SupportRef` and error mono use `text-zinc-400` (not zinc-500). Copy, testids, and policy behavior are unchanged.
 **Not audited. Not mainnet.**

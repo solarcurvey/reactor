@@ -63,9 +63,9 @@ Addresses land in `deployments/local.json` after the demo script.
 | Chain ID | 5042002 (verified) | 5042002 |
 | RPC | https://rpc.testnet.arc.io (live) | local anvil |
 | USDC | `0x3600…0000` 6 decimals | Mock USDC-6 |
-| v4 PoolManager | **not deployed** | Official v4-core, BUSL non-production |
+| v4 PoolManager | official v4-core BUSL from #16 rehearsal (`docs/deployments.md`) — not a Circle-provided manager | Official v4-core, BUSL non-production |
 
-We **do not claim Arc Testnet success** unless transactions appear on [testnet.arcscan.app](https://testnet.arcscan.app).
+#16 rehearsal addresses and explorer hashes are in [`docs/deployments.md`](docs/deployments.md). Instant/Fair quote on that dump is Mock USDC-6, not canonical `0x3600…0000`.
 
 In-app handbook: [`/docs`](http://127.0.0.1:43147/docs) (sidebar search, TOC, prev/next). Source: `docs/`. `llms.txt` at `/llms.txt`.
 
@@ -86,7 +86,7 @@ GitHub Actions is three-tier (fast PR / full merge-candidate / main). Docs-only 
 
 **Media:** `sharp` is required. On a fresh host, `pnpm approve-builds` (allow `sharp`) if the install asks.
 
-**Arc Public Testnet:** this repo does not claim a Factory deploy without an explorer hash. If `ARC_TESTNET_PK` is unset, see `deployments/arc-testnet-blocker.md`.
+**Arc Public Testnet:** #16 2026-09-12 Factory + Instant/Fair smoke is on [testnet.arcscan.app](https://testnet.arcscan.app) but **SUPERSEDED** (immutable guardian = lost disposable `0xbeD4…`). Isolated constructors are live: Guardian `0xc04ceecDC38e73c52aB6c3Cdc6552Be089d3a934`, Factory `0x94a6DBEB77E346BA7c7532DA01c11DB14A3b95CA` — HW genesis + Instant/Fair smoke pending. See `scripts/arc-testnet-eoa-genesis-runbook.md`. `claimedProdPath` stays false. Keep issue #16 open. No mainnet (5042).
 
 ## Protocol notes
 

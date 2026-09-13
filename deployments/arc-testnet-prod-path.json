@@ -1,0 +1,45 @@
+{
+  "claimedProdPath": false,
+  "claimedDump": true,
+  "superseded": true,
+  "prodIsolated": false,
+  "verificationUrl": "https://testnet.arcscan.app/tx/0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67",
+  "chainId": 5042002,
+  "factoryCodeBytes": 23286,
+  "deployerBalanceWei": "8823539617000000000",
+  "indexerProdStart": {
+    "ok": false,
+    "detail": "PRODUCTION_HARD_GATES: refuse start/launch — TURNSTILE_SECRET; NEXT_PUBLIC_TURNSTILE_SITE_KEY (or TURNSTILE_SITE_KEY); PRICING_SIGNER_PK; SIGNER_INTERNAL_TOKEN; ADMISSION_HMAC_SECRET (indexer exit 1)"
+  },
+  "gateFailures": [
+    "TURNSTILE_SECRET",
+    "NEXT_PUBLIC_TURNSTILE_SITE_KEY (or TURNSTILE_SITE_KEY)",
+    "PRICING_SIGNER_PK",
+    "SIGNER_INTERNAL_TOKEN",
+    "ADMISSION_HMAC_SECRET"
+  ],
+  "blockers": [
+    "PROD hard gate: TURNSTILE_SECRET",
+    "PROD hard gate: NEXT_PUBLIC_TURNSTILE_SITE_KEY (or TURNSTILE_SITE_KEY)",
+    "PROD hard gate: PRICING_SIGNER_PK",
+    "PROD hard gate: SIGNER_INTERNAL_TOKEN",
+    "PROD hard gate: ADMISSION_HMAC_SECRET",
+    "on-chain LaunchSigner/PricingSigner is the funded deployer EOA — isolated signer ≠ deployer needs Guardian setPricingSigner before PROD authorize",
+    "on-chain Keeper is the funded deployer EOA — launch signer must not reuse the keeper key",
+    "NEXT_PUBLIC_WALLETCONNECT_ID unset; Next connectors are wagmi injected() only — this VM has no browser wallet",
+    "PROD indexer refuse start: PRODUCTION_HARD_GATES: refuse start/launch — TURNSTILE_SECRET; NEXT_PUBLIC_TURNSTILE_SITE_KEY (or TURNSTILE_SITE_KEY); PRICING_SIGNER_PK; SIGNER_INTERNAL_TOKEN; ADMISSION_HMAC_SECRET (indexer exit 1)",
+    "no Safe genesis (Guardian is not a production Safe)",
+    "Circle faucet automation still RECAPTCHA_ERROR — not a PROD gate, funding is already on-chain",
+    "SUPERSEDED / non-PROD-isolated — ReactorGuardian 0x2CdF37541256749E5CF6ac5C806e0d23A685F224 and Factory 0xB48D1B397834eBcccb8961041d827487097e0535 have immutable guardian() = lost disposable 0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E. Cannot rotate. Davis chose REDEPLOY.",
+    "SAFE_GENESIS constructors live (Guardian 0xc04ceecDC38e73c52aB6c3Cdc6552Be089d3a934 / Factory 0x94a6DBEB77E346BA7c7532DA01c11DB14A3b95CA) — HW genesis not done; on-chain launchSigner/pricingSigner still=keeper; Instant/Fair smoke not recorded",
+    "claimedProdPath stays false until Instant/Fair smoke on the NEW deploy + Turnstile + wallet UI ACs land"
+  ],
+  "notes": [
+    "LOCAL authorize Instant RHRSL + Fair RHRFL is recorded on the SUPERSEDED dump. That is not full PROD and not the isolated path.",
+    "Do not set SIGNER_INLINE in PROD. Do not reuse Anvil #0. Do not invent Turnstile secrets, HMAC, signer PKs, or Sentry DSN.",
+    "Public env only: NEXT_PUBLIC_WALLETCONNECT_ID and NEXT_PUBLIC_TURNSTILE_SITE_KEY are in deployments/arc-testnet.env.example. TURNSTILE_SECRET stays host-only.",
+    "Target roles (not contract addresses): EXPECTED_SAFE/GUARDIAN 0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406, LaunchSigner 0xd880BD31948Ffc89E8D26C6ac90f98F825E56E9e, PricingSigner 0x346363d14E6Acf1b05CA8Aa22F7E06a201A69a76, Keeper 0xf2105235d0a74969f229deb72d3C8C578643147F.",
+    "SAFE_GENESIS constructors are live (Guardian 0xc04ceecDC38e73c52aB6c3Cdc6552Be089d3a934 / Factory 0x94a6DBEB77E346BA7c7532DA01c11DB14A3b95CA). Davis HW-signs genesis as EOA EXPECTED_SAFE (no Gnosis Safe this round). pauseLaunches(false) LAST after VerifyGenesis.",
+    "claimedProdPath stays false until Instant/Fair smoke on the NEW deploy + Turnstile + wallet UI ACs are human-confirmed."
+  ]
+}

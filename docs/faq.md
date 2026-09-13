@@ -52,7 +52,9 @@
 
 **When do the bottom-right burn toasts show?** Only after the indexer commits a CORE buy+burn (`BuybackExecuted` / `COREBurned`) or a Top-10 `Top10Buy`. Connecting does not dump the SSE replay buffer. A reconnect still delivers events that landed while you were disconnected, exactly once. Epoch submit and Standard SelfBurn do not toast. Hover or focus pauses auto-dismiss.
 
-**Where is the Safe JSON?** `deployments/safe-genesis-builder.json`. Deployer ≠ Guardian. Fill env and regenerate (`pnpm safe:genesis`).
+**Where is the Safe JSON?** `deployments/safe-genesis-builder.json`. Deployer ≠ Guardian. Fill env and regenerate (`pnpm safe:genesis`). Isolated Arc Public Testnet this round has **no Gnosis Safe**: `EXPECTED_SAFE` is Davis's hardware EOA. Use `SafeGenesisBatch.s.sol` calldata (`scripts/arc-testnet-eoa-genesis-runbook.md`). `pauseLaunches(false)` last after VerifyGenesis.
+
+**Why redeploy 5042002?** The 2026-09-12 Guardian `0x2CdF…` / Factory `0xB48D…` stack is SUPERSEDED / non-PROD-isolated. Immutable `guardian()` is the lost disposable `0xbeD4…`. Guardian cannot rotate. Isolated constructors are live: Guardian `0xc04ceecDC38e73c52aB6c3Cdc6552Be089d3a934`, Factory `0x94a6DBEB77E346BA7c7532DA01c11DB14A3b95CA`. HW genesis and Instant/Fair smoke are not done. `claimedProdPath` stays false.
 
 **Can I change the 3.5% split?** No. Different split = V2 factory deploy.
 
@@ -71,5 +73,7 @@
 **Why was my launch or quote refused with a compliance-unavailable error?** REACTOR-operated writes fail closed when the official-list snapshot is missing or older than the 7-day SLA, or when operated write assistance is emergency-disabled. That is not an onchain revert. See [Sanctions ops](/docs/sanctions-ops). A complaint does not auto-clear a deny.
 
 **Where is the sanctions runbook?** [Sanctions runbook](/docs/sanctions-runbook), linked from [Incident response](/docs/incident-response).
+
+**Is REACTOR live on Arc Public Testnet?** #16 rehearsal recorded Factory `0xB48D1B397834eBcccb8961041d827487097e0535`, Instant + Fair smoke, and a LOCAL authorize Instant RHRSL + Fair RHRFL path on [testnet.arcscan.app](https://testnet.arcscan.app). Addresses: `docs/deployments.md`. Quote is Mock USDC-6, not canonical `0x3600…0000`. Guardian is a disposable EOA, not a Safe. LOCAL authorize is not full PROD. `claimedProdPath` in `deployments/arc-testnet-prod-path.json` stays false until Turnstile + isolated signer ≠ deployer ≠ Keeper + a real wallet are present. Not audited. No mainnet. Keep #16 open for human AC.
 
 See [Troubleshooting](/docs/troubleshooting), [Glossary](/docs/glossary), [Trust](/docs/trust), [Observability](/docs/observability), [CI and cost](/docs/ci).

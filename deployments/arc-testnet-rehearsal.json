@@ -1,0 +1,129 @@
+{
+  "at": "2026-09-12T19:32:20.075Z",
+  "issue": "https://github.com/solarcurvey/reactor/issues/16",
+  "claimed": false,
+  "mainnet": "blocked",
+  "waitingAddress": "0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E",
+  "chain": {
+    "ok": true,
+    "chainId": 5042002,
+    "rpc": "https://rpc.testnet.arc.io",
+    "note": "eth_chainId 0x4cef52 = 5042002"
+  },
+  "rpcProbes": [
+    {
+      "url": "https://rpc.testnet.arc.io",
+      "ok": true,
+      "elapsedMs": 184,
+      "httpStatus": 200,
+      "chainHex": "0x4cef52",
+      "chainId": 5042002,
+      "blockNumber": "0x3aeacc0"
+    },
+    {
+      "url": "https://rpc.testnet.arc.network",
+      "ok": true,
+      "elapsedMs": 99,
+      "httpStatus": 200,
+      "chainHex": "0x4cef52",
+      "chainId": 5042002,
+      "blockNumber": "0x3aeacc2"
+    },
+    {
+      "url": "https://rpc.blockdaemon.testnet.arc.io",
+      "ok": true,
+      "elapsedMs": 354,
+      "httpStatus": 200,
+      "chainHex": "0x4cef52",
+      "chainId": 5042002,
+      "blockNumber": "0x3aeacc2"
+    },
+    {
+      "url": "https://rpc.drpc.testnet.arc.io",
+      "ok": true,
+      "elapsedMs": 142,
+      "httpStatus": 200,
+      "chainHex": "0x4cef52",
+      "chainId": 5042002,
+      "blockNumber": "0x3aeacc3"
+    },
+    {
+      "url": "https://rpc.quicknode.testnet.arc.io",
+      "ok": true,
+      "elapsedMs": 122,
+      "httpStatus": 200,
+      "chainHex": "0x4cef52",
+      "chainId": 5042002,
+      "blockNumber": "0x3aeacc3"
+    }
+  ],
+  "faucet": {
+    "attempts": [
+      {
+        "method": "GET",
+        "url": "https://faucet.circle.com",
+        "httpStatus": 200,
+        "ok": true,
+        "bodySnippet": "<!DOCTYPE html><html class=\"min-h-screen w-full\" lang=\"en\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><link rel=\"stylesheet\" ",
+        "note": "Public faucet HTML (Next.js). Token drip is a GraphQL mutation gated by Google reCAPTCHA."
+      },
+      {
+        "method": "POST GraphQL RequestToken",
+        "url": "https://faucet.circle.com/api/graphql",
+        "httpStatus": 200,
+        "ok": false,
+        "error": "RECAPTCHA_ERROR — ReCAPTCHA verification failed",
+        "bodySnippet": "{\"errors\":[{\"message\":\"ReCAPTCHA verification failed\",\"locations\":[{\"line\":1,\"column\":53}],\"path\":[\"requestToken\"],\"extensions\":{\"code\":\"RECAPTCHA_ERROR\"}}],\"data\":null}\n",
+        "note": "Exact blocker: Circle public faucet requires a human Google reCAPTCHA (v3 + v2 fallback). Headless VMs cannot complete the widget."
+      },
+      {
+        "method": "POST /v1/faucet/drips (no API key)",
+        "url": "https://api.circle.com/v1/faucet/drips",
+        "httpStatus": 401,
+        "ok": false,
+        "error": "{\"code\":401,\"message\":\"malformed authorization. Missing API key in authorization header. Make sure to use Bearer authorization type\"}",
+        "bodySnippet": "{\"code\":401,\"message\":\"malformed authorization. Missing API key in authorization header. Make sure to use Bearer authorization type\"}",
+        "note": "Circle Developer faucet API. Docs require a mainnet-upgraded Circle account + Bearer API key. Not a permissionless drip."
+      }
+    ],
+    "summary": "https://faucet.circle.com/api/graphql → HTTP 200 RECAPTCHA_ERROR — ReCAPTCHA verification failed. Human reCAPTCHA required. Address is waiting for funds."
+  },
+  "deploy": {
+    "attempted": false,
+    "note": "ARC_TESTNET_PK unset. No broadcast. Key must be a funded disposable test EOA (cast wallet new), never Anvil #0, never committed."
+  },
+  "webJourney": {
+    "attempted": false,
+    "note": "Instant + BUY/SELL harness requires a claimed Factory + funded trader. See `pnpm arc:wallet-harness`. Not claimed this run."
+  },
+  "blockers": [
+    "https://faucet.circle.com/api/graphql → HTTP 200 RECAPTCHA_ERROR — ReCAPTCHA verification failed. Human reCAPTCHA required. Address is waiting for funds."
+  ],
+  "nextHumanSteps": [
+    "Open https://faucet.circle.com — network **Arc**, token **USDC**, address `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E`. Complete the Google reCAPTCHA (v3 / v2 checkbox).",
+    "Confirm native gas: `cast balance $ADDR --rpc-url https://rpc.testnet.arc.io` is > 0.",
+    "Export `ARC_TESTNET_PK` (never commit) and re-run `pnpm arc:rehearsal` then the runbook deploy steps.",
+    "Record real addresses + tx hashes in `deployments/arc-testnet.json` and point `deployments/registry.json` at that file. `claimed` stays false until the explorer receipt is confirmed.",
+    "Configure production Next (`deployments/arc-testnet.env.example`) and run `pnpm arc:wallet-harness`.",
+    "Keep [#16](https://github.com/solarcurvey/reactor/issues/16) open until Instant launch + BUY/SELL land on https://testnet.arcscan.app."
+  ],
+  "nativeBalanceWei": "0",
+  "dependencyCode": {
+    "USDC ERC-20 (6 decimals, usdPegOne)": {
+      "address": "0x3600000000000000000000000000000000000000",
+      "bytes": 1798
+    },
+    "CREATE2 (Arachnid)": {
+      "address": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+      "bytes": 69
+    },
+    "Permit2": {
+      "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+      "bytes": 9152
+    },
+    "CCA factory v2.1.0": {
+      "address": "0x000000001F26a0044BaA66024e7b6599c61963F8",
+      "bytes": 24214
+    }
+  }
+}

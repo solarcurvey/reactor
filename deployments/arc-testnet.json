@@ -1,0 +1,302 @@
+{
+  "network": "arc-public-testnet",
+  "chainId": 5042002,
+  "rpc": "https://rpc.testnet.arc.network",
+  "explorer": "https://testnet.arcscan.app",
+  "claimedArcTestnet": true,
+  "superseded": true,
+  "prodIsolated": false,
+  "supersededReason": "Immutable ReactorGuardian.guardian() is the lost disposable EOA 0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E (same address as launchSigner/pricingSigner/keeper). Guardian cannot rotate. Davis Ramsey chose REDEPLOY on Arc Public Testnet 5042002 for isolated PROD-path. Do not treat this dump as the isolated Factory.",
+  "supersededBy": "deployments/arc-testnet-isolated.json",
+  "deployer": "0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E",
+  "sourceCommit": "9a3190b0e527f820d1157e73cab0c5802a31e7c1",
+  "mainBase": "5fba655238e45f8c7cc64589eef69c34f94f740e",
+  "fundingTx": "0x788ce4a45faacc534568a54e252255c25796eaf7d9137cb63f0d4eaf2457f2a8",
+  "fundingExplorer": "https://testnet.arcscan.app/tx/0x788ce4a45faacc534568a54e252255c25796eaf7d9137cb63f0d4eaf2457f2a8",
+  "deploymentDate": "2026-09-12",
+  "broadcastTxCount": 78,
+  "broadcastReceiptsOk": 78,
+  "firstCreateTx": "0x9a1c798f2c9f3b901aa6b28ecc4eec0d57ca1fdcb70a84f1429b2e25f1f60187",
+  "firstCreateExplorer": "https://testnet.arcscan.app/tx/0x9a1c798f2c9f3b901aa6b28ecc4eec0d57ca1fdcb70a84f1429b2e25f1f60187",
+  "note": "SUPERSEDED / non-PROD-isolated. Arc Public Testnet (5042002) #16 rehearsal dump remains explorer-true (Factory 0xB48D1B397834eBcccb8961041d827487097e0535, ReactorGuardian 0x2CdF37541256749E5CF6ac5C806e0d23A685F224) but is obsolete for the isolated PROD-path. guardian()/launchSigner()/pricingSigner()/keeper() all = lost disposable 0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E \u2014 immutable guardian, cannot rotate. Davis chose REDEPLOY. Isolated constructors are live in deployments/arc-testnet-isolated.json (Guardian 0xc04ceecDC38e73c52aB6c3Cdc6552Be089d3a934, Factory 0x94a6DBEB77E346BA7c7532DA01c11DB14A3b95CA). HW genesis + Instant/Fair smoke pending. Instant/Fair quote on this old dump is Deploy.s.sol Mock USDC-6 (0x44CBe037ABFA8696E4466cA9D278Dbbe44B932dC), not canonical 0x3600\u20260000. claimedProdPath stays false. Keep #16 open. No Arc Mainnet (5042).",
+  "addresses": {
+    "Guardian": "0x2CdF37541256749E5CF6ac5C806e0d23A685F224",
+    "Keeper": "0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E",
+    "PricingSigner": "0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E",
+    "LaunchSigner": "0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E",
+    "PoolManager": "0xC320E526477A9A9c8919A0A8200eAB38fE55033f",
+    "QuoteAssetRegistry": "0x2333c5Aa817406fc39376e7ae36e49732eFa76AF",
+    "TickerRegistry": "0x7FdF040CFAeAc466343E3A7080A6a49364368DFe",
+    "TestCORE": "0xC61A8f55AcfFA11eF98b43e09853E7E156962087",
+    "CoreToken": "0xC61A8f55AcfFA11eF98b43e09853E7E156962087",
+    "USDC": "0x44CBe037ABFA8696E4466cA9D278Dbbe44B932dC",
+    "ZEC": "0xCbC2321DfB802E019F662ab558FdaA78D3d356b3",
+    "BTC": "0x7ca9521F12CdE840B06aED00c2Cb13e63B605Fe4",
+    "NVDA": "0x2E6b5adab76f0Fc87dCaEEd45EfB2015A0a4042F",
+    "ReactorLiquidityVault": "0x5A7cBb7708903968895C879105077d19B0152349",
+    "ReactorRouter": "0xcE272785F575dbE2d25C0a5a13bB22f1C8546F60",
+    "ReactorHook": "0x647090D835eB6b2D2619906694335046abAab0cC",
+    "BuybackVault": "0x2292F2F371c4F5d0aE3ff6644E6111A5D82BE1F1",
+    "FlywheelVault": "0xCF7373401F5baee6444efa65eAC41224E0b08DD6",
+    "ReactorFactory": "0xB48D1B397834eBcccb8961041d827487097e0535",
+    "InstantLaunchModule": "0x4af9E9f28c3C43cdBE3c2f62d40d76Cc74e3130F",
+    "InstantCurve": "0xEc23c3CbeCeA264e96Bb9078879cE6836458f957",
+    "SelfBurnVault": "0x38a9338Cb3076b2b4D94b644FCAF8a7E7bD0407b",
+    "V4Adapter": "0x8EEE08b8a3f0283279Cda1Dbe7804B6580bBc438",
+    "ProtocolV4Adapter": "0x3F4D764dd509f492510117d1b8DcbCa7b0D74230",
+    "UserRouteExecutor": "0xcb200a85d08242C51A2BAde4348F0F0C3A1f6b5f",
+    "UserRouteQuoter": "0x14729a93c883Ed451005348a9A347C95F1dfAB16",
+    "CoreVesting": "0x726CF86c2caFE4d3C887567471C5104Ea94409d3",
+    "CoreLiquidityVault": "0xd9E31ed9ad7D3e359DB33676DF8C968AAd98c5cA",
+    "CoreBuybackExecutor": "0x821308FCF9E1Dcbd933Ca73bd5882d3246C710f0",
+    "FairClaimVault": "0xAB7dCA20E5F94A8A59b9fB9783FBfF7B742547E9",
+    "RoutingRegistry": "0x4936FF5fe632B3C887e54ca87E70193EA5dFAEa8"
+  },
+  "createTransactions": [
+    {
+      "contractName": "ReactorGuardian",
+      "address": "0x2cdf37541256749e5cf6ac5c806e0d23a685f224",
+      "tx": "0x9a1c798f2c9f3b901aa6b28ecc4eec0d57ca1fdcb70a84f1429b2e25f1f60187"
+    },
+    {
+      "contractName": "PoolManager",
+      "address": "0xc320e526477a9a9c8919a0a8200eab38fe55033f",
+      "tx": "0x963c50efabd5916e535f621bd1d70281a8861e6800cc1883bccfa0d6b09bd825"
+    },
+    {
+      "contractName": "QuoteAssetRegistry",
+      "address": "0x2333c5aa817406fc39376e7ae36e49732efa76af",
+      "tx": "0xce4df18bc9df40cc62da26b33057d280a863b3df3a3561262953d317ff2058b5"
+    },
+    {
+      "contractName": "TickerRegistry",
+      "address": "0x7fdf040cfaeac466343e3a7080a6a49364368dfe",
+      "tx": "0xdc6865a0f2e29fb56f1d28983178b33b5353ef6d590aa0afb781dccb6f3418ef"
+    },
+    {
+      "contractName": "TestCORE",
+      "address": "0xc61a8f55acffa11ef98b43e09853e7e156962087",
+      "tx": "0x204f50e7409b351d55d86bed5be55b715d2dbbd39bcc499c43d987cc4de96976"
+    },
+    {
+      "contractName": "MockERC20",
+      "address": "0x44cbe037abfa8696e4466ca9d278dbbe44b932dc",
+      "tx": "0x04d3a0c5ebbe2b6d509233ee612b1206302a7a8a33213eba726d972aed23fd81"
+    },
+    {
+      "contractName": "MockERC20",
+      "address": "0xcbc2321dfb802e019f662ab558fdaa78d3d356b3",
+      "tx": "0x04e2211afa120093561d54f323d6a831cd7e2179e99c9759ecd5f62fda49675b"
+    },
+    {
+      "contractName": "MockERC20",
+      "address": "0x7ca9521f12cde840b06aed00c2cb13e63b605fe4",
+      "tx": "0x50cbbceb11f65393d2a64e0890d117df3347ad0e026318dffe08873234c1c87f"
+    },
+    {
+      "contractName": "MockERC20",
+      "address": "0x2e6b5adab76f0fc87dcaeed45efb2015a0a4042f",
+      "tx": "0x96bff52db0241ff1f297589db770a1819caa663ee6d9dcd032a5e7dfb90efc53"
+    },
+    {
+      "contractName": "ReactorLiquidityVault",
+      "address": "0x5a7cbb7708903968895c879105077d19b0152349",
+      "tx": "0x88ae5bc94ffedfce851b267444959ae7d50cf9b9252022370a487800c0fc2b01"
+    },
+    {
+      "contractName": "ReactorRouter",
+      "address": "0xce272785f575dbe2d25c0a5a13bb22f1c8546f60",
+      "tx": "0x2b89272599910d6324314ab71951365442f553b3bc6cfdd1fedc6cb3b8b0b28b"
+    },
+    {
+      "contractName": "RoutingRegistry",
+      "address": "0x4936ff5fe632b3c887e54ca87e70193ea5dfaea8",
+      "tx": "0x0dcf4e0a1d5196634dc72c4bc0086bb15b08f1a2cc2b267e20e77f794103b64b"
+    },
+    {
+      "contractName": "CoreVesting",
+      "address": "0x726cf86c2cafe4d3c887567471c5104ea94409d3",
+      "tx": "0x022cd09f09e820ac7cc90bc40ba46c3eb57ffd539983ed60680fc67df65bfad1"
+    },
+    {
+      "contractName": "CoreLiquidityVault",
+      "address": "0xd9e31ed9ad7d3e359db33676df8c968aad98c5ca",
+      "tx": "0x559c4f8e272c29b0fa6c015c86010c1161c3d9cc8abfb464a5505311697db3fe"
+    },
+    {
+      "contractName": "UniswapV4Adapter",
+      "address": "0x8eee08b8a3f0283279cda1dbe7804b6580bbc438",
+      "tx": "0x42c95e1f16a9ba53a763055eb8b7c18fff43b6ec680908dcd41d56744f079084"
+    },
+    {
+      "contractName": "ProtocolV4Adapter",
+      "address": "0x3f4d764dd509f492510117d1b8dcbca7b0d74230",
+      "tx": "0xd34795241dba3782159678a2966035c942ebd4c421ffd82caeb74436bdaea53d"
+    },
+    {
+      "contractName": "BuybackVault",
+      "address": "0x2292f2f371c4f5d0ae3ff6644e6111a5d82be1f1",
+      "tx": "0x3995f0163c402d22bcb6ff929bae4162390bee87608cf1f443571fbb3e1ccf3d"
+    },
+    {
+      "contractName": "FlywheelVault",
+      "address": "0xcf7373401f5baee6444efa65eac41224e0b08dd6",
+      "tx": "0x96ee71c5fc8d5bd77c3a549a9e04192c0f157005f3e78eb1271c556c5c91ca62"
+    },
+    {
+      "contractName": "ReactorFactory",
+      "address": "0xb48d1b397834ebcccb8961041d827487097e0535",
+      "tx": "0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67"
+    },
+    {
+      "contractName": "InstantLaunchModule",
+      "address": "0x4af9e9f28c3c43cdbe3c2f62d40d76cc74e3130f",
+      "tx": "0x7e3dba881a810f59acace49abd6731fc80bcea54ce9c8cd86e6727656210eaae"
+    },
+    {
+      "contractName": "InstantCurve",
+      "address": "0xec23c3cbecea264e96bb9078879ce6836458f957",
+      "tx": "0xe1a696262280c6d908b48f0d2097b619e62b5a17af3a73b501a938c98c8a960b"
+    },
+    {
+      "contractName": "SelfBurnVault",
+      "address": "0x38a9338cb3076b2b4d94b644fcaf8a7e7bd0407b",
+      "tx": "0x3a26481b3119cbd45e4098607bec657fc606d73347e56e6342014263098b5610"
+    },
+    {
+      "contractName": "CoreBuybackExecutor",
+      "address": "0x821308fcf9e1dcbd933ca73bd5882d3246c710f0",
+      "tx": "0x4d05762e0735b910858746352cae0084d31935eaadb56644122b4257e518d7b1"
+    },
+    {
+      "contractName": "UserRouteExecutor",
+      "address": "0xcb200a85d08242c51a2bade4348f0f0c3a1f6b5f",
+      "tx": "0xbc17a84e44458a3bd9455a2252d5ef322f81b56d899277ba12fa0dea81d93039"
+    },
+    {
+      "contractName": "UserRouteQuoter",
+      "address": "0x14729a93c883ed451005348a9a347c95f1dfab16",
+      "tx": "0xa683df5d1011e4eca2d8775544702358c51203b6a272dda6d0dfa163ebe3a066"
+    }
+  ],
+  "hookFlags": "0x30CC",
+  "v4Core": "e50237c43811bd9b526eff40f26772152a42daba",
+  "factoryVersion": 1,
+  "protocolVersion": "0.3.3",
+  "explorerConfirmed": true,
+  "verificationUrl": "https://testnet.arcscan.app/tx/0xa7297d2104b926b9372d93d16598fd5e8c4171955b0e5d3b6ce6ce0468752c67",
+  "smoke": {
+    "at": "2026-09-12T20:17:53.983Z",
+    "explorerConfirmed": true,
+    "instantToken": "0x62A7aDF0deb2c1918603e9834dD9ACe07CDA2f87",
+    "fairToken": "0x077322bE71C871F7134a9bb97e8f85A3991497c6",
+    "fairId": "1",
+    "steps": [
+      {
+        "step": "instant_launch",
+        "tx": "0xde5fb884a0495f15715963a710d3e1efd3f93237c22978ee351e15d726c77f6f",
+        "explorer": "https://testnet.arcscan.app/tx/0xde5fb884a0495f15715963a710d3e1efd3f93237c22978ee351e15d726c77f6f",
+        "status": "success",
+        "token": "0x62A7aDF0deb2c1918603e9834dD9ACe07CDA2f87"
+      },
+      {
+        "step": "instant_buy",
+        "tx": "0xf50b7715ed981d379c9c37cf6badb227e047e15b2e932cd194088a8fa73886b3",
+        "explorer": "https://testnet.arcscan.app/tx/0xf50b7715ed981d379c9c37cf6badb227e047e15b2e932cd194088a8fa73886b3",
+        "status": "success",
+        "tokensOut": "1926534833992917094512289"
+      },
+      {
+        "step": "instant_sell",
+        "tx": "0x71d6f3ecbfd4c3a7de02d2fb5f477d6c22a40bec12115ea951c99731565e25cd",
+        "explorer": "https://testnet.arcscan.app/tx/0x71d6f3ecbfd4c3a7de02d2fb5f477d6c22a40bec12115ea951c99731565e25cd",
+        "status": "success"
+      },
+      {
+        "step": "fair_create",
+        "tx": "0xb1a993e9ce3c4261e1b2c6ee5b6cc92ca2fced4c9029b6960eabcbb979f0f46f",
+        "explorer": "https://testnet.arcscan.app/tx/0xb1a993e9ce3c4261e1b2c6ee5b6cc92ca2fced4c9029b6960eabcbb979f0f46f",
+        "status": "success",
+        "token": "0x077322bE71C871F7134a9bb97e8f85A3991497c6",
+        "fairId": "1"
+      },
+      {
+        "step": "fair_bid",
+        "tx": "0xf2d8b9a3f2407f037196506d4081c33f8787bcc62d1cff541f9f0c20bef362cb",
+        "explorer": "https://testnet.arcscan.app/tx/0xf2d8b9a3f2407f037196506d4081c33f8787bcc62d1cff541f9f0c20bef362cb",
+        "status": "success",
+        "fairId": "1"
+      },
+      {
+        "step": "fair_finalize",
+        "tx": "0xe839d3d2230bb20448117149e61fed7c92ebe4307fcebeb886b8e65ca49d24c5",
+        "explorer": "https://testnet.arcscan.app/tx/0xe839d3d2230bb20448117149e61fed7c92ebe4307fcebeb886b8e65ca49d24c5",
+        "status": "success"
+      },
+      {
+        "step": "fair_claim",
+        "tx": "0x78f3f4adefe400cb452b022d15f2c0fcf99e44ca16abae29c553d83bb1e42ffb",
+        "explorer": "https://testnet.arcscan.app/tx/0x78f3f4adefe400cb452b022d15f2c0fcf99e44ca16abae29c553d83bb1e42ffb",
+        "status": "success"
+      }
+    ]
+  },
+  "productionPath": {
+    "at": "2026-09-12T23:48:30.000Z",
+    "authorizeEnv": "LOCAL",
+    "explorerConfirmed": true,
+    "instantTicker": "RHRSL",
+    "instantToken": "0xf93a49eBc9B669891F29F87bCC151188Eb715e12",
+    "fairTicker": "RHRFL",
+    "fairToken": "0x7B52a009560f55978E82E50aD24FDC3f0e1F86E0",
+    "fairId": "2",
+    "evidence": "deployments/arc-testnet-journey.json",
+    "steps": [
+      {
+        "step": "instant_launch",
+        "tx": "0xcb57af89340e0d94b20855bfe5af5114faf0f6c7d78496b38b315c2316c3994c",
+        "explorer": "https://testnet.arcscan.app/tx/0xcb57af89340e0d94b20855bfe5af5114faf0f6c7d78496b38b315c2316c3994c",
+        "status": "success",
+        "token": "0xf93a49eBc9B669891F29F87bCC151188Eb715e12"
+      },
+      {
+        "step": "instant_buy",
+        "tx": "0xff40b4a2ff1a04c9d1055ed7e07ae75fbb7cdefb923187db448087a6292040aa",
+        "explorer": "https://testnet.arcscan.app/tx/0xff40b4a2ff1a04c9d1055ed7e07ae75fbb7cdefb923187db448087a6292040aa",
+        "status": "success"
+      },
+      {
+        "step": "instant_sell",
+        "tx": "0x9d8565d93649cf7452e50837f51b431942019a416e987c4f467585fa4a0a44ff",
+        "explorer": "https://testnet.arcscan.app/tx/0x9d8565d93649cf7452e50837f51b431942019a416e987c4f467585fa4a0a44ff",
+        "status": "success"
+      },
+      {
+        "step": "fair_create",
+        "tx": "0x07822d45ef32794b8e16a739b9588601f9c8307730fd5e1575f43e381bbc4c58",
+        "explorer": "https://testnet.arcscan.app/tx/0x07822d45ef32794b8e16a739b9588601f9c8307730fd5e1575f43e381bbc4c58",
+        "status": "success",
+        "token": "0x7B52a009560f55978E82E50aD24FDC3f0e1F86E0",
+        "fairId": "2"
+      },
+      {
+        "step": "fair_bid",
+        "tx": "0x71b51af2d936fb3daa4d9ab6248f48998131a690b094f5f927a488c1743dac33",
+        "explorer": "https://testnet.arcscan.app/tx/0x71b51af2d936fb3daa4d9ab6248f48998131a690b094f5f927a488c1743dac33",
+        "status": "success"
+      },
+      {
+        "step": "fair_finalize",
+        "tx": "0xa7580c21d0051eb8c2355b859948578e81da983418403c4a4a91552d5501e190",
+        "explorer": "https://testnet.arcscan.app/tx/0xa7580c21d0051eb8c2355b859948578e81da983418403c4a4a91552d5501e190",
+        "status": "success"
+      },
+      {
+        "step": "fair_claim",
+        "tx": "0xd27d86b7b2309b2296e54ca18ff0a31aa20bdb5f4c0b8a61011c2c836d9a522f",
+        "explorer": "https://testnet.arcscan.app/tx/0xd27d86b7b2309b2296e54ca18ff0a31aa20bdb5f4c0b8a61011c2c836d9a522f",
+        "status": "success"
+      }
+    ]
+  }
+}

@@ -1,12 +1,12 @@
 # GUARDIAN MODEL
 
-The Guardian is the **only** privileged security authority after deploy. It is an immutable address (production: a Safe). It is a brake pedal, not a steering wheel.
+The Guardian is the **only** privileged security authority after deploy. It is an immutable address (production: a Safe; Arc Public Testnet isolated path this round: Davis hardware EOA `0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406`). It is a brake pedal, not a steering wheel.
 
 There is no owner, admin, proxy admin, upgrader, governor, or treasury owner.
 
 ## Construction
 
-`ReactorGuardian.guardian` is set in the constructor and cannot change.
+`ReactorGuardian.guardian` is set in the constructor and cannot change. The 2026-09-12 testnet Guardian `0x2CdF37541256749E5CF6ac5C806e0d23A685F224` is SUPERSEDED: its `guardian()` is the lost disposable `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E`. Redeploy with `SAFE_GENESIS=true` and `EXPECTED_SAFE` = the final hardware EOA (not a later transfer). See `scripts/arc-testnet-eoa-genesis-runbook.md`.
 
 `keeper` starts as a backend-controlled address and **can** be replaced by the Guardian.
 

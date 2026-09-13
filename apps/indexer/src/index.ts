@@ -1,4 +1,4 @@
-import { parseAbiItem } from "viem";
+import { parseAbi, parseAbiItem } from "viem";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { existsSync, readFileSync } from "node:fs";
 import deployment from "./deployment.json" with { type: "json" };
@@ -194,14 +194,31 @@ async function tick(store: Store) {
     }
   }
   let from = last > 0n ? last + 1n : 0n;
+  // Optional catch-up window (Arc Testnet rehearsal). Do not scan genesis on a public RPC.
+  if (from === 0n) {
+    const start = process.env.INDEXER_START_BLOCK?.trim();
+    if (start && /^\d+$/.test(start)) from = BigInt(start);
+  }
   const burnedThisTick = new Set<string>();
   const createdThisTick = new Set<string>();
   const coreAddr = String(addrs.CoreToken ?? addrs.TestCORE ?? "").toLowerCase();
   if (from <= head) {
-    const to = head - from > 2000n ? from + 2000n : head;
-    const watch = [factory, hook, addrs.BuybackVault, addrs.FlywheelVault, addrs.InstantCurve, addrs.SelfBurnVault, addrs.PoolManager, addrs.TickerRegistry]
-      .filter(Boolean) as `0x${string}`[];
-    const logs = await client.getLogs({ address: watch, events, fromBlock: from, toBlock: to });
+    const maxSpan = BigInt(Math.max(1, Number(process.env.INDEXER_MAX_BLOCK_SPAN ?? 2000)));
+    const to = head - from > maxSpan ? from + maxSpan : head;
+    const lean = process.env.INDEXER_LEAN_LOGS === "1";
+    const watch = (
+      lean
+        ? [factory, addrs.InstantCurve, addrs.TickerRegistry]
+        : [factory, hook, addrs.BuybackVault, addrs.FlywheelVault, addrs.InstantCurve, addrs.SelfBurnVault, addrs.PoolManager, addrs.TickerRegistry]
+    ).filter(Boolean) as `0x${string}`[];
+    const leanEvents = events.filter((e) =>
+      ["TokenCreated", "LaunchCreated", "InstantLaunchCreated", "InstantMarketOpened", "TickerClaimed", "CurveBuy", "CurveSell"].includes(e.name ?? ""),
+    );
+    const evs = lean ? leanEvents : events;
+    const logs: Awaited<ReturnType<typeof client.getLogs>> = [];
+    for (const addr of watch) {
+      logs.push(...(await client.getLogs({ address: addr, events: evs, fromBlock: from, toBlock: to })));
+    }
     for (const log of logs) {
       if (log.eventName === "TokenCreated") {
         const created = String((log.args as { token?: string } | undefined)?.token ?? "").toLowerCase();
@@ -296,49 +313,41 @@ async function tick(store: Store) {
 async function refreshQuotes(store: Store) {
   const registry = addrs.QuoteAssetRegistry as `0x${string}` | undefined;
   if (!registry) return;
-  const registryAbi = [
-    { name: "count", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
-    { name: "list", type: "function", stateMutability: "view", inputs: [{ type: "uint256" }], outputs: [{ type: "address" }] },
-    {
-      name: "get",
-      type: "function",
-      stateMutability: "view",
-      inputs: [{ type: "address" }],
-      outputs: [
-        { type: "address" }, { type: "string" }, { type: "string" }, { type: "uint8" }, { type: "string" }, { type: "uint8" },
-        { type: "bool" }, { type: "bool" }, { type: "bool" }, { type: "bool" }, { type: "bool" }, { type: "bool" }, { type: "bool" },
-      ],
-    },
-  ] as const;
+  const registryAbi = parseAbi([
+    "function count() view returns (uint256)",
+    "function list(uint256) view returns (address)",
+    "function isUsdPegOne(address) view returns (bool)",
+    "function isEnabled(address) view returns (bool)",
+  ]);
+  const erc20Meta = parseAbi(["function decimals() view returns (uint8)", "function symbol() view returns (string)", "function name() view returns (string)"]);
   try {
     const n = Number(await client.readContract({ address: registry, abi: registryAbi, functionName: "count" }));
     const listed = n > 0
       ? await readContractsBatched<`0x${string}`>(client, indexCalls(registry, registryAbi, "list", n))
       : [];
-    const assets = listed.length
-      ? await readContractsBatched<readonly unknown[]>(
-          client,
-          listed.map((token) => ({ address: registry, abi: registryAbi, functionName: "get", args: [token] })),
-        )
-      : [];
-    for (let i = 0; i < listed.length; i++) {
-      const token = listed[i]!;
-      const g = assets[i] ?? [];
-      quoteDec.set(token.toLowerCase(), Number(g[3]));
+    for (const token of listed) {
+      const [usdPegOne, enabled, decimals, symbol, name] = await Promise.all([
+        client.readContract({ address: registry, abi: registryAbi, functionName: "isUsdPegOne", args: [token] }),
+        client.readContract({ address: registry, abi: registryAbi, functionName: "isEnabled", args: [token] }),
+        client.readContract({ address: token, abi: erc20Meta, functionName: "decimals" }),
+        client.readContract({ address: token, abi: erc20Meta, functionName: "symbol" }).catch(() => "Q"),
+        client.readContract({ address: token, abi: erc20Meta, functionName: "name" }).catch(() => "Quote"),
+      ]);
+      quoteDec.set(token.toLowerCase(), Number(decimals));
       await store.run(
         `INSERT INTO quote_assets(token,symbol,name,decimals,category,enabled,usd_peg_one,hop_via_usdc,reactor_native,parent_quote,quarantined)
          VALUES(?,?,?,?,?,?,?,?,?,'',?)
          ON CONFLICT(token) DO UPDATE SET enabled=excluded.enabled, usd_peg_one=excluded.usd_peg_one, hop_via_usdc=excluded.hop_via_usdc, quarantined=excluded.quarantined`,
         token.toLowerCase(),
-        String(g[1]),
-        String(g[2]),
-        Number(g[3]),
-        Number(g[5]),
-        Boolean(g[6]) ? 1 : 0,
-        Boolean(g[12]) ? 1 : 0,
-        Boolean(g[10]) ? 1 : 0,
-        Boolean(g[11]) ? 1 : 0,
-        Boolean(g[7]) && !Boolean(g[6]) ? 1 : 0,
+        String(symbol),
+        String(name),
+        Number(decimals),
+        0,
+        enabled ? 1 : 0,
+        usdPegOne ? 1 : 0,
+        0,
+        0,
+        enabled ? 0 : 1,
       );
     }
   } catch (e) {

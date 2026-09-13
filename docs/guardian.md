@@ -4,6 +4,8 @@
 
 Production Guardian is a Safe. The address itself does not rotate; replace Safe signers offchain if the Guardian is lost. **Deployer ≠ Guardian.** After genesis the deployer EOA has no protocol role.
 
+Arc Public Testnet isolated PROD-path **this round** uses Davis's hardware EOA `0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406` as `GUARDIAN` / `EXPECTED_SAFE` — **not** a Gnosis Safe. Live `ReactorGuardian` `0xc04ceecDC38e73c52aB6c3Cdc6552Be089d3a934` (`SAFE_GENESIS=true`, deployer ≠ guardian). That EOA **is** the immutable guardian (never EOA-then-transfer). HW genesis is still pending (`launchesPaused=true`). Prior `0x2CdF37541256749E5CF6ac5C806e0d23A685F224` is SUPERSEDED (lost disposable key). Runbook: `scripts/arc-testnet-eoa-genesis-runbook.md`.
+
 There is no owner, admin, proxy admin, upgrader, governor, or treasury owner. See [Security](/docs/security) and `GUARDIAN_MODEL.md`.
 
 ## Can
@@ -54,13 +56,13 @@ Onchain `QuoteAssetRegistry.register` does **not** create a USD mark. Before the
 
 See [Valuation](/docs/valuation).
 
-## Safe Transaction Builder
+## Safe Transaction Builder / EOA genesis
 
-Template: `deployments/safe-genesis-builder.json` (regenerate with `tsx scripts/safe-genesis-builder.ts` / `pnpm safe:genesis`).
+Template: `deployments/safe-genesis-builder.json` (regenerate with `tsx scripts/safe-genesis-builder.ts` / `pnpm safe:genesis`). Isolated testnet this round uses the same calldata order from `SafeGenesisBatch.s.sol` signed by the hardware EOA (no Safe UI).
 
-1. Deploy contracts while launches are paused.
-2. Batch A (Guardian Safe): binds, signer, quote registry, CORE genesis — **not** `pauseLaunches(false)`.
-3. `VerifyGenesis` / auditor checklist.
+1. Deploy constructors with `SAFE_GENESIS=true` while launches are paused (ops box; deployer ≠ `GUARDIAN`).
+2. Batch A (guardian): binds, signer, quote registry, CORE genesis — **not** `pauseLaunches(false)`.
+3. `VerifyGenesis` / auditor checklist (must still be paused).
 4. Batch B T0: vesting T0 + `pauseLaunches(false)` **last**.
 
-See `PRIVILEGE_MAP.md`, [Keeper](/docs/keeper), [Deployments](/docs/deployments).
+See `PRIVILEGE_MAP.md`, [Keeper](/docs/keeper), [Deployments](/docs/deployments), `scripts/arc-testnet-eoa-genesis-runbook.md`.

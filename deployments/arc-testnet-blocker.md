@@ -1,79 +1,19 @@
-# Arc Public Testnet — Factory not claimed
+# Arc Public Testnet — SUPERSEDED 2026-09-12 dump (non-PROD-isolated)
 
-**claimed: false**  
-This environment has **no `ARC_TESTNET_PK`**. No `eth_sendRawTransaction` was attempted. Do not invent explorer hashes.
+**Historical claimed: true** on Blockscout API (`result=success`). **SUPERSEDED** for isolated PROD-path. Keep #16 open.
 
-Source probe: `deployments/arc-factory-attempt.json` (RPC live, Factory sizes recorded, estimate may revert on dummy ctor).
+ReactorGuardian `0x2CdF37541256749E5CF6ac5C806e0d23A685F224` / Factory `0xB48D1B397834eBcccb8961041d827487097e0535` have immutable `guardian()` = lost disposable `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E` (same as launchSigner / pricingSigner / keeper). Guardian cannot rotate. Davis chose REDEPLOY. Isolated constructors are live: Guardian `0xc04ceecDC38e73c52aB6c3Cdc6552Be089d3a934`, Factory `0x94a6DBEB77E346BA7c7532DA01c11DB14A3b95CA` (`deployments/arc-testnet-isolated.json`). HW genesis + Instant/Fair smoke pending. Runbook: `scripts/arc-testnet-eoa-genesis-runbook.md`.
 
-## Why this is blocked
+This file previously recorded the Circle faucet `RECAPTCHA_ERROR` blocker. Funding arrived from a box throwaway wallet onto `0xbeD4a2d496d280387FE65922fFbdf8C0f724bC6E`. Full stack + Instant/Fair smoke for the **old** dump are in `deployments/arc-testnet.json` and `deployments/arc-testnet-smoke.json`.
 
 | Requirement | Status |
 | --- | --- |
-| Arc Public Testnet RPC `https://rpc.testnet.arc.io` | Live (see attempt JSON `head`) |
+| Arc Public Testnet RPC | Live (`https://rpc.testnet.arc.network`) |
 | Chain id `5042002` | Verified |
-| Factory runtime ≤ EIP-170 24,576 | Recorded in attempt JSON / `pnpm size:guard` |
-| Funded EOA private key `ARC_TESTNET_PK` | **Missing** |
-| Explorer confirmation on [testnet.arcscan.app](https://testnet.arcscan.app) | **None** |
-| Uniswap v4 PoolManager on Arc Public Testnet | **Not deployed** (protocol dependency) |
+| Factory runtime ≤ 23,552 / EIP-170 | 23,286 bytes |
+| Funded disposable EOA | **Yes** (~10 native USDC-18; PK never committed) |
+| Circle faucet drip | Still `RECAPTCHA_ERROR` from this VM |
+| Explorer confirmation | Factory create + Instant/Fair smoke `result=success` |
+| Uniswap v4 PoolManager (Circle/Uniswap canonical) | Still unpublished — rehearsal deployed official v4-core BUSL |
 
-## Exact commands (when a funded key exists)
-
-```bash
-# 1. Fund an EOA on Arc Public Testnet (5042002)
-#    Faucet: https://faucet.circle.com
-#    Native gas is USDC-18. Protocol quote USDC is 0x3600…0000 (6 decimals).
-
-# 2. Never commit the key
-export ARC_TESTNET_PK=0x…          # funded EOA, not Anvil #0
-export ARC_TESTNET_RPC=https://rpc.testnet.arc.io
-export PATH="$PATH:$HOME/.foundry/bin"
-
-# 3. Build + size gate
-cd contracts && forge build --sizes && cd ..
-pnpm size:guard
-
-# 4. Probe + broadcast Factory create only if runtime ≤ 24576
-pnpm arc:factory-attempt
-# writes deployments/arc-factory-attempt.json
-# claimed stays false until you confirm the explorer receipt
-
-# 5. Full protocol (dependencies + Factory) — only after PoolManager exists on 5042002
-#    or you deploy official v4-core yourself (BUSL non-production)
-forge script script/Deploy.s.sol:Deploy \
-  --rpc-url "$ARC_TESTNET_RPC" \
-  --broadcast --legacy \
-  --private-key "$ARC_TESTNET_PK"
-
-# 6. Production-shaped genesis (Guardian = Safe ≠ deployer)
-export SAFE_GENESIS=true
-export GUARDIAN=0x…Safe
-export KEEPER=0x…Keeper
-# then Safe Transaction Builder: pnpm safe:genesis
-# Batch A → forge script script/VerifyGenesis.s.sol:VerifyGenesis --rpc-url $ARC_TESTNET_RPC
-# → Batch B (pauseLaunches(false) LAST)
-```
-
-## Addresses you must record before claiming
-
-Do **not** fill these until they appear on [testnet.arcscan.app](https://testnet.arcscan.app):
-
-- PoolManager (v4-core)
-- ReactorGuardian (immutable `guardian` = Safe)
-- TickerRegistry
-- QuoteAssetRegistry
-- CoreToken (name REACTOR CORE / symbol CORE; `TestCORE` is a deprecated alias)
-- ReactorFactory V1 + InstantLaunchModule
-- InstantCurve, ReactorHook, UserRouteExecutor, UserRouteQuoter
-- Vaults (LP, Flywheel, Buyback, SelfBurn, FairClaim, CoreVesting, CoreLiquidityVault)
-
-Canonical Arc USDC ERC-20: `0x3600000000000000000000000000000000000000` (6 decimals).  
-Native gas: USDC-18. Do not treat gas units as the protocol quote.
-
-## Still blocked after a key exists
-
-- **Arc Mainnet (5042)** — hard blocked. No addresses.
-- **Independent Codex / professional audit** — not claimed.
-- **Top-10 as an onchain oracle** — frozen offchain by design.
-- **Factory claimed:true** — only after an explorer hash is in `deployments/arc-factory-attempt.json` and a human confirms the receipt.
-
-See `scripts/arc-testnet-checklist.md` and `TESTNET_DEPLOYMENT.md`.
+Do not invent mainnet (5042) addresses.
