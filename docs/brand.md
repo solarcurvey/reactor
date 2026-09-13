@@ -8,7 +8,7 @@ Issue #55 is brand/product work. This pass ships a founder-ready **direction**, 
 
 Working default in the shipped UI is still graphite + cyan + the concentric mark (Direction A). That is convenience, not approval.
 
-Specimen (local app): [`/brand`](/brand). Source marks: `/brand/concepts/*.svg`.
+Specimen (local app route `/brand`): [`apps/web/src/app/brand/page.tsx`](../apps/web/src/app/brand/page.tsx). Source marks live under `apps/web/public/brand/concepts/` (see the SVG links below).
 
 ---
 
@@ -101,7 +101,7 @@ Chrome: **terminal**. Evolution of the current app.
 | Ink | `#F4F7FB` |
 | Muted | `#A1A1AA` (zinc-400, AA on void) |
 | Type | Geist Sans + Geist Mono (already loaded) |
-| Mark | Three concentric containment rings + luminous core. [SVG](/brand/concepts/a-terminal-core.svg) |
+| Mark | Three concentric containment rings + luminous core. [SVG](../apps/web/public/brand/concepts/a-terminal-core.svg) |
 | Chrome | Dark glass cards, rounded-full chips, soft cyan radial wash, glow only on the primary CTA |
 | Mood | Operator console. Precise, calm. Not neon-purple, not casino. |
 
@@ -109,7 +109,7 @@ Signature surfaces: REACTOR uses the rings; THE REACTOR keeps the same mark on a
 
 **Cost:** cheapest. Already in `logo.tsx` / `globals.css`. Risk: closer to “generic dark + cyan crypto” if the rings are not held tight.
 
-[Mood board](/brand/boards/a-terminal-core.png) — raster type on the board is **placeholder**, not copy.
+[Mood board](../apps/web/public/brand/boards/a-terminal-core.png) — raster type on the board is **placeholder**, not copy.
 
 ### B — Market Tape
 
@@ -123,7 +123,7 @@ Chrome: **market**. Built around `reactor.markets` and “choose what your token
 | Up | `#3DCC8A` |
 | Down | `#E85D4C` |
 | Type | IBM Plex Sans + IBM Plex Mono (not loaded — proposal only) |
-| Mark | Geometric ring with an R-cut (amber stroke, no glow). [SVG](/brand/concepts/b-market-tape.svg) |
+| Mark | Geometric ring with an R-cut (amber stroke, no glow). [SVG](../apps/web/public/brand/concepts/b-market-tape.svg) |
 | Chrome | Dense columns, ~8px radius, amber hairlines, no glow CTAs, 24h as tape (green/red **plus** a triangle — color is not the only signal) |
 | Mood | Quote-first board. Signal over noise. |
 
@@ -131,7 +131,7 @@ Signature surfaces: REACTOR is the ring-R; THE REACTOR is a live tape (`#1`–`#
 
 **Cost:** medium. New type + chrome density. Risk: reads as a CEX tape if “token launch on Arc” is not in the header.
 
-[Mood board](/brand/boards/b-market-tape.png) — raster type is **placeholder**, not copy.
+[Mood board](../apps/web/public/brand/boards/b-market-tape.png) — raster type is **placeholder**, not copy.
 
 ### C — Industrial Forge
 
@@ -145,7 +145,7 @@ Chrome: **industrial**. Furthest from Pump / Raydium / Uniswap template aestheti
 | Paper | `#ECE8E1` |
 | Cool steel | `#9AA4AD` |
 | Type | Geist Sans, heavier weights, less tracking (or Satoshi-class grotesque if licensed later) |
-| Mark | Thick steel vessel, hexagonal ember, one heat notch. [SVG](/brand/concepts/c-industrial-forge.svg) |
+| Mark | Thick steel vessel, hexagonal ember, one heat notch. [SVG](../apps/web/public/brand/concepts/c-industrial-forge.svg) |
 | Chrome | 1px steel borders, 0–4px radius, stamped uppercase labels, heat on primary actions only |
 | Mood | Containment vessel. Heavy, honest. |
 
@@ -153,7 +153,7 @@ Signature surfaces: REACTOR is the vessel; THE REACTOR is stamped rank plates; C
 
 **Cost:** highest visual delta vs today. Risk: “heat” can read as a different product if we keep cyan anywhere.
 
-[Mood board](/brand/boards/c-industrial-forge.png) — raster type is **placeholder**, not copy.
+[Mood board](../apps/web/public/brand/boards/c-industrial-forge.png) — raster type is **placeholder**, not copy.
 
 ---
 
