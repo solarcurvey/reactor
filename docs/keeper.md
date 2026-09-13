@@ -1,6 +1,27 @@
 # Keeper
 
-Designated Keeper. Not permissionless. Not a bounty. Not Guardian.
+> Designated Keeper. Not permissionless. Not a bounty. Not Guardian. CRE does not rank Top-10. Mainnet **5042 is disabled**. Signed-job `AutomationGateway` is draft **#54**, not current `main`.
+
+See [Automation](/docs/automation). Maintenance is not a privileged EOA calling vaults. There is no `KeeperReserve`, no public settle farming, and no onchain TWAP/Pyth Top-10. Source: `KEEPER_MODEL.md`.
+
+## Jobs
+
+The Keeper (and only the Keeper, and only while not paused) may:
+
+1. Flywheel quote → USDC (`FlywheelVault.settleQuote`)
+2. Submit a Top-10 epoch (`submitEpoch`)
+3. Top-10 buy+burn (`executeTop10Buyback`)
+4. Roll the epoch (`rollEpoch`)
+5. CORE quote → CORE buy+burn (`BuybackVault.execute`)
+6. Standard SelfBurn (`SelfBurnVault.execute`)
+
+The Keeper is **not** an owner. It cannot configure quotes, adapters, fees, Guardian, or vault recipients. It cannot withdraw.
+
+Each job takes a **20% chunk** (`MAX_CHUNK_BPS = 2000`) + `KEEPER_COOLDOWN = 5 minutes`. Last-sweep: if leftover after chunk is below threshold, take remaining so pots can drain. The Keeper supplies `minOut` from a **whole-route, fee-exempt** preview (`planFeeExemptRoute` + ProtocolV4Adapter). That path never shares `UserRouteQuoter`. Official edges are listed on the ticket as `exemptOfficialLegs[]` (0 user fee). Successful quotes refuse `minOut` 0 or 1.
+
+Top-10 jobs execute the **frozen onchain epoch**, not a later API refresh. The daemon reads the same indexer `GET /top10` snapshot the public route proxies. Accept uses `acceptTop10Snapshot`: `pauseEpoch` **or** `computedTs` older than `TOP10_SNAPSHOT_TTL_SEC` (15 minutes) refuses submit. A stalled ranker cannot keep a stale healthy payload live. See [Top-10](/docs/top-10).
+
+`submitOnce` — if the RPC is ambiguous (timeout after broadcast), do not resubmit.
 
 ## Leadership
 
@@ -25,14 +46,6 @@ If renew fails (expiry without renewal, or another owner stole after expiry) the
 
 `leader_locks.ts`, `leader_locks.lease_until`, and `keeper_operations.ts` are **milliseconds** (`Date.now()` / `Date.now() + ttlMs`), `BIGINT` on Postgres. On-chain Keeper work still uses `block.timestamp` seconds. A 32-bit INTEGER column overflows today's `Date.now()` (~1.8e12).
 
-## Jobs
-
-Each job takes a **20% chunk** + cooldown. The Keeper supplies `minOut` from a **whole-route, fee-exempt** preview (`planFeeExemptRoute` + ProtocolV4Adapter). That path never shares `UserRouteQuoter`. Official edges are listed on the ticket as `exemptOfficialLegs[]` (0 user fee). Successful quotes refuse `minOut` 0 or 1.
-
-Top-10 jobs execute the **frozen onchain epoch**, not a later API refresh. The daemon reads the same indexer `GET /top10` snapshot the public route proxies. Accept uses `acceptTop10Snapshot`: `pauseEpoch` **or** `computedTs` older than `TOP10_SNAPSHOT_TTL_SEC` (15 minutes) refuses submit. A stalled ranker cannot keep a stale healthy payload live.
-
-`submitOnce` — if the RPC is ambiguous (timeout after broadcast), do not resubmit.
-
 ## Modes
 
 | Mode | Meaning |
@@ -43,4 +56,21 @@ Top-10 jobs execute the **frozen onchain epoch**, not a later API refresh. The d
 
 Arc Mainnet **5042 is disabled** in Keeper and deploy scripts.
 
-Independent `watchdog` process checks heartbeat + on-chain epoch. See `KEEPER_MODEL.md`, [Trust](/docs/trust), [Quoting](/docs/quoting).
+Daemon: `apps/indexer/src/keeper.ts`. Independent `watchdog` (`apps/indexer/src/watchdog.ts`) fail-closes on stale heartbeat / pause. Monitoring keys must be **separate** from the Keeper.
+
+## Trust — operational risk
+
+`route` and `minOut` are **operational** risk on the Keeper key and its simulator.
+
+A compromised Keeper key can waste a pot on a bad already-bound route (sandwich / poor `minOut`) within chunk/hop/bucket bounds. It cannot redirect pots to itself, change fees, or empty official LP. Guardian can pause Keeper or replace `keeper` immediately. Signed-job relayer isolation is draft **#54**, not this tree.
+
+## Retired
+
+These are gone and must not return in V1 docs:
+
+- Permissionless keepers
+- USDC bounties / `KeeperReserve`
+- Onchain TWAP / Pyth / Chainlink Top-10 valuation trees
+- Public settle farming
+
+See [Automation](/docs/automation), [Trust](/docs/trust), [Quoting](/docs/quoting), `KEEPER_MODEL.md`.

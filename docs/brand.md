@@ -7,6 +7,8 @@
 
 Issue #55 is brand/product work. It does not redesign frozen V1 economics or architecture.
 
+See the [handbook home](/docs) and [docs policy](/docs/policy).
+
 Specimen (not in primary nav): local app route `/brand` (`apps/web/src/app/brand/page.tsx`). Vectors: [`apps/web/public/brand/README.md`](../apps/web/public/brand/README.md). Tokens: [`apps/web/src/lib/brand.ts`](../apps/web/src/lib/brand.ts) + [`brand-tokens.css`](../apps/web/src/styles/brand-tokens.css).
 
 ---

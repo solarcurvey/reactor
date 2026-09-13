@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { slugify } from "@/lib/docs-nav";
 import { SafeDocLink } from "./safe-link";
 
@@ -53,13 +53,21 @@ export function DocsMarkdown({ source }: { source: string }) {
       );
       continue;
     }
-    if (line.startsWith("> ")) {
+    if (line.startsWith(">")) {
+      const buf: string[] = [];
+      while (i < lines.length && lines[i]!.startsWith(">")) {
+        buf.push(lines[i]!.replace(/^>\s?/, ""));
+        i += 1;
+      }
       blocks.push(
         <aside key={key++} className="rounded-xl border border-amber-300/20 bg-amber-300/5 px-4 py-3 text-[13px] text-amber-50">
-          {inline(line.slice(2))}
+          {buf.filter((b) => b.trim()).map((b, n) => (
+            <p key={n} className={n ? "mt-2" : undefined}>
+              {inline(b)}
+            </p>
+          ))}
         </aside>,
       );
-      i += 1;
       continue;
     }
     if (line.startsWith("| ")) {
@@ -125,6 +133,21 @@ export function DocsMarkdown({ source }: { source: string }) {
       );
       continue;
     }
+    if (/^\d+\. /.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\. /.test(lines[i]!)) {
+        items.push(lines[i]!.replace(/^\d+\. /, ""));
+        i += 1;
+      }
+      blocks.push(
+        <ol key={key++} className="list-decimal space-y-1 pl-5 text-[14px] text-zinc-300">
+          {items.map((it, n) => (
+            <li key={n}>{inline(it)}</li>
+          ))}
+        </ol>,
+      );
+      continue;
+    }
     if (line.trim() === "") {
       i += 1;
       continue;
@@ -141,12 +164,25 @@ export function DocsMarkdown({ source }: { source: string }) {
 
 function Copy({ text }: { text: string }) {
   return (
+    <CopyButton text={text} />
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
     <button
       type="button"
-      className="absolute right-2 top-2 rounded-md bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-zinc-300 opacity-0 group-hover:opacity-100"
-      onClick={() => navigator.clipboard.writeText(text)}
+      data-testid="docs-copy"
+      aria-label={copied ? "Copied" : "Copy code"}
+      className="absolute right-2 top-2 rounded-md bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-zinc-300 opacity-100"
+      onClick={async () => {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1600);
+      }}
     >
-      Copy
+      {copied ? "Copied" : "Copy"}
     </button>
   );
 }

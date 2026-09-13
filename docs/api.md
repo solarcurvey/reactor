@@ -1,8 +1,8 @@
 # API
 
-Base URL: indexer (local `http://127.0.0.1:43148`).
+> Base URL: indexer (local `http://127.0.0.1:43148`). Official LP fee is **0**. Protocol charge is **350 bps**. The API will not invent 0.30% official pools.
 
-> Official LP fee is **0**. Protocol charge is **350 bps**. The API will not invent 0.30% official pools. CI fails if this page and `ReactorConstants` disagree.
+CI fails if this page and `ReactorConstants` disagree. All JSON may include `request_id`. Rate limits apply to quote, upload, and pricing.
 
 ## Public
 
@@ -33,13 +33,11 @@ Base URL: indexer (local `http://127.0.0.1:43148`).
 
 ## Launch signer (isolated process)
 
-Binds `127.0.0.1`. Requires an ALLOW `AdmissionReceipt` (or internal token on loopback). Not generally callable. The same operator policy gate runs **before** any `LaunchAuthorization` output. Domain `verifyingContract` is the **TickerRegistry**. Full identity: factory, Factory V1, creator, quote, mode, ticker, name, metadata hash, `virtualQuote0`, curve, `authId`, deadline, chain. Receipt `launchConfigHash` must match. Durable Postgres/SQLite is required: store failure is `SIGNER_STORE_UNAVAILABLE` (503). Receipt consume + issuance bucket always run. `/health` is 503 when the store is down.
+Binds `127.0.0.1` (local `:43149`). Requires an ALLOW `AdmissionReceipt` (or internal token on loopback). Not generally callable. The same operator policy gate runs **before** any `LaunchAuthorization` output. Domain `verifyingContract` is the **TickerRegistry**. Full identity: factory, Factory V1, creator, quote, mode, ticker, name, metadata hash, `virtualQuote0`, curve, `authId`, deadline, chain. Receipt `launchConfigHash` must match. Durable Postgres/SQLite is required: store failure is `SIGNER_STORE_UNAVAILABLE` (503). Receipt consume + issuance bucket always run. `/health` is 503 when the store is down.
 
 ## Ops
 
 `/ops` is not in public nav. Requires the ops token. The payload includes `sanctions` (exact dataset + policy versions). `POST /ops/sanctions/refresh` pulls official OFAC HTTPS sources through the #64 freshness layer (failure keeps last-known-good). `POST /ops/sanctions/writes` emergency-disables operated write assistance. `POST /ops/sanctions/review` queues an explicit operator review — user complaints are `NO_AUTOMATED_OVERRIDE`. See [Sanctions ops](/docs/sanctions-ops) and the [runbook](/docs/sanctions-runbook).
-
-All JSON may include `request_id`. Rate limits apply to quote, upload, and pricing.
 
 ## Request-body limits
 
@@ -55,6 +53,12 @@ The isolated launch-pricing signer (`127.0.0.1:43149`) is not a public API; it u
 
 Issue **#63** adds `evaluateRequestGeo` on the indexer (trusted edge HMAC + versioned deny revision → ALLOW / DENY / UNKNOWN). It is **not** a public endpoint. HTTP write/authorization enforcement is [Operator policy](/docs/operator-policy). Browser country headers are ignored. See [Geo policy](/docs/geo-policy).
 
-See [Markets](/docs/markets), [Quoting](/docs/quoting), [Admission](/docs/admission), [Operator policy](/docs/operator-policy).
+## Honesty
+
+- Indexer rows are not custody.
+- `/markets` FDV tracks burn-adjusted remaining supply; it is not a live ≡ with `totalSupply()`.
+- Top-10 USD comes from this same ValuationService. Contracts still check structure only.
+
+See [Markets](/docs/markets), [Quoting](/docs/quoting), [Admission](/docs/admission), [Examples](/docs/examples), [Operator policy](/docs/operator-policy).
 
 The public Next BFF `GET /api/operator-policy` is the launchpad’s UX status. It never echoes raw IP, country ISO, SDN names, or claimed-wallet flags as authority. Write CTAs disable on `deny` / `unavailable`. See [Restricted access](/docs/restricted-access).

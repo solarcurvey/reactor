@@ -379,7 +379,7 @@ jobs:
     needs: decide
     if: needs.decide.outputs.full == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -394,8 +394,8 @@ jobs:
             ${{ runner.os }}-playwright-
       - name: Install Playwright Chromium
         run: pnpm --filter web exec playwright install --with-deps chromium
-      - name: Playwright smoke + interactive
-        run: pnpm --filter web exec playwright test e2e/smoke.spec.ts e2e/interactive.spec.ts --reporter=line
+      - name: Playwright smoke + interactive + handbook copy/visual
+        run: pnpm --filter web exec playwright test e2e/smoke.spec.ts e2e/interactive.spec.ts e2e/docs-copy.spec.ts e2e/docs-visual.spec.ts --reporter=line
 
   e2e-release-gate:
     name: e2e-release-gate

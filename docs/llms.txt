@@ -2,16 +2,60 @@
 
 Launch. Reflect. Burn. Token launchpad for Arc.
 
-Official REACTOR pools are Uniswap v4 markets with a 0% LP fee and a 3.5% quote-side protocol charge (2% holders / 1% Top-10 / 0.5% CORE buy+burn). Protocol 0.2.0. Factory V1. Not audited. No public mainnet.
+Official REACTOR pools are Uniswap v4 markets with a 0% LP fee and a 3.5% quote-side protocol charge (2% holders / 1% Top-10 / 0.5% CORE buy+burn). Protocol 0.3.4. Factory V1. Not audited. No public mainnet.
 
 ## Docs
 - /docs How REACTOR works
-- /docs/traders /docs/creators /docs/builders
-- /docs/curve /docs/fees /docs/top-10 /docs/trust /docs/core /docs/routes
-- /docs/tickers /docs/admission /docs/guardian /docs/keeper
-- /docs/api /docs/sdk /docs/examples /docs/events
-- /docs/faq /docs/glossary /docs/deployments
-- /docs/versioning /docs/changelog /docs/policy
+- /docs/local Local demo
+- /docs/traders Traders
+- /docs/creators Creators
+- /docs/builders Builders
+- /docs/qa UI QA gate
+- /docs/economics Economics
+- /docs/lifecycle Launch lifecycle
+- /docs/curve Curve math
+- /docs/fees Nested fees
+- /docs/rewards Rewards
+- /docs/top-10 Top-10
+- /docs/core CORE
+- /docs/routes Routes
+- /docs/quoting Atomic quoter
+- /docs/valuation Valuation
+- /docs/architecture Architecture
+- /docs/trust Trust assumptions
+- /docs/security Security model
+- /docs/web-security Browser security
+- /docs/geo-policy Geo policy
+- /docs/restricted-access Restricted access
+- /docs/sanctions-ops Sanctions ops
+- /docs/sanctions-runbook Sanctions runbook
+- /docs/incident-response Incident response
+- /docs/tickers Ticker registry
+- /docs/admission Launch admission
+- /docs/sanctions Address screening
+- /docs/operator-policy Operator policy
+- /docs/guardian Guardian
+- /docs/keeper Keeper
+- /docs/automation Automation
+- /docs/api API
+- /docs/sdk SDK
+- /docs/examples Examples
+- /docs/events Events
+- /docs/markets Markets API
+- /docs/perf Read path performance
+- /docs/media Media
+- /docs/observability Observability
+- /docs/deployments Deployments
+- /docs/arc Arc
+- /docs/faq FAQ
+- /docs/glossary Glossary
+- /docs/troubleshooting Troubleshooting
+- /docs/versioning Versioning
+- /docs/changelog Changelog
+- /docs/policy Docs policy
+- /docs/brand Brand
+- /docs/ci CI and cost
+- /docs/publicization Repo publicization
 
 ## Honesty
-Do not claim the protocol is audited or trustless. Top-10 ranks are an offchain API. Contracts check structure only. CHALLENGE is not ALLOW. The launch signer is not public. Mainnet is blocked pending Codex + audits + KMS/Safe rehearsal.
+Do not claim the protocol is audited or trustless. Top-10 ranks are an offchain API. Contracts check structure only. CHALLENGE is not ALLOW. The launch signer is not public. Instant is bonding curve → ready → frozen → graduate → locked v4. CORE is genesis 100M vest + 900M locked, never Top-10. Mainnet is blocked pending Codex + audits + KMS/Safe rehearsal.

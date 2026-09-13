@@ -1,8 +1,11 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { DOCS, slugify } from "./docs-nav";
+import { buildSearchEntry, type DocsSearchEntry } from "./docs-search";
+import { applyReleaseTokens, loadReleaseIdentity, type ReleaseIdentity } from "./release-identity";
 
 export { DOCS, slugify };
+export type { DocsSearchEntry, ReleaseIdentity };
 
 export type ProtocolVersion = {
   protocolVersion: string;
@@ -12,8 +15,17 @@ export type ProtocolVersion = {
 };
 
 export function loadProtocolVersion(): ProtocolVersion {
-  const p = join(docsRoot(), "version.json");
-  return JSON.parse(readFileSync(p, "utf8")) as ProtocolVersion;
+  const rel = loadReleaseIdentity();
+  return {
+    protocolVersion: rel.protocolVersion,
+    factoryVersion: rel.factoryVersion,
+    factoryVersionLabel: rel.factoryVersionLabel,
+    releaseTag: rel.releaseTag,
+  };
+}
+
+export function loadRelease(): ReleaseIdentity {
+  return loadReleaseIdentity();
 }
 
 export function docsRoot(): string {
@@ -33,7 +45,18 @@ export function loadDoc(slug: string): { title: string; markdown: string } | nul
   if (!meta) return null;
   const p = join(docsRoot(), meta.file);
   if (!existsSync(p)) return null;
-  return { title: meta.title, markdown: readFileSync(p, "utf8") };
+  const rel = loadReleaseIdentity();
+  return { title: meta.title, markdown: applyReleaseTokens(readFileSync(p, "utf8"), rel) };
+}
+
+export function loadDocsSearchIndex(): DocsSearchEntry[] {
+  const rel = loadReleaseIdentity();
+  const root = docsRoot();
+  return DOCS.map((meta) => {
+    const p = join(root, meta.file);
+    const raw = existsSync(p) ? readFileSync(p, "utf8") : "";
+    return buildSearchEntry(meta, applyReleaseTokens(raw, rel));
+  });
 }
 
 export function headings(md: string): { id: string; text: string; level: number }[] {

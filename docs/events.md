@@ -1,6 +1,10 @@
 # Events
 
-Indexer watches Factory, InstantLaunchModule, hook, curve, vaults, PoolManager, TickerRegistry. Token / CORE addresses are watched separately for `Burned` and `Transfer` (only `to == address(0)` counts as a burn).
+> Indexer watches Factory, InstantLaunchModule, hook, curve, vaults, PoolManager, TickerRegistry. Token / CORE addresses are watched separately for `Burned` and `Transfer` (only `to == address(0)` counts as a burn).
+
+Onchain logs are the journal. The indexer is a cache. Event rows and the ingest cursor commit together.
+
+## What each event does
 
 | Event | Effect |
 | --- | --- |
@@ -49,6 +53,6 @@ No toast for pending wallet txs, `SelfBurnAccrued` / `SelfBurnExecuted`, holder 
 
 Issue **#38 stays open** until merge and post-merge verify. The visible CI/release gate is `.github/workflows/ci.yml` job **`live-toasts-ui`** (full merge-candidate + main): identity unit tests plus Playwright regressions for duplicate-after-dismiss, same-tx multi-log, disconnect/reconnect, safe-area, and reduced-motion (`pnpm test:live-toasts`). Fast PR updates still run the identity unit via `pnpm test:lib`. See [CI and cost](/docs/ci).
 
-See [Traders](/docs/traders), [CORE](/docs/core), [Top-10](/docs/top-10).
+Schema notes: journal identity is **v8**; `tokens.current_supply` is **v9**; `external_price_marks.kind` is **v10**; Top-10 candidate snapshot tables are **v11**. Auditor event list: `AUDIT_HANDOFF.md`.
 
-See [Markets](/docs/markets). Auditor event list: `AUDIT_HANDOFF.md`.
+See [Traders](/docs/traders), [CORE](/docs/core), [Top-10](/docs/top-10), [Markets](/docs/markets), [Valuation](/docs/valuation).

@@ -1,10 +1,10 @@
 # Observability
 
-> Protocol **0.3.4**. Frontend ops only. Economics, Factory V1, and on-chain architecture are unchanged. Not audited. No public mainnet.
+> Protocol **{{protocolVersion}}**. Frontend ops only. Economics, Factory {{factoryVersionLabel}}, and on-chain architecture are unchanged. Not audited. No public mainnet.
 
 Production web emits **failure telemetry** (not a product analytics warehouse), **core-page Web Vitals**, and **error boundaries** so a single route cannot white-screen the app.
 
-Issue **#39 stays open** until merge + post-merge verify (including a configured telemetry release that symbolicates a deliberate production error). Later branches must rebase onto **0.3.4** (this branch owns the protocol number) unless AutomationGateway **#54** (`0.4.0`) lands first — then rebase onto that tip and **do not restore 0.3.4**. Do not restore **0.3.3**.
+Issue **#39 stays open** until merge + post-merge verify (including a configured telemetry release that symbolicates a deliberate production error). Current `main` is **0.3.4** after #46 / #80. **#54 is not a handbook prerequisite.** Do not restore **0.3.3**.
 
 ## What is shipped
 
@@ -156,4 +156,4 @@ Do this against an operator-owned staging Sentry (or equivalent). Do not put the
 
 ## Merge train
 
-This branch **owns protocol 0.3.4**. Parent is `4207356` (#75 Restricted-access UX after #44 E2E release gate / #70 sanctions freshness / #79 CI evidence / #68 operator-policy / #67 geo / #66 OFAC / #49 UI QA / #42 full GitHub CI extras / #50 indexed board + page-budget / #58 typecheck / #73 three-tier CI / #77 / #76 / #74 / #59 / #47). `#75` `/restricted` + `policy.ensureProof` stay. Recovered-wallet proof stays on Launch/trade. #44 `e2e-release-gate` + sanctions ops docs/nav and `/ops` dataset card stay from main. Lands independently before docs PR #48; do not fold handbook work here. Visible CI gate: `.github/workflows/ci.yml` job **`obs-ui`** (full / main / `ci-full`; obs unit + source-map + configured-DSN vendor proof + production `next start` Playwright `obs-failure-injection.spec.ts`; `contents: read` + `persist-credentials: false`). Fast PR runs obs units via `test:lib`. Close #39 only after merge + post-merge live vendor verify. If #54 AutomationGateway `0.4.0` merges first, rebase onto that tip and do not restore 0.3.4. Do not restore 0.3.3 in `docs/version.json` / root `package.json`.
+Current `main` is protocol **0.3.4** after squash-merged **#46** / **#80** (`4915f3e`). `#75` `/restricted` + `policy.ensureProof` stay. Recovered-wallet proof stays on Launch/trade. #44 `e2e-release-gate` + sanctions ops docs/nav and `/ops` dataset card stay. Visible CI gate: `.github/workflows/ci.yml` job **`obs-ui`** (full / main / `ci-full`; obs unit + source-map + configured-DSN vendor proof + production `next start` Playwright `obs-failure-injection.spec.ts`; `contents: read` + `persist-credentials: false`). Fast PR runs obs units via `test:lib`. Close #39 only after post-merge live vendor verify. **#54 is not a handbook prerequisite.** Do not restore 0.3.3 in `docs/version.json` / root `package.json`.

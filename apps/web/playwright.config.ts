@@ -7,12 +7,12 @@ const ci = !!process.env.CI;
 export default defineConfig({
   testDir: "./e2e",
   testIgnore: [
-    /visual\.spec\.ts/,
-    /states\.spec\.ts/,
-    /a11y\.spec\.ts/,
-    /failures\.spec\.ts/,
-    /prod-security\.spec\.ts/,
-    /restricted-prod\.spec\.ts/,
+    /(^|\/)visual\.spec\.ts$/,
+    /(^|\/)states\.spec\.ts$/,
+    /(^|\/)a11y\.spec\.ts$/,
+    /(^|\/)failures\.spec\.ts$/,
+    /(^|\/)prod-security\.spec\.ts$/,
+    /(^|\/)restricted-prod\.spec\.ts$/,
     /release\//,
     /harness\//,
   ],

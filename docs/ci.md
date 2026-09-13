@@ -93,6 +93,7 @@ Open product issues keep their acceptance commands. Attach new heavy jobs to **t
 | Issue / PR | Gate | Slot |
 | --- | --- | --- |
 | #17 (merged #42) | Full GitHub CI — Foundry, size guard, Attack, CREATE2, `docs:links`, Playwright smoke, Safe genesis | Landed. Accepted `11fdadb` / `34727535121` then `80d3cac` / `34727638255`. Gates remain on this workflow. **#17 stays open** until post-merge docs/CI after #79. |
+| #14 (PR #48) | GitBook handbook | Draft. Known AC gaps remain (body search, broken-link CI, visual/code-copy, version badge matrix). Cheap handbook units stay in `test:lib`. Playwright `docs-copy` / `docs-visual` run on the full-tier `web` job. Default `playwright.config.ts` `testIgnore` must not swallow `docs-visual.spec.ts`. Do **not** restore `docs-sync.yml`. |
 | #15 / #35 (PR #44) | Production browser + wallet E2E | `e2e-release-gate` (full) — `pnpm test:e2e:release`. Do **not** add `e2e-release.yml`. |
 | #15 / #36 (merged #49, closed) | Visual / a11y / failure-injection | `web-qa` (full). Closed after `ad7b457` / `34729758795`. Do not re-add `.github/workflows/web-qa.yml`. |
 | #15 / #18 | Production-readiness parent | Same full-tier rule. Do not move those commands to optional / `continue-on-error`. |
