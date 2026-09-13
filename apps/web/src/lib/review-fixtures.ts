@@ -44,6 +44,8 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     priceQuoteX18: (2n * 10n ** 16n).toString(),
     fdvUsd6: (412_000n * 1_000_000n).toString(),
     volume24hUsd6: (88_000n * 1_000_000n).toString(),
+    liquidityUsd6: (82_000n * 1_000_000n).toString(),
+    change24hBps: "1240",
   },
   {
     token: GIGA,
@@ -70,6 +72,8 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     priceQuoteX18: (381n * 10n ** 15n).toString(),
     fdvUsd6: (381_000n * 1_000_000n).toString(),
     volume24hUsd6: (42_000n * 1_000_000n).toString(),
+    liquidityUsd6: (64_000n * 1_000_000n).toString(),
+    change24hBps: "-320",
   },
   {
     token: FCAT,
@@ -96,6 +100,8 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     priceQuoteX18: (8n * 10n ** 14n).toString(),
     fdvUsd6: (41_000n * 1_000_000n).toString(),
     volume24hUsd6: (3_200n * 1_000_000n).toString(),
+    liquidityUsd6: (18_000n * 1_000_000n).toString(),
+    change24hBps: "80",
   },
   {
     token: CAT,
@@ -124,6 +130,8 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     priceQuoteX18: (5n * 10n ** 16n).toString(),
     fdvUsd6: (22_000n * 1_000_000n).toString(),
     volume24hUsd6: (1_100n * 1_000_000n).toString(),
+    liquidityUsd6: (4_400n * 1_000_000n).toString(),
+    change24hBps: "640",
   },
   {
     token: BOND,
@@ -152,6 +160,8 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     priceQuoteX18: (12n * 10n ** 13n).toString(),
     fdvUsd6: (12_000n * 1_000_000n).toString(),
     volume24hUsd6: (6_400n * 1_000_000n).toString(),
+    liquidityUsd6: (3_100n * 1_000_000n).toString(),
+    change24hBps: "2100",
   },
   {
     token: NEON,
@@ -180,6 +190,8 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     priceQuoteX18: (8n * 10n ** 13n).toString(),
     fdvUsd6: (8_000n * 1_000_000n).toString(),
     volume24hUsd6: (2_200n * 1_000_000n).toString(),
+    liquidityUsd6: (1_600n * 1_000_000n).toString(),
+    change24hBps: "-90",
   },
   {
     token: XSS,
@@ -206,6 +218,8 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     priceQuoteX18: (1n * 10n ** 13n).toString(),
     fdvUsd6: (1_000n * 1_000_000n).toString(),
     volume24hUsd6: (100n * 1_000_000n).toString(),
+    liquidityUsd6: (1_000n * 1_000_000n).toString(),
+    change24hBps: "",
   },
   {
     token: LONG,
@@ -232,6 +246,8 @@ export const FIXTURE_TOKENS: LaunchToken[] = [
     priceQuoteX18: (1n * 10n ** 13n).toString(),
     fdvUsd6: (900n * 1_000_000n).toString(),
     volume24hUsd6: (50n * 1_000_000n).toString(),
+    liquidityUsd6: (1_000n * 1_000_000n).toString(),
+    change24hBps: "",
   },
 ];
 

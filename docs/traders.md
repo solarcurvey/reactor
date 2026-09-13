@@ -75,7 +75,7 @@ Review / Playwright can force those banners with `?inject=` (indexer, rpc, quote
 
 | Surface | Source |
 | --- | --- |
-| Homepage / search | `GET /markets` — search (`q`), `stage`, NUMERIC sort (`new` / `vol` / `price`), keyset (`cursor_ts` + `cursor_token` on that sort key) |
+| Homepage / search | `GET /markets` — global `q` (not a filter of the first page), `board` chips, `stage`, NUMERIC sort (`new` / `vol` / `price`), keyset (`cursor_ts` + `cursor_token`). Cards show FDV / quote-side Liq / 24h vol / 24h % (`—` when unknown). |
 | Token page | `GET /page/token/:token` (market + candles + tape). Live ticket is still `POST /quote`. |
 | Top-10 | Indexer `GET /top10` (ValuationService snapshot, 15m TTL). Not a Factory RPC. |
 | 24h price | Latest trade **by `ts`**, not `MAX(price)` |

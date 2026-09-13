@@ -82,7 +82,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <main
                     id="content"
                     tabIndex={-1}
-                    className="mx-auto min-h-[calc(100vh-8rem)] max-w-7xl px-4 py-5 sm:py-6 outline-none"
+                    className="mx-auto min-h-[calc(100vh-8rem)] min-w-0 max-w-7xl overflow-x-clip px-4 py-5 sm:py-6 outline-none"
                   >
                     {children}
                   </main>

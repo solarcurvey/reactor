@@ -28,6 +28,11 @@ npx --yes tsx apps/web/src/lib/top10.test.ts
 npx --yes tsx apps/web/src/lib/marketdata.test.ts
 npx --yes tsx apps/web/src/lib/live-toasts.test.ts
 npx --yes tsx apps/web/src/lib/indexed.test.ts
+npx --yes tsx apps/web/src/lib/market-ui.test.ts
+npx --yes tsx apps/web/src/lib/markets-api.test.ts
+npx --yes tsx apps/web/src/lib/discover-search-backend.test.ts  # #40: no filterMarkets; Discover/search use useMarketsInfinite
+npx --yes tsx apps/web/src/lib/visual-accept.test.ts
+npx --yes tsx apps/web/src/lib/protocol-version.test.ts
 pnpm test:page-budget         # same as page-budget.test.ts; required always-on CI job page-budget
 # CI: .github/workflows/ci.yml job page-budget (required; every PR including drafts; ci-ok requires it).
 # #73 should absorb this as a fast job — do not add a second push+pull_request file.
@@ -51,7 +56,7 @@ npx --yes tsx apps/web/src/lib/operator-policy-bff.test.ts
 pnpm test:operator-policy-http  # real indexer + production Next HTTP matrix (CI full/main job operator-policy-http)
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
 pnpm docs:links                 # in-repo /docs slugs + relative files (CI docs-links job; no network). Do not restore docs-sync.yml
-pnpm test:web-unit              # top10 / marketdata / limited-json / fee-legs / constants-sync / brand voice
+pnpm test:web-unit              # top10 / marketdata / limited-json / fee-legs / constants-sync / brand + #40 market-ui / markets-api / discover-search-backend / visual-accept / protocol-version
 npx --yes tsx apps/web/src/lib/docs-pages.test.ts  # handbook nav + llms.txt twins
 npx --yes tsx apps/web/src/lib/docs-search.test.ts # #14: full-text body search (5365128027 → Curve math)
 pnpm test:ci-cost               # #69: no duplicate push+PR, concurrency, docs-only classification, fail-safe paths

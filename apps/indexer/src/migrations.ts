@@ -1,6 +1,6 @@
 import type { Store } from "./db.ts";
 
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 /**
  * Wall-clock fields written as `Date.now()` milliseconds (≈1.8e12 today).
@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS markets (
   volume_24h_quote TEXT,
   volume_24h_usd6 TEXT,
   trades_24h INTEGER,
+  liquidity_usd6 TEXT,
+  change_24h_bps TEXT,
   lifetime_rewards TEXT,
   image TEXT,
   description TEXT,
@@ -545,6 +547,12 @@ export async function applyMigrations(store: Store): Promise<number> {
       CREATE INDEX IF NOT EXISTS idx_top10_candidate_token ON top10_candidate_rows(token);
     `);
     await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 11, Math.floor(Date.now() / 1000));
+  }
+  // v12 = board liquidity (quote-side USD) + 24h mark change bps (#40). After #33 v11.
+  if (!(await migrationApplied(store, 12))) {
+    await store.exec("ALTER TABLE markets ADD COLUMN liquidity_usd6 TEXT DEFAULT '0'").catch(() => undefined);
+    await store.exec("ALTER TABLE markets ADD COLUMN change_24h_bps TEXT DEFAULT ''").catch(() => undefined);
+    await store.run("INSERT INTO schema_migrations(id, applied_ts) VALUES(?,?)", 12, Math.floor(Date.now() / 1000));
   }
   // Executable Arc mark lives on the verified venue row — column-gated, not a schema id.
   await ensureRouteVenueMarkColumn(store);

@@ -9,6 +9,7 @@ import {
 import { EVENT_IDENTITY_CONFLICT, insertLogOnce, journalEvent } from "./event-identity.ts";
 import { isUniqueViolation } from "./unique.ts";
 import { loadValuationService } from "./valuation-store.ts";
+import { change24hBps, quoteLiquidityUsd6 } from "./markets-metrics.ts";
 
 export type SsePublisher = { publish(ev: { type: string; data: unknown }): void };
 export type TotalSupplyReader = (token: string) => Promise<bigint | null>;
@@ -471,10 +472,17 @@ export async function rollOneMarket(store: Store, token: string, nowTs: number) 
     token,
     since,
   );
-  const mkt = await store.get<{ price_quote_x18: string; quote: string }>(
-    "SELECT price_quote_x18, quote FROM markets WHERE token=?",
+  const prior = await store.get<{ price_quote_x18: string }>(
+    `SELECT price_quote_x18 FROM trades WHERE token=? AND ts<=? AND price_quote_x18 IS NOT NULL AND price_quote_x18 != '0'
+     ORDER BY ts DESC, id DESC LIMIT 1`,
+    token,
+    since,
+  );
+  const mkt = await store.get<{ price_quote_x18: string; quote: string; stage: string; market_live: number; real_quote: string }>(
+    "SELECT price_quote_x18, quote, stage, market_live, real_quote FROM markets WHERE token=?",
     token,
   );
+  const grad = await store.get<{ quote_lp: string }>("SELECT quote_lp FROM graduations WHERE token=?", token);
   const tok = await store.get<{ supply: string; decimals: number }>(
     "SELECT supply, decimals FROM tokens WHERE address=?",
     token,
@@ -488,6 +496,8 @@ export async function rollOneMarket(store: Store, token: string, nowTs: number) 
   let fdv = "0";
   let priceUsd6 = "0";
   let volUsd6 = "0";
+  let liquidityUsd6 = "0";
+  let chg = "";
   try {
     const svc = await loadValuationService(store);
     const quote = mkt?.quote ?? "";
@@ -506,17 +516,27 @@ export async function rollOneMarket(store: Store, token: string, nowTs: number) 
     fdv = remaining > 0n && quoteUsd6 > 0n
       ? fdvUsd6(BigInt(price || "0"), remaining, tokenDecimals, quoteUsd6).toString()
       : "0";
+    const live = Boolean(mkt?.market_live) || mkt?.stage === "v4";
+    const quoteRaw = live && grad?.quote_lp && grad.quote_lp !== "0"
+      ? BigInt(grad.quote_lp)
+      : BigInt(String(mkt?.real_quote || "0"));
+    liquidityUsd6 = quoteLiquidityUsd6(quoteRaw, quoteUsd6, dec);
+    if (prior?.price_quote_x18 && prior.price_quote_x18 !== "0" && price && price !== "0") {
+      chg = change24hBps(BigInt(price), BigInt(prior.price_quote_x18));
+    }
   } catch {
     fdv = "0";
   }
   await store.run(
-    `UPDATE markets SET volume_24h_quote=?, volume_24h_usd6=?, trades_24h=?, fdv_usd6=?, price_usd6=?, price_quote_x18=?, updated_ts=? WHERE token=?`,
+    `UPDATE markets SET volume_24h_quote=?, volume_24h_usd6=?, trades_24h=?, fdv_usd6=?, price_usd6=?, price_quote_x18=?, liquidity_usd6=?, change_24h_bps=?, updated_ts=? WHERE token=?`,
     String(agg?.vol ?? "0"),
     volUsd6,
     Number(agg?.n ?? 0),
     fdv,
     priceUsd6,
     price,
+    liquidityUsd6,
+    chg,
     nowTs,
     token,
   );

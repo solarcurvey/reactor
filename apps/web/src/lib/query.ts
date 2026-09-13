@@ -19,8 +19,11 @@ export type MarketListOpts = {
   q?: string;
   stage?: string;
   quote?: string;
+  quoteSymbol?: string;
+  board?: string;
   sort?: "new" | "vol" | "price";
   limit?: number;
+  cursor?: { cursor_ts: string; cursor_token: string } | null;
 };
 
 export const qk = {

@@ -1,25 +1,62 @@
-# BUILD REPORT — Handbook rebase onto main #80 (Refs #14)
+# BUILD REPORT — Production discovery AC close (#40 / PR #45)
 
-**Status:** Same draft PR **#48** / same branch `cursor/extensive-gitbook-docs-afa6`, rebased onto `origin/main` `4915f3e` (squash-merged **#80** Industrial Forge). The four #14 AC surfaces (body search, `docs:links`, docs-copy + visual baselines, badge matrix) are **implemented; full hosted proof pending**. Handbook chrome muted copy is `text-zinc-400` (AA floor) — do not restore `text-zinc-500` on `/docs`. Issue **#14 stays open**. **#54 is not a prerequisite.** Do not merge #48. Do not close #14.
+**Status:** Same branch `cursor/production-discovery-ux-38ee` / same PR **#45**. Rebased onto branded `origin/main` `4915f3e` after squash-merged **#80** Industrial Forge (on **#81** / **#46** / **#75** / **#44**). Preserved Forge tokens/components (`BRAND_COPY`, heat `rx-kicker`, 0–4px radius, slag/steel/heat/paper). Preserved #81 `ci-decide` / `ci-ok`. Preserved #46 `reactorFetch` / error boundaries / release SHA / `obs-ui`. Preserved #75 `/restricted`, write-lock, denied-policy a11y/reflow, four-state policy matrix, and hydration fixes (launch/trade not taken wholesale). Protocol stays **0.3.4** (do not restore 0.3.3).
 **Not audited. Not mainnet.**
-**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+**#40, #15, and #39 stay open.** **#35 is closed** after merged #44 + green post-merge main verification. **#39 is reopened** after merged #46 — remaining gate is a real configured telemetry-provider proof (in-process `vendor-proof` does not close it). **#40 cannot close while #39 remains open.** **#36 is independently closed.** **#55 stays open** through #80 merge + one green post-merge `main` run.
+
+## This HEAD
 
 | Item | Value |
 | --- | --- |
-| Protocol release | **0.3.4** from current `main` `docs/version.json` |
+| Protocol release | **0.3.4** (`docs/version.json`) — inherit merged #46; Discover/search notes only |
 | Factory | **V1** — **unchanged** |
-| Intent | Keep the #14 handbook corpus. Preserve #80 Forge chrome (`rx-kicker` / `rx-link` / tokens / assets) additively with body search, badges, and nav blurbs. Do not take main’s title-only docs search. |
-| Merge-train | #54 AutomationGateway is **not** stacked. Handbook documents current `main`. #80 brand is on this tip. |
+| Intent | Finish #40 backend Discover/search ACs on branded main: global `GET /markets?q=&board=&cursor_*`, schema v12 liquidity + 24h %, designed states. Fold #49 QA inject / a11y / `ServiceFailure` onto `useMarketsInfinite` — do not fall back to client `filterMarkets`. Keep Industrial Forge chrome + #46 observability + #75 restricted-policy UX. |
+| Schema | **v12** `markets.liquidity_usd6` + `markets.change_24h_bps` after #33 v11 |
+| Indexer / lib | `markets-query.test.ts` (48-row catalog; `q=ZLATE` not on page 1), `markets-metrics.test.ts`, plus #46 obs units, #75 `operator-policy-status` / bind / restricted fixtures, #50 page-budget, #44 `e2e-release-gate` |
+| Related UI QA | Coordinates with merged #49 (`docs/visual-accept.json` 1440/390). Does **not** close #39, #15, #17, #40, or #55. #35 and #36 are independently closed. |
+
+## Closed this run (issue stays open)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Discover/search is global backend + cursor | **Yes** | Pages use `useMarketsInfinite` → `GET /markets?q=&board=&cursor_*`. `filterMarkets` is **removed** from the web app (not a client filter of page 1). Regression: 48-row catalog, `ZLATE` absent from page 1, `q=zlate` hits. `discover-search-backend.test.ts` + Playwright `search-pages.spec.ts`. |
+| Liquidity + 24h % on board/terminal | **Yes** | `rollOneMarket` writes quote-side USD liq + bps. Cards + token terminal show both. Empty change is `—`, not invented 0%. Token page still uses #50 `GET /page/token`. |
+| THE REACTOR / CORE / quote dashboards + states | **Yes** | Designed `SurfaceState` loading/empty/error/offline plus #49 `ServiceFailure` for `?inject=`. CORE keeps #50 batched vesting reads. Quote ecosystem uses `quote_symbol` + cursor. Top-10 fetch stays on #46 `reactorFetch`. |
+| QA inject on infinite markets | **Yes** | `useMarketsInfinite` / `useFeaturedMarkets` throw `ServiceUnavailableError("indexer")` or return an empty page. Discover `state=search` / `filter-bonding` / loading / empty keep #49 testids and `aria-pressed`. |
+| Exact-commit desktop/mobile visual gate | **Yes (gated)** | `docs/visual-accept.json` hash-gates Discover/search/reactor/core/quote/token + cards after the branded replay. #36 closed; `web-qa` Chromium snapshots stay with merged #49/#80 until recapture on this tip. |
+| 320 CSS px Discover reflow | **Yes** | RankedRail is an inner `overflow-x-auto` scrollport; `main` + `html`/`body` use `overflow-x-clip` so the #1–#10 fixtures cannot grow `documentElement.scrollWidth`. |
+| Discover rail sanitizes rank tickers | **Yes** | Same `sanitizeTicker` + `UntrustedText` as THE REACTOR table. Fixture `#10` cannot leave raw `<script>` on `/`. |
+| #80 / #46 / #75 / #44 / #81 preserved | **Yes** | Industrial Forge tokens/components stay. Observability + Restricted-access UX, write-lock, four-state policy matrix stay. Merged #44 `e2e-release-gate` and #81 `ci-decide` stay. Launch/trade kept branded + #75 write-lock (not old UI wholesale). |
+
+## Still open (do not fake)
+
+| Item | Why |
+| --- | --- |
+| Close #40 | Stays open until ACs verified on this post-#80 branded tree + exact-head full matrix (`web-qa`, `e2e-release-gate`, `obs-ui`, production security, page-budget, live-toasts) + post-merge verify. **Blocked while #39 remains open.** |
+| Close #39 | Reopened after merged #46. Remaining gate is a real configured telemetry provider receiving a deliberate production error with first-party symbolication + exact release/env/chain/build tags. In-process `vendor-proof` does not close it. |
+| Close #15 | Parent stays open regardless. #40 cannot close while #39 remains open. |
+| Close #55 | Stays open through #80 merge + one green post-merge `main` run / independent audit. |
+| Public mainnet | Hard blocked. |
+| Fast-tier CI | Not #40 acceptance proof. Need `web-qa`, `web-production-security`, `operator-policy-http`, `e2e-release-gate`, page-budget/live-toasts, Foundry/Postgres/docs/web, `ci-ok`. |
 
 ---
 
-# Prior — Industrial Forge brand implementation (Refs #55, merged #80)
+# Prior — GitBook-quality REACTOR handbook (merged #48, Refs #14)
 
-**Status:** Implementation PR for issue **#55**. Founder (Davis) locked **Direction C — Industrial Forge**. This pass applies C to production surfaces and assets. Rebased onto `origin/main` `ff444cb` after squash-merged **#81** / #69 (docs-only path filter), **#46** / #39 (production observability), **#75** / #65 (restricted-access UX), **#44** / #35 (wallet E2E), **#70** / #64 (sanctions freshness), **#79** / #17 CI-evidence docs, **#68** / #62, **#67** / #63, **#66** / #61. **Do not close #55** until independent audit. Issue **#36 is closed** (`ad7b457`, post-merge `34729758795`); `web-qa` remains required and covers the approved-C state — do not weaken that gate. #81 `ci-decide` / `ci-ok` (docs-only cheap path; force-full still executes every required job), #39 observability (`obs-ui`, error boundaries, release SHA, vendor-proof) and #65 `/restricted` UX (denied-policy a11y/reflow, four-state matrix, hydration fixes), #35 `e2e-release-gate` and #64 sanctions-ops docs/runbook plus #66/#67/#68/#79 policy/CI-evidence content are preserved. Brand chrome is additive on those surfaces: `/restricted` kicker is `rx-kicker` (heat, no cyan), links and deny banners use 0–4px radius; amber remains the semantic warning, not a Direction B accent. #46 error boundaries keep `obs-ui` / release SHA / `traceId` and use heat kickers (no leftover cyan/pills). `SupportRef` and error mono use `text-zinc-400` (not zinc-500). Copy, testids, and policy behavior are unchanged.
+**Status:** Squash-merged **#48** (`922f909`) on `origin/main`. The four #14 AC surfaces (body search, `docs:links`, docs-copy + visual baselines, badge matrix) landed with handbook chrome muted copy `text-zinc-400` (AA floor) — do not restore `text-zinc-500` on `/docs`. Issue **#14** close is a founder decision. **#54 is not a prerequisite.**
 **Not audited. Not mainnet.**
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
-## This HEAD
+---
+
+# Prior — Industrial Forge brand implementation (merged #80, Refs #55)
+
+**Status:** Squash-merged **#80** (`4915f3e`) on `origin/main`. Founder (Davis) locked **Direction C — Industrial Forge**. This pass applies C to production surfaces and assets. Rebased onto `origin/main` `ff444cb` after squash-merged **#81** / #69 (docs-only path filter), **#46** / #39 (production observability), **#75** / #65 (restricted-access UX), **#44** / #35 (wallet E2E), **#70** / #64 (sanctions freshness), **#79** / #17 CI-evidence docs, **#68** / #62, **#67** / #63, **#66** / #61. **Do not close #55** until independent audit. Issue **#36 is closed** (`ad7b457`, post-merge `34729758795`); `web-qa` remains required and covers the approved-C state — do not weaken that gate. #81 `ci-decide` / `ci-ok` (docs-only cheap path; force-full still executes every required job), #39 observability (`obs-ui`, error boundaries, release SHA, vendor-proof) and #65 `/restricted` UX (denied-policy a11y/reflow, four-state matrix, hydration fixes), #35 `e2e-release-gate` and #64 sanctions-ops docs/runbook plus #66/#67/#68/#79 policy/CI-evidence content are preserved. Brand chrome is additive on those surfaces: `/restricted` kicker is `rx-kicker` (heat, no cyan), links and deny banners use 0–4px radius; amber remains the semantic warning, not a Direction B accent. #46 error boundaries keep `obs-ui` / release SHA / `traceId` and use heat kickers (no leftover cyan/pills). `SupportRef` and error mono use `text-zinc-400` (not zinc-500). Copy, testids, and policy behavior are unchanged.
+**Not audited. Not mainnet.**
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## That HEAD (#80)
 
 | Item | Value |
 | --- | --- |

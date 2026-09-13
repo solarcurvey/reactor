@@ -13,7 +13,7 @@ function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
 }
 
-assert(SCHEMA_VERSION === 11, "schema version 11 adds Top-10 tables after v10 mark kind and v9 current_supply");
+assert(SCHEMA_VERSION === 12, "schema version 12 adds board liquidity + 24h change after v11 Top-10 tables");
 assert(MS_TIMESTAMP_COLUMNS.length >= 6, "millisecond timestamp columns listed");
 
 const dir = mkdtempSync(join(tmpdir(), "reactor-prod-"));
@@ -57,7 +57,9 @@ assert(
   "journal has canonical identity columns",
 );
 const tokenCols = await store.all<{ name: string }>("PRAGMA table_info(tokens)");
-assert(tokenCols.some((c) => c.name === "current_supply"), "tokens.current_supply on fresh v11 (from #23 v9)");
+assert(tokenCols.some((c) => c.name === "current_supply"), "tokens.current_supply on fresh v12 (from #23 v9)");
+const marketCols = await store.all<{ name: string }>("PRAGMA table_info(markets)");
+assert(marketCols.some((c) => c.name === "liquidity_usd6") && marketCols.some((c) => c.name === "change_24h_bps"), "v12 board liquidity + 24h change on a fresh install");
 const top10Fresh = await store.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", "top10_candidate_epochs");
 assert(top10Fresh?.name === "top10_candidate_epochs", "v11 adds Top-10 candidate tables on a fresh install");
 
@@ -161,7 +163,15 @@ await store.close();
     "0xdead",
   );
   assert(backfilled?.current_supply === backfilled?.supply && backfilled?.supply === (10n ** 27n).toString(), "v9 backfills current_supply from supply");
-  assert(await migrationApplied(v8, 9) && (await migrationApplied(v8, 10)) && (await migrationApplied(v8, 11)), "v8 upgrade writes v9 then v10 then v11");
+  assert(
+    (await migrationApplied(v8, 9)) &&
+      (await migrationApplied(v8, 10)) &&
+      (await migrationApplied(v8, 11)) &&
+      (await migrationApplied(v8, 12)),
+    "v8 upgrade writes v9 then v10 then v11 then v12",
+  );
+  const v8Markets = await v8.all<{ name: string }>("PRAGMA table_info(markets)");
+  assert(v8Markets.some((c) => c.name === "liquidity_usd6"), "v12 adds liquidity_usd6 onto a real post-#27 DB");
   await v8.close();
   rmSync(v8dir, { recursive: true, force: true });
 }
@@ -207,10 +217,11 @@ rmSync(dir, { recursive: true, force: true });
   const tokenCols = await upgraded.all<{ name: string }>("PRAGMA table_info(tokens)");
   assert(tokenCols.some((c) => c.name === "current_supply"), "pinned v9 tokens keeps current_supply");
 
-  assert((await applyMigrations(upgraded)) === SCHEMA_VERSION, "real v9 upgrades through v10 kind to v11 Top-10");
+  assert((await applyMigrations(upgraded)) === SCHEMA_VERSION, "real v9 upgrades through v10/v11 to v12 board metrics");
   assert(await migrationApplied(upgraded, 9), "v9 current_supply row remains");
   assert(await migrationApplied(upgraded, 10), "schema_migrations records v10");
   assert(await migrationApplied(upgraded, 11), "schema_migrations records v11");
+  assert(await migrationApplied(upgraded, 12), "schema_migrations records v12");
   const cols = await upgraded.all<{ name: string }>("PRAGMA table_info(external_price_marks)");
   assert(cols.some((c) => c.name === "kind"), "v10 adds external_price_marks.kind");
   const fused = await upgraded.get<{ kind: string }>("SELECT kind FROM external_price_marks WHERE source=?", "fused");
@@ -246,12 +257,13 @@ rmSync(dir, { recursive: true, force: true });
   seed.close();
 
   const patched = await openStore({ sqlitePath: colPath });
-  assert((await applyMigrations(patched)) === SCHEMA_VERSION, "v10 DB migrates to unique v11 Top-10 tables");
+  assert((await applyMigrations(patched)) === SCHEMA_VERSION, "v10 DB migrates through unique v11 Top-10 to v12 board metrics");
   assert(await migrationApplied(patched, 9), "existence apply fills #23 v9 if missing");
   assert(await migrationApplied(patched, 10), "v10 kind row remains");
   assert(await migrationApplied(patched, 11), "v11 Top-10 snapshot tables");
-  const extra = await patched.get<{ n: number }>("SELECT COUNT(*) as n FROM schema_migrations WHERE id>11");
-  assert(Number(extra?.n) === 0, "did not invent v12");
+  assert(await migrationApplied(patched, 12), "v12 board liquidity + 24h change");
+  const extra = await patched.get<{ n: number }>("SELECT COUNT(*) as n FROM schema_migrations WHERE id>12");
+  assert(Number(extra?.n) === 0, "did not invent v13");
   const cols = await patched.all<{ name: string }>("PRAGMA table_info(route_venues)");
   assert(cols.some((c) => c.name === "last_price_quote_x18"), "column-gated last_price_quote_x18");
   const top10 = await patched.get<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name=?", "top10_candidate_epochs");

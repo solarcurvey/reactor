@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { MARKETS_PAGE_SIZE, marketsSearchParams, type MarketCursor } from "./markets-api";
+import type { BoardFilter } from "./market-ui";
 import { usePublicClient } from "wagmi";
 import { addresses } from "./addresses";
 import { buyback, core, registry } from "./contracts";
@@ -20,7 +22,9 @@ import {
 import {
   fetchIndexerJson,
   loadCandles,
+  loadFeaturedMarkets,
   loadLaunchList,
+  loadMarketsPage,
   loadOneMarket,
   loadQuoteAssets,
   loadReactorEvents,
@@ -146,6 +150,105 @@ export function useLaunchTokens(opts: MarketListOpts = {}, flags?: { enabled?: b
       }
       if (inject === "empty") return [] as LaunchToken[];
       return loadLaunchList(opts, signal);
+    },
+    staleTime: INDEXED_STALE_MS,
+    refetchOnWindowFocus: EXPENSIVE_REFETCH_ON_FOCUS,
+    refetchInterval: 8_000,
+  });
+}
+
+export async function fetchMarketsPage(opts: {
+  q?: string;
+  board?: BoardFilter;
+  quote?: string;
+  quoteSymbol?: string;
+  stage?: string;
+  sort?: "new" | "vol" | "price";
+  limit?: number;
+  cursor?: MarketCursor | null;
+  signal?: AbortSignal;
+}) {
+  const params = marketsSearchParams(opts);
+  const board = params.get("board") ?? undefined;
+  return loadMarketsPage(
+    {
+      q: opts.q?.trim() || undefined,
+      board,
+      quote: opts.quote,
+      quoteSymbol: opts.quoteSymbol,
+      stage: opts.stage,
+      sort: opts.sort ?? (params.get("sort") as "new" | "vol" | "price" | null) ?? undefined,
+      limit: opts.limit ?? MARKETS_PAGE_SIZE,
+      cursor: opts.cursor ?? null,
+    },
+    opts.signal,
+  );
+}
+
+export function useMarketsInfinite(opts: {
+  q?: string;
+  board?: BoardFilter;
+  quote?: string;
+  quoteSymbol?: string;
+  stage?: string;
+  sort?: "new" | "vol" | "price";
+  enabled?: boolean;
+}) {
+  const inject = useQaInject();
+  const q = opts.q ?? "";
+  const board = opts.board;
+  const quote = opts.quote ?? "";
+  const quoteSymbol = opts.quoteSymbol ?? "";
+  const stage = opts.stage ?? "";
+  const sort = opts.sort;
+  return useInfiniteQuery({
+    queryKey: ["markets-infinite", q, board, quote, quoteSymbol, stage, sort, inject],
+    enabled: opts.enabled !== false,
+    initialPageParam: null as MarketCursor | null,
+    queryFn: ({ pageParam, signal }) => {
+      if (inject === "indexer") {
+        throw new ServiceUnavailableError("indexer", FAILURE_COPY.indexer.body);
+      }
+      if (inject === "empty") {
+        return {
+          items: [],
+          total: 0,
+          volume24hUsd6Total: "0",
+          sort: sort ?? "new",
+          next_cursor: null,
+          has_more: false,
+          reviewOnly: false,
+        };
+      }
+      return fetchMarketsPage({
+        q,
+        board,
+        quote,
+        quoteSymbol,
+        stage,
+        sort,
+        limit: MARKETS_PAGE_SIZE,
+        cursor: pageParam,
+        signal,
+      });
+    },
+    getNextPageParam: (last) => (last.has_more && last.next_cursor ? last.next_cursor : undefined),
+    staleTime: INDEXED_STALE_MS,
+    refetchOnWindowFocus: EXPENSIVE_REFETCH_ON_FOCUS,
+    refetchInterval: 8_000,
+  });
+}
+
+export function useFeaturedMarkets() {
+  const inject = useQaInject();
+  return useQuery({
+    queryKey: ["markets-featured", inject],
+    queryFn: ({ signal }) => {
+      if (inject === "indexer") {
+        throw new ServiceUnavailableError("indexer", FAILURE_COPY.indexer.body);
+      }
+      if (inject === "empty") return { bonding: null, volume: null };
+      return loadFeaturedMarkets(signal);
     },
     staleTime: INDEXED_STALE_MS,
     refetchOnWindowFocus: EXPENSIVE_REFETCH_ON_FOCUS,

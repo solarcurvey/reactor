@@ -6,10 +6,13 @@
 
 | Param | Meaning |
 | --- | --- |
-| `q` | Search symbol / name / ticker / token |
-| `stage` | `bonding` or `v4` |
-| `quote` | Quote token |
-| `sort` | `new` (default), `vol`, `price` — **NUMERIC** casts, not INTEGER |
+| `q` | Global search: symbol / name / ticker / token / quote symbol. Not a filter of the first loaded page. |
+| `board` | Chip predicate: `new`, `trending` (live + `sort=vol`), `bonding`, `rewards`, `buy+burn`, `fair`, `usdc-quoted`. SQL in `parseBoard` / `listMarkets`. |
+| `stage` | `bonding` or `v4` (also implied by some boards) |
+| `quote` | Quote token address |
+| `quote_symbol` | Quote ticker (e.g. `usdc`) |
+| `featured` | `1` — closest-to-graduation bonding + highest 24h-vol row (not page-1) |
+| `sort` | `new` (default), `vol`, `price` — **NUMERIC** casts, not INTEGER. Board may supply a hint. |
 | `limit` | 1–100 (default 40) |
 | `cursor_ts` + `cursor_token` | Keyset page. **`cursor_ts` is the sort key**, not always a timestamp: `new` → `updated_ts`, `vol` → `volume_24h_usd6`, `price` → `price_usd6`. Tie-break is `token` DESC. `next_cursor` repeats `{ cursor_ts, cursor_token }` for the last row using that same column. Not a frozen snapshot: a row inserted **ahead** of the cursor after page 1 will not appear on later pages; already-returned rows are not repeated; a row inserted **behind** the cursor may appear later. |
 | `offset` | Legacy only when no cursor |
@@ -17,7 +20,9 @@
 24h fields:
 
 - `price_quote_x18` — **latest trade by `ts`**, not `MAX(price)`
-- `price_usd6` / `fdv_usd6` / `volume_24h_usd6` — ValuationService
+- `price_usd6` / `fdv_usd6` / `volume_24h_usd6` / `liquidity_usd6` — ValuationService
+- `liquidity_usd6` — quote-side USD (bonding `real_quote` or graduated `quote_lp`). Schema **v12**. Not FDV/5 and not a TVL claim.
+- `change_24h_bps` — mark vs the latest trade at or before the 24h window. Empty string when unknown — clients must show `—`, not invented 0%.
 - `fdv_usd6` — USD-6 **market cap / FDV** = mark × `tokens.current_supply`. That column **tracks** remaining onchain `totalSupply()` after `burn()`; it is **not** claimed identical at every instant. Do not use `tokens.supply` (TokenCreated mint).
 - `current_supply` writers: token-level `Transfer` to zero and `Burned` via canonical `(chain_id, tx, log_index, event_kind)` (same-tx Transfer+Burned are two logs; `totalSupply()` reconcile corrects double count), plus a bounded reconcile that **also runs when the indexer is at head**. CORE, recently burned, and newly created tokens are prioritized. Protocol `SelfBurnExecuted` / `Top10Buy` / `COREBurned` are attribution only. `rollOneMarket` reads `current_supply`; it does not write it.
 - `volume_24h_quote` — NUMERIC sum of notionals

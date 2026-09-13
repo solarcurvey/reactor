@@ -8,7 +8,7 @@ CI fails if this page and `ReactorConstants` disagree. All JSON may include `req
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| GET | `/markets` | Keyset (`cursor_ts`,`cursor_token`) matches `sort`: `new`/`vol`/`price`. NUMERIC casts. Search/filter. `supply` = initial mint; `current_supply` tracks remaining `totalSupply()` (token burns + bounded reconcile, not ≡); `fdv_usd6` uses `current_supply`. |
+| GET | `/markets` | Keyset (`cursor_ts`,`cursor_token`) matches `sort`: `new`/`vol`/`price`. NUMERIC casts. Global `q` + `board` SQL chips + `quote_symbol`. `featured=1` for rails. `has_more` + `volume_24h_usd6_total`. Schema v12 `liquidity_usd6` / `change_24h_bps`. `supply` = initial mint; `current_supply` tracks remaining `totalSupply()` (token burns + bounded reconcile, not ≡); `fdv_usd6` uses `current_supply`. |
 | GET | `/markets/:token` | One market row (same SELECT as the board). 404 if unknown. |
 | GET | `/page/token/:token` | Indexed aggregation: market + candles + swaps in one response (`interval`, `candle_limit`, `swap_limit`). SQL in parallel. Not a live quote. |
 | GET | `/ticker/:ticker` | Canonical status, 24h lock, latest token |

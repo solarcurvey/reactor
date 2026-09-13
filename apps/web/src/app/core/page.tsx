@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createPublicClient, http, parseAbi } from "viem";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SurfaceState, useSurfaceFlags } from "@/components/query-state";
 import { ReactorCore } from "@/components/reactor-core";
 import { useCoreStats } from "@/lib/hooks";
 import { qk } from "@/lib/query";
@@ -52,6 +53,12 @@ export default function CorePage() {
 
   const t0 = vesting.data ? Number(vesting.data.t0) : 0;
   const t0Label = t0 === 0 ? "Not activated (pre-launch)" : new Date(t0 * 1000).toISOString().slice(0, 10);
+  const flags = useSurfaceFlags({
+    isLoading,
+    isError,
+    empty: !isLoading && !isError && !data,
+    error,
+  });
 
   return (
     <div>
@@ -72,12 +79,27 @@ export default function CorePage() {
         </Button>
       </div>
 
-      {isLoading && <p className="mt-4 text-sm text-zinc-400">Reading CORE…</p>}
+      {flags.kind === "loading" && <SurfaceState kind="loading" title="Reading CORE…" />}
       {isError && (
         <ServiceFailure
           kind={isServiceUnavailable(error) ? error.kind : "rpc"}
           detail={error instanceof Error ? error.message : undefined}
-          onRetry={() => refetch()}
+          onRetry={() => void refetch()}
+        />
+      )}
+      {flags.kind === "offline" && !isError && (
+        <SurfaceState
+          kind="offline"
+          title={flags.online ? "Chain / indexer unreachable" : "You’re offline"}
+          body="CORE genesis numbers are onchain. This dashboard will not invent supply, vest, or burn."
+          onRetry={() => void refetch()}
+        />
+      )}
+      {flags.kind === "empty" && (
+        <SurfaceState
+          kind="empty"
+          title="CORE is not on this deployment yet"
+          body="Genesis 100M vest + 900M locked official CORE/USDC. Never Top-10."
         />
       )}
 

@@ -1,6 +1,7 @@
 import { throwIfAborted } from "./abort";
 import { CATEGORY_LABELS, addresses } from "./addresses";
 import { INDEXER_URL } from "./chain";
+import { featuredMarkets } from "./market-ui";
 import type { MarketListOpts } from "./query";
 import { FIXTURE_REACTOR_EVENTS, FIXTURE_TOKENS, FIXTURE_XSS_SWAPS, REVIEW_FIXTURES } from "./review-fixtures";
 import { sanitizeAddress, sanitizeLaunchFields } from "./untrusted-metadata";
@@ -53,6 +54,10 @@ export type LaunchToken = {
   priceQuoteX18?: string;
   fdvUsd6?: string;
   volume24hUsd6?: string;
+  liquidityUsd6?: string;
+  change24hBps?: string;
+  trades24h?: number;
+  stage?: string;
 };
 
 export async function fetchIndexerJson<T>(path: string, init?: RequestInit): Promise<{ ok: true; body: T } | { ok: false }> {
@@ -140,6 +145,10 @@ export function marketRowToLaunch(m: Record<string, unknown>): LaunchToken {
     priceQuoteX18: String(m.price_quote_x18 ?? "0"),
     fdvUsd6: String(m.fdv_usd6 ?? "0"),
     volume24hUsd6: String(m.volume_24h_usd6 ?? "0"),
+    liquidityUsd6: String(m.liquidity_usd6 ?? "0"),
+    change24hBps: String(m.change_24h_bps ?? ""),
+    trades24h: Number(m.trades_24h ?? 0),
+    stage: String(m.stage ?? ""),
   });
 }
 
@@ -152,6 +161,8 @@ export function mergeLaunchFixtures(items: LaunchToken[]): LaunchToken[] {
     const emptyPx = !t.priceQuoteX18 || t.priceQuoteX18 === "0";
     const emptyVol = !t.volume24hUsd6 || t.volume24hUsd6 === "0";
     const emptyFdv = !t.fdvUsd6 || t.fdvUsd6 === "0";
+    const emptyLiq = !t.liquidityUsd6 || t.liquidityUsd6 === "0";
+    const emptyChange = t.change24hBps === undefined || t.change24hBps === "";
     const emptyRewards = !t.lifetimeRewards || t.lifetimeRewards === 0n;
     return cleanLaunch({
       ...t,
@@ -168,6 +179,8 @@ export function mergeLaunchFixtures(items: LaunchToken[]): LaunchToken[] {
       priceQuoteX18: emptyPx ? f.priceQuoteX18 : t.priceQuoteX18,
       fdvUsd6: emptyFdv ? f.fdvUsd6 : t.fdvUsd6,
       volume24hUsd6: emptyVol ? f.volume24hUsd6 : t.volume24hUsd6,
+      liquidityUsd6: emptyLiq ? f.liquidityUsd6 : t.liquidityUsd6,
+      change24hBps: emptyChange ? f.change24hBps : t.change24hBps,
       lifetimeRewards: emptyRewards ? f.lifetimeRewards : t.lifetimeRewards,
       bonding: t.bonding || f.bonding,
       bondingBps: t.bondingBps || f.bondingBps,
@@ -185,8 +198,14 @@ export function marketsQueryPath(opts: MarketListOpts = {}): string {
   if (opts.q) u.searchParams.set("q", opts.q);
   if (opts.stage && opts.stage !== "all") u.searchParams.set("stage", opts.stage);
   if (opts.quote) u.searchParams.set("quote", opts.quote);
+  if (opts.quoteSymbol) u.searchParams.set("quote_symbol", opts.quoteSymbol);
+  if (opts.board) u.searchParams.set("board", opts.board);
   if (opts.sort) u.searchParams.set("sort", opts.sort);
   u.searchParams.set("limit", String(opts.limit ?? 80));
+  if (opts.cursor?.cursor_ts != null && opts.cursor.cursor_token) {
+    u.searchParams.set("cursor_ts", opts.cursor.cursor_ts);
+    u.searchParams.set("cursor_token", opts.cursor.cursor_token);
+  }
   return `${u.pathname}${u.search}`;
 }
 
@@ -199,6 +218,76 @@ export async function loadLaunchList(opts: MarketListOpts = {}, signal?: AbortSi
   }
   if (REVIEW_FIXTURES) return FIXTURE_TOKENS.map(cleanLaunch);
   return [];
+}
+
+export type MarketsPage = {
+  items: LaunchToken[];
+  total: number;
+  volume24hUsd6Total: string;
+  sort: string;
+  next_cursor: { cursor_ts: string; cursor_token: string } | null;
+  has_more: boolean;
+  reviewOnly: boolean;
+};
+
+export async function loadMarketsPage(opts: MarketListOpts = {}, signal?: AbortSignal): Promise<MarketsPage> {
+  const got = await fetchIndexerJson<{
+    items?: Record<string, unknown>[];
+    total?: number;
+    volume_24h_usd6_total?: string;
+    sort?: string;
+    next_cursor?: { cursor_ts: string; cursor_token: string } | null;
+    has_more?: boolean;
+  }>(marketsQueryPath(opts), { signal });
+  if (got.ok) {
+    const items = (got.body.items ?? []).map(marketRowToLaunch).filter((t) => sanitizeAddress(t.token));
+    const merged = opts.cursor ? items.map((t) => mergeLaunchFixtures([t])[0]!).filter(Boolean) : mergeLaunchFixtures(items);
+    return {
+      items: merged,
+      total: Number(got.body.total ?? merged.length),
+      volume24hUsd6Total: String(got.body.volume_24h_usd6_total ?? "0"),
+      sort: String(got.body.sort ?? opts.sort ?? "new"),
+      next_cursor: got.body.next_cursor ?? null,
+      has_more: Boolean(got.body.has_more),
+      reviewOnly: false,
+    };
+  }
+  if (REVIEW_FIXTURES && !opts.cursor) {
+    const items = FIXTURE_TOKENS.map(cleanLaunch);
+    return {
+      items,
+      total: items.length,
+      volume24hUsd6Total: items.reduce((a, t) => a + BigInt(t.volume24hUsd6 ?? "0"), 0n).toString(),
+      sort: opts.sort ?? "new",
+      next_cursor: null,
+      has_more: false,
+      reviewOnly: true,
+    };
+  }
+  const err = new Error("indexer unreachable");
+  (err as Error & { offline?: boolean }).offline = true;
+  throw err;
+}
+
+export async function loadFeaturedMarkets(signal?: AbortSignal): Promise<{
+  bonding: LaunchToken | null;
+  volume: LaunchToken | null;
+}> {
+  const got = await fetchIndexerJson<{ bonding?: Record<string, unknown> | null; volume?: Record<string, unknown> | null }>(
+    "/markets?featured=1",
+    { signal },
+  );
+  if (got.ok) {
+    const bonding = got.body.bonding ? mergeLaunchFixtures([marketRowToLaunch(got.body.bonding)])[0] ?? null : null;
+    const volume = got.body.volume ? mergeLaunchFixtures([marketRowToLaunch(got.body.volume)])[0] ?? null : null;
+    return { bonding, volume };
+  }
+  if (REVIEW_FIXTURES) {
+    return featuredMarkets(FIXTURE_TOKENS.map(cleanLaunch));
+  }
+  const err = new Error("indexer unreachable");
+  (err as Error & { offline?: boolean }).offline = true;
+  throw err;
 }
 
 export async function loadOneMarket(address: string, signal?: AbortSignal): Promise<LaunchToken | undefined> {

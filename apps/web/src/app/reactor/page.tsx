@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { qk } from "@/lib/query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SurfaceState, useSurfaceFlags } from "@/components/query-state";
 import { useReactorEvents } from "@/lib/hooks";
 import { ServiceFailure } from "@/components/service-failure";
 import { FIXTURE_RANKS, REVIEW_FIXTURES } from "@/lib/review-fixtures";
@@ -38,7 +39,14 @@ export default function ReactorPage() {
     refetchOnWindowFocus: false,
     queryFn: async ({ signal }): Promise<ApiPayload> => {
       const { reactorFetch } = await import("@/lib/obs");
-      const res = await reactorFetch("/api/reactor/top10", { kind: "api", signal });
+      let res: Response;
+      try {
+        res = await reactorFetch("/api/reactor/top10", { kind: "api", signal });
+      } catch {
+        const err = new Error("indexer unreachable");
+        (err as Error & { offline?: boolean }).offline = true;
+        throw err;
+      }
       if (!res.ok) throw new Error("api");
       return res.json();
     },
@@ -55,6 +63,13 @@ export default function ReactorPage() {
         mcap: formatMark(r.markUsdc),
         weight: `${(r.weightBps / 100).toFixed(2)}%`,
       }));
+
+  const flags = useSurfaceFlags({
+    isLoading: api.isLoading && !REVIEW_FIXTURES,
+    isError: api.isError && !REVIEW_FIXTURES,
+    empty: !api.isLoading && !REVIEW_FIXTURES && ranks.length === 0 && !api.data?.pauseEpoch,
+    error: api.error,
+  });
 
   return (
     <div>
@@ -79,6 +94,26 @@ export default function ReactorPage() {
         <Stat label="Floor" value="$250k" sub="operational mark" />
         <Stat label="Publisher" value="Keeper" sub="structural onchain checks" />
       </div>
+
+      {flags.kind === "loading" && <SurfaceState kind="loading" title="Reading THE REACTOR…" />}
+      {flags.kind === "offline" && (
+        <SurfaceState
+          kind="offline"
+          title={flags.online ? "REACTOR API unreachable" : "You’re offline"}
+          body="Ranks are an offchain API. This page will not invent a Top-10."
+          onRetry={() => void api.refetch()}
+        />
+      )}
+      {flags.kind === "error" && !flags.offline && (
+        <SurfaceState kind="error" title="Could not read ranks" onRetry={() => void api.refetch()} />
+      )}
+      {flags.kind === "empty" && (
+        <SurfaceState
+          kind="empty"
+          title="No API ranks yet"
+          body="Graduated names need a defensible mark at or above $250k. Ungraduated Instant and CORE never qualify."
+        />
+      )}
 
       {api.data?.pauseEpoch && (
         <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-100">

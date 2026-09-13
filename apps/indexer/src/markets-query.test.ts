@@ -5,6 +5,7 @@ import { openStore } from "./db.ts";
 import { upsertMarket, upsertToken } from "./ingest.ts";
 import {
   getMarket,
+  listFeaturedMarkets,
   listMarkets,
   marketCursorValue,
   marketKeysetSql,
@@ -144,6 +145,71 @@ assert(
   assert(page2Tokens.every((t) => !seen.includes(t)), "insert-ahead does not duplicate page 1");
   assert(!page2Tokens.includes(ahead), "row inserted ahead of the cursor is omitted from later pages (not a frozen snapshot)");
   assert(page2Tokens.join() === byPrice.slice(2, 4).join(), "page 2 stays deterministic on the original tail");
+}
+
+{
+  const page = await listMarkets(store, { q: "t5", limit: 2 });
+  assert(page.total === 1 && tokens(page.items).join() === "0x0000000000000000000000000000000000000005", "q searches symbol globally");
+  assert(page.has_more === false, "single match is not paged");
+}
+
+{
+  const dir2 = mkdtempSync(join(tmpdir(), "reactor-markets-pages-"));
+  const big = await openStore({ sqlitePath: join(dir2, "t.sqlite") });
+  const needle = "0x00000000000000000000000000000000000000ee";
+  for (let i = 1; i <= 48; i++) {
+    const token = `0x${i.toString(16).padStart(40, "0")}`;
+    await upsertToken(big, { address: token, symbol: `P${i.toString().padStart(2, "0")}`, name: `Page ${i}`, quote: "0xusdc", ts: 1000 + i });
+    await upsertMarket(big, { token, quote: "0xusdc", stage: "v4", ts: 1000 + i });
+  }
+  await upsertToken(big, { address: needle, symbol: "ZLATE", name: "Late Hit", quote: "0xusdc", ts: 10 });
+  await upsertMarket(big, { token: needle, quote: "0xusdc", stage: "v4", ts: 10 });
+  const first = await listMarkets(big, { sort: "new", limit: 20 });
+  assert(first.items.length === 20 && first.has_more === true, "first page is a slice");
+  assert(
+    !tokens(first.items).includes(needle),
+    "late-updated match is not on page 1 — client filter of this array would miss it",
+  );
+  const found = await listMarkets(big, { q: "zlate", sort: "new", limit: 20 });
+  assert(found.total === 1 && tokens(found.items)[0] === needle, "GET /markets?q= is global, not first-page-only");
+  assert(found.items.every((i) => "liquidity_usd6" in i && "change_24h_bps" in i), "board rows project liquidity + 24h change");
+
+  const p2 = await listMarkets(big, {
+    sort: "new",
+    limit: 20,
+    cursorTs: first.next_cursor!.cursor_ts,
+    cursorToken: first.next_cursor!.cursor_token,
+  });
+  const p3 = await listMarkets(big, {
+    sort: "new",
+    limit: 20,
+    cursorTs: p2.next_cursor!.cursor_ts,
+    cursorToken: p2.next_cursor!.cursor_token,
+  });
+  const walked = [...tokens(first.items), ...tokens(p2.items), ...tokens(p3.items)];
+  assert(walked.includes(needle), "cursor walk reaches the row beyond page 1");
+  assert(new Set(walked).size === walked.length, "cursor walk does not duplicate");
+
+  await upsertToken(big, {
+    address: "0x00000000000000000000000000000000000000b1",
+    symbol: "BOND",
+    quote: "0xusdc",
+    rewardsMode: true,
+    ts: 2000,
+  });
+  await upsertMarket(big, {
+    token: "0x00000000000000000000000000000000000000b1",
+    quote: "0xusdc",
+    stage: "bonding",
+    bondingBps: 8800,
+    ts: 2000,
+  });
+  const bonding = await listMarkets(big, { board: "bonding", limit: 10 });
+  assert(bonding.total >= 1 && bonding.items.every((i) => String(i.stage) === "bonding"), "board=bonding is SQL");
+  const featured = await listFeaturedMarkets(big);
+  assert(String(featured.bonding?.symbol) === "BOND", "featured bonding is closest to graduation, not first page");
+  await big.close();
+  rmSync(dir2, { recursive: true, force: true });
 }
 
 assert(normalizeMarketToken("0x0000000000000000000000000000000000000004") === "0x0000000000000000000000000000000000000004", "normalize");
