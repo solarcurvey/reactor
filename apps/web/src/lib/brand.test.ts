@@ -65,8 +65,28 @@ const restricted = readFileSync(
 assert(restricted.includes("rx-kicker"), "/restricted kicker uses approved-C heat");
 assert(!/text-cyan|cyan-\d+|rounded-full/.test(restricted), "/restricted must not keep Direction A cyan or pill links");
 
+const errorFallback = readFileSync(
+  fileURLToPath(new URL("../components/error-fallback.tsx", import.meta.url)),
+  "utf8",
+);
+assert(errorFallback.includes("rx-kicker"), "#46 error boundary kicker uses approved-C heat");
+assert(
+  !/text-cyan|cyan-\d+|rounded-full|#7ee8ff/.test(errorFallback),
+  "#46 error fallback must not keep Direction A cyan",
+);
+
+const globalError = readFileSync(fileURLToPath(new URL("../app/global-error.tsx", import.meta.url)), "utf8");
+assert(globalError.includes("#ff6b2b"), "#46 global-error uses heat");
+assert(globalError.includes("#12110f"), "#46 global-error uses slag");
+assert(
+  !/#7ee8ff|borderRadius:\s*999/.test(globalError),
+  "#46 global-error must not keep cyan pills",
+);
+
 const layout = readFileSync(fileURLToPath(new URL("../app/layout.tsx", import.meta.url)), "utf8");
 assert(layout.includes("BRAND_COPY.description"), "layout uses canonical description");
+assert(layout.includes("releaseInfo"), "layout keeps #46 release SHA");
+assert(layout.includes("data-release"), "footer exposes release SHA");
 const ogBlock = layout.slice(layout.indexOf("openGraph:"), layout.indexOf("twitter:"));
 const twitterBlock = layout.slice(layout.indexOf("twitter:"), layout.indexOf("other:"));
 assert(ogBlock.includes("BRAND_COPY.ogDescription"), "OG stays on the AI-free field");

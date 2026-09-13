@@ -22,7 +22,7 @@ export function RouteError({
   const rel = releaseInfo();
   return (
     <div className="mx-auto max-w-lg py-16">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/80">This route failed</p>
+      <p className="rx-kicker">This route failed</p>
       <h1 className="mt-2 text-2xl font-semibold text-white">Something broke on this page</h1>
       <p className="mt-3 text-sm text-zinc-400">
         Trading, quotes, and wallet state on other routes are unchanged. Economics are not affected. This screen is an
@@ -60,7 +60,7 @@ export function AppErrorFallback({
   const rel = releaseInfo();
   return (
     <div className="mx-auto max-w-lg py-20">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/80">Application error</p>
+      <p className="rx-kicker">Application error</p>
       <h1 className="mt-2 text-2xl font-semibold text-white">REACTOR could not render this view</h1>
       <p className="mt-3 text-sm text-zinc-400">
         No funds moved. Retry or return to Discover. Release {rel.release}.

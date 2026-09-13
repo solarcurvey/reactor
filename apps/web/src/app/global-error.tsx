@@ -16,13 +16,13 @@ export default function GlobalError({
   const rel = releaseInfo();
   return (
     <html lang="en">
-      <body style={{ margin: 0, background: "#0b0d10", color: "#f4f7fb", fontFamily: "ui-sans-serif, system-ui" }}>
+      <body style={{ margin: 0, background: "#12110f", color: "#ece8e1", fontFamily: "ui-sans-serif, system-ui" }}>
         <main style={{ maxWidth: 560, margin: "4rem auto", padding: "0 1rem" }}>
-          <p style={{ fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: "#7ee8ff" }}>
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: "#ff6b2b" }}>
             Root error
           </p>
           <h1 style={{ fontSize: 28, margin: "0.5rem 0 0" }}>REACTOR hit a root render failure</h1>
-          <p style={{ color: "#a1a1aa", fontSize: 14 }}>
+          <p style={{ color: "#9aa4ad", fontSize: 14 }}>
             No transaction was submitted from this screen. Release {rel.release}.
           </p>
           <button
@@ -31,9 +31,9 @@ export default function GlobalError({
             style={{
               marginTop: 20,
               border: 0,
-              borderRadius: 999,
-              background: "#7ee8ff",
-              color: "#0b0d10",
+              borderRadius: 4,
+              background: "#ff6b2b",
+              color: "#12110f",
               padding: "10px 18px",
               fontWeight: 600,
             }}
