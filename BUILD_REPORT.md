@@ -1,6 +1,6 @@
 # BUILD REPORT — AutomationGateway (#51)
 
-**Status:** Draft PR for issue **#51** (refs #18), replaying onto `origin/main` `4915f3e` (squash-merged **#80** Industrial Forge / Refs #55 after **#81** `ff444cb` / **#46** / **#75** / **#70**). **Re-audit draft** — not an #18 freeze SHA. Same PR **#54** / same branch. AutomationGateway signed jobs + dual-relayer / autonomous failover rehearsal preserved. Industrial Forge production chrome/assets from #80 preserved. Issue **#51 stays open**.
+**Status:** Draft PR for issue **#51** (refs #18), replaying onto `origin/main` `922f909` (squash-merged **#48** handbook after **#80** Industrial Forge / Refs #55 / **#81** `ff444cb` / **#46** / **#75** / **#70**). **Re-audit draft** — not an #18 freeze SHA. Same PR **#54** / same branch. AutomationGateway signed jobs + dual-relayer / autonomous failover rehearsal + CRE WASM compile evidence preserved. Handbook body search / badge matrix / nav blurbs from #48 preserved. Industrial Forge production chrome/assets from #80 preserved. Issue **#51 stays open**.
 
 **Not audited. Not mainnet.**  
 **Economics / 3.5% / curve / Factory V1 constants: unchanged.** Merged #80 Industrial Forge (Direction C), #81 `ci-decide.sh` / cheap docs-only path, #46 `obs-ui` / redacted telemetry / error boundaries, #75 `/restricted` + official `GET /operator-policy/status`, #44 `e2e-release-gate`, #70 sanctions-ops freshness, #68 operator-policy, #67 geo/IP, and #66 `@reactor/sanctions` are preserved. Privileged Keeper EOA is **not** restored. **#17 / #39 / #51 / #55 / #60 / #63 / #64 / #65 / #69 stay open.** **#39 is open/reopened** — merged #46 landed repo CI; close still requires the real configured telemetry-provider symbolication proof. **#35** closed after merged #44.
@@ -16,7 +16,7 @@
 | Foundry | `AutomationGateway.t.sol` + `AutomationGatewayAuth.t.sol` + `MaintenanceFailover.t.sol` |
 | Indexer / lib | `maintenance-job.test.ts` + #46 obs units + #80 `brand.test.ts` in `test:web-unit` |
 | CRE | Official `cre workflow build` compiled the signed-job courier (WASM hash in `cre-workflow-build.json`). Auth-blocked `cre workflow simulate` is **not** the Arc Testnet CRE AC. |
-| Replay | Onto `origin/main` `4915f3e` (#80 after #81). Replay commit `dfc97fc`. Restore exact-head `ci-full` so `solidity + size-guard` (failover rehearsal) runs. Playwright `web` / `obs-ui` pins read `docs/version.json` via CJS-safe `e2e/protocol-version.ts` (no `import.meta` in `*.spec.ts`). |
+| Replay | Onto `origin/main` `922f909` (#48 handbook after #80 / #81). Restore exact-head `ci-full` so `solidity + size-guard` (failover rehearsal) runs. Playwright `web` / `obs-ui` pins read `docs/version.json` (handbook smoke + CJS-safe `e2e/protocol-version.ts`). |
 
 | Mainnet | **Blocked** |
 
@@ -29,6 +29,7 @@
 | Dual-relayer failover rehearsal | **Yes** | `MaintenanceFailover.t.sol` + full-tier `solidity + size-guard` |
 | CRE PoC + honest 5042 status | **Partial** | Official `cre workflow build` WASM compile recorded. Authenticated Arc Testnet `cre workflow simulate` remains the external blocker. |
 | Factory V1 | **Yes** | No Factory bytecode change |
+| #48 handbook preserved | **Yes** | Merged `922f909`: body search, badge matrix, nav blurbs, `docs:links`, docs-copy/visual. **#14** close is a founder decision. |
 | #80 Industrial Forge preserved | **Yes** | Merged `4915f3e`: Direction C tokens/chrome/assets/docs. **#55 stays open** for audit. |
 | #81 CI path filter preserved | **Yes** | Merged `ff444cb`: `ci-decide.sh` / cheap docs-only path. **#69 stays open**. |
 | #46 observability preserved | **Yes** | Merged `789eb5c`: `obs-ui`, redacted telemetry, error boundaries. **#39 stays open** (reopened): repo CI is complete; close still requires the real configured telemetry-provider symbolication proof. |
@@ -41,7 +42,7 @@
 | Public mainnet (5042) | Hard blocked. No addresses. |
 | Authenticated `cre workflow simulate` | **Remaining #51 AC / external blocker.** Official `cre workflow build` is compile-only (`ops/cre/simulation/cre-workflow-build.json`) and does not close this. Evidence: `ops/cre/simulation/cre-tenant-blocker.json`. |
 | Close #51 | Stays open until post-merge `Guardian.keeper == AutomationGateway` verify. |
-| Exact-head GitHub Actions | This replay is a new SHA on `4915f3e`. Prior `887672d` / [`34741609138`](https://github.com/solarcurvey/reactor/actions/runs/34741609138) is superseded. Restore `ci-full` and watch exact-head `ci-ok` including `solidity + size-guard`. |
+| Exact-head GitHub Actions | This replay is a new SHA on `922f909`. Prior heads on `4915f3e` are superseded. Restore `ci-full` and watch exact-head `ci-ok` including `solidity + size-guard`. |
 
 ---
 
