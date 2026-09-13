@@ -100,7 +100,7 @@ After prune: **`main` + 17 open-PR `cursor/*` heads + tag `v0.3.1`.** No leftove
 | `cursor/publicization-residual-docs-7459` | #77 | Open — founder residual / AC1 docs (this PR) |
 | `cursor/ci-cost-cut-7753` | #73 | Open (ready) — #69 CI cost |
 | `cursor/fix-live-toasts-import-e635` | #58 | Open |
-| `cursor/restricted-access-ux-f91b` | #75 | Draft — Refs #65 |
+| `cursor/restricted-access-ux-f91b` | #75 | Merged as `4207356` — Refs #65 (issue stays open) |
 | `cursor/sanctions-ops-freshness-8fcc` | #70 | Later merged as `cc82cd4` — Refs #64 (issue stays open) |
 | `cursor/sanctions-operator-policy-gate-3e7f` | #68 | Later merged as `2002aed` — #62 closed after `34733128955` |
 | `cursor/trusted-geo-policy-1252` | #67 | Later merged as `e712617` — #63 closed after `34731788819` (founder post-merge verify) |

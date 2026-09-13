@@ -30,6 +30,7 @@ const requiredSlugs = [
   "security",
   "web-security",
   "geo-policy",
+  "restricted-access",
   "sanctions-ops",
   "sanctions-runbook",
   "incident-response",
@@ -110,6 +111,7 @@ assert.match(llms, /\/docs\/sanctions-ops/);
 assert.match(llms, /\/docs\/sanctions-runbook/);
 assert.match(llms, /\/docs\/incident-response/);
 assert.match(llms, /\/docs\/geo-policy/);
+assert.match(llms, /\/docs\/restricted-access/);
 assert.match(llms, /\/docs\/operator-policy/);
 
 const index = readFileSync(join(docsDir, "index.md"), "utf8");
