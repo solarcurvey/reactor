@@ -48,7 +48,9 @@ A protocol `0.1.1` / `0.2.0` bump does not rewrite Factory V1. A different 3.5% 
 
 ## CI drift
 
-`pnpm docs:check` (also run from `pnpm test:lib` and `.github/workflows/ci.yml` job `constants-version-deployments`) **must fail** when generated constants, deployment tables, or version labels have drifted from code/config:
+`pnpm docs:check` (also run from `pnpm test:lib` and `.github/workflows/ci.yml` job `constants-version-deployments`) **must fail** when generated constants, deployment tables, or version labels have drifted from code/config. `pnpm docs:links` (same `test:lib` path, plus full-only job `docs-links`) **must fail** on unknown `/docs/<slug>` targets, missing relative files, or a `docs/*.md` page missing from `docs-nav.ts`. It does not fetch http(s) URLs.
+
+`pnpm docs:check` fails when:
 
 - Fee bps vs 3.5% / 2% holders / 1% / 0.5% copy
 - Default supply (1B) and Dev Buy cap (5%)
@@ -69,9 +71,11 @@ See `AGENTS.md`. Security > cleverness. Do not change tokenomics to make a test 
 
 ```bash
 pnpm docs:check          # version + constants + deployments
-pnpm test:lib            # indexer + web unit + docs:check + CI-cost + public-fork harden
+pnpm docs:links          # in-repo docs slugs + relative files (no network)
+pnpm test:lib            # indexer + web unit + docs:check + docs:links + safe-genesis + page-budget + CI-cost + public-fork harden
 pnpm test:ci-cost        # workflow inventory / no duplicate push+PR / fail-safe paths
+pnpm test:web-unit       # web lib unit (also in test:lib)
 cd contracts && forge test
 ```
 
-GitHub Actions is three-tier (Refs #69): fast PR (`test:lib`), full merge-candidate (`ready_for_review`, label `ci-full`, or `workflow_dispatch`), main post-merge once. Do not add a feature-branch `push` + `pull_request` pair. Operator + before/after inventory: [`/docs/ci`](docs/ci.md).
+GitHub Actions is three-tier (Refs #69): fast PR (`test:lib` + always-on `page-budget`), full merge-candidate (`ready_for_review`, label `ci-full`, or `workflow_dispatch`), main post-merge once. #17 leftover extras (`docs:links`, Playwright smoke + interactive) are full-only jobs on this same `ci.yml`. Do not add a feature-branch `push` + `pull_request` pair. Operator + before/after inventory: [`/docs/ci`](docs/ci.md).

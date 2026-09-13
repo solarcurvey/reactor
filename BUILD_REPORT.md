@@ -1,9 +1,66 @@
-# BUILD REPORT — Eliminate RPC waterfalls (#37)
+# BUILD REPORT — Full GitHub CI extras on the #73 cost-control workflow (issue #17)
 
-**Status:** Addresses issue **#37** on the same PR / branch. Rebased onto `origin/main` `c03c698` (#58 next-build lint after #73 three-tier CI). Issue **#37 stays open** — `Refs #37`, do not auto-close.
+**Date:** 2026-09-12  
+**Issue:** [#17](https://github.com/solarcurvey/reactor/issues/17) (stays open until merge + post-merge verify)  
+**PR:** **#42**. Rebased onto `origin/main` **`e5fd745`** (#50 after #58/#73/#77/#76/#74). Prior proven green on pre-#50 lineage: **`976a7da`** / [`34727037594`](https://github.com/solarcurvey/reactor/actions/runs/34727037594) — not the closer after this rebase.  
+**Scope:** Keep the #69 / #73 single-workflow three-tier `ci.yml`. Land leftover #17 gates: `docs:links`, Playwright smoke + interactive, and `scripts/safe-genesis-builder.test.ts` on cheap `test:lib`. Do not restore `docs-sync.yml` / `keeper-lease-pg.yml` / `live-toasts.yml`. Frozen economics / architecture / Factory V1. Protocol version stays **0.3.3**. Visibility not flipped.  
+**Not audited. Not mainnet.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Rebase #17 onto #50 / `e5fd745`. Keep `page-budget` + wire `scripts/safe-genesis-builder.test.ts` into `test:lib`. Attack suite stays `find \| sort` + `forge test <file>` per `test/attack/*.t.sol`. |
+| #73 cost controls kept | Feature-branch `push` omitted. Concurrency per PR; main keyed by SHA and not canceled. Path classifier fail-safe. Least-privilege checkouts. |
+| Fast PR | `pnpm test:lib` includes `docs:links`, `test:web-unit`, `page-budget.test.ts`, and `safe-genesis-builder.test.ts`. Targeted Foundry when Solidity paths change. |
+| Full / main extras | Full-only jobs `docs-links` (`pnpm docs:links`) and `web` (Playwright smoke + interactive). `ci-ok` requires both (`skipped ≠ pass`). |
+| Already on #73 full gate | Foundry CI fuzz + Attack + CREATE2 + `size:guard`, `web-production-security`, `live-toasts-ui`, `postgres-ms-timestamps`. |
+| Docs | `/docs/ci` updated in place. `TESTING.md`, `CONTRIBUTING.md`, `AUDIT_HANDOFF.md`. Same-page `#accepted-residuals-non-blocking` hrefs match in-app `slugify` so `docs:links` stays green. |
+| Mainnet | **Blocked** |
+
+## Acceptance (issue #17 stays open)
+
+| AC | Evidence |
+| --- | --- |
+| Solidity in CI | `ci.yml` job `solidity + size-guard` (full / main) |
+| Attack suite | `forge test test/attack/<file>.t.sol` per file (`find \| sort`) |
+| Size guard in CI | `pnpm size:guard` after forge (Factory ≤ 23,552) |
+| Backend in CI | `pnpm --filter indexer test` inside `test:lib` |
+| Web unit + Playwright | Units in `test:lib` / `test:web-unit`. Smoke + interactive = full-only job `web`. |
+| Production web build / typecheck / browser security | `web-production-security` (`pnpm test:web-security`) — not duplicated |
+| Docs in CI | `docs:check` + `docs:links` in `test:lib`; full-only job `docs-links` |
+| Safe genesis builder | `scripts/safe-genesis-builder.test.ts` in `test:lib` (Safe ≠ deployer, batch A/B, MultiSend) |
+| Postgres in CI | `postgres-ms-timestamps` (`test:pg` + `test:pg-lease` + `pg-smoke`) |
+| #73 cost controls not weakened | Single workflow. No feature-branch `push`. `scripts/ci-cost.test.ts` still forbids a bare `push:`. |
+| Frozen economics / arch | No contract / tokenomics edits |
+| Docs same run | `docs/ci.md`, `TESTING.md`, `CONTRIBUTING.md`, `AUDIT_HANDOFF.md`, this report |
+| Exact-head `ci-ok` | Required on this post-`e5fd745` SHA after Safe genesis is in `test:lib` and `page-budget` stays always-on. Pre-#50 greens (`976a7da` / `34727037594`, `4fba9f0` / `34726193759`, `ded908d` / `34725992605`) are not the closer. #17 stays open until merge + post-merge verify. |
+
+## Billing vs real CI
+
+Empty-step FAILURE is the account spending-limit / payment block — not a Solidity / docs / size-guard regression. Do not weaken gates to “fix” it.
+
+After billing recovered, `ci-full` on **`606e569`** / **`759cc75`** failed `solidity + size-guard` **before any test** (CDN reset, then missing `svm` CLI). **`ded908d`** installed solc via official mirrors. Exact-head full matrix green: [`34725992605`](https://github.com/solarcurvey/reactor/actions/runs/34725992605). Do not treat `6140ce0` or `759cc75` as the closer. Close #17 only after merge + post-merge verify on `main`.
+
+## What this is not
+
+- Not a revert of #73 / #69 cost controls or a second `push` + `pull_request` workflow.
+- Not a revert of #74 / #76 / #77 hardenings or history-rewrite notes.
+- Not an economics / Factory / hook / Guardian / Keeper change.
+- Not a visibility flip or another history rewrite.
+- Not a close of #17 from this commit. Close only after merge + post-merge verify on `main`.
+- **#73 / #17:** Fast vs full vs `main` three-tier `ci.yml` + extra full-only `docs-links` / Playwright `web` jobs. Safe-genesis **unit** tests land later on this branch (`safe-genesis-builder.test.ts` in `pnpm test:lib`); do not skip Attack / CREATE2 / `size:guard` when `svm` is missing.
+
+---
+
+# Prior — Eliminate RPC waterfalls + page-budget CI (PR #50 / issue #37)
+
+**Status:** Merged **#50** (`e5fd745`) on `origin/main`. Issue **#37 stays open** — `Refs #37`, do not auto-close.
 **Not audited. Not mainnet.**  
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
-**Do not close #37 from this file.** Issue stays open until merge **and** post-merge verify.
+**Do not close #37 from this file.** Issue stays open until post-merge verify.
 
 | Item | Value |
 | --- | --- |
@@ -15,7 +72,7 @@
 | Review shots | **Not regenerated** (no chrome/tokenomics change) |
 | Mainnet | **Blocked** |
 
-## Closed this run (implementation; issue stays open)
+## Closed that run (implementation; issue stays open)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
@@ -31,32 +88,14 @@
 | SSE no refetch storm | **Yes** | `applyLiveEventToClient` patches only; 50 trades → 0 `invalidateQueries`. |
 | Refetch-on-focus policy | **Yes** | `EXPENSIVE_REFETCH_ON_FOCUS = false`; source-scanned on hooks / CORE / REACTOR. |
 
-## Still blocked (do not fake)
+# Prior — CI cost cut without weakening release gates (Refs #69)
 
-| Blocker | Why |
-| --- | --- |
-| Public mainnet (5042) | Hard blocked. No addresses. |
-| Claim Arc Multicall3 exists | Probe only. Do not hardcode yes. |
-| Close #37 | **Stays open** until merge + post-merge verify. Do not close from BUILD_REPORT. `Refs #37`. |
-| Close #10 | Stays open (merged #53). Do not `Fixes #10`. |
-| Top-10 as onchain oracle | Frozen offchain by design. TTL is offchain policy. |
-
----
-
-# Prior — merged #58 next-build lint / typecheck
-
-**Status:** Merged on `origin/main` `c03c698`. `ohlcv-chart.tsx` lint/typecheck only. Architecture and tokenomics unchanged.
-
----
-
-# Prior — merged #73 CI cost cut without weakening release gates (Refs #69)
-
-**Status:** PR **#73** for issue **#69**, rebased onto `origin/main` `0db39c0` (#77 after #76/#74). Do not auto-close #69. Cost/frequency refactor only. #15 / #17 / #18 production-readiness commands stay reachable.  
+**Status:** Merged **#73** (`300b7e5`) on `origin/main`. Issue **#69 stays open** until post-merge verify. Cost/frequency refactor only. #15 / #17 / #18 production-readiness commands stay reachable.  
 **Not audited. Not mainnet.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Visibility was NOT changed.**
 
-## This HEAD
+## That HEAD
 
 | Item | Value |
 | --- | --- |

@@ -25,3 +25,43 @@ runs:
         if [ ! -d lib/v4-core/lib/solmate ]; then
           git -C lib/v4-core submodule update --init --recursive
         fi
+    # Foundry 1.8 does not ship a `svm` CLI. Prefetch the pinned compiler into
+    # ~/.svm so forge test / Attack / CREATE2 / size-guard are not skipped on a
+    # one-shot binaries.soliditylang.org reset. GitHub Releases is the fallback.
+    - name: Prefetch solc 0.8.26 (retry official mirrors)
+      shell: bash
+      run: |
+        set -euo pipefail
+        ver=0.8.26
+        dest="${HOME}/.svm/${ver}"
+        bin="${dest}/solc-${ver}"
+        mkdir -p "$dest"
+        if [ -x "$bin" ] && "$bin" --version | grep -q "${ver}"; then
+          echo "solc ${ver} already in ~/.svm"
+          "$bin" --version
+          exit 0
+        fi
+        urls=(
+          "https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a"
+          "https://github.com/ethereum/solidity/releases/download/v0.8.26/solc-static-linux"
+        )
+        tmp="${bin}.tmp"
+        for url in "${urls[@]}"; do
+          for attempt in 1 2 3; do
+            echo "GET ${url} (attempt ${attempt})"
+            rm -f "$tmp"
+            if curl -fsSL --retry 3 --retry-delay 4 --retry-all-errors -o "$tmp" "$url"; then
+              chmod +x "$tmp"
+              if "$tmp" --version | grep -q "${ver}"; then
+                mv "$tmp" "$bin"
+                "$bin" --version
+                exit 0
+              fi
+              echo "downloaded file is not solc ${ver}" >&2
+            fi
+            sleep $((attempt * 3))
+          done
+        done
+        rm -f "$tmp"
+        echo "failed to install solc ${ver} from official mirrors" >&2
+        exit 1

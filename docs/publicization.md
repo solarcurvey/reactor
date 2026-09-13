@@ -18,7 +18,7 @@ Inventory snapshot: **2026-09-12** after the founder-authorized history rewrite,
 
 ## Operator checklist (in order)
 
-1. **Email rewrite (AC1).** **Done** (founder-authorized). Personal mailbox must be absent from **advertised** refs: `main`, active open-PR heads, and intentional tags. Residual GitHub dangling objects are accepted — see [Accepted residuals / non-blocking](#accepted-residuals--non-blocking). Do not run another rewrite unless the founder authorizes a new remap.
+1. **Email rewrite (AC1).** **Done** (founder-authorized). Personal mailbox must be absent from **advertised** refs: `main`, active open-PR heads, and intentional tags. Residual GitHub dangling objects are accepted — see [Accepted residuals / non-blocking](#accepted-residuals-non-blocking). Do not run another rewrite unless the founder authorizes a new remap.
 2. **Branch prune.** **Done** for merged/superseded `cursor/*` leftovers. Keep only `main` + active open-PR heads + intentional tags. See [Branch inventory](#branch-inventory).
 3. **Secret-scan clean.** Re-run gitleaks + trufflehog over `--all` reachable **advertised** refs (heads and tags) after every rewrite. Classify fixtures vs live credentials. Rotate anything live **before** visibility changes. See [Secret scan](#secret-scan).
 4. **Actions harden.** Confirm every workflow still has `permissions: contents: read`, every `actions/checkout` has `persist-credentials: false`, and there is no `pull_request_target` + untrusted checkout. Compatible with #69 staging / cancellation. See [Actions hardening](#actions-hardening).
@@ -188,7 +188,7 @@ Close, convert, or redact before visibility changes if any draft is not ready fo
 
 ## Remaining #72 ACs (founder)
 
-- [x] **AC1.** Personal mailbox scrubbed from **advertised** refs (`main`, active open-PR heads, intentional tags). Residual GitHub dangling objects are **accepted** (see [Accepted residuals / non-blocking](#accepted-residuals--non-blocking)).
+- [x] **AC1.** Personal mailbox scrubbed from **advertised** refs (`main`, active open-PR heads, intentional tags). Residual GitHub dangling objects are **accepted** (see [Accepted residuals / non-blocking](#accepted-residuals-non-blocking)).
 - [x] Merged/superseded Cursor branches pruned; active list intentional
 - [x] Full-history/all-ref secret scan clean after fixture classification (advertised refs)
 - [x] Any real credential rotated (none found)
@@ -197,7 +197,7 @@ Close, convert, or redact before visibility changes if any draft is not ready fo
 - [x] Final audit/scan notes on exact advertised refs after rewrite (this page)
 - [ ] **Visibility flip** — still a **FOUNDER DECISION GATE**. Agents must not publicize.
 
-Support purge/GC is listed under [Accepted residuals / non-blocking](#accepted-residuals--non-blocking), not here.
+Support purge/GC is listed under [Accepted residuals / non-blocking](#accepted-residuals-non-blocking), not here.
 
 ### Advertised-ref check (2026-09-12 founder follow-up)
 

@@ -33,7 +33,7 @@ External quote USD marks are a configured provider registry with multi-source co
 
 ## [Unreleased]
 
-Read-path waterfalls removed (issue #37). Public launchpad treats token metadata as untrusted (#41). Tokenomics **unchanged**. Factory **V1**. No mainnet.
+Full GitHub CI extras (#17) rebase onto post-#50 `main` `e5fd745`. Read-path waterfalls removed (issue #37). Public launchpad treats token metadata as untrusted (#41). Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33). Tokenomics **unchanged**. Factory **V1**. No mainnet.
 
 ### Added / Changed
 
@@ -46,6 +46,8 @@ Read-path waterfalls removed (issue #37). Public launchpad treats token metadata
 
 ### CI / ops
 
+- Full GitHub CI extras (Refs #17) land on the #69 three-tier `ci.yml` after #73: `pnpm docs:links` (fast via `test:lib`; full-only job `docs-links`), Playwright smoke + interactive (full-only job `web`), and `scripts/safe-genesis-builder.test.ts` on the cheap `test:lib` path. Foundry Attack / CREATE2 / size-guard, backend unit, Postgres, production Next security, and live-toasts stay on the folded #73 jobs. Not a second `push` + `pull_request` workflow. Tokenomics unchanged.
+- `setup-foundry` prefetches `solc 0.8.26` with `curl` retries from official Solidity mirrors into `~/.svm` so a CDN reset or missing `svm` CLI cannot skip `forge test` / Attack / CREATE2 / `size:guard`. Tokenomics unchanged.
 - GitHub Actions is three-tier (Refs #69): fast PR (`test:lib` + targeted Foundry when Solidity changes), full merge-candidate (`ready_for_review`, label `ci-full`, or `workflow_dispatch`), one main post-merge path. Feature-branch `push` no longer duplicates `pull_request`. `keeper-lease-pg` is folded into `postgres-ms-timestamps`. No nightly schedule. Operator inventory: `/docs/ci`. Tokenomics unchanged.
 - Required #37 page-budget GitHub job is always-on in `.github/workflows/ci.yml` (every PR, including drafts) and is required by `ci-ok` (skipped ≠ pass). File stays in `pnpm test:lib`.
 - Public-fork GitHub Actions hardening (Refs #72 / #74): workflow `contents: read`, `actions/checkout` `persist-credentials: false`, no `pull_request_target`, no workflow secrets. Survives the #69 `ci.yml` fold. Operator checklist `/docs/publicization`. Visibility was **not** changed. Tokenomics unchanged.

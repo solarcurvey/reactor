@@ -22,6 +22,12 @@
 # `if: needs.decide.outputs.full == 'true'` — never a second push+pull_request
 # workflow. #37 page-budget is cheap (SQLite unit) and lands as a fast job.
 # Nightly/cron matrices stay off while pre-traction.
+#
+# #17 leftover extras land here (not a second workflow):
+#   docs:links — cheap check also in test:lib; full-only job so ci-ok
+#     cannot succeed if it is skipped.
+#   Playwright smoke + interactive — full-only job `web`.
+#   Safe genesis builder tests — required via test:lib (not a separate job).
 name: ci
 
 on:
@@ -104,7 +110,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: ./.github/actions/setup-pnpm
-      - name: Unit + docs:check + cheap security + CI-cost invariants
+      - name: Unit + docs:check + docs:links + cheap security + CI-cost invariants
         run: pnpm test:lib
 
   # Required #37 page-budget gate. Cheap (SQLite seed + unit asserts).
@@ -273,6 +279,45 @@ jobs:
       - name: Postgres smoke
         run: pnpm --filter indexer pg-smoke
 
+  # #17 leftover extras. Full-only — never a second push+pull_request file.
+  docs-links:
+    name: docs-links
+    needs: decide
+    if: needs.decide.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+      - name: Deterministic docs link check
+        run: pnpm docs:links
+
+  web:
+    name: web
+    needs: decide
+    if: needs.decide.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml', 'apps/web/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+      - name: Install Playwright Chromium
+        run: pnpm --filter web exec playwright install --with-deps chromium
+      - name: Playwright smoke + interactive
+        run: pnpm --filter web exec playwright test e2e/smoke.spec.ts e2e/interactive.spec.ts --reporter=line
+
   ci-ok:
     name: ci-ok
     if: always() && needs.decide.outputs.full == 'true'
@@ -284,6 +329,8 @@ jobs:
       - web-production-security
       - live-toasts-ui
       - postgres-ms-timestamps
+      - docs-links
+      - web
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -297,6 +344,8 @@ jobs:
           echo "web-production-security=${{ needs.web-production-security.result }}"
           echo "live-toasts-ui=${{ needs.live-toasts-ui.result }}"
           echo "postgres-ms-timestamps=${{ needs.postgres-ms-timestamps.result }}"
+          echo "docs-links=${{ needs.docs-links.result }}"
+          echo "web=${{ needs.web.result }}"
           test "${{ needs.decide.result }}" = success
           test "${{ needs.constants-version-deployments.result }}" = success
           test "${{ needs.page-budget.result }}" = success
@@ -304,3 +353,5 @@ jobs:
           test "${{ needs.web-production-security.result }}" = success
           test "${{ needs.live-toasts-ui.result }}" = success
           test "${{ needs.postgres-ms-timestamps.result }}" = success
+          test "${{ needs.docs-links.result }}" = success
+          test "${{ needs.web.result }}" = success

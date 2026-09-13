@@ -69,12 +69,14 @@ In-app docs: [`/docs`](http://127.0.0.1:43147/docs) (sidebar, search, TOC). Sour
 
 ```bash
 pnpm docs:check   # fail on fee / supply / Dev Buy / ticker lock / factory / version / deployment drift
+pnpm docs:links   # fail on broken in-repo /docs slugs and relative files (no network)
 pnpm docs:gen     # regenerate versioning + deployments + changelog pages from config
 pnpm test:ci-cost # CI workflow inventory (no duplicate feature-branch push+PR)
+pnpm size:guard   # Factory runtime ≤ 23,552 (EIP-170 − 1,024)
 pnpm safe:genesis # Safe Transaction Builder JSON from deployments/local.json (deployer ≠ Safe)
 ```
 
-GitHub Actions is three-tier (fast PR / full merge-candidate / main). See [`/docs/ci`](docs/ci.md).
+GitHub Actions is three-tier (fast PR / full merge-candidate / main). Full gate includes Foundry + Attack + CREATE2 + size guard, `docs:links`, Playwright smoke, production Next security, live-toasts, and Postgres. See [`/docs/ci`](docs/ci.md).
 
 **Production (`REACTOR_ENV=PROD` or `NODE_ENV=production`):** the indexer and isolated signer refuse to start if `TURNSTILE_SECRET` / site key are missing, if `SIGNER_INLINE` is on, or if the Anvil `#0` signer fallback would be used. `LOCAL` may keep those bypasses.
 
@@ -103,6 +105,7 @@ GitHub Actions is three-tier (fast PR / full merge-candidate / main). See [`/doc
 | `DECISIONS.md` | ADRs + primary-source research |
 | `THREAT_MODEL.md` | Attacks and residual risk |
 | `TESTING.md` | How to test |
+| `docs/ci.md` | GitHub Actions tiers and jobs (do not add a second push+PR workflow) |
 | `TESTNET_DEPLOYMENT.md` | Verified Arc params |
 | `AUDIT_HANDOFF.md` | Hostile-reader brief |
 | `AGENTS.md` | Invariants for future agents |

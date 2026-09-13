@@ -10,7 +10,8 @@ forge test -vv
 forge test --fuzz-runs 256
 forge test --match-path test/invariant/RewardCampaign.t.sol -vv
 # Do not treat test/unit/FeeInvariant.t.sol or test/invariant/Rewards.t.sol as stateful invariants.
-forge test --match-path test/attack/* -vv
+# CI Attack suite: forge test <file> for each test/attack/*.t.sol (PATH, not --match-path glob)
+forge test test/attack/CurveFreeze.t.sol -vv
 forge test --match-path test/integration/* -vv
 ```
 
@@ -34,7 +35,10 @@ npx --yes tsx apps/web/src/lib/security-headers.test.ts
 npx --yes tsx apps/web/src/lib/tx-guard.test.ts
 npx --yes tsx apps/web/src/lib/secret-sentinel.test.ts
 npx --yes tsx packages/reactor/src/untrusted-metadata.test.ts
+npx --yes tsx scripts/safe-genesis-builder.test.ts  # Safe ≠ deployer, batch A/B, MultiSend (#17)
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
+pnpm docs:links                 # in-repo /docs slugs + relative files (CI docs-links job; no network)
+pnpm test:web-unit              # top10 / marketdata / limited-json / fee-legs / constants-sync
 pnpm test:ci-cost               # #69: no duplicate push+PR, concurrency, fail-safe paths
 npx --yes tsx scripts/ci-public-harden.test.ts  # #72: permissions / persist-credentials / no pull_request_target
 # CI: .github/workflows/ci.yml contents:read; actions/checkout persist-credentials:false.
@@ -49,9 +53,9 @@ pnpm test:web-security          # production next build/start: live headers, bun
 # CI full/main: .github/workflows/ci.yml job postgres-ms-timestamps (includes test:pg-lease)
 ```
 
-`pnpm docs:check` (and `.github/workflows/ci.yml` job `constants-version-deployments`) **must fail** when generated constants, `docs/version.json`, Factory labels, or deployment tables have drifted from Solidity/config. Do not edit generated `docs/versioning.md` / `docs/deployments.md` / `docs/changelog.md` by hand — run `pnpm docs:gen`.
+`pnpm docs:check` (and `.github/workflows/ci.yml` job `constants-version-deployments`) **must fail** when generated constants, `docs/version.json`, Factory labels, or deployment tables have drifted from Solidity/config. Do not edit generated `docs/versioning.md` / `docs/deployments.md` / `docs/changelog.md` by hand — run `pnpm docs:gen`. `pnpm docs:links` (fast via `test:lib`; full-only job `docs-links`) **must fail** on unknown `/docs/<slug>` targets, missing relative files, or a `docs/*.md` page missing from `docs-nav.ts`. It does not fetch http(s) URLs.
 
-Three-tier GitHub Actions (Refs #69): fast PR / full merge-candidate / main post-merge. Operator inventory: [`/docs/ci`](docs/ci.md). Do not add a feature-branch `push` + `pull_request` pair.
+Three-tier GitHub Actions (Refs #69): fast PR / full merge-candidate / main post-merge. #17 leftover extras (`docs:links`, Playwright smoke + interactive job `web`) are full-only jobs on the same `ci.yml`. Operator inventory: [`/docs/ci`](docs/ci.md). Do not add a feature-branch `push` + `pull_request` pair.
 
 Public-fork hardening (Refs #72) is `scripts/ci-public-harden.test.ts` inside `pnpm test:lib`. It does not skip Foundry, `docs:check`, `test:web-security`, or `live-toasts-ui`. Personal-mailbox trailers were remapped 2026-09-12. AC1 is advertised refs only; residual dangling SHAs are accepted. Do not publicize without founder instruction — see `/docs/publicization`.
 
@@ -61,7 +65,7 @@ Authoritative current-architecture walk (Foundry, no live chain):
 forge test --match-path test/integration/CurrentArchitecture.t.sol -vv
 ```
 
-Live Anvil probe (needs deploy): `pnpm --filter indexer e2e`
+Live Anvil probe (needs deploy; **not** required for CI): `pnpm --filter indexer e2e`
 
 Static analysis (optional, when slither is installed):
 
@@ -231,7 +235,7 @@ pnpm --filter indexer watchdog
 | 31 | UserRouteQuoter one eth_call; never minOut 0/1 | `quote-service.ts`, `UserRouteQuoter.sol` |
 | 32 | Nested quote without intermediate wallet balances | `UserRoute.t.sol` `test_nested_preview_without_intermediate_wallet_balances`, `quote-overrides.test.ts` |
 | 33 | Production hard gates (Turnstile + no Anvil/inline signer) | `prod-gates.test.ts` |
-| 34 | Safe Builder JSON from local artifacts; deployer ≠ Safe | `scripts/safe-genesis-builder.test.ts` |
+| 34 | Safe Builder JSON from local artifacts; deployer ≠ Safe. Required in `pnpm test:lib` | `scripts/safe-genesis-builder.test.ts` |
 | 35 | sharp required (not optional) | `sharp-check.test.ts` |
 | 36 | Postgres millisecond columns are BIGINT; Date.now() persists; v5 migrates | `pg-ms-timestamps.test.ts` (`pnpm --filter indexer test:pg`) |
 | 37 | R2/S3 object key equals public `/m/<id>.webp`; mock GET returns the object; PROD upload failure returns no StoredMedia | `media-r2.test.ts` |
@@ -253,7 +257,8 @@ pnpm --filter indexer watchdog
 | 53 | `GET /markets/:token` + `GET /page/token/:token` aggregate market/candles/swaps; invalid token rejected | `page-reads.test.ts`, `markets-query.test.ts` |
 | 54 | Search/query path + quote-asset / market row mapping | `apps/web/src/lib/indexed.test.ts` |
 | 55 | Page request/RPC budgets on 4k seeded markets; abort obsolete loads; SSE patches without invalidate; no refetch-on-focus. Required always-on CI job `page-budget` (`ci-ok` requires success) | `apps/web/src/lib/page-budget.test.ts`, `.github/workflows/ci.yml` |
+| 56 | Full GitHub CI on the #69 three-tier `ci.yml`: Solidity / size guard / Attack / CREATE2, backend + web unit + Safe genesis via `test:lib`, `docs:check` + `docs:links`, Playwright smoke + interactive (`web`), Postgres | `.github/workflows/ci.yml`, `docs/ci.md`, `scripts/docs-links.ts`, `scripts/safe-genesis-builder.test.ts` |
 
 ## Arc smoke
 
-`test/integration/ArcSmoke.t.sol` runs against the local Arc-compatible chain id and 6-decimal quote. A live RPC smoke (`--rpc-url $ARC_TESTNET_RPC`) is opt-in and must not be required for CI.
+`test/integration/ArcSmoke.t.sol` runs against the local Arc-compatible chain id and 6-decimal quote. A live RPC smoke (`--rpc-url $ARC_TESTNET_RPC`) is opt-in and must not be required for CI (see `/docs/ci`).

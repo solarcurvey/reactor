@@ -4,7 +4,9 @@
 
 **Protocol release:** `0.1.0` (`v0.1.0`, `docs/version.json`). **Factory version:** V1 (`FACTORY_VERSION = 1`) — immutable, not the protocol semver.
 
-**Documentation mandate:** any change to contracts, tokenomics, Factory, Guardian/Keeper, routing, launch admission, API, SDK, CORE, tickers, backend trust, or user-facing behavior must update the matching docs in the same commit. See `CONTRIBUTING.md` and `/docs/policy`. CI (`pnpm docs:check`) fails on drifted fees, 1B supply, 5% Dev Buy, 24h ticker lock, Factory labels, protocol version, or deployment tables. Never invent mainnet addresses.
+**Documentation mandate:** any change to contracts, tokenomics, Factory, Guardian/Keeper, routing, launch admission, API, SDK, CORE, tickers, backend trust, or user-facing behavior must update the matching docs in the same commit. See `CONTRIBUTING.md` and `/docs/policy`. CI (`pnpm docs:check` in `.github/workflows/ci.yml` job `constants-version-deployments`) fails on drifted fees, 1B supply, 5% Dev Buy, 24h ticker lock, Factory labels, protocol version, or deployment tables. `pnpm docs:links` (same `test:lib` path, plus full-only job `docs-links`) fails on broken in-repo `/docs` slugs and relative files. Never invent mainnet addresses.
+
+**This amendment (full GitHub CI extras, Refs #17, rebased onto #50 / `e5fd745`):** leftover #17 gates land on the #69 three-tier `ci.yml` — not a second workflow. `docs:links`, `scripts/safe-genesis-builder.test.ts`, and `page-budget.test.ts` are in `test:lib`. Playwright smoke + interactive is full-only job `web`. Always-on `page-budget` stays required by `ci-ok`. Foundry Attack / CREATE2 / size-guard, Postgres, production Next security, and live-toasts stay on the #73 jobs. A skipped job is not a pass. Architecture and tokenomics unchanged. See `/docs/ci`.
 
 **This amendment (CI cost, Refs #69, rebased onto #77):** GitHub Actions is three-tier (fast PR / full merge-candidate / main). Feature-branch `push` no longer duplicates `pull_request`. `keeper-lease-pg` is folded into `postgres-ms-timestamps`. Required commands are unchanged in substance (`test:lib`, `test:web-security`, `test:live-toasts`, `test:pg` + `test:pg-lease`, Foundry on full/main). A skipped job is not a pass. Architecture and tokenomics unchanged. See `/docs/ci`.
 
@@ -234,6 +236,13 @@ There is no Ownable, admin, bootstrap, or first-caller-wins `bindFactory`.
 
 ```bash
 cd contracts && forge test
+pnpm size:guard
+pnpm --filter indexer test
+pnpm test:web-unit
+pnpm docs:check
+pnpm docs:links
+# pnpm test:web-security  # ci.yml job web-production-security (full/main)
+# GitHub: .github/workflows/ci.yml (three-tier; #17 extras are full-only jobs)
 forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0.1:8545 --broadcast
 ```
 
