@@ -4,7 +4,7 @@ import { ReactorMark, Wordmark } from "@/components/logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { BRAND, BRAND_COPY, BRAND_DIRECTION, BRAND_NAME } from "@/lib/brand";
+import { BRAND, BRAND_AI_DISAMBIGUATION, BRAND_COPY, BRAND_DIRECTION, BRAND_NAME } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Brand — Industrial Forge",
@@ -29,7 +29,7 @@ export default function BrandSpecimenPage() {
         </p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-rx-paper">REACTOR brand system</h1>
         <p className="mt-2 max-w-2xl text-[14px] leading-6 text-zinc-400">
-          {BRAND_COPY.category} — not an AI trading terminal, not a messaging network. Founder-locked visual direction.
+          {BRAND_COPY.category}. {BRAND_AI_DISAMBIGUATION} Not a messaging network. Founder-locked visual direction.
           Issue #55 stays open until independent audit.{" "}
           <Link href="/docs/brand" className="rx-link">
             Handbook

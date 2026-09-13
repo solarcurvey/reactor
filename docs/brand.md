@@ -1,6 +1,6 @@
 # Brand system — Industrial Forge
 
-> **Direction C locked.** Founder (Davis) approved Industrial Forge on 2026-09-13 ([#55](https://github.com/solarcurvey/reactor/issues/55), [PR #78](https://github.com/solarcurvey/reactor/pull/78)).  
+> **Direction C locked.** Founder (Davis) approved Industrial Forge on 2026-09-13 ([#55](https://github.com/solarcurvey/reactor/issues/55); decision on [PR #78](https://github.com/solarcurvey/reactor/pull/78), implementation on [PR #80](https://github.com/solarcurvey/reactor/pull/80)).  
 > This is the canonical visual identity for product UI, docs, and launch assets.  
 > **#55 stays open** until independent audit of the implemented surfaces.  
 > **Not audited. No mainnet.** Protocol economics, Factory V1, CORE, and THE REACTOR names are unchanged.
@@ -50,7 +50,7 @@ UI copy must say **token launch on Arc** on first use.
 | OG title | `REACTOR` |
 | OG description | `Token launch markets on Arc. Launch. Reflect. Burn.` |
 
-Do **not** use in product UI or social previews: “AI”, “agents”, “perps”, “super-app”, “messaging layer”, “Reactor Terminal”, “Arc Reactor”, “audited”, “trustless oracle”, fake urgency.
+**AI voice rule (one rule, no contradiction):** the word “AI” is allowed **only** as the first-use metadata sentence `Not an AI trading terminal.` (`BRAND_AI_DISAMBIGUATION` / `BRAND_COPY.description`, plus this collision table). Chrome, CTAs, titles, and OG/social previews (`BRAND_COPY.ogTitle` / `ogDescription`) must not use “AI”. Also do not use in chrome or social: “agents”, “perps”, “super-app”, “messaging layer”, “Reactor Terminal”, “Arc Reactor”, “audited”, “trustless oracle”, fake urgency.
 
 `THE REACTOR` is the Top-10 flywheel (`/reactor`). `REACTOR` is the launchpad.
 
@@ -84,6 +84,7 @@ Confident, technical, concise.
 | `REACTOR`, `THE REACTOR`, `CORE` | `Reactor` / `The Reactor` / `Core` in UI chrome |
 | `Standard`, `Rewards`, `Dev Buy`, `Instant`, `Fair` | `CCA`, creator fee, “points” |
 | `Launch. Reflect. Burn.` | Fake countdown urgency |
+| `Not an AI trading terminal.` (metadata / handbook only) | “AI” in chrome, CTAs, or OG |
 | `Not audited · no mainnet` | Safety or return promises |
 | `Top-10 is an offchain API` | `trustless oracle` |
 
@@ -119,7 +120,7 @@ node scripts/generate-brand-assets.mjs
 - Critical state cannot be color-only (up/down uses green/red **and** the existing numeric/tape copy).
 - Marks have accessible text (`REACTOR` / `CORE`).
 - `prefers-reduced-motion` skips toast enter, CORE pulse/spin, and loading pulse.
-- Type remains usable at 390px, 360px, and 200% zoom (640 CSS px). #36 owns the gate — do not weaken `web-qa`.
+- Type remains usable at 390px, 360px, and 200% zoom (640 CSS px). The closed #36 `web-qa` gate owns this — do not weaken it.
 
 ---
 

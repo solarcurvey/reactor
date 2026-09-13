@@ -37,6 +37,12 @@ export const BRAND_RADIUS = {
   control: "4px",
 } as const;
 
+/**
+ * Sole allowed use of the word "AI" in shipped copy.
+ * First-use metadata / handbook collision table only — never chrome, CTAs, or OG.
+ */
+export const BRAND_AI_DISAMBIGUATION = "Not an AI trading terminal." as const;
+
 export const BRAND_COPY = {
   product: "REACTOR",
   flywheel: "THE REACTOR",
@@ -44,15 +50,16 @@ export const BRAND_COPY = {
   category: "Token launch on Arc",
   tagline: "Launch. Reflect. Burn.",
   title: "REACTOR — Token launch on Arc",
-  description:
-    "Launch markets that pay holders. Official REACTOR pools on Arc. Not an AI trading terminal.",
+  description: `Launch markets that pay holders. Official REACTOR pools on Arc. ${BRAND_AI_DISAMBIGUATION}`,
   ogTitle: "REACTOR",
   ogDescription: "Token launch markets on Arc. Launch. Reflect. Burn.",
 } as const;
 
 export const BRAND_VOICE = {
   names: ["REACTOR", "THE REACTOR", "CORE", "Standard", "Rewards", "Dev Buy", "Instant", "Fair"] as const,
-  avoid: [
+  allowedAiPhrase: BRAND_AI_DISAMBIGUATION,
+  /** Chrome, CTAs, and OG/social. Metadata may use `allowedAiPhrase` once. */
+  avoidInChromeAndOg: [
     "Arc Reactor",
     "Reactor Terminal",
     "AI",

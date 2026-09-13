@@ -1,6 +1,6 @@
 # BUILD REPORT — Industrial Forge brand implementation (Refs #55)
 
-**Status:** Implementation PR for issue **#55**. Founder (Davis) locked **Direction C — Industrial Forge**. This pass applies C to production surfaces and assets. Rebased onto `origin/main` `789eb5c` after squash-merged **#46** / #39 (production observability), **#75** / #65 (restricted-access UX), **#44** / #35 (wallet E2E), **#70** / #64 (sanctions freshness), **#79** / #17 CI-evidence docs, **#68** / #62, **#67** / #63, **#66** / #61. **Do not close #55** until independent audit. #36 `web-qa` baselines must cover the approved-C state — do not weaken that gate. #39 observability (`obs-ui`, error boundaries, release SHA, vendor-proof), #65 `/restricted` UX, #35 `e2e-release-gate` and #64 sanctions-ops docs/runbook plus #66/#67/#68/#79 policy/CI-evidence content are preserved — brand chrome is additive.
+**Status:** Implementation PR for issue **#55**. Founder (Davis) locked **Direction C — Industrial Forge**. This pass applies C to production surfaces and assets. Rebased onto `origin/main` `789eb5c` after squash-merged **#46** / #39 (production observability), **#75** / #65 (restricted-access UX), **#44** / #35 (wallet E2E), **#70** / #64 (sanctions freshness), **#79** / #17 CI-evidence docs, **#68** / #62, **#67** / #63, **#66** / #61. **Do not close #55** until independent audit. Issue **#36 is closed** (`ad7b457`, post-merge `34729758795`); `web-qa` remains required and covers the approved-C state — do not weaken that gate. #39 observability (`obs-ui`, error boundaries, release SHA, vendor-proof), #65 `/restricted` UX, #35 `e2e-release-gate` and #64 sanctions-ops docs/runbook plus #66/#67/#68/#79 policy/CI-evidence content are preserved — brand chrome is additive.
 **Not audited. Not mainnet.**
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
@@ -15,7 +15,8 @@
 | Production chrome | `logo.tsx`, primitives, Discover / Launch / terminal / THE REACTOR / CORE / docs |
 | Assets | `/favicon.svg`, `/favicon.ico`, Apple touch, 192/512, OG 1200×630, wordmarks |
 | Close #55 | **No** — keep open for independent audit |
-| #36 | Visual / state / failure baselines refreshed to approved-C; `web-qa` stays required |
+| #36 | **Closed** after `ad7b457` + post-merge `34729758795`. Approved-C baselines are on this PR; `web-qa` stays required |
+| Voice | One AI rule: `BRAND_AI_DISAMBIGUATION` in first-use metadata only; chrome/OG stay AI-free |
 | Rebase | Onto `789eb5c` after **#46**. Keep #39 `obs-ui` / error boundaries / release SHA / vendor-proof, #65 `/restricted` routes and `text-zinc-400` muted floor, #35 `e2e-release-gate`, #70 freshness/runbook, #79 CI-evidence docs, and #66/#67/#68 policy layers. Brand chrome is additive. |
 
 ## Founder decision
