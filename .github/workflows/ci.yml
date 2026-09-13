@@ -17,8 +17,9 @@
 # Feature-branch `push` is intentionally omitted (PR-event only). Genuine
 # exceptions: this file's `push: branches: [main]` and `workflow_dispatch`.
 #
-# Sibling heavy gates: #36 visual/a11y is job `web-qa` (full/main). Remaining
-# slots (#35 E2E, #39 obs) must add jobs here with
+# Sibling heavy gates: #35 E2E is job `e2e-release-gate` (full/main);
+# #36 visual/a11y is job `web-qa` (full/main). Remaining slots (#39 obs)
+# must add jobs here with
 # `if: needs.decide.outputs.full == 'true'` — never a second push+pull_request
 # workflow. #37 page-budget is cheap (SQLite unit) and lands as a fast job.
 # Nightly/cron matrices stay off while pre-traction.
@@ -371,6 +372,39 @@ jobs:
       - name: Playwright smoke + interactive
         run: pnpm --filter web exec playwright test e2e/smoke.spec.ts e2e/interactive.spec.ts --reporter=line
 
+  e2e-release-gate:
+    name: e2e-release-gate
+    needs: decide
+    if: needs.decide.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml', 'apps/web/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - name: Production build + wallet E2E (desktop + iPhone + Android)
+        run: xvfb-run --auto-servernum pnpm test:e2e:release
+        env:
+          CI: true
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-release-report
+          path: apps/web/playwright-report
+          if-no-files-found: ignore
+
   ci-ok:
     name: ci-ok
     if: always() && needs.decide.outputs.full == 'true'
@@ -386,6 +420,7 @@ jobs:
       - postgres-ms-timestamps
       - docs-links
       - web
+      - e2e-release-gate
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -403,6 +438,7 @@ jobs:
           echo "postgres-ms-timestamps=${{ needs.postgres-ms-timestamps.result }}"
           echo "docs-links=${{ needs.docs-links.result }}"
           echo "web=${{ needs.web.result }}"
+          echo "e2e-release-gate=${{ needs.e2e-release-gate.result }}"
           test "${{ needs.decide.result }}" = success
           test "${{ needs.constants-version-deployments.result }}" = success
           test "${{ needs.page-budget.result }}" = success
@@ -414,3 +450,4 @@ jobs:
           test "${{ needs.postgres-ms-timestamps.result }}" = success
           test "${{ needs.docs-links.result }}" = success
           test "${{ needs.web.result }}" = success
+          test "${{ needs.e2e-release-gate.result }}" = success

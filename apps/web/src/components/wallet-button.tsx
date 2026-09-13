@@ -34,6 +34,7 @@ export function WalletButton() {
       <div className="flex flex-col items-end gap-1">
         <Button
           size="sm"
+          data-testid="wallet-connect"
           onClick={() => {
             if (inject === "wallet-reject") {
               setReject(FAILURE_COPY["wallet-reject"].body);
@@ -56,7 +57,12 @@ export function WalletButton() {
 
   if (isConnected && chainId !== arcLocal.id) {
     return (
-      <Button size="sm" variant="danger" onClick={() => switchChain({ chainId: arcLocal.id })}>
+      <Button
+        size="sm"
+        variant="danger"
+        data-testid="wallet-switch"
+        onClick={() => switchChain({ chainId: arcLocal.id })}
+      >
         Switch to {arcLocal.name}
       </Button>
     );
@@ -65,6 +71,11 @@ export function WalletButton() {
   return (
     <div className="flex items-center gap-2">
       <span className="hidden font-mono text-xs text-zinc-400 sm:inline">{shortAddress(shownAddress)}</span>
+      {isConnected ? (
+        <Button size="sm" variant="outline" data-testid="wallet-disconnect" onClick={() => disconnect()}>
+          Disconnect
+        </Button>
+      ) : null}
       <Modal
         open={menu}
         onOpenChange={setMenu}

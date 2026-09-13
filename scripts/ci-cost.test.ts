@@ -36,7 +36,7 @@ assert.deepEqual(
   `unexpected workflows (duplicate push+PR files must not remain): ${workflowFiles.join(", ")}`,
 );
 
-for (const gone of ["docs-sync.yml", "live-toasts.yml", "keeper-lease-pg.yml", "web-qa.yml"]) {
+for (const gone of ["docs-sync.yml", "live-toasts.yml", "keeper-lease-pg.yml", "web-qa.yml", "e2e-release.yml"]) {
   assert.equal(existsSync(join(workflowsDir, gone)), false, `${gone} must be removed (folded into ci.yml)`);
 }
 
@@ -74,6 +74,7 @@ for (const job of [
   "web-qa",
   "live-toasts-ui",
   "postgres-ms-timestamps",
+  "e2e-release-gate",
   "solidity + size-guard",
   "docs-links",
   "web",
@@ -94,6 +95,7 @@ assert.match(ciYml, /pnpm docs:links/);
 assert.match(ciYml, /e2e\/smoke\.spec\.ts/);
 assert.match(ciYml, /e2e\/interactive\.spec\.ts/);
 assert.match(ciYml, /pnpm --filter web test:qa/);
+assert.match(ciYml, /pnpm test:e2e:release/);
 assert.match(ciYml, /pnpm --filter indexer test:pg-lease/);
 assert.match(ciYml, /pnpm --filter indexer test:pg/);
 assert.match(ciYml, /e2e\/live-toasts\.spec\.ts/);
@@ -108,6 +110,7 @@ assert.match(ciYml, /pnpm test:operator-policy-http/);
 assert.match(ciYml, /test "\$\{\{ needs\.web-qa\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.postgres-ms-timestamps\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.live-toasts-ui\.result \}\}" = success/);
+assert.match(ciYml, /test "\$\{\{ needs\.e2e-release-gate\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.solidity\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.page-budget\.result \}\}" = success/);
 assert.match(ciYml, /pnpm test:page-budget/);
@@ -122,9 +125,10 @@ assert.match(ciYml, /test "\$\{\{ needs\.web\.result \}\}" = success/);
   assert.doesNotMatch(job, /^\s+if:/m, "page-budget must not skip (required on every PR)");
 }
 
-// #17 extras are full-only jobs on this workflow (not a second push+PR file).
+// #17 extras and #35 E2E are full-only jobs on this workflow (not a second push+PR file).
 assert.match(ciYml, /name:\s*docs-links[\s\S]*if: needs\.decide\.outputs\.full == 'true'/);
 assert.match(ciYml, /name:\s*web\n    needs: decide\n    if: needs\.decide\.outputs\.full == 'true'/);
+assert.match(ciYml, /name:\s*e2e-release-gate[\s\S]*if: needs\.decide\.outputs\.full == 'true'/);
 
 // Exact-head checkout
 assert.match(ciYml, /github\.event\.pull_request\.head\.sha \|\| github\.sha/);

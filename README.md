@@ -68,8 +68,9 @@ We **do not claim Arc Testnet success** unless transactions appear on [testnet.a
 In-app docs: [`/docs`](http://127.0.0.1:43147/docs) (sidebar, search, TOC). Source: `docs/`. `llms.txt` at `/llms.txt`.
 
 ```bash
-pnpm docs:check   # fail on fee / supply / Dev Buy / ticker lock / factory / version / deployment drift
-pnpm docs:links   # fail on broken in-repo /docs slugs and relative files (no network)
+pnpm docs:check          # fail on fee / supply / Dev Buy / ticker lock / factory / version / deployment drift
+pnpm docs:links          # fail on broken in-repo /docs slugs and relative files (no network)
+pnpm test:e2e:release    # production Next + EIP-1193 wallet journeys (no mainnet keys; full CI only)
 pnpm docs:gen     # regenerate versioning + deployments + changelog pages from config
 pnpm test:ci-cost # CI workflow inventory (no duplicate feature-branch push+PR)
 pnpm size:guard   # Factory runtime ≤ 23,552 (EIP-170 − 1,024)
@@ -77,7 +78,7 @@ pnpm --filter web test:qa   # prod next build + visual matrix + axe + keyboard +
 pnpm safe:genesis # Safe Transaction Builder JSON from deployments/local.json (deployer ≠ Safe)
 ```
 
-GitHub Actions is three-tier (fast PR / full merge-candidate / main). Full gate includes Foundry + Attack + CREATE2 + size guard, `docs:links`, Playwright smoke, visual/a11y `web-qa`, production Next security, live-toasts, and Postgres. See [`/docs/ci`](docs/ci.md).
+GitHub Actions is three-tier (fast PR / full merge-candidate / main). Full gate includes Foundry + Attack + CREATE2 + size guard, `docs:links`, Playwright smoke, visual/a11y `web-qa`, production Next + wallet E2E (`e2e-release-gate`), production Next security, live-toasts, and Postgres. See [`/docs/ci`](docs/ci.md).
 
 **Production (`REACTOR_ENV=PROD` or `NODE_ENV=production`):** the indexer and isolated signer refuse to start if `TURNSTILE_SECRET` / site key are missing, if `SIGNER_INLINE` is on, or if the Anvil `#0` signer fallback would be used. `LOCAL` may keep those bypasses.
 

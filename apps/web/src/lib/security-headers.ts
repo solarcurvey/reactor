@@ -16,6 +16,8 @@ export type CspOptions = {
 function extraConnectSrc(): string[] {
   const out = new Set<string>([
     "http://127.0.0.1:8545",
+    "http://127.0.0.1:18448",
+    "http://127.0.0.1:18545",
     "http://127.0.0.1:43148",
     "http://127.0.0.1:43149",
     "http://localhost:8545",

@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "REACTOR E2E Wallet",
+  "version": "1.0.0",
+  "description": "Deterministic MetaMask/Rabby-style wallet for CI. Anvil #0/#1 addresses only. No mainnet keys.",
+  "permissions": ["storage"],
+  "host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "REACTOR E2E Wallet" },
+  "content_scripts": [
+    {
+      "matches": ["http://127.0.0.1/*", "http://localhost/*"],
+      "js": ["inject.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": ["http://127.0.0.1/*", "http://localhost/*"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "ISOLATED"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["inject.js", "notification.html"],
+      "matches": ["http://127.0.0.1/*", "http://localhost/*"]
+    }
+  ]
+}

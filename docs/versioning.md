@@ -26,6 +26,7 @@ Edit **`docs/version.json`** only. Then run `pnpm docs:gen`. CI (`pnpm docs:chec
 - `CHANGELOG.md` has no heading for this protocol version
 - `factoryVersion` / label ≠ Solidity `FACTORY_VERSION`
 - generated `docs/versioning.md` / `docs/deployments.md` are stale
+- tracked docs / `BUILD_REPORT.md` still contain `<<<<<<<` / `>>>>>>>` conflict markers
 - fee / supply / Dev Buy / ticker lock / factory labels in docs drifted from code
 - `deployments/local.json` copies (web + indexer) drifted
 - deployment tables omit a recorded local address, or invent a mainnet (5042) address

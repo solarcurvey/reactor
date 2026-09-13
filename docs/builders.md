@@ -41,3 +41,15 @@ Exact-address screening: `GET /sanctions/screen` returns `blocked` / `clear` / `
 Protected write routes (`POST /quote`, `/upload`, `/launch/*`) fail closed on a stale or missing official-list snapshot. `GET /markets` and other public reads are not gated. See [Sanctions ops](/docs/sanctions-ops).
 
 See [API](/docs/api), [SDK](/docs/sdk), [Examples](/docs/examples), [Quoting](/docs/quoting), [Events](/docs/events), [UI QA](/docs/qa), [Operator policy](/docs/operator-policy).
+
+## Production UI release gate
+
+CI runs Playwright against **`next build` + `next start`** (not `next dev`) on Chromium, Firefox, WebKit, iPhone-class, and narrow-Android viewports with a deterministic EIP-1193 wallet fixture. Chromium also loads a MetaMask/Rabby-style unpacked MV3 extension (connect/confirm through a real prompt). No mainnet keys. No live Anvil. Journeys cover BUY/SELL, nested USDC BUY+SELL (`UserRouteExecutor` calldata), bonding InstantCurve, graduated v4, Instant launch, rewards claim, Dev Buy, wrong-chain, user-rejected txs, lock/switch/disconnect, revert, allowance, quote TTL, and dropped receipts. Unexpected browser `console.error` / unhandled `pageerror` fail the suite (shared fixture on every release-gate page).
+
+The gate is the **full-only** job `e2e-release-gate` on `.github/workflows/ci.yml` (Refs #69 / #73). Do not add a second `push` + `pull_request` workflow.
+
+```bash
+pnpm test:e2e:release
+```
+
+This is a UI/release gate, not an onchain proof. Live local demo remains `pnpm --filter indexer demo`. See `TESTING.md` §41.

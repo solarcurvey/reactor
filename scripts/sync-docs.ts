@@ -7,7 +7,7 @@
  * Economics: contracts/src/ReactorConstants.sol (never change from this script)
  */
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -160,6 +160,7 @@ Edit **\`docs/version.json\`** only. Then run \`pnpm docs:gen\`. CI (\`pnpm docs
 - \`CHANGELOG.md\` has no heading for this protocol version
 - \`factoryVersion\` / label ≠ Solidity \`FACTORY_VERSION\`
 - generated \`docs/versioning.md\` / \`docs/deployments.md\` are stale
+- tracked docs / \`BUILD_REPORT.md\` still contain \`<<<<<<<\` / \`>>>>>>>\` conflict markers
 - fee / supply / Dev Buy / ticker lock / factory labels in docs drifted from code
 - \`deployments/local.json\` copies (web + indexer) drifted
 - deployment tables omit a recorded local address, or invent a mainnet (5042) address
@@ -411,7 +412,36 @@ export function check(): string[] {
   if (!existsSync(join(root, "CONTRIBUTING.md"))) errors.push("CONTRIBUTING.md missing");
   if (!existsSync(join(root, "docs/policy.md"))) errors.push("docs/policy.md missing");
 
+  for (const rel of conflictMarkerFiles()) {
+    const text = read(rel);
+    if (/^<<<<<<< /m.test(text) || /^>>>>>>> /m.test(text)) {
+      errors.push(`${rel} contains unresolved conflict markers`);
+    }
+  }
+
   return errors;
+}
+
+function conflictMarkerFiles(): string[] {
+  const files = [
+    "BUILD_REPORT.md",
+    "AUDIT_HANDOFF.md",
+    "TESTING.md",
+    "CHANGELOG.md",
+    "README.md",
+    "ARCHITECTURE.md",
+    "CONTRIBUTING.md",
+    "ECONOMICS.md",
+    "FACTORY_VERSIONING.md",
+    "UX_REFERENCE.md",
+  ];
+  const docsDir = join(root, "docs");
+  if (existsSync(docsDir)) {
+    for (const name of readdirSync(docsDir)) {
+      if (name.endsWith(".md")) files.push(`docs/${name}`);
+    }
+  }
+  return files.filter((f) => existsSync(join(root, f)));
 }
 
 const cmd = process.argv[2] ?? "check";

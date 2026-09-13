@@ -16,6 +16,7 @@ Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy,
 - Filters are chips, not a settings panel.
 - Quote is a first-class identity (`EARNS ZEC`, not “paired with”).
 - Sell ticket shows **two** mins: first-leg quote floor and final USDC floor (different units).
+- Ticket/launch expose a compact phase line: `idle` → `quoting` → `approval/signature` → `submitted/pending` → `confirmed`. Confirm is locked while a wallet prompt or receipt wait is in flight (no double-submit). Account or chain change after Quote requires a re-quote. A quote older than 30s (2.5s in the E2E build) must be refreshed; a dropped receipt says so.
 - Ranked rail shows #1–#10 and distance-to-#11.
 - Activity is a feed with explorer links, not RPC-polled tables.
 - Board / search / token page / quote picker read the indexer (`/markets`, `/page/token`, `/quote-assets`). Search is SQL `q` + `stage`, not a client filter of the full board. Token page is one aggregated hop. Live swap tickets stay `POST /quote` (30s, fail-closed) — not a cached mark. Expensive catalog/CORE/wallet reads do not refetch on window focus. SSE trade prints patch cached rows; they do not refetch the board.

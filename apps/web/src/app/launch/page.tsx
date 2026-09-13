@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePublicClient, useSignMessage, useWriteContract } from "wagmi";
 import { signOperatorWalletProof } from "@/lib/wallet-proof";
 import { waitForTransactionReceipt } from "viem/actions";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -40,6 +40,8 @@ export default function LaunchPage() {
   const [devBuy, setDevBuy] = useState("");
   const [durationMin, setDurationMin] = useState("45");
   const [error, setError] = useState<string | null>(null);
+  const [phase, setPhase] = useState<"idle" | "quoting" | "awaiting_wallet" | "pending" | "confirmed">("idle");
+  const submitLock = useRef(false);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [needsChallenge, setNeedsChallenge] = useState(false);
   const siteKey = turnstileSiteKey();
@@ -173,16 +175,21 @@ export default function LaunchPage() {
   }
 
   async function submit() {
+    if (submitLock.current) return;
+    submitLock.current = true;
     setError(null);
     if (!isConnected || !client || !selected || !address) {
+      submitLock.current = false;
       setError("Connect a wallet and pick a quote asset.");
       return;
     }
     if (!writesEnabled) {
+      submitLock.current = false;
       setError(mismatchMessage);
       return;
     }
     try {
+      setPhase("quoting");
       const write = resolveTradeWrite({
         chainId,
         connected: address,
@@ -222,6 +229,7 @@ export default function LaunchPage() {
       };
       const priced = await authorizeLaunch(selected.token, params.symbol, path);
       params.symbol = priced.ticker;
+      setPhase("awaiting_wallet");
       if (path === "instant") {
         if (params.devBuyQuote > 0n) {
           const allowance = (await client.readContract({
@@ -237,7 +245,10 @@ export default function LaunchPage() {
               functionName: "approve",
               args: [write.to, params.devBuyQuote],
             });
-            await waitForTransactionReceipt(client, { hash: ah });
+            setPhase("pending");
+            const approveReceipt = await waitForTransactionReceipt(client, { hash: ah, pollingInterval: 200 });
+            if (approveReceipt.status === "reverted") throw new Error("Transaction reverted.");
+            setPhase("awaiting_wallet");
           }
           const hash = await writeContractAsync({
             address: write.to,
@@ -245,7 +256,10 @@ export default function LaunchPage() {
             functionName: "launchAndBuy",
             args: [params, rewards, 1n, priced.auth, priced.signature],
           });
-          await waitForTransactionReceipt(client, { hash });
+          setPhase("pending");
+          const receipt = await waitForTransactionReceipt(client, { hash, pollingInterval: 200 });
+          if (receipt.status === "reverted") throw new Error("Transaction reverted.");
+          setPhase("confirmed");
         } else if (rewards) {
           const hash = await writeContractAsync({
             address: write.to,
@@ -253,7 +267,10 @@ export default function LaunchPage() {
             functionName: "instantLaunch",
             args: [params, priced.auth, priced.signature],
           });
-          await waitForTransactionReceipt(client, { hash });
+          setPhase("pending");
+          const receipt = await waitForTransactionReceipt(client, { hash, pollingInterval: 200 });
+          if (receipt.status === "reverted") throw new Error("Transaction reverted.");
+          setPhase("confirmed");
         } else {
           const hash = await writeContractAsync({
             address: write.to,
@@ -261,7 +278,10 @@ export default function LaunchPage() {
             functionName: "launchStandard",
             args: [params, priced.auth, priced.signature],
           });
-          await waitForTransactionReceipt(client, { hash });
+          setPhase("pending");
+          const receipt = await waitForTransactionReceipt(client, { hash, pollingInterval: 200 });
+          if (receipt.status === "reverted") throw new Error("Transaction reverted.");
+          setPhase("confirmed");
         }
         router.push("/");
       } else {
@@ -289,11 +309,17 @@ export default function LaunchPage() {
             priced.signature,
           ],
         });
-        await waitForTransactionReceipt(client, { hash });
+        setPhase("pending");
+        const receipt = await waitForTransactionReceipt(client, { hash, pollingInterval: 200 });
+        if (receipt.status === "reverted") throw new Error("Transaction reverted.");
+        setPhase("confirmed");
         router.push("/");
       }
     } catch (e) {
+      setPhase("idle");
       setError(e instanceof TxGuardError || e instanceof Error ? e.message : "Launch failed");
+    } finally {
+      submitLock.current = false;
     }
   }
 
@@ -547,8 +573,15 @@ export default function LaunchPage() {
           {mismatchMessage}
         </UntrustedText>
       )}
-      <Button className="mt-4 w-full" onClick={submit} disabled={isPending || !writesEnabled || !name || !symbol || !quote}>
-        {!matched ? "Wrong network" : isPending ? "Signing…" : path === "instant" ? "Launch Instant" : "Open Fair Launch"}
+      <p data-testid="launch-phase" data-phase={phase} className="mt-2 text-[11px] uppercase tracking-wider text-zinc-500">
+        {phase === "awaiting_wallet" ? "approval/signature" : phase === "pending" ? "submitted/pending" : phase === "quoting" ? "quoting" : phase}
+      </p>
+      <Button
+        className="mt-4 w-full"
+        onClick={submit}
+        disabled={isPending || phase === "awaiting_wallet" || phase === "pending" || !writesEnabled || !name || !symbol || !quote}
+      >
+        {!matched ? "Wrong network" : phase === "awaiting_wallet" || isPending ? "Signing…" : path === "instant" ? "Launch Instant" : "Open Fair Launch"}
       </Button>
     </div>
   );

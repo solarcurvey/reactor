@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "playwright test",
     "test:qa": "playwright test -c playwright.qa.config.ts",
-    "test:update-screenshots": "playwright test -c playwright.qa.config.ts e2e/visual.spec.ts e2e/states.spec.ts e2e/failures.spec.ts --update-snapshots"
+    "test:update-screenshots": "playwright test -c playwright.qa.config.ts e2e/visual.spec.ts e2e/states.spec.ts e2e/failures.spec.ts --update-snapshots",
+    "test:release": "playwright test -c playwright.release.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.23",

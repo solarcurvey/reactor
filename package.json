@@ -11,6 +11,7 @@
     "test:web:qa": "pnpm --filter web test:qa",
     "test:live-toasts": "tsx apps/web/src/lib/live-toasts.test.ts && pnpm --filter web exec playwright test e2e/live-toasts.spec.ts",
     "test:web-unit": "tsx apps/web/src/lib/top10.test.ts && tsx apps/web/src/lib/marketdata.test.ts && tsx apps/web/src/lib/limited-json.test.ts && tsx apps/web/src/lib/fee-legs.test.ts && tsx apps/web/src/lib/constants-sync.test.ts",
+    "test:e2e:release": "pnpm --filter web test:release",
     "docs:gen": "tsx scripts/sync-docs.ts generate",
     "docs:check": "tsx scripts/sync-docs.ts check",
     "docs:links": "tsx scripts/docs-links.ts",
