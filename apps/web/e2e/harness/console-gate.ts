@@ -63,7 +63,8 @@ const EXPECTED: ReadonlyArray<{
   // WebKit EventSource to the mock SSE hello. Exact CI text is
   // `/127.0.0.1:18448/stream due to access control checks.` (no Fetch API
   // prefix). CORS/`connect-src` are set; journeys still resolve. Other
-  // `:18448` paths stay unexpected.
+  // `:18448` paths stay unexpected — indexed GETs must echo Origin on the
+  // JSON response (mock `json()`), not hide behind this allowlist.
   {
     kind: "pageerror",
     pattern: /(?:Fetch API cannot load https?:\/\/)?127\.0\.0\.1:18448\/stream(?:\?\S*)? due to access control checks/,

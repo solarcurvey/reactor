@@ -28,11 +28,25 @@ function allowOrigin(req) {
   return typeof origin === "string" && origin.length > 0 ? origin : "*";
 }
 
+function allowHeaders(req) {
+  const requested = req?.headers?.["access-control-request-headers"];
+  if (typeof requested === "string" && requested.trim()) return requested;
+  return "content-type,x-request-id,x-reactor-wallet-proof";
+}
+
 function cors(res, req) {
+  // Echo the request Origin. Do not pass a headers object to writeHead()
+  // after this — Node replaces previously set CORS headers.
   res.setHeader("Access-Control-Allow-Origin", allowOrigin(req));
   res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "*");
+  res.setHeader("Access-Control-Allow-Headers", allowHeaders(req));
+}
+
+function json(res, status, body) {
+  res.setHeader("content-type", "application/json");
+  res.writeHead(status);
+  res.end(JSON.stringify(body));
 }
 
 function readBody(req) {
@@ -510,18 +524,15 @@ function handleIndexer(req, res, url, bodyText) {
     return;
   }
   if (url.pathname === "/health") {
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ ok: true, block: blockNumber, e2e: true }));
+    json(res, 200, { ok: true, block: blockNumber, e2e: true });
     return;
   }
   if (url.pathname === "/operator-policy/challenge") {
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify(operatorPolicyChallenge()));
+    json(res, 200, operatorPolicyChallenge());
     return;
   }
   if (url.pathname === "/operator-policy/status") {
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ decision: "ALLOW", reason: "E2E_LOCAL", request_id: "e2e" }));
+    json(res, 200, { decision: "ALLOW", reason: "E2E_LOCAL", request_id: "e2e" });
     return;
   }
   // Keep-alive hello so the live-toast EventSource is not a 404 console.error.
@@ -541,47 +552,39 @@ function handleIndexer(req, res, url, bodyText) {
     return;
   }
   if (url.pathname === "/quote-assets") {
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ items: QUOTE_ASSETS }));
+    json(res, 200, { items: QUOTE_ASSETS });
     return;
   }
   const marketOne = url.pathname.match(/^\/markets\/(0x[a-fA-F0-9]{40})$/i);
   if (marketOne) {
     const item = findMarket(marketOne[1]);
     if (!item) {
-      res.writeHead(404, { "content-type": "application/json" });
-      res.end(JSON.stringify({ error: "market not found" }));
+      json(res, 404, { error: "market not found" });
       return;
     }
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ item }));
+    json(res, 200, { item });
     return;
   }
   const tokenPage = url.pathname.match(/^\/page\/token\/(0x[a-fA-F0-9]{40})$/i);
   if (tokenPage) {
     const market = findMarket(tokenPage[1]);
     if (!market) {
-      res.writeHead(404, { "content-type": "application/json" });
-      res.end(JSON.stringify({ error: "market not found" }));
+      json(res, 404, { error: "market not found" });
       return;
     }
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(
-      JSON.stringify({
-        ok: true,
-        token: market.token,
-        market,
-        candles: [],
-        interval: url.searchParams.get("interval") ?? "5m",
-        sparse: true,
-        swaps: [],
-      }),
-    );
+    json(res, 200, {
+      ok: true,
+      token: market.token,
+      market,
+      candles: [],
+      interval: url.searchParams.get("interval") ?? "5m",
+      sparse: true,
+      swaps: [],
+    });
     return;
   }
   if (url.pathname === "/markets") {
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ items: MARKETS }));
+    json(res, 200, { items: MARKETS });
     return;
   }
   if (url.pathname === "/quote" && req.method === "POST") {
@@ -591,8 +594,7 @@ function handleIndexer(req, res, url, bodyText) {
     } catch {
       body = {};
     }
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify(quoteTicket(body)));
+    json(res, 200, quoteTicket(body));
     return;
   }
   if (url.pathname === "/e2e/control") {
@@ -610,14 +612,12 @@ function handleIndexer(req, res, url, bodyText) {
       if (body.delayMs != null) control.delayMs = Number(body.delayMs);
       if (body.launchAuth) control.launchAuth = body.launchAuth;
     }
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ ok: true, control }));
+    json(res, 200, { ok: true, control });
     return;
   }
   if (url.pathname === "/launch/authorize" && req.method === "POST") {
     if (control.launchAuth === "fail") {
-      res.writeHead(503, { "content-type": "application/json" });
-      res.end(JSON.stringify({ error: "launch authorization unavailable — admission/signer down", needsAuth: true }));
+      json(res, 503, { error: "launch authorization unavailable — admission/signer down", needsAuth: true });
       return;
     }
     let body = {};
@@ -626,34 +626,28 @@ function handleIndexer(req, res, url, bodyText) {
     } catch {
       body = {};
     }
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify(launchAuth(body)));
+    json(res, 200, launchAuth(body));
     return;
   }
   if (url.pathname.startsWith("/ticker/")) {
     const raw = decodeURIComponent(url.pathname.slice("/ticker/".length));
     const ticker = raw.toUpperCase();
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ ticker, reserved: ticker === "CORE", available: ticker !== "CORE" }));
+    json(res, 200, { ticker, reserved: ticker === "CORE", available: ticker !== "CORE" });
     return;
   }
   if (url.pathname === "/upload" && req.method === "POST") {
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ publicUrl: "/m/e2e.webp", uri: "/m/e2e.webp" }));
+    json(res, 200, { publicUrl: "/m/e2e.webp", uri: "/m/e2e.webp" });
     return;
   }
   if (url.pathname.startsWith("/candles/") || url.pathname.startsWith("/swaps/")) {
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(url.pathname.startsWith("/candles/") ? JSON.stringify({ candles: [], interval: "5m" }) : JSON.stringify([]));
+    json(res, 200, url.pathname.startsWith("/candles/") ? { candles: [], interval: "5m" } : []);
     return;
   }
   if (url.pathname === "/reactor" || url.pathname === "/top10") {
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(url.pathname === "/top10" ? JSON.stringify({ ranks: [] }) : JSON.stringify({ events: [] }));
+    json(res, 200, url.pathname === "/top10" ? { ranks: [] } : { events: [] });
     return;
   }
-  res.writeHead(404, { "content-type": "application/json" });
-  res.end(JSON.stringify({ error: "e2e mock: not found" }));
+  json(res, 404, { error: "e2e mock: not found" });
 }
 
 function handleRpc(req, res, bodyText) {
@@ -667,13 +661,11 @@ function handleRpc(req, res, bodyText) {
   try {
     parsed = JSON.parse(bodyText || "{}");
   } catch {
-    res.writeHead(400, { "content-type": "application/json" });
-    res.end(JSON.stringify({ error: "invalid json" }));
+    json(res, 400, { error: "invalid json" });
     return;
   }
   const out = Array.isArray(parsed) ? parsed.map(jsonRpc) : jsonRpc(parsed);
-  res.writeHead(200, { "content-type": "application/json" });
-  res.end(JSON.stringify(out));
+  json(res, 200, out);
 }
 
 const rpc = createServer(async (req, res) => {
@@ -682,8 +674,7 @@ const rpc = createServer(async (req, res) => {
     handleRpc(req, res, body);
   } catch (e) {
     cors(res, req);
-    res.writeHead(500, { "content-type": "application/json" });
-    res.end(JSON.stringify({ error: e instanceof Error ? e.message : "rpc fail" }));
+    json(res, 500, { error: e instanceof Error ? e.message : "rpc fail" });
   }
 });
 
@@ -694,8 +685,7 @@ const indexer = createServer(async (req, res) => {
     handleIndexer(req, res, url, body);
   } catch (e) {
     cors(res, req);
-    res.writeHead(500, { "content-type": "application/json" });
-    res.end(JSON.stringify({ error: e instanceof Error ? e.message : "indexer fail" }));
+    json(res, 500, { error: e instanceof Error ? e.message : "indexer fail" });
   }
 });
 
