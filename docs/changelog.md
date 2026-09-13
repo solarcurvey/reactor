@@ -2,7 +2,7 @@
 
 # Changelog
 
-Protocol release **0.3.3** (`v0.3.3`). Factory **V1** is unchanged by this number.
+Protocol release **0.3.4** (`v0.3.4`). Factory **V1** is unchanged by this number.
 
 The canonical file is `CHANGELOG.md` at the repo root. Same content below.
 
@@ -13,6 +13,33 @@ Versioning: [Semantic Versioning](https://semver.org/) for the **protocol releas
 - Protocol source of truth: `docs/version.json` (`protocolVersion`)
 - Git tag: `vMAJOR.MINOR.PATCH` (see [Versioning](docs/versioning.md) and `CONTRIBUTING.md`)
 - Factory **V1 stays V1 forever**. A new fee split or curve is Factory V2, not a protocol patch.
+
+## [0.3.4] - 2026-09-12
+
+Frontend production observability, error boundaries, and release telemetry. Rebased onto main `4207356` (#75 Restricted-access UX after #44 E2E release gate / #70 sanctions freshness / #79 CI evidence / #68 operator-policy / #67 geo / #66 OFAC / #49 UI QA / #42 full GitHub CI extras / #50 indexed board + page-budget / #58 typecheck / #73 three-tier CI / #77 / #76 / #74 public-scrub harden / #59 / #47 CSP). Tokenomics **unchanged**. Factory **V1**. No mainnet.
+
+### Added / Changed
+
+- Web reports redacted failures for API, RPC, wallet, quote, SSE, transactions, media, UI, and simulation. Each event includes `reactor@{protocol}+{git SHA}` **and** exact `reactorEnv` / `chainId` (`5042002`) / `chainName` / `buildTimestamp`. Optional Sentry store ingest when a DSN is set (Sentry-or-equivalent; local/CI no-ops). Top-10 BFF stays the #33 indexer proxy (`GET /top10`); `discoverTop10` is not restored.
+- Core-page Web Vitals (`perf`) on `/`, `/trade`, `/launch`, `/token/*`, `/reactor`, `/core`. Operator paging thresholds + runbook for render / API / RPC / quote / SSE / simulation. Expected wallet `4001` never pages.
+- User-visible request/tx errors show `ref {traceId} · chain {chainId}` (`x-request-id`) so operators can join BFF ingest and indexer logs.
+- Production failure-injection (lib + Playwright `next start` `/obs-inject`) proves every outage-class hook fires while Anvil / mnemonic / signature sentinels stay redacted. Core-page Web Vitals (`perf`) and the `/ops` six-class runbook are asserted on the same production server.
+- `POST /api/telemetry` re-redacts and rate-limits (16KiB JSON cap, **40 POSTs / 10s / IP** in genuine production). Review-fixture artifacts and `REACTOR_TELEMETRY_RELAXED=1` raise the cap so #49 `web-qa` parallel Playwright does not starve ingest. A 429 is intended backpressure: the browser does not retry onto a public DSN, and Chromium's `Failed to load resource` for `/api/telemetry` is not a `web-qa` console-gate fail. Quote `?inject=quote-429` stays fail-visible. Residual secrets are dropped. `GET /api/version` exposes build SHA, env, chain, and build timestamp.
+- App, root, and per-route React error boundaries. LOCAL `/error-preview?preview=1` trips a route boundary; hidden in production.
+- Hidden source maps when `REACTOR_SOURCEMAPS=1` or `SENTRY_AUTH_TOKEN` is set. Production does not serve `*.map`. First-party symbolication resolves a generated production stack to original source and records exact release SHA / env / chain. A configured DSN POSTs those symbolicated frames to the Sentry store API; CI proves that path against an in-process staging vendor mock (`obs/vendor-proof.test.ts`) — no org token in the repo. Upload script archives maps; `REACTOR_SOURCEMAPS_REQUIRE=1` fails if maps are missing. Optional live Sentry upload when org/project/token are set (post-merge #39 close gate).
+- Exact-head CI job **`obs-ui`** is folded into `.github/workflows/ci.yml` (full / main / `ci-full`). Fast PR runs obs units via `test:lib`. Playwright `obs-failure-injection.spec.ts` stays full-tier. No second `push`+`pull_request` workflow. Matches #73 / #74: `contents: read`, `persist-credentials: false`, no secrets.
+- Privacy redaction: keys, mnemonics, JWT/Bearer, Turnstile, launch signatures, cookies, secret query params. 32-byte hex is truncated.
+- Issue **#39 stays open** until merge + post-merge live vendor verify (configured staging/org Sentry that symbolicates a deliberate production error). This branch owns **0.3.4**; later branches rebase onto it. If #54 `0.4.0` lands first, rebase onto that tip and do not restore 0.3.4. Do not restore 0.3.3.
+
+### Tokenomics
+
+- No change. Different split = new Factory version, not an edit to V1.
+
+### Known limits (honest)
+
+- Not audited. No public mainnet.
+- Client telemetry is operator-trusted computation, not an oracle. Enabling Sentry shares redacted failure text with that vendor.
+- Factory V1 runtime must stay ≤ 23,552.
 
 ## [0.3.3] - 2026-09-12
 

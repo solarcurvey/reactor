@@ -1,9 +1,9 @@
 {
-  "protocolVersion": "0.3.3",
+  "protocolVersion": "0.3.4",
   "factoryVersion": 1,
   "factoryVersionLabel": "V1",
-  "releaseTag": "v0.3.3",
+  "releaseTag": "v0.3.4",
   "releaseDate": "2026-09-12",
   "status": "pre-audit local/testnet — not mainnet",
-  "notes": "External quote USD is a configured provider registry + multi-source consensus. tokens.current_supply is schema v9 (#23). Mark kind is schema v10 (#30). Top-10 snapshot tables are schema v11, ranked from current_supply via indexer ValuationService, with a 15m snapshot TTL shared by API and Keeper. Factory V1 immutable. Not audited."
+  "notes": "Frontend production observability on main 4207356 (#75 Restricted-access UX after #44 E2E release gate / #70 sanctions freshness / #79 CI evidence / #68 operator-policy / #67 geo / #66 OFAC / #49 UI QA / #42 full GitHub CI extras / #50 indexed board + page-budget / #58 typecheck / #73 three-tier CI / #77 / #76 / #74 / #59 / #47 CSP). Sentry-or-equivalent with release SHA + first-party source-map symbolication + configured-DSN vendor proof (in-process store mock; live org still post-merge). Redacted API/RPC/wallet/quote/SSE/tx/media/simulation telemetry, Web Vitals, alert runbook, traceId correlation, exact env/chain/build tags. POST /api/telemetry is 40/10s/IP in genuine production; review-fixture / REACTOR_TELEMETRY_RELAXED artifacts raise the cap so web-qa does not starve ingest. Exact-head CI job obs-ui folded into ci.yml (full/main; production next start). #75 /restricted + policy.ensureProof, #44 e2e-release-gate, #70 sanctions-ops docs/nav, #79 #17 evidence, and #68 recovered-wallet proof stay. #67 geo + #66 OFAC + #49 web-qa + #42 docs-links / Playwright web / safe-genesis stay. #39 stays open until merge + post-merge live vendor verify. This branch owns 0.3.4 unless #54 0.4.0 lands first — then rebase and do not restore 0.3.4. Lands independently before docs PR #48. Economics and Factory V1 unchanged. Not audited. No mainnet."
 }

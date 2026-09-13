@@ -22,8 +22,8 @@
 | Keeper | Designated maintenance. One atomic lease (renew + fence) |
 | CORE | Protocol token (`CoreToken`). Never Top-10 |
 | Factory V1 | Immutable on-chain factory label. Not protocol semver |
-| Protocol 0.3.2 | This software + docs release |
-| Fast / full / main CI | Three-tier GitHub Actions ([CI and cost](/docs/ci)). Fast = PR units + `docs:check` + `docs:links`. Full = merge-candidate + production Next / Foundry / Postgres / Playwright smoke / #35 `e2e-release-gate`. Main = one post-merge SHA |
+| Protocol 0.3.4 | This software + docs release |
+| Fast / full / main CI | Three-tier GitHub Actions ([CI and cost](/docs/ci)). Fast = PR units + `docs:check` + `docs:links`. Full = merge-candidate + production Next / Foundry / Postgres / Playwright smoke / `obs-ui` / #35 `e2e-release-gate`. Main = one post-merge SHA |
 | Repo publicization | Operator checklist to maybe make the GitHub repo public later. Not mainnet readiness. Do not flip visibility without founder instruction. AC1 is advertised refs only; Support purge/GC is an accepted residual. |
 | Millisecond columns | `Date.now()` wall clock: admission hits, issuance `updated_ms`, leader lease, Keeper jobs, alerts. Postgres `BIGINT` (schema v6) |
 | Unix-seconds columns | `Date.now()/1000` or `block.timestamp`: trades, ticker lock, receipt expiry |

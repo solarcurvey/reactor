@@ -33,6 +33,7 @@ import {
   type QuoteAsset,
 } from "./indexed";
 import { readCoreStatsBatched, readPendingRewardsPage, readTicketWallet, readWalletSnapshot } from "./wallet-reads";
+import { reportFailure } from "./obs";
 
 export type { CandlePoint, LaunchToken, QuoteAsset, MarketListOpts };
 
@@ -125,6 +126,7 @@ export function useQuotes() {
         return await readQuotesRpc(client);
       } catch (e) {
         if (e instanceof ServiceUnavailableError) throw e;
+        reportFailure("rpc", e, { query: "quotes" });
         if (REVIEW_FIXTURES) return REVIEW_QUOTES;
         throw new ServiceUnavailableError("rpc", e instanceof Error ? e.message : FAILURE_COPY.rpc.body);
       }

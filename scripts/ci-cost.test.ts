@@ -36,7 +36,7 @@ assert.deepEqual(
   `unexpected workflows (duplicate push+PR files must not remain): ${workflowFiles.join(", ")}`,
 );
 
-for (const gone of ["docs-sync.yml", "live-toasts.yml", "keeper-lease-pg.yml", "web-qa.yml", "e2e-release.yml"]) {
+for (const gone of ["docs-sync.yml", "live-toasts.yml", "keeper-lease-pg.yml", "web-qa.yml", "e2e-release.yml", "observability.yml"]) {
   assert.equal(existsSync(join(workflowsDir, gone)), false, `${gone} must be removed (folded into ci.yml)`);
 }
 
@@ -73,6 +73,7 @@ for (const job of [
   "operator-policy-http",
   "web-qa",
   "live-toasts-ui",
+  "obs-ui",
   "postgres-ms-timestamps",
   "e2e-release-gate",
   "solidity + size-guard",
@@ -99,7 +100,20 @@ assert.match(ciYml, /pnpm test:e2e:release/);
 assert.match(ciYml, /pnpm --filter indexer test:pg-lease/);
 assert.match(ciYml, /pnpm --filter indexer test:pg/);
 assert.match(ciYml, /e2e\/live-toasts\.spec\.ts/);
+assert.match(ciYml, /e2e\/obs-failure-injection\.spec\.ts/);
+assert.match(ciYml, /playwright\.obs\.config\.ts/);
 assert.match(ciYml, /FOUNDRY_PROFILE: ci/);
+
+// obs-ui is full-tier only and must prove production next start (not draft/fast skip of the harness).
+{
+  const after = ciYml.split(/^  obs-ui:\s*$/m)[1] ?? "";
+  const job = after.split(/^  [a-z][\w-]*:\s*$/m)[0] ?? "";
+  assert.match(job, /if: needs\.decide\.outputs\.full == 'true'/);
+  assert.match(job, /pnpm --filter web build/);
+  assert.match(job, /playwright\.obs\.config\.ts/);
+  assert.match(job, /e2e\/obs-failure-injection\.spec\.ts/);
+  assert.match(job, /vendor-proof\.test\.ts/);
+}
 assert.match(ciYml, /test_hookBits/);
 assert.match(ciYml, /pnpm size:guard/);
 
@@ -111,6 +125,7 @@ assert.match(ciYml, /test "\$\{\{ needs\.web-qa\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.postgres-ms-timestamps\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.live-toasts-ui\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.e2e-release-gate\.result \}\}" = success/);
+assert.match(ciYml, /test "\$\{\{ needs\.obs-ui\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.solidity\.result \}\}" = success/);
 assert.match(ciYml, /test "\$\{\{ needs\.page-budget\.result \}\}" = success/);
 assert.match(ciYml, /pnpm test:page-budget/);
@@ -209,5 +224,8 @@ assert.match(ciDoc, /No nightly/);
 assert.match(ciDoc, /Refs #69/);
 assert.match(ciDoc, /page-budget/);
 assert.match(ciDoc, /Recommended required checks[\s\S]*page-budget/);
+assert.match(ciDoc, /obs-ui/);
+assert.match(ciDoc, /production `next start` Playwright/);
+assert.match(ciDoc, /vendor-proof\.test\.ts/);
 
 console.log("ci-cost invariants ok");

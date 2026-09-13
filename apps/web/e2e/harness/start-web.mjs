@@ -15,6 +15,7 @@ const env = {
   ...process.env,
   NEXT_PUBLIC_REVIEW_FIXTURES: "1",
   NEXT_PUBLIC_QA_INJECT: process.env.NEXT_PUBLIC_QA_INJECT ?? "1",
+  REACTOR_TELEMETRY_RELAXED: process.env.REACTOR_TELEMETRY_RELAXED ?? "1",
   NEXT_PUBLIC_INDEXER_URL: INDEXER_URL,
   NEXT_PUBLIC_RPC_URL: RPC_URL,
   // Release gate sets short TTL via playwright.release.config.ts. QA / default stay 30s.

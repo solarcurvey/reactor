@@ -11,6 +11,9 @@ import { QaInjectProvider } from "@/components/qa-inject-provider";
 import { RestrictedBanner } from "@/components/restricted-banner";
 import { LiveToastProvider } from "@/components/live-toasts";
 import { LiveCacheProvider } from "@/lib/sse";
+import { releaseInfo } from "@/lib/obs/release";
+
+const rel = releaseInfo();
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,6 +28,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "REACTOR — Launch. Reflect. Burn.",
   description: "Launch markets that pay holders. Official REACTOR pools on Arc.",
+  other: {
+    "reactor-release": rel.release,
+    "reactor-build-sha": rel.buildSha,
+    "reactor-protocol": rel.protocolVersion,
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -51,7 +59,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   >
                     {children}
                   </main>
-                  <footer className="border-t border-white/6 px-4 py-6 text-center text-[11px] uppercase tracking-[0.16em] text-zinc-400">
+                  <footer
+                    className="border-t border-white/6 px-4 py-6 text-center text-[11px] uppercase tracking-[0.16em] text-zinc-400"
+                    title={rel.release}
+                    data-release={rel.release}
+                  >
                     REACTOR · Built on Arc · Not audited · Test / local only
                   </footer>
                 </LiveToastProvider>

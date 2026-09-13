@@ -6,6 +6,7 @@
  * concern (#67), not a Next replay.
  */
 import { BodyTooLargeError, readLimitedText } from "./limited-json";
+import { reportFailure } from "./obs/telemetry";
 
 const FORWARD = ["x-request-id", "x-reactor-wallet-proof"] as const;
 
@@ -39,6 +40,7 @@ export async function proxyLaunchAuthorize(req: Request, env: NodeJS.ProcessEnv 
     if (e instanceof BodyTooLargeError) {
       return Response.json({ error: e.message }, { status: 413 });
     }
+    reportFailure("api", e, { path: "/api/launch-pricing" });
     return Response.json(
       { error: "launch authorization unavailable — admission/signer down", needsAuth: true },
       { status: 503 },

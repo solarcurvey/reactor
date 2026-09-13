@@ -14,6 +14,8 @@ export type PageDiagnostic = {
  * Narrow allowlists for intentional `?inject=` paths only.
  * Hydration warnings and uncaught page exceptions are never allowlisted here.
  * Patterns must match the injected failure — not a generic `Failed to fetch`.
+ * `/api/telemetry` 429 is handled separately as best-effort ingest backpressure
+ * (`isBestEffortTelemetryBackpressure`) — it is not an inject allow.
  */
 export const INJECT_CONSOLE_ALLOWS: Record<QaInjectKind, readonly RegExp[]> = {
   indexer: [/ServiceUnavailableError/, /Indexer unavailable/, /GET \/health/],
@@ -59,7 +61,18 @@ export function allowsForInjects(kinds: Iterable<string>): RegExp[] {
   return out;
 }
 
+/**
+ * Best-effort ingest backpressure. Chromium logs `Failed to load resource` for
+ * `/api/telemetry` 429 even when JS treats the POST as optional. That is not a
+ * page bug and must not hide quote/indexer 429s (those use other URLs).
+ */
+export function isBestEffortTelemetryBackpressure(d: PageDiagnostic): boolean {
+  if (!d.location?.includes("/api/telemetry")) return false;
+  return /429|Too Many Requests/i.test(d.text);
+}
+
 export function isBlockingDiagnostic(d: PageDiagnostic): boolean {
+  if (isBestEffortTelemetryBackpressure(d)) return false;
   if (d.source === "pageerror") return true;
   if (d.type === "error" || d.type === "assert") return true;
   if (isHydrationWarning(d.text)) return true;

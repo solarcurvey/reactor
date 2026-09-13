@@ -21,6 +21,8 @@ import { TxGuardError, resolveTradeWrite } from "@/lib/tx-guard";
 import { useOperatedWrites } from "@/lib/use-operated-writes";
 import { RestrictedNotice } from "@/components/restricted-notice";
 import { UntrustedText } from "@/components/untrusted-text";
+import { reactorFetch, userVisibleFailure, type TelemetryEvent } from "@/lib/obs";
+import { SupportRef } from "@/components/support-ref";
 
 export default function LaunchPage() {
   const router = useRouter();
@@ -52,6 +54,7 @@ export default function LaunchPage() {
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<"idle" | "quoting" | "awaiting_wallet" | "pending" | "confirmed">("idle");
   const submitLock = useRef(false);
+  const [support, setSupport] = useState<TelemetryEvent | null>(null);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [needsChallenge, setNeedsChallenge] = useState(false);
   const siteKey = turnstileSiteKey();
@@ -106,8 +109,9 @@ export default function LaunchPage() {
 
   async function authorizeLaunch(quoteAddr: `0x${string}`, ticker: string, mode: "instant" | "fair") {
     const proof = await policy.ensureProof();
-    const res = await fetch("/api/launch-pricing", {
+    const res = await reactorFetch("/api/launch-pricing", {
       method: "POST",
+      kind: "api",
       headers: { "content-type": "application/json", ...proof },
       body: JSON.stringify({
         quote: quoteAddr,
@@ -191,6 +195,7 @@ export default function LaunchPage() {
     if (submitLock.current) return;
     submitLock.current = true;
     setError(null);
+    setSupport(null);
     if (policyBlocked) {
       submitLock.current = false;
       setError(writeBlockMessage ?? policy.userMessage);
@@ -335,7 +340,15 @@ export default function LaunchPage() {
       }
     } catch (e) {
       setPhase("idle");
-      setError(e instanceof TxGuardError || e instanceof Error ? e.message : "Launch failed");
+      const msg = e instanceof TxGuardError || e instanceof Error ? e.message : "Launch failed";
+      if (!/turnstile challenge|CHALLENGE is not ALLOW/i.test(msg)) {
+        const visible = userVisibleFailure(/authoriz|admission|unavailable/i.test(msg) ? "api" : "tx", e, {
+          path: "launch",
+          mode: path,
+        });
+        setSupport(visible.event);
+      }
+      setError(msg);
     } finally {
       submitLock.current = false;
     }
@@ -406,7 +419,12 @@ export default function LaunchPage() {
               try {
                 const { INDEXER_URL } = await import("@/lib/chain");
                 const proof = await policy.ensureProof();
-                const res = await fetch(`${INDEXER_URL}/upload`, { method: "POST", headers: { ...proof }, body: file });
+                const res = await reactorFetch(`${INDEXER_URL}/upload`, {
+                  method: "POST",
+                  kind: "media",
+                  headers: { ...proof },
+                  body: file,
+                });
                 const body = (await res.json()) as { publicUrl?: string; uri?: string; error?: string; reason?: string };
                 if (!res.ok) {
                   if (policy.applyWriteError(body)) throw new Error(body.error ?? "upload unavailable");
@@ -416,7 +434,9 @@ export default function LaunchPage() {
                 if (!next) throw new Error("upload returned a URL the launchpad will not render");
                 setImage(next);
               } catch (err) {
-                setError(err instanceof Error ? err.message : "upload failed — no base64 onchain");
+                const visible = userVisibleFailure("media", err, { path: "/upload" });
+                setError(visible.message || "upload failed — no base64 onchain");
+                setSupport(visible.event);
               }
             }}
           />
@@ -585,11 +605,14 @@ export default function LaunchPage() {
         <ServiceFailure kind={scene.inject} />
       )}
       {error && scene.inject !== "pricing" && scene.inject !== "upload" && scene.inject !== "ticker-invalid" ? (
-        <p role="alert" data-testid="launch-error" className="mt-3 text-sm text-red-300">
-          <UntrustedText as="span" field="toast">
-            {error}
-          </UntrustedText>
-        </p>
+        <div className="mt-3">
+          <p role="alert" data-testid="launch-error" className="text-sm text-red-300">
+            <UntrustedText as="span" field="toast">
+              {error}
+            </UntrustedText>
+          </p>
+          <SupportRef event={support} />
+        </div>
       ) : null}
       {!matched && isConnected && (
         <UntrustedText as="p" field="toast" className="mt-3 text-sm text-red-300">

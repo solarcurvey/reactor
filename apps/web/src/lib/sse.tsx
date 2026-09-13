@@ -6,6 +6,7 @@ import { INDEXER_URL } from "./chain";
 import { streamEndpoint } from "./live-toasts";
 import { applyLiveEventToClient, type LiveEvent } from "./live-cache";
 import { useQaInject } from "@/components/qa-inject-provider";
+import { reactorFetchCatch, reportFailure } from "./obs";
 
 export type { LiveEvent };
 
@@ -39,13 +40,14 @@ function openStream() {
     };
     for (const t of STREAM_TYPES) es.addEventListener(t, on(t));
     es.onerror = () => {
+      reportFailure("sse", new Error("SSE /stream disconnected"), { path: "/stream" });
       emit({ type: "error", data: { ok: false } });
       es?.close();
       es = null;
       if (healthPoll) clearInterval(healthPoll);
       const retryMs = Number((window as unknown as { __reactorSseRetryMs?: number }).__reactorSseRetryMs);
       healthPoll = setInterval(async () => {
-        const res = await fetch(`${INDEXER_URL}/health`).catch(() => null);
+        const res = await reactorFetchCatch(`${INDEXER_URL}/health`);
         if (!res?.ok) return;
         if (healthPoll) {
           clearInterval(healthPoll);
@@ -54,7 +56,8 @@ function openStream() {
         if (refs > 0) openStream();
       }, Number.isFinite(retryMs) && retryMs > 0 ? retryMs : 8_000);
     };
-  } catch {
+  } catch (e) {
+    reportFailure("sse", e, { path: "/stream" });
     emit({ type: "error", data: { ok: false } });
   }
 }

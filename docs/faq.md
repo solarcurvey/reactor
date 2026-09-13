@@ -4,7 +4,11 @@
 
 **Mainnet?** Blocked. Chain 5042 is disabled in Keeper and deploy scripts.
 
-**Is Factory V1 the protocol version?** No. Protocol is semver (`0.3.2`). Factory V1 stays V1 forever.
+**Is Factory V1 the protocol version?** No. Protocol is semver (`0.3.4`). Factory V1 stays V1 forever.
+
+**Why did a page say it broke?** App and route error boundaries catch render failures. Other routes keep working. Release SHA and a `ref {traceId} · chain {chainId}` line are on the screen for operators. See [Observability](/docs/observability).
+
+**Do you send my wallet seed to Sentry?** No. Telemetry redacts keys, mnemonics, signatures, Turnstile tokens, and cookies. 32-byte hex is truncated. The BFF drops residual secrets. DSN is optional.
 
 **Why do I see Turnstile?** Admission. CHALLENGE is not a signature. Solve it and retry.
 

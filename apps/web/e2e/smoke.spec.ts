@@ -24,7 +24,18 @@ test("docs are in primary nav", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /For traders/i })).toBeVisible();
   await page.goto("/docs/versioning");
   await expect(page.getByRole("heading", { name: /Versioning/i })).toBeVisible();
-  await expect(page.getByText(/Protocol release 0\.\d+\.\d+/i)).toBeVisible();
+  await expect(page.getByText(/Protocol release 0\.3\.4/i)).toBeVisible();
+});
+
+test("observability docs and release endpoint", async ({ page, request }) => {
+  await page.goto("/docs/observability");
+  await expect(page.getByRole("heading", { name: /Observability/i })).toBeVisible();
+  const res = await request.get("/api/version");
+  expect(res.ok()).toBeTruthy();
+  const body = (await res.json()) as { release?: string; mainnet?: boolean; audited?: boolean };
+  expect(body.release).toMatch(/^reactor@0\.3\.4\+/);
+  expect(body.mainnet).toBe(false);
+  expect(body.audited).toBe(false);
 });
 
 test("token detail is not the homepage", async ({ page }) => {

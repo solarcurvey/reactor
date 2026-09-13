@@ -7,6 +7,8 @@ import { injected } from "wagmi/connectors";
 import { OperatorPolicyProvider } from "@/components/operator-policy-provider";
 import { arcLocal } from "@/lib/chain";
 import { createAppQueryClient } from "@/lib/query";
+import { AppErrorBoundary } from "@/components/app-error-boundary";
+import { BuildTelemetry } from "@/components/build-telemetry";
 
 const config = createConfig({
   chains: [arcLocal],
@@ -22,7 +24,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={client}>
-        <OperatorPolicyProvider>{children}</OperatorPolicyProvider>
+        <BuildTelemetry />
+        <AppErrorBoundary>
+          <OperatorPolicyProvider>{children}</OperatorPolicyProvider>
+        </AppErrorBoundary>
       </QueryClientProvider>
     </WagmiProvider>
   );

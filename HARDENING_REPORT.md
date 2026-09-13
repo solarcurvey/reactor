@@ -12,6 +12,12 @@ UI and docs center **CHOOSE WHAT YOUR TOKEN EARNS** / **WHAT SHOULD YOUR TOKEN E
 
 Official-list freshness is fail-closed on REACTOR-operated writes. Last-known-good is retained on a bad refresh. Same-address refreshes persist a new source-generation so restart freshness ages from the latest `retrievedAt`. Audit lines hash wallets and drop raw IP / signatures / bodies. No automated override on complaint. Runbook: `docs/sanctions-runbook.md`.
 
+## P1 frontend ops (0.3.4)
+
+| Item | Status | Proof |
+| --- | --- | --- |
+| Production web observability | **SHIPPED (issue #39 open)** | Redacted Sentry-or-equivalent + release SHA + exact env/chain/build tags + first-party source-map symbolication + configured-DSN staging vendor proof. Web Vitals, alert runbook, `4001` suppress, `traceId` correlation. App/route error boundaries. Exact-head CI `obs-ui`. `apps/web/src/lib/obs/*`. Issue #39 stays open until merge + post-merge live vendor verify. |
+
 ## P0 status
 
 | Item | Status | Proof |

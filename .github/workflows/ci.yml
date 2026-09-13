@@ -300,6 +300,45 @@ jobs:
           NEXT_PUBLIC_REVIEW_FIXTURES: "1"
         run: pnpm exec playwright test e2e/live-toasts.spec.ts --reporter=line
 
+  obs-ui:
+    name: obs-ui
+    needs: decide
+    if: needs.decide.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml', 'apps/web/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+      - name: Observability unit + source-map symbolication
+        run: |
+          pnpm exec tsx apps/web/src/lib/obs/redact.test.ts
+          pnpm exec tsx apps/web/src/lib/obs/telemetry.test.ts
+          pnpm exec tsx apps/web/src/lib/obs/failure-injection.test.ts
+          pnpm exec tsx apps/web/src/lib/obs/sourcemap.test.ts
+          pnpm exec tsx apps/web/src/lib/obs/vendor-proof.test.ts
+      - name: Production Next build (review fixtures)
+        env:
+          NEXT_PUBLIC_REVIEW_FIXTURES: "1"
+        run: pnpm --filter web build
+      - name: Install Playwright Chromium
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Production failure-injection + Web Vitals + runbook
+        working-directory: apps/web
+        env:
+          CI: true
+          NEXT_PUBLIC_REVIEW_FIXTURES: "1"
+        run: pnpm exec playwright test -c playwright.obs.config.ts e2e/obs-failure-injection.spec.ts --reporter=line
+
   postgres-ms-timestamps:
     name: postgres-ms-timestamps
     needs: decide
@@ -419,6 +458,7 @@ jobs:
       - operator-policy-http
       - web-qa
       - live-toasts-ui
+      - obs-ui
       - postgres-ms-timestamps
       - docs-links
       - web
@@ -437,6 +477,7 @@ jobs:
           echo "operator-policy-http=${{ needs.operator-policy-http.result }}"
           echo "web-qa=${{ needs.web-qa.result }}"
           echo "live-toasts-ui=${{ needs.live-toasts-ui.result }}"
+          echo "obs-ui=${{ needs.obs-ui.result }}"
           echo "postgres-ms-timestamps=${{ needs.postgres-ms-timestamps.result }}"
           echo "docs-links=${{ needs.docs-links.result }}"
           echo "web=${{ needs.web.result }}"
@@ -449,6 +490,7 @@ jobs:
           test "${{ needs.operator-policy-http.result }}" = success
           test "${{ needs.web-qa.result }}" = success
           test "${{ needs.live-toasts-ui.result }}" = success
+          test "${{ needs.obs-ui.result }}" = success
           test "${{ needs.postgres-ms-timestamps.result }}" = success
           test "${{ needs.docs-links.result }}" = success
           test "${{ needs.web.result }}" = success

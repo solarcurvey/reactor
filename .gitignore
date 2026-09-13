@@ -18,6 +18,7 @@ contracts/slither-report.json
 apps/web/test-results/
 apps/web/playwright-report/
 apps/web/blob-report/
+artifacts/sourcemaps/
 # Uniswap + forge libs are reinstalled via `forge install` (pinned in DECISIONS.md)
 contracts/lib/
 .idea/

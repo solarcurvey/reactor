@@ -1,6 +1,6 @@
 # SDK
 
-`@reactor/sdk` **0.3.3** — thin client for the public indexer. Factory version is a different number (**V1**). Exact-address screening is `@reactor/sanctions` / `GET /sanctions/screen` (not in this client; not compliance). See [Address screening](/docs/sanctions).
+`@reactor/sdk` **0.3.4** — thin client for the public indexer. Factory version is a different number (**V1**). Exact-address screening is `@reactor/sanctions` / `GET /sanctions/screen` (not in this client; not compliance). See [Address screening](/docs/sanctions).
 
 ## Authorize a launch
 

@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { INDEXER_URL } from "@/lib/chain";
+import { ALERT_THRESHOLDS, OUTAGE_CLASSES, reactorFetchCatch, releaseInfo } from "@/lib/obs";
 
 type Beat = {
   ok?: boolean;
@@ -54,9 +55,9 @@ export default function OpsPage() {
     queryFn: async () => {
       const headers: HeadersInit = token ? { "x-ops-token": token } : {};
       const [ops, top10, watchdog] = await Promise.all([
-        fetch(`${INDEXER_URL}/ops`, { headers }).then((r) => r.json()).catch(() => ({})),
-        fetch("/api/reactor/top10").then((r) => r.json()).catch(() => ({ pauseEpoch: true, rows: [] })),
-        fetch(`${INDEXER_URL}/keeper`).then((r) => r.json()).catch(() => null),
+        reactorFetchCatch(`${INDEXER_URL}/ops`, { headers }).then((r) => r?.json() ?? {}).catch(() => ({})),
+        reactorFetchCatch("/api/reactor/top10").then((r) => r?.json() ?? { pauseEpoch: true, rows: [] }).catch(() => ({ pauseEpoch: true, rows: [] })),
+        reactorFetchCatch(`${INDEXER_URL}/keeper`).then((r) => r?.json() ?? null).catch(() => null),
       ]);
       const packed = ops as Ops;
       return {
@@ -182,6 +183,38 @@ export default function OpsPage() {
           </p>
         </Card>
       </div>
+
+      <Card className="mt-3 p-4">
+        <div className="text-[11px] uppercase tracking-wider text-zinc-500">Web outage paging</div>
+        <p className="mt-2 text-[13px] text-zinc-300">
+          Encode the runbook: page on clustered render / API / RPC / quote / SSE / simulation. Expected wallet{" "}
+          <code>4001</code> never pages. Release {releaseInfo().release} · {releaseInfo().reactorEnv} · chain{" "}
+          {releaseInfo().chainId}.
+        </p>
+        <table className="mt-3 w-full text-left font-mono text-[11px] text-zinc-300">
+          <thead>
+            <tr className="text-zinc-500">
+              <th className="pb-1">class</th>
+              <th className="pb-1">count / window</th>
+              <th className="pb-1">consecutive</th>
+            </tr>
+          </thead>
+          <tbody>
+            {OUTAGE_CLASSES.map((c) => {
+              const t = ALERT_THRESHOLDS[c];
+              return (
+                <tr key={c}>
+                  <td className="py-0.5">{c}</td>
+                  <td>
+                    {t.count} / {t.windowMs / 1000}s
+                  </td>
+                  <td>{t.consecutive}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Card>
     </div>
   );
 }
