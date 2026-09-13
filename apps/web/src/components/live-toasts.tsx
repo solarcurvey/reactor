@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { explorerTx } from "@/lib/utils";
 import { REVIEW_FIXTURES } from "@/lib/review-fixtures";
 import { subscribeReactorStream } from "@/lib/sse";
@@ -18,6 +18,8 @@ import {
   type LiveToast,
   type ToastClock,
 } from "@/lib/live-toasts";
+import { useQaInject, useQaState } from "./qa-inject-provider";
+import { FAILURE_COPY } from "@/lib/qa-inject";
 
 const DEMO_CORE_TX = `0x${"ab".repeat(32)}`;
 const DEMO_TOP_TX = `0x${"cd".repeat(32)}`;
@@ -61,13 +63,18 @@ function demoToasts(which: string): LiveToast[] {
   return rows;
 }
 
+type QaToast = { id: string; tone: "status" | "alert"; title: string; body?: string };
+
 export function LiveToasts() {
   const clocksRef = useRef(new Map<string, ToastClock>());
   const holdRef = useRef(false);
   const ttlRef = useRef(LIVE_TOAST_MS);
   const [toasts, setToasts] = useState<LiveToast[]>([]);
+  const [qaToasts, setQaToasts] = useState<QaToast[]>([]);
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);
+  const inject = useQaInject();
+  const state = useQaState();
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -102,13 +109,36 @@ export function LiveToasts() {
   }, []);
 
   useEffect(() => {
+    const next: QaToast[] = [];
+    if (state === "toast") {
+      next.push({
+        id: "qa-live-toast",
+        tone: "status",
+        title: "CORE buy+burn",
+        body: "Keeper confirmed a fee-exempt CORE burn. 0.5% pot — not Instant.",
+      });
+    }
+    if (inject === "sse") {
+      next.push({ id: "sse-disconnect", tone: "alert", title: FAILURE_COPY.sse.title, body: FAILURE_COPY.sse.body });
+      next.push({
+        id: "sse-reconnect",
+        tone: "status",
+        title: "Live feed reconnected",
+        body: "Same event id — no duplicate toast.",
+      });
+    }
+    setQaToasts(next);
+  }, [inject, state]);
+
+  useEffect(() => {
+    if (inject === "sse") return;
     return subscribeReactorStream((ev) => {
       const toast = ingestLiveEvent(ev);
       if (!toast) return;
       clocksRef.current.set(toast.id, createToastClock(Date.now(), ttlRef.current));
       setToasts((rows) => pushVisibleToast(rows, toast));
     });
-  }, []);
+  }, [inject]);
 
   useEffect(() => {
     const now = Date.now();
@@ -134,7 +164,7 @@ export function LiveToasts() {
     return () => window.clearInterval(id);
   }, [toasts, paused]);
 
-  if (toasts.length === 0) return null;
+  if (toasts.length === 0 && qaToasts.length === 0) return null;
 
   return (
     <div
@@ -159,6 +189,22 @@ export function LiveToasts() {
       aria-live="polite"
       aria-relevant="additions"
     >
+      {qaToasts.map((t) => (
+        <div
+          key={t.id}
+          data-testid={`toast-${t.id}`}
+          role={t.tone === "alert" ? "alert" : "status"}
+          aria-live={t.tone === "alert" ? "assertive" : "polite"}
+          className={`pointer-events-auto rounded-xl border px-3 py-2 text-[13px] ${
+            t.tone === "alert"
+              ? "border-red-500/30 bg-red-500/10 text-red-50"
+              : "border-cyan-300/25 bg-cyan-300/10 text-cyan-50"
+          }`}
+        >
+          <p className="font-medium">{t.title}</p>
+          {t.body ? <p className="mt-0.5 text-[12px] text-current/80">{t.body}</p> : null}
+        </div>
+      ))}
       {toasts.map((t) => (
         <article
           key={t.id}
@@ -179,7 +225,7 @@ export function LiveToasts() {
             <button
               type="button"
               aria-label="Dismiss notification"
-              className="rounded-full px-1.5 text-[14px] text-zinc-500 hover:text-white"
+              className="rounded-full px-1.5 text-[14px] text-zinc-400 hover:text-white"
               onClick={() => setToasts((rows) => rows.filter((row) => row.id !== t.id))}
             >
               ×
@@ -196,5 +242,15 @@ export function LiveToasts() {
         </article>
       ))}
     </div>
+  );
+}
+
+/** Layout wrapper so QA inject is in the same tree as the #43 toast stack. */
+export function LiveToastProvider({ children }: { children: ReactNode }) {
+  return (
+    <>
+      {children}
+      <LiveToasts />
+    </>
   );
 }

@@ -6,10 +6,12 @@ import { useLaunchTokens, usePendingRewards } from "@/lib/hooks";
 import { formatUnitsSafe } from "@/lib/utils";
 import Link from "next/link";
 import { tokenPath } from "@/lib/untrusted-metadata";
+import { ServiceFailure } from "@/components/service-failure";
+import { isServiceUnavailable } from "@/lib/qa-inject";
 
 export default function RewardsPage() {
   const { address, isConnected } = useAccount();
-  const { data: tokens, isLoading } = useLaunchTokens();
+  const { data: tokens, isLoading, isError, error, refetch } = useLaunchTokens();
   const { data: rows } = usePendingRewards(tokens, address);
 
   return (
@@ -23,11 +25,17 @@ export default function RewardsPage() {
           Wallet disconnected — showing markets with claimable = 0. Connect to read your balances.
         </p>
       )}
-      {isLoading && <p className="mt-4 text-sm text-zinc-500">Loading tokens…</p>}
+      {isLoading && <p className="mt-4 text-sm text-zinc-400">Loading tokens…</p>}
+      {isError && (
+        <ServiceFailure
+          kind={isServiceUnavailable(error) ? error.kind : "indexer"}
+          onRetry={() => refetch()}
+        />
+      )}
       {(rows ?? []).length > 0 && (
         <div className="mt-4 overflow-x-auto rounded-2xl border border-white/8">
           <table className="w-full min-w-[520px] text-left text-[13px]">
-            <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+            <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.16em] text-zinc-400">
               <tr>
                 <th className="px-3 py-2 font-medium">Token</th>
                 <th className="px-3 py-2 font-medium">Claimable</th>
@@ -53,7 +61,7 @@ export default function RewardsPage() {
         </div>
       )}
       {isConnected && (rows ?? []).length === 0 && !isLoading && (
-        <p className="mt-6 text-sm text-zinc-500">No launch tokens indexed on this factory yet.</p>
+        <p className="mt-6 text-sm text-zinc-400">No launch tokens indexed on this factory yet.</p>
       )}
     </div>
   );

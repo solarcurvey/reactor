@@ -29,6 +29,18 @@ USDC → nested quote → official/bonding goes through `UserRouteExecutor`. Bon
 
 Names, tickers, descriptions, and images on the board are **untrusted creator strings**. The UI strips HTML and will not follow `javascript:` / arbitrary image hosts. A token name cannot change the wallet `to` / recipient — Confirm is disabled on the wrong chain. See [Browser security](/docs/web-security).
 
+## When a service is down
+
+The UI **fails visible**. It does not invent a quote ticket or pretend the board is empty when the indexer is unreachable.
+
+| Failure | What you see | What is still true |
+| --- | --- | --- |
+| Indexer (`GET /markets`, candles, tape, `/reactor`) | “Indexer unavailable” + Retry | Onchain balances and fills still settle |
+| RPC (Anvil / Arc-compatible 5042002) | “RPC unavailable” | Onchain truth is unchanged; CORE stats and the quote registry need the node |
+| `POST /quote` | “Quote unavailable” | No ticket. Never `minOut` 0 or 1 |
+
+Review / Playwright can force those banners with `?inject=` (indexer, rpc, quote 429/413/5xx/stale/expired/noroute, pricing, upload, SSE, empty, invalid, wallet — ignored in production). See [UI QA](/docs/qa).
+
 ## Board, charts, tape
 
 | Surface | Source |

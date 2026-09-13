@@ -1,5 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { EXPENSIVE_REFETCH_ON_FOCUS } from "./page-budget";
+import { ServiceUnavailableError } from "./qa-inject";
 
 /** Catalog / board data. Live `POST /quote` tickets are not cached here. */
 export const INDEXED_STALE_MS = 4_000;
@@ -41,7 +42,10 @@ export function createAppQueryClient(): QueryClient {
         staleTime: INDEXED_STALE_MS,
         gcTime: 5 * 60_000,
         refetchOnWindowFocus: EXPENSIVE_REFETCH_ON_FOCUS,
-        retry: 1,
+        retry: (count, err) => {
+          if (err instanceof ServiceUnavailableError) return false;
+          return count < 1;
+        },
       },
     },
   });

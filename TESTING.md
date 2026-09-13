@@ -42,11 +42,16 @@ pnpm test:web-unit              # top10 / marketdata / limited-json / fee-legs /
 pnpm test:ci-cost               # #69: no duplicate push+PR, concurrency, fail-safe paths
 npx --yes tsx scripts/ci-public-harden.test.ts  # #72: permissions / persist-credentials / no pull_request_target
 # CI: .github/workflows/ci.yml contents:read; actions/checkout persist-credentials:false.
-pnpm --filter web test          # Playwright smoke + interactive + live-toasts (dev server)
+pnpm --filter web test          # Playwright smoke + interactive + live-toasts (dev server; not visual/a11y/failures)
+pnpm --filter web test:qa       # prod next build + screenshot matrix + axe + keyboard + ?inject= (CI ci.yml job web-qa)
 pnpm test:live-toasts           # #38 gate: identity unit + Playwright dismiss / multi-log / reconnect / safe-area / reduced-motion
+tsx apps/web/src/lib/qa-inject.test.ts
+tsx apps/web/e2e/console-gate.test.ts
+tsx apps/web/e2e/contrast.test.ts
 # CI full/main: .github/workflows/ci.yml job live-toasts-ui. Fast PR: identity unit via test:lib. #38 stays open until post-merge verify.
 pnpm test:web-security          # production next build/start: live headers, bundle sentinel, XSS corpus
 # CI full/main: .github/workflows/ci.yml job web-production-security
+# CI full/main: .github/workflows/ci.yml job web-qa. #36 stays open until merge + post-merge verify.
 # Real Postgres (docker compose postgres on :54329, or local 5432)
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer test:pg
 # DATABASE_URL=postgres://reactor:reactor@127.0.0.1:54329/reactor pnpm --filter indexer pg-smoke
@@ -163,6 +168,15 @@ CAPTURE=1 CAPTURE_URL=http://127.0.0.1:43147 pnpm --filter web test
 
 Writes `review/*-1440.png` and `review/*-390.png` for home, compact Instant, fair, trade, rewards, THE REACTOR, CORE, quote ecosystems, wallet. **No creator FDV slider.**
 
+CI visual gate (committed `toHaveScreenshot` baselines, not `review/`):
+
+```bash
+CI=1 pnpm --filter web test:qa
+pnpm --filter web test:update-screenshots   # Linux Chromium only — same as Actions; against next build
+```
+
+`playwright.qa.config.ts` builds with `e2e/harness/start-web.mjs` (shared #35 path), `qa-mock.mjs`, and `qa-rpc.mjs` (JSON-RPC stub on the compiled RPC URL — not Anvil). Viewports include 1280 laptop and 360 Android. `?inject=` covers quote 429/413/5xx/stale/expired/noroute, pricing, upload, SSE, empty, invalid token/ticker, wallet reject/revert. Axe `color-contrast` is on (only canvas / visual-mask / visual-dynamic excluded); muted text is `text-zinc-400` and leftover `text-zinc-500|600|700` fails `assertNoSubAaMutedText`. The shared console/pageerror fixture fails the run on unexpected `console.error`, hydration warnings, and uncaught page exceptions (narrow inject allowlists only). Production builds omit the flags and ignore inject. See `/docs/qa`. Issue **#36 stays open** until merge + post-merge verify.
+
 Keeper / watchdog (do not treat as onchain):
 
 ```bash
@@ -253,11 +267,12 @@ pnpm --filter indexer watchdog
 | 49 | Top-10 ranks from indexer ValuationService snapshot (schema v11); no `discoverTop10` Factory RPC | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts`, `apps/web/src/lib/marketdata.test.ts` |
 | 50 | Top-10 snapshot TTL: healthy → age past 15m → refresh fails → API pauses and Keeper refuses; indexed `quote_lp` liquidity arm; no mint-supply fallback after v9 | `top10-rank.test.ts`, `packages/reactor/src/top10.test.ts` |
 | 51 | Untrusted token metadata (no raw HTML, URL scheme allowlist, media policy) + production CSP (nonce `script-src`, live headers, bundle sentinel, browser XSS corpus, tx-guard / chain mismatch) | `untrusted-metadata.test.ts`, `security-headers.test.ts`, `tx-guard.test.ts`, `secret-sentinel.test.ts`, `e2e/prod-security.spec.ts`, `admission-unit.test.ts` |
-| 52 | Multicall3 probed then verified; missing/failed multicall falls back to parallel `readContract` | `packages/reactor/src/rpc-batch.test.ts` |
-| 53 | `GET /markets/:token` + `GET /page/token/:token` aggregate market/candles/swaps; invalid token rejected | `page-reads.test.ts`, `markets-query.test.ts` |
-| 54 | Search/query path + quote-asset / market row mapping | `apps/web/src/lib/indexed.test.ts` |
-| 55 | Page request/RPC budgets on 4k seeded markets; abort obsolete loads; SSE patches without invalidate; no refetch-on-focus. Required always-on CI job `page-budget` (`ci-ok` requires success) | `apps/web/src/lib/page-budget.test.ts`, `.github/workflows/ci.yml` |
-| 56 | Full GitHub CI on the #69 three-tier `ci.yml`: Solidity / size guard / Attack / CREATE2, backend + web unit + Safe genesis via `test:lib`, `docs:check` + `docs:links`, Playwright smoke + interactive (`web`), Postgres | `.github/workflows/ci.yml`, `docs/ci.md`, `scripts/docs-links.ts`, `scripts/safe-genesis-builder.test.ts` |
+| 52 | Visual / a11y / failure-injection gate; CI fails on unexplained screenshot, serious axe diffs, color-contrast, leftover `text-zinc-500|600|700`, or unexpected console/pageerror | `e2e/visual.spec.ts`, `e2e/states.spec.ts`, `e2e/a11y.spec.ts`, `e2e/failures.spec.ts`, `qa-inject.test.ts`, `e2e/contrast.test.ts`, `e2e/console-gate.test.ts` |
+| 53 | Multicall3 probed then verified; missing/failed multicall falls back to parallel `readContract` | `packages/reactor/src/rpc-batch.test.ts` |
+| 54 | `GET /markets/:token` + `GET /page/token/:token` aggregate market/candles/swaps; invalid token rejected | `page-reads.test.ts`, `markets-query.test.ts` |
+| 55 | Search/query path + quote-asset / market row mapping | `apps/web/src/lib/indexed.test.ts` |
+| 56 | Page request/RPC budgets on 4k seeded markets; abort obsolete loads; SSE patches without invalidate; no refetch-on-focus. Required always-on CI job `page-budget` (`ci-ok` requires success) | `apps/web/src/lib/page-budget.test.ts`, `.github/workflows/ci.yml` |
+| 57 | Full GitHub CI on the #69 three-tier `ci.yml`: Solidity / size guard / Attack / CREATE2, backend + web unit + Safe genesis via `test:lib`, `docs:check` + `docs:links`, Playwright smoke + interactive (`web`), Postgres | `.github/workflows/ci.yml`, `docs/ci.md`, `scripts/docs-links.ts`, `scripts/safe-genesis-builder.test.ts` |
 
 ## Arc smoke
 

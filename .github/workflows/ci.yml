@@ -17,8 +17,8 @@
 # Feature-branch `push` is intentionally omitted (PR-event only). Genuine
 # exceptions: this file's `push: branches: [main]` and `workflow_dispatch`.
 #
-# Sibling heavy gates (#35 E2E, #36 visual/a11y, #39 obs, #17 Foundry extras
-# such as docs:links) must add jobs here with
+# Sibling heavy gates: #36 visual/a11y is job `web-qa` (full/main). Remaining
+# slots (#35 E2E, #39 obs) must add jobs here with
 # `if: needs.decide.outputs.full == 'true'` — never a second push+pull_request
 # workflow. #37 page-budget is cheap (SQLite unit) and lands as a fast job.
 # Nightly/cron matrices stay off while pre-traction.
@@ -214,6 +214,42 @@ jobs:
       - name: Production headers, bundle sentinel, browser XSS corpus
         run: pnpm test:web-security
 
+  web-qa:
+    name: web-qa
+    needs: decide
+    if: needs.decide.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-pnpm
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml', 'apps/web/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+      - name: Install Playwright Chromium
+        run: pnpm --filter web exec playwright install --with-deps chromium
+      - name: Visual + a11y + failure-injection gate (production next build)
+        run: pnpm --filter web test:qa
+        env:
+          CI: "1"
+          NEXT_PUBLIC_REVIEW_FIXTURES: "1"
+          NEXT_PUBLIC_QA_INJECT: "1"
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-web-qa
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          retention-days: 7
+
   live-toasts-ui:
     name: live-toasts-ui
     needs: decide
@@ -327,6 +363,7 @@ jobs:
       - page-budget
       - solidity
       - web-production-security
+      - web-qa
       - live-toasts-ui
       - postgres-ms-timestamps
       - docs-links
@@ -342,6 +379,7 @@ jobs:
           echo "page-budget=${{ needs.page-budget.result }}"
           echo "solidity=${{ needs.solidity.result }}"
           echo "web-production-security=${{ needs.web-production-security.result }}"
+          echo "web-qa=${{ needs.web-qa.result }}"
           echo "live-toasts-ui=${{ needs.live-toasts-ui.result }}"
           echo "postgres-ms-timestamps=${{ needs.postgres-ms-timestamps.result }}"
           echo "docs-links=${{ needs.docs-links.result }}"
@@ -351,6 +389,7 @@ jobs:
           test "${{ needs.page-budget.result }}" = success
           test "${{ needs.solidity.result }}" = success
           test "${{ needs.web-production-security.result }}" = success
+          test "${{ needs.web-qa.result }}" = success
           test "${{ needs.live-toasts-ui.result }}" = success
           test "${{ needs.postgres-ms-timestamps.result }}" = success
           test "${{ needs.docs-links.result }}" = success

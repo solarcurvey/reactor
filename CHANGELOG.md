@@ -33,7 +33,7 @@ External quote USD marks are a configured provider registry with multi-source co
 
 ## [Unreleased]
 
-Full GitHub CI extras (#17) rebase onto post-#50 `main` `e5fd745`. Read-path waterfalls removed (issue #37). Public launchpad treats token metadata as untrusted (#41). Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33). Tokenomics **unchanged**. Factory **V1**. No mainnet.
+UI QA gate (issue #36 — **stays open** until merge + post-merge verify) plus indexed read-path / page-budget (issue #37) and full GitHub CI extras (#17). Public launchpad treats token metadata as untrusted (#41 / #47). Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33). Tokenomics **unchanged**. Factory **V1**. No mainnet.
 
 ### Added / Changed
 
@@ -46,10 +46,9 @@ Full GitHub CI extras (#17) rebase onto post-#50 `main` `e5fd745`. Read-path wat
 
 ### CI / ops
 
-- Full GitHub CI extras (Refs #17) land on the #69 three-tier `ci.yml` after #73: `pnpm docs:links` (fast via `test:lib`; full-only job `docs-links`), Playwright smoke + interactive (full-only job `web`), and `scripts/safe-genesis-builder.test.ts` on the cheap `test:lib` path. Foundry Attack / CREATE2 / size-guard, backend unit, Postgres, production Next security, and live-toasts stay on the folded #73 jobs. Not a second `push` + `pull_request` workflow. Tokenomics unchanged.
+- Full GitHub CI extras (Refs #17) land on the #69 three-tier `ci.yml` after #73: `pnpm docs:links` (fast via `test:lib`; full-only job `docs-links`), Playwright smoke + interactive (full-only job `web`), and `scripts/safe-genesis-builder.test.ts` on the cheap `test:lib` path. Foundry Attack / CREATE2 / size-guard, backend unit, Postgres, production Next security, and live-toasts stay on the folded #73 jobs. PR #49 folds `web-qa.yml` into `ci.yml` job `web-qa` (full/main). Not a second `push` + `pull_request` workflow. Tokenomics unchanged.
 - `setup-foundry` prefetches `solc 0.8.26` with `curl` retries from official Solidity mirrors into `~/.svm` so a CDN reset or missing `svm` CLI cannot skip `forge test` / Attack / CREATE2 / `size:guard`. Tokenomics unchanged.
-- GitHub Actions is three-tier (Refs #69): fast PR (`test:lib` + targeted Foundry when Solidity changes), full merge-candidate (`ready_for_review`, label `ci-full`, or `workflow_dispatch`), one main post-merge path. Feature-branch `push` no longer duplicates `pull_request`. `keeper-lease-pg` is folded into `postgres-ms-timestamps`. No nightly schedule. Operator inventory: `/docs/ci`. Tokenomics unchanged.
-- Required #37 page-budget GitHub job is always-on in `.github/workflows/ci.yml` (every PR, including drafts) and is required by `ci-ok` (skipped ≠ pass). File stays in `pnpm test:lib`.
+- GitHub Actions is three-tier (Refs #69): fast PR (`test:lib` + targeted Foundry when Solidity changes), full merge-candidate (`ready_for_review`, label `ci-full`, or `workflow_dispatch`), one main post-merge path. Feature-branch `push` no longer duplicates `pull_request`. `keeper-lease-pg` is folded into `postgres-ms-timestamps`. Required #37 page-budget job is always-on (every PR, including drafts) and is required by `ci-ok` (skipped ≠ pass). File stays in `pnpm test:lib`. No nightly schedule. Operator inventory: `/docs/ci`. Tokenomics unchanged.
 - Public-fork GitHub Actions hardening (Refs #72 / #74): workflow `contents: read`, `actions/checkout` `persist-credentials: false`, no `pull_request_target`, no workflow secrets. Survives the #69 `ci.yml` fold. Operator checklist `/docs/publicization`. Visibility was **not** changed. Tokenomics unchanged.
 - Founder-authorized git history rewrite (Refs #72): personal-mailbox `Co-authored-by` trailers remapped to GitHub noreply via `git filter-repo`. Pre-rewrite `main` `c159561` → rewritten `a560650`; #74 squash-merged at `6b32837`. Open PR heads force-updated; merged/superseded `cursor/*` leftovers deleted. Visibility still private.
 - Founder decision (Refs #72): Support purge/GC of pre-rewrite dangling SHAs is **not required**. AC1 is email scrubbed from **advertised** refs (`main`, active PR heads, intentional tags). Residual GitHub dangling objects are accepted / non-blocking. Visibility still a founder gate.
@@ -67,6 +66,14 @@ Full GitHub CI extras (#17) rebase onto post-#50 `main` `e5fd745`. Read-path wat
 ### Added / Changed
 
 - Live UI: bottom-right toasts for **confirmed** CORE `BuybackExecuted` / `COREBurned` and Top-10 `Top10Buy` after indexer SSE commit. First-session `hello.head` skips history; reconnect `?after=` delivers missed live events once. Dedupe is canonical `(chainId, txHash, logIndex, eventKind)` on a module `seen` set that outlives the visible toast array (dismiss, stack cap, remount). Hover/focus pauses auto-dismiss; safe-area insets; reduced-motion skips enter animation. Visible CI gate `live-toasts-ui`. Refs #38 — stays open until post-merge verify. Economics unchanged.
+- Playwright `toHaveScreenshot` against the production `next build` artifact (`playwright.qa.config.ts` + #35 `start-web.mjs`). Viewports: 1440, **1280 laptop**, 390, **360 narrow Android**. Shared fixture fails on unexpected `console.error`, hydration warnings, and `pageerror` (narrow `?inject=` allowlists only; diagnostics attach on failure).
+- State matrix: Discover loading/empty/search/filter, launch ticker/upload/Standard vs Rewards/Dev Buy, tx pending/confirmed/reverted, wallet menu, dialogs, live toasts, quote ecosystem.
+- axe (`wcag2a` / `21a` / `2aa` **including color-contrast**) plus keyboard skip-link / filter / launch / ticket, **dialog focus-trap/restore**, **200% zoom / 320 CSS px reflow**, **reduced-motion**, live-toast `role` / `aria-live`. Chart canvas / CORE mark / live ticks are the only contrast excludes (`e2e/contrast.ts`); brand tokens have a deterministic AA assert. Production muted text / placeholders use `text-zinc-400`; leftover `text-zinc-500|600|700` fails `assertNoSubAaMutedText`.
+- Review/QA-build failure injection: indexer, rpc, quote, quote-429/413/5xx/stale/expired/noroute, pricing fail-closed, upload, SSE disconnect/reconnect without duplicate toasts, empty markets, invalid token/ticker, wallet reject/revert. Real production builds omit the flags and ignore `?inject=`.
+- Docs: `/docs/qa`, traders/trust/faq, `TESTING.md`, `UX_REFERENCE.md`.
+
+Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33). Tokenomics **unchanged**. Factory **V1**. No mainnet.
+
 - Schema **v11** persists official Top-10 candidates (`top10_candidate_epochs` / `top10_candidate_rows`) after merged #23 **v9** `tokens.current_supply` and #30 **v10** `external_price_marks.kind`. Ranking reads persisted `current_supply` (not minted − SelfBurn/Top10Buy), 12m VWAP, and ValuationService consensus ancestry.
 - Indexer `GET /top10` is the official snapshot. Web `/api/reactor/top10`, Keeper, and watchdog consume that path. `discoverTop10` Factory RPC walk and the assumed hookless 0.30% quote/USDC fallback are removed.
 - Snapshot TTL 15 minutes (`TOP10_SNAPSHOT_TTL_SEC`) is shared by API serve and Keeper. Age past TTL + failed refresh pauses; ingest tick persist-on-fail replaces the last healthy row. Refs #10.

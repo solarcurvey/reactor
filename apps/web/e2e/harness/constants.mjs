@@ -1,0 +1,37 @@
+/**
+ * Deterministic local-only addresses for the production E2E gate.
+ * Anvil account #0 is a well-known test address — never a mainnet key.
+ */
+
+export const ANVIL_ACCOUNT_0 = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+export const LOCAL_CHAIN_ID = 5042002;
+export const LOCAL_CHAIN_HEX = "0x4cf392";
+
+export const RPC_HOST = "127.0.0.1";
+export const RPC_PORT = Number(process.env.E2E_RPC_PORT ?? 18545);
+export const INDEXER_PORT = Number(process.env.E2E_INDEXER_PORT ?? 18448);
+export const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 43147);
+
+export const INDEXER_URL = `http://${RPC_HOST}:${INDEXER_PORT}`;
+export const RPC_URL = `http://${RPC_HOST}:${RPC_PORT}`;
+export const WEB_URL = `http://${RPC_HOST}:${WEB_PORT}`;
+
+export const ADDR = {
+  InstantCurve: "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf",
+  ReactorRouter: "0x9A676e781A523b5d0C0e43731313A708CB607508",
+  ReactorFactory: "0x851356ae760d987E095750cCeb3bC6014560891C",
+  UserRouteExecutor: "0xCD8a1C3ba11CF5ECfa6267617243239504a98d90",
+  V4Adapter: "0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E",
+  USDC: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+  ZEC: "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+};
+
+export const TOKENS = {
+  ZCAT: "0x1111111111111111111111111111111111110001",
+  GIGA: "0x1111111111111111111111111111111111110002",
+  FCAT: "0x1111111111111111111111111111111111110003",
+  NEON: "0x1111111111111111111111111111111111110004",
+  CAT: "0x1111111111111111111111111111111111110006",
+  BOND: "0x1111111111111111111111111111111111110007",
+  RDY: "0x1111111111111111111111111111111111110008",
+};

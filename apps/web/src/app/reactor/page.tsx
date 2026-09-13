@@ -6,7 +6,9 @@ import { qk } from "@/lib/query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useReactorEvents } from "@/lib/hooks";
+import { ServiceFailure } from "@/components/service-failure";
 import { FIXTURE_RANKS, REVIEW_FIXTURES } from "@/lib/review-fixtures";
+import { isServiceUnavailable } from "@/lib/qa-inject";
 import { shortAddress } from "@/lib/utils";
 import { sanitizeDisplayText, sanitizeTicker } from "@/lib/untrusted-metadata";
 import { UntrustedText } from "@/components/untrusted-text";
@@ -29,7 +31,7 @@ type ApiPayload = {
 };
 
 export default function ReactorPage() {
-  const { data, isLoading, isError } = useReactorEvents();
+  const { data, isLoading, isError, error, refetch } = useReactorEvents();
   const events = data?.events ?? [];
   const api = useQuery({
     queryKey: qk.top10,
@@ -83,12 +85,12 @@ export default function ReactorPage() {
         </p>
       )}
       {api.data && !api.data.pauseEpoch && (
-        <p className="mt-4 text-[12px] text-zinc-500">{api.data.reason}</p>
+        <p className="mt-4 text-[12px] text-zinc-400">{api.data.reason}</p>
       )}
 
       <div className="mt-5 overflow-x-auto rounded-2xl border border-white/8">
-        <table className="w-full min-w-[640px] text-left text-[13px]">
-          <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+        <table className="w-full min-w-[640px] text-left text-[13px]" aria-label="Top-10 API ranks">
+          <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.16em] text-zinc-400">
             <tr>
               <th className="px-3 py-2 font-medium">Rank</th>
               <th className="px-3 py-2 font-medium">Token</th>
@@ -100,7 +102,7 @@ export default function ReactorPage() {
           <tbody>
             {ranks.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-3 py-8 text-sm text-zinc-500">
+                <td colSpan={5} className="px-3 py-8 text-sm text-zinc-400">
                   No API ranks yet. Graduated names need a defensible mark at or above $250k. Ungraduated Instant and
                   CORE never qualify. Onchain epoch members come from Keeper-submitted events, not from this table
                   alone.
@@ -122,7 +124,7 @@ export default function ReactorPage() {
         </table>
       </div>
 
-      <p className="mt-2 text-[11px] text-zinc-500">
+      <p className="mt-2 text-[11px] text-zinc-400">
         {REVIEW_FIXTURES
           ? "Review board fixtures. Not live API marks."
           : api.data?.trust ??
@@ -130,11 +132,16 @@ export default function ReactorPage() {
       </p>
 
       <Card className="mt-5 p-4">
-        <div className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">Onchain epoch events</div>
-        {isLoading && <p className="mt-2 text-sm text-zinc-500">Reading /reactor…</p>}
-        {isError && <p className="mt-2 text-sm text-zinc-500">Indexer offline — epoch still lives onchain.</p>}
+        <div className="text-[11px] uppercase tracking-[0.16em] text-zinc-400">Onchain epoch events</div>
+        {isLoading && <p className="mt-2 text-sm text-zinc-400">Reading /reactor…</p>}
+        {isError && (
+          <ServiceFailure
+            kind={isServiceUnavailable(error) ? error.kind : "indexer"}
+            onRetry={() => refetch()}
+          />
+        )}
         {!isLoading && events.length === 0 && (
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-zinc-400">
             No FlywheelAccrued / EpochSubmitted / Top10Buy / COREBurned logs yet.
           </p>
         )}
@@ -147,7 +154,7 @@ export default function ReactorPage() {
                   {e.token ? ` · ${shortAddress(e.token)}` : ""}
                 </UntrustedText>
               </span>
-              <span className="text-zinc-600">#{e.block}</span>
+              <span className="text-zinc-400">#{e.block}</span>
             </li>
           ))}
         </ul>
@@ -169,9 +176,9 @@ function formatMark(raw: string) {
 function Stat({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
     <Card className="p-3">
-      <div className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-[0.16em] text-zinc-400">{label}</div>
       <div className="mt-0.5 font-mono text-lg text-white">{value}</div>
-      <div className="text-[11px] text-zinc-500">{sub}</div>
+      <div className="text-[11px] text-zinc-400">{sub}</div>
     </Card>
   );
 }

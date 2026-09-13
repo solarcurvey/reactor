@@ -10,6 +10,7 @@ export function NetworkBanner() {
   return (
     <div
       data-testid="network-banner"
+      role="status"
       className={`border-b px-4 py-2 text-center text-[12px] ${
         wrong
           ? "border-red-500/30 bg-red-500/10 text-red-100"

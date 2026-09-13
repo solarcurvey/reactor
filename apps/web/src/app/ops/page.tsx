@@ -79,7 +79,7 @@ export default function OpsPage() {
         </p>
       </div>
 
-      {isLoading && <p className="mt-6 text-sm text-zinc-500">Reading ops…</p>}
+      {isLoading && <p className="mt-6 text-sm text-zinc-400">Reading ops…</p>}
       {isError && (
         <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
           Ops read failed.{" "}
@@ -114,7 +114,7 @@ export default function OpsPage() {
 
       <div className="mt-3 grid gap-3 lg:grid-cols-3">
         <Card className="p-4">
-          <div className="text-[11px] uppercase tracking-wider text-zinc-500">Heartbeat</div>
+          <div className="text-[11px] uppercase tracking-wider text-zinc-400">Heartbeat</div>
           <dl className="mt-2 space-y-1 font-mono text-[12px] text-zinc-300">
             <Row k="chainId" v={String(beat?.chainId ?? "—")} />
             <Row k="block" v={String(beat?.block ?? health.head ?? "—")} />
@@ -124,22 +124,22 @@ export default function OpsPage() {
           </dl>
         </Card>
         <Card className="p-4">
-          <div className="text-[11px] uppercase tracking-wider text-zinc-500">Watchdog</div>
+          <div className="text-[11px] uppercase tracking-wider text-zinc-400">Watchdog</div>
           <p className="mt-2 text-[13px] text-zinc-300">
             Independent process. Separate keys from Keeper / Guardian. Fail-closed on stale beat, weak minOut, unexpected
             target, ambiguous RPC, missing burn.
           </p>
-          <p className="mt-2 font-mono text-[11px] text-zinc-500">
+          <p className="mt-2 font-mono text-[11px] text-zinc-400">
             {beat?.ok === false ? "keeper fail-closed — watchdog should alert" : "await /data/watchdog-alerts.json"}
           </p>
         </Card>
         <Card className="p-4">
-          <div className="text-[11px] uppercase tracking-wider text-zinc-500">Confidence</div>
+          <div className="text-[11px] uppercase tracking-wider text-zinc-400">Confidence</div>
           <p className="mt-2 text-[13px] text-zinc-300">
             Marks are 10–15m official VWAP (chain timestamps). Dead low-value graduates do not freeze the epoch.
             Material unvalued candidates pause.
           </p>
-          <p className="mt-2 font-mono text-[11px] text-zinc-500">
+          <p className="mt-2 font-mono text-[11px] text-zinc-400">
             {data?.top10?.pauseEpoch ? data?.top10?.reason : `${data?.top10?.rows?.length ?? 0} / 10`}
           </p>
         </Card>
@@ -151,9 +151,9 @@ export default function OpsPage() {
 function Stat({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
     <Card className="p-4">
-      <div className="text-[11px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[11px] uppercase tracking-wider text-zinc-400">{label}</div>
       <p className="mt-2 font-mono text-lg text-white">{value}</p>
-      <p className="text-[12px] text-zinc-500">{sub}</p>
+      <p className="text-[12px] text-zinc-400">{sub}</p>
     </Card>
   );
 }
@@ -161,7 +161,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub: string
 function Row({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex justify-between gap-3">
-      <dt className="text-zinc-500">{k}</dt>
+      <dt className="text-zinc-400">{k}</dt>
       <dd className="truncate text-right text-zinc-200">{v}</dd>
     </div>
   );

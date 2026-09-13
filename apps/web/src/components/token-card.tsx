@@ -36,14 +36,14 @@ export function TokenCard({ t }: { t: LaunchToken }) {
           <span className="rounded-full bg-cyan-300/10 px-2 py-0.5 text-[11px] uppercase tracking-wider text-cyan-100">
             Earns {t.quoteSymbol ?? "quote"}
           </span>
-          <span className="text-[11px] uppercase tracking-wider text-zinc-500">
+          <span className="text-[11px] uppercase tracking-wider text-zinc-400">
             2% of official volume → holders in {t.quoteSymbol ?? "quote"}
           </span>
         </div>
         <UntrustedText as="p" field="description" clamp className="mt-3 text-sm text-zinc-400">
           {t.description || "No description."}
         </UntrustedText>
-        <div className="mt-4 flex justify-between text-[11px] uppercase tracking-wider text-zinc-500">
+        <div className="mt-4 flex justify-between text-[11px] uppercase tracking-wider text-zinc-400">
           <span>TEST ASSET quote</span>
           <span>
             Lifetime {formatUnitsSafe(t.lifetimeRewards ?? 0n, t.quoteDecimals ?? 18, 3)} {t.quoteSymbol}

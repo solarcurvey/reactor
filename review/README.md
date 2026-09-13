@@ -24,3 +24,12 @@ CAPTURE=1 BONDING_TOKEN=0x1111111111111111111111111111111111110004 NEXT_PUBLIC_R
 ```
 
 Instant launch has **no creator FDV / supply / fee knobs**. CORE is genesis, not Instant. `/reactor` states ranks are not a trustless oracle.
+
+CI visual / a11y / failure-injection gate (committed Playwright snapshots, not these review PNGs):
+
+```bash
+pnpm --filter web test:qa
+pnpm --filter web test:update-screenshots
+```
+
+`?inject=` (indexer / rpc / quote family / pricing / upload / SSE / empty / invalid / wallet) and `/?qa=1` are review/QA-build only. CI screenshots also cover 1280 laptop and 360 Android against `next build`. See `/docs/qa`.

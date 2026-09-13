@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePublicClient, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "viem/actions";
 import { useRouter } from "next/navigation";
@@ -8,7 +8,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { ServiceFailure } from "@/components/service-failure";
 import { useQuotes, useTickerStatus } from "@/lib/hooks";
+import { FAILURE_COPY, isServiceUnavailable } from "@/lib/qa-inject";
+import { useQaScene } from "@/components/qa-inject-provider";
 import { factory, erc20, launchAbi } from "@/lib/contracts";
 import { parseUnitsSafe } from "@/lib/utils";
 import { TurnstileWidget, turnstileSiteKey } from "@/components/turnstile";
@@ -22,7 +25,8 @@ export default function LaunchPage() {
   const router = useRouter();
   const { address, isConnected, writesEnabled, matched, mismatchMessage, chainId } = useOfficialChain();
   const client = usePublicClient();
-  const { data: quotes } = useQuotes();
+  const { data: quotes, isError: quotesError, error: quotesErr, refetch: refetchQuotes } = useQuotes();
+  const scene = useQaScene();
   const { writeContractAsync, isPending } = useWriteContract();
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
@@ -39,7 +43,52 @@ export default function LaunchPage() {
   const siteKey = turnstileSiteKey();
 
   const selected = quotes?.find((q) => q.token.toLowerCase() === quote.toLowerCase());
-  const { data: tickerStatus } = useTickerStatus(symbol);
+  const skipRemoteTicker = Boolean(scene.inject === "ticker-invalid" || scene.state === "ticker-reserved" || scene.state === "ticker-available");
+  const { data: tickerRemote } = useTickerStatus(skipRemoteTicker ? "" : symbol);
+  const [tickerOverride, setTickerOverride] = useState("");
+
+  useEffect(() => {
+    if (scene.state === "ticker-reserved") {
+      setSymbol((s) => s || "NEON");
+      setTickerOverride("NEON is reserved");
+      return;
+    }
+    if (scene.state === "ticker-available") {
+      setSymbol((s) => s || "ZCAT");
+      setTickerOverride("ZCAT available · 24h lock on success");
+      return;
+    }
+    if (scene.inject === "ticker-invalid") {
+      setSymbol((s) => s || "!!");
+      setTickerOverride("Ticker failed normalize / reserve rules");
+      setError(FAILURE_COPY["ticker-invalid"].body);
+      return;
+    }
+    setTickerOverride("");
+  }, [scene.inject, scene.state]);
+
+  useEffect(() => {
+    if (scene.state === "standard" || scene.state === "rewards" || scene.state === "devbuy") {
+      setName((n) => n || "Neon");
+      setSymbol((s) => s || "NEON");
+    }
+    if (scene.state === "standard") {
+      setRewards(false);
+      setDevBuy("");
+    }
+    if (scene.state === "rewards") setRewards(true);
+    if (scene.state === "devbuy") {
+      setRewards(true);
+      setDevBuy("50");
+    }
+    if (scene.state === "upload-ok") {
+      setImage((img) => img || "/icons/zcat.svg");
+    }
+    if (scene.inject === "upload") setError(FAILURE_COPY.upload.body);
+    if (scene.inject === "pricing") setError(FAILURE_COPY.pricing.body);
+  }, [scene.inject, scene.state]);
+
+  const tickerStatus = tickerOverride || tickerRemote || "";
 
   async function authorizeLaunch(quoteAddr: `0x${string}`, ticker: string, mode: "instant" | "fair") {
     const res = await fetch("/api/launch-pricing", {
@@ -260,13 +309,13 @@ export default function LaunchPage() {
       <Card className="mt-4 space-y-3 p-4">
         <div className="grid gap-2 sm:grid-cols-2">
           <div>
-            <label htmlFor="launch-name" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-500">
+            <label htmlFor="launch-name" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-400">
               Name
             </label>
             <Input id="launch-name" name="name" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div>
-            <label htmlFor="launch-ticker" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-500">
+            <label htmlFor="launch-ticker" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-400">
               Ticker
             </label>
             <Input
@@ -277,17 +326,22 @@ export default function LaunchPage() {
               onChange={(e) => setSymbol(e.target.value.toUpperCase())}
               maxLength={10}
             />
-            {tickerStatus && <p className="mt-1 text-[11px] text-zinc-500">{tickerStatus}</p>}
+            {tickerStatus && (
+              <p data-testid="ticker-status" className="mt-1 text-[11px] text-zinc-400">
+                {tickerStatus}
+              </p>
+            )}
           </div>
         </div>
         <div>
-          <label htmlFor="launch-image" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-500">
+          <label htmlFor="launch-image" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-400">
             Image
           </label>
           <input
             id="launch-image-file"
             type="file"
             accept="image/*"
+            aria-label="Upload token image"
             className="mb-2 block w-full text-[12px] text-zinc-400"
             onChange={async (e) => {
               const file = e.target.files?.[0];
@@ -329,10 +383,14 @@ export default function LaunchPage() {
               setImage(safe);
             }}
           />
-          {image ? <SafeTokenImage src={image} className="mt-2 h-16 w-16 rounded-lg object-cover" /> : null}
+          {image ? (
+            <span data-testid="launch-upload-preview">
+              <SafeTokenImage src={image} className="mt-2 h-16 w-16 rounded-lg object-cover" />
+            </span>
+          ) : null}
         </div>
         <div>
-          <label htmlFor="launch-description" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-500">
+          <label htmlFor="launch-description" className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-400">
             Description
           </label>
           <textarea
@@ -345,7 +403,7 @@ export default function LaunchPage() {
           />
         </div>
 
-        <div className="text-[11px] uppercase tracking-wider text-zinc-500" id="quote-asset-label">
+        <div className="text-[11px] uppercase tracking-wider text-zinc-400" id="quote-asset-label">
           Quote asset
         </div>
         <div className="grid gap-2" role="group" aria-labelledby="quote-asset-label">
@@ -361,12 +419,18 @@ export default function LaunchPage() {
             >
               <span>
                 <span className="font-medium">{q.symbol}</span>
-                <span className="ml-2 text-xs text-zinc-500">{q.name}</span>
+                <span className="ml-2 text-xs text-zinc-400">{q.name}</span>
               </span>
               <span className="text-[11px] uppercase tracking-wider text-cyan-100">EARNS {q.symbol}</span>
             </button>
           ))}
-          {!quotes?.length && <p className="text-sm text-zinc-500">Loading quote registry…</p>}
+          {quotesError && (
+            <ServiceFailure
+              kind={isServiceUnavailable(quotesErr) ? quotesErr.kind : "rpc"}
+              onRetry={() => refetchQuotes()}
+            />
+          )}
+          {!quotesError && !quotes?.length && <p className="text-sm text-zinc-400">Loading quote registry…</p>}
         </div>
 
         {path === "instant" && (
@@ -399,7 +463,7 @@ export default function LaunchPage() {
                 <p className="mt-1 text-[12px] text-zinc-400">2% later market-buys this token and burns it. Same 1% / 0.5%.</p>
               </button>
             </div>
-            <label htmlFor="launch-devbuy" className="block text-[11px] uppercase tracking-wider text-zinc-500">
+            <label htmlFor="launch-devbuy" className="block text-[11px] uppercase tracking-wider text-zinc-400">
               Optional Dev Buy ({selected?.symbol ?? "quote"} · max 5% token out · full 3.5%)
             </label>
             <Input
@@ -414,7 +478,7 @@ export default function LaunchPage() {
         )}
 
         <button
-          className="text-[11px] text-zinc-500 underline"
+          className="text-[11px] text-zinc-400 underline"
           onClick={() => setPath((p) => (p === "instant" ? "fair" : "instant"))}
         >
           {path === "instant" ? "Use Batch Fair Launch instead" : "Back to Instant bonding"}
@@ -424,7 +488,7 @@ export default function LaunchPage() {
             <p className="text-[13px] text-zinc-400">
               Pro-rata timed sale — not CCA. 50/50 locked. 0% during the sale. Clearing price opens the official pool.
             </p>
-            <label htmlFor="launch-duration" className="block text-[11px] uppercase tracking-wider text-zinc-500">
+            <label htmlFor="launch-duration" className="block text-[11px] uppercase tracking-wider text-zinc-400">
               Auction length (minutes)
             </label>
             <Input
@@ -452,7 +516,7 @@ export default function LaunchPage() {
             {siteKey ? (
               <TurnstileWidget siteKey={siteKey} onToken={setTurnstileToken} />
             ) : (
-              <p className="mt-2 text-[11px] text-zinc-500">
+              <p className="mt-2 text-[11px] text-zinc-400">
                 LOCAL: no site key — backend bypasses Turnstile unless TURNSTILE_REQUIRED=1.
               </p>
             )}
@@ -460,11 +524,16 @@ export default function LaunchPage() {
         )}
       </Card>
 
-      {error && (
-        <UntrustedText as="p" field="toast" className="mt-3 text-sm text-red-300">
-          {error}
-        </UntrustedText>
+      {(scene.inject === "pricing" || scene.inject === "upload" || scene.inject === "ticker-invalid") && (
+        <ServiceFailure kind={scene.inject} />
       )}
+      {error && scene.inject !== "pricing" && scene.inject !== "upload" && scene.inject !== "ticker-invalid" ? (
+        <p role="alert" data-testid="launch-error" className="mt-3 text-sm text-red-300">
+          <UntrustedText as="span" field="toast">
+            {error}
+          </UntrustedText>
+        </p>
+      ) : null}
       {!matched && isConnected && (
         <UntrustedText as="p" field="toast" className="mt-3 text-sm text-red-300">
           {mismatchMessage}

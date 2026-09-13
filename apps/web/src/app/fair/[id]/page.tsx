@@ -39,12 +39,12 @@ export default function FairPage() {
     REVIEW_FIXTURES && fairId === 1n && (!chainRow || chainRow.startTime === 0n)
       ? FIXTURE_FAIR
       : chainRow;
-  if (!row && !isError) return <p className="text-sm text-zinc-500">Loading Batch Fair Launch…</p>;
+  if (!row && !isError) return <p className="text-sm text-zinc-400">Loading Batch Fair Launch…</p>;
   if (!row) {
     return (
       <div>
         <h1 className="text-2xl font-semibold">Fair launch not found</h1>
-        <p className="mt-2 text-sm text-zinc-500">This auction id is not on the connected factory.</p>
+        <p className="mt-2 text-sm text-zinc-400">This auction id is not on the connected factory.</p>
       </div>
     );
   }
@@ -159,23 +159,26 @@ export default function FairPage() {
       </p>
       <div className="mt-4 grid grid-cols-2 gap-2 text-[13px]">
         <Card className="p-3">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Bids</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Bids</div>
           <div className="font-mono text-white">
             {formatUnitsSafe(totalBids, qdec, 4)} {qsym}
           </div>
         </Card>
         <Card className="p-3">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Min raise</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Min raise</div>
           <div className="font-mono text-white">{formatUnitsSafe(minRaise, qdec, 4)}</div>
         </Card>
       </div>
-      <p className="mt-2 font-mono text-[11px] text-zinc-500">
-        {new Date(Number(start) * 1000).toLocaleString()} → {new Date(Number(end) * 1000).toLocaleString()}
+      <p className="mt-2 font-mono text-[11px] text-zinc-400">
+        {utcStamp(start)} → {utcStamp(end)}
       </p>
-      <p className="mt-1 break-all font-mono text-[11px] text-zinc-600">{token}</p>
+      <p className="mt-1 break-all font-mono text-[11px] text-zinc-400">{token}</p>
       {!finalized && (
         <Card className="mt-4 space-y-2 p-4">
-          <Input value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <label htmlFor="fair-bid" className="block text-[11px] uppercase tracking-wider text-zinc-400">
+            Bid amount
+          </label>
+          <Input id="fair-bid" aria-label="Bid amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
           <div className="flex gap-2">
             <Button className="flex-1" onClick={bid} disabled={!writesEnabled || isPending}>
               {matched ? "Place bid" : "Wrong network"}
@@ -199,10 +202,16 @@ export default function FairPage() {
         </div>
       )}
       {error && (
-        <UntrustedText as="p" field="toast" className="mt-3 text-sm text-red-300">
-          {error}
-        </UntrustedText>
+        <p role="alert" className="mt-3 text-sm text-red-300">
+          <UntrustedText as="span" field="toast">
+            {error}
+          </UntrustedText>
+        </p>
       )}
     </div>
   );
+}
+
+function utcStamp(ts: bigint) {
+  return new Date(Number(ts) * 1000).toISOString().replace(".000Z", "Z");
 }

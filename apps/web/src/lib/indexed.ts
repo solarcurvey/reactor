@@ -288,7 +288,8 @@ export async function loadCandles(token: string, interval: string, signal?: Abor
   const candles = got.body.candles ?? [];
   const real = candles.filter((c) => c.n > 0).length;
   if (REVIEW_FIXTURES && candles.length === 0) {
-    return { candles: fixtureCandles(300), sparse: true, interval };
+    const fb = fixtureCandles(300);
+    return { candles: fb, sparse: fb.filter((c) => c.n > 0).length < 3, interval };
   }
   return { candles, sparse: real === 0 || real < 3, interval: got.body.interval ?? interval };
 }

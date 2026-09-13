@@ -3,6 +3,7 @@ export const DOCS: { slug: string; title: string; group: string; file: string }[
   { slug: "traders", title: "Traders", group: "Audience", file: "traders.md" },
   { slug: "creators", title: "Creators", group: "Audience", file: "creators.md" },
   { slug: "builders", title: "Builders", group: "Audience", file: "builders.md" },
+  { slug: "qa", title: "UI QA gate", group: "Builders", file: "qa.md" },
   { slug: "curve", title: "Curve math", group: "Protocol", file: "curve.md" },
   { slug: "fees", title: "Nested fees", group: "Protocol", file: "fees.md" },
   { slug: "top-10", title: "Top-10", group: "Protocol", file: "top-10.md" },
