@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useOperatorPolicy } from "@/components/operator-policy-provider";
 import {
@@ -12,10 +11,16 @@ import {
   parseUxKind,
 } from "@/lib/operator-policy";
 
-function RestrictedState() {
-  const params = useSearchParams();
+export default function RestrictedPage() {
   const policy = useOperatorPolicy();
-  const queryKind = parseUxKind(params.get("kind"));
+  /* `useSearchParams` + Suspense fallback vs content is a React 418 on this route.
+   * Apply `?kind=` after mount so SSR and the first client paint stay the same tree. */
+  const [queryKind, setQueryKind] = useState<ReturnType<typeof parseUxKind>>(null);
+
+  useEffect(() => {
+    setQueryKind(parseUxKind(new URLSearchParams(window.location.search).get("kind")));
+  }, []);
+
   const live =
     policy.kind === "wallet" || policy.kind === "geo" || policy.kind === "unavailable" ? policy.kind : null;
   const display =
@@ -99,13 +104,5 @@ function RestrictedState() {
         </Link>
       </div>
     </div>
-  );
-}
-
-export default function RestrictedPage() {
-  return (
-    <Suspense fallback={<p className="text-sm text-zinc-400">Loading access state…</p>}>
-      <RestrictedState />
-    </Suspense>
   );
 }

@@ -2,7 +2,7 @@
 
 > Offchain REACTOR-operated services only. Protocol **0.3.3**. Factory **V1**. Not a legal or OFAC-compliance opinion.
 
-The public launchpad has a dedicated **`/restricted`** state when a server policy decision refuses REACTOR-operated write assistance. Copy is neutral: operated services are unavailable for this **request**, **account**, or **location**. The UI does not accuse anyone of unlawful conduct.
+The public launchpad has a dedicated **`/restricted`** state when a server policy decision refuses REACTOR-operated write assistance. Copy is neutral: operated services are unavailable for this **request**, **account**, or **location**. The UI does not accuse anyone of unlawful conduct. Optional `?kind=` is applied after mount (no `useSearchParams` Suspense split) so SSR and the first client paint stay the same tree.
 
 This is **not** an onchain pause. Immutable public contracts remain callable. The launchpad does not pretend it can censor permissionless chain reads.
 

@@ -62,6 +62,7 @@ export function OperatorPolicyProvider({ children }: { children: React.ReactNode
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const [view, setView] = useState<PublicOperatorPolicyView | null>(null);
+  const [hydrated, setHydrated] = useState(false);
   const proofRef = useRef<CachedProof | null>(null);
 
   const ensureProof = useCallback(async (): Promise<WalletProofHeader | undefined> => {
@@ -134,9 +135,14 @@ export function OperatorPolicyProvider({ children }: { children: React.ReactNode
   }, []);
 
   useEffect(() => {
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
     if (!isConnected || !address) proofRef.current = null;
     void refresh();
-  }, [address, isConnected, refresh]);
+  }, [address, isConnected, refresh, hydrated]);
 
   const value = useMemo<OperatorPolicyUx>(() => {
     if (!view) return { ...pending, refresh, applyWriteError, ensureProof };
