@@ -13,7 +13,7 @@
 | Intent | Server-side geo policy interface: ALLOW / DENY / UNKNOWN + reason codes; trusted edge HMAC; versioned comprehensive-jurisdiction file with source + effective date; LOCAL fixtures that cannot load production denylists. |
 | Indexer / lib | `packages/reactor/src/geo-policy.test.ts` + `apps/indexer/src/geo-policy.test.ts` + `pnpm docs:check` |
 | Foundry | Not re-run this pass (offchain policy only) |
-| Rebase | Onto `origin/main` `300b7e5fccd445b32b79ab7d3033c2b813c9ffa5` after merged **#73** (CI cost cut / three-tier `ci.yml`). Same PR **#67** / same branch. `.github/workflows/ci.yml` taken from `main`. Protocol **0.3.3** / Factory **V1** unchanged. |
+| Rebase | Onto `origin/main` `e5fd7450323e1730bc946aff8bc53c710c0b5887` after merged **#50** / **#58** (and #73). Same PR **#67** / same branch. Founder re-audit: SY + oblast overblocks closed; #63 stays open until #62/#65 consume. Protocol **0.3.3** / Factory **V1** unchanged. |
 | Mainnet | **Blocked** |
 
 ## Closed this run (#63 ACs — issue stays open)
@@ -32,7 +32,14 @@
 | #61 / #62 / #64 / #65 | **Not this PR** | Out of scope |
 | Independent audit 2026-09-12: stale `SY` blanket deny | **Fixed** | Removed `SY` from jurisdictions; `programNotes` + regression `signed({ country: "SY" })` → ALLOW. Targeted Syrian persons stay #61/#62. |
 | Independent re-audit: whole-oblast `UA-14`/`UA-09` DENY | **Fixed this HEAD** | FAQ 1009. Oblast codes/names → UNKNOWN. Precise covered-region fixture → DENY. |
-| Close #63 | **No** | Leave open until independent audit + post-merge verify |
+| Close #63 | **No** | Founder re-audit closed SY + oblast overblocks. Stays open until #62 enforcement + #65 UX consume, then post-merge verify. |
+
+---
+
+# Prior — Eliminate RPC waterfalls (#37 / #50)
+
+**Status:** Merged **#50** on `origin/main` `e5fd745` after **#58** `c03c698`. Issue **#37 stays open**.  
+**Not audited. Not mainnet.** Tokenomics unchanged.
 
 ---
 
