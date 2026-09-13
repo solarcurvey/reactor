@@ -15,7 +15,7 @@
 | Production chrome | `logo.tsx`, primitives, Discover / Launch / terminal / THE REACTOR / CORE / docs |
 | Assets | `/favicon.svg`, `/favicon.ico`, Apple touch, 192/512, OG 1200×630, wordmarks |
 | Close #55 | **No** — keep open for independent audit |
-| #36 | Coordinate baselines; `web-qa` stays required |
+| #36 | Visual / state / failure baselines refreshed to approved-C; `web-qa` stays required |
 | Rebase | Onto `789eb5c` after **#46**. Keep #39 `obs-ui` / error boundaries / release SHA / vendor-proof, #65 `/restricted` routes and `text-zinc-400` muted floor, #35 `e2e-release-gate`, #70 freshness/runbook, #79 CI-evidence docs, and #66/#67/#68 policy layers. Brand chrome is additive. |
 
 ## Founder decision
