@@ -193,6 +193,17 @@ assert.match(ciYml, /pnpm test:web-security/);
 assert.match(ciYml, /pnpm docs:links/);
 assert.match(ciYml, /e2e\/smoke\.spec\.ts/);
 assert.match(ciYml, /e2e\/interactive\.spec\.ts/);
+assert.match(ciYml, /e2e\/docs-copy\.spec\.ts/, "#14 handbook copy must run on the full-tier web job");
+assert.match(ciYml, /e2e\/docs-visual\.spec\.ts/, "#14 handbook visual must run on the full-tier web job");
+{
+  const pw = readFileSync(join(root, "apps/web/playwright.config.ts"), "utf8");
+  assert.doesNotMatch(
+    pw,
+    /testIgnore:\s*\[[^\]]*\/visual\\\.spec\\\.ts\//,
+    "#49 default testIgnore must not swallow docs-visual.spec.ts",
+  );
+  assert.match(pw, /docs-visual|\(\^\|\\\/\)visual\\\.spec\\\.ts\$/);
+}
 assert.match(ciYml, /pnpm --filter web test:qa/);
 assert.match(ciYml, /pnpm test:e2e:release/);
 assert.match(ciYml, /pnpm --filter indexer test:pg-lease/);
