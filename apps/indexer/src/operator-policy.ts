@@ -451,12 +451,46 @@ type OfficialSanctionsStore = {
  * dataset is current (LOCAL) or production hard-gates apply (fail-closed).
  * LOCAL without a current dataset keeps fixtures so demo/tests still launch.
  */
-function officialAddressStoreUsable(store: OfficialSanctionsStore, env: NodeJS.ProcessEnv): boolean {
+export function officialAddressStoreUsable(store: OfficialSanctionsStore, env: NodeJS.ProcessEnv): boolean {
   if (typeof store.screen !== "function") return false;
   if (productionHardGatesApply(env)) return true;
   if (typeof store.freshness === "function") return store.freshness() === "current";
   const probe = store.screen("0x0000000000000000000000000000000000000001");
   return probe.freshness === "current";
+}
+
+/**
+ * Shared `#61` store for `/sanctions/screen` + the #62 write gate.
+ * LOCAL without a current dataset keeps `fixtureScreenAddress` (env blocked
+ * wallets + `OPERATOR_POLICY_DATASET_FRESHNESS`). Env freshness overrides
+ * always win so the HTTP matrix stale injector still works after a LOCAL
+ * fixture load. Production-like envs use the official screen and fail closed.
+ */
+export function screenWithSharedOfficialStore(
+  store: OfficialSanctionsStore,
+  address: string,
+  env: NodeJS.ProcessEnv = process.env,
+): AddressScreenResult {
+  const override = env.OPERATOR_POLICY_DATASET_FRESHNESS as AddressScreenResult["freshness"] | undefined;
+  if (override === "missing" || override === "stale" || !officialAddressStoreUsable(store, env)) {
+    return fixtureScreenAddress(address, env);
+  }
+  const r = store.screen(address);
+  const freshness = override ?? (r.freshness as AddressScreenResult["freshness"]);
+  if (freshness === "missing") {
+    return { decision: "unavailable", reason: "missing_dataset", freshness: "missing" };
+  }
+  const blocked = r.decision === "blocked" || envBlockedWallets(env).includes(address.toLowerCase());
+  if (blocked) return { decision: "blocked", freshness };
+  if (freshness === "stale") {
+    return { decision: "unavailable", reason: "stale_dataset", freshness: "stale" };
+  }
+  if (r.decision === "clear") return { decision: "clear", freshness: "current" };
+  return {
+    decision: "unavailable",
+    reason: r.reason,
+    freshness,
+  };
 }
 
 /**

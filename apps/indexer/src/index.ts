@@ -41,6 +41,7 @@ import {
   gateProtectedWrite,
   issueOperatorWalletChallenge,
   readOperatorPolicyStatus,
+  screenWithSharedOfficialStore,
   tryBindOfficialPolicyPlugins,
 } from "./operator-policy.ts";
 import { evaluateRequestGeo } from "./geo-policy-resolve.ts";
@@ -804,10 +805,7 @@ assertProductionHardGates();
 await assertSharpWorks();
 await tryBindOfficialPolicyPlugins();
 bindOperatorPolicyProviders({
-  screenAddress: (address) => {
-    const r = sanctions.screen(address);
-    return { decision: r.decision, reason: r.reason, freshness: r.freshness };
-  },
+  screenAddress: (address, env) => screenWithSharedOfficialStore(sanctions, address, env ?? process.env),
   evaluateGeo: (headers, env) => {
     const r = evaluateRequestGeo(headers, env);
     return { decision: r.decision, reason: r.reason };

@@ -18,6 +18,7 @@ import {
   isPublicReadPath,
   officialPolicyPluginsBound,
   readOperatorPolicyStatus,
+  screenWithSharedOfficialStore,
   resetOperatorPolicyState,
   setFixtureBlockedWallets,
   setFixtureDatasetFreshness,
@@ -469,7 +470,29 @@ try {
       rmSync(emptyDir, { recursive: true, force: true });
       resetOperatorPolicyState();
     }
+  }
 
+  {
+    const emptyStore = {
+      screen: () => ({ decision: "unavailable" as const, reason: "missing_dataset", freshness: "missing" as const }),
+    };
+    const sharedBlocked = screenWithSharedOfficialStore(emptyStore, BLOCKED, {
+      REACTOR_ENV: "LOCAL",
+      OPERATOR_POLICY_BLOCKED_WALLETS: BLOCKED,
+      OPERATOR_POLICY_DATASET_FRESHNESS: "current",
+    });
+    assert(sharedBlocked.decision === "blocked", "LOCAL empty shared store keeps env blocked wallets");
+    const sharedStale = screenWithSharedOfficialStore(emptyStore, CLEAR, {
+      REACTOR_ENV: "LOCAL",
+      OPERATOR_POLICY_DATASET_FRESHNESS: "stale",
+    });
+    assert(sharedStale.decision === "unavailable" && sharedStale.freshness === "stale", "stale env override survives shared store");
+  }
+
+  {
+    resetOperatorPolicyState();
+    const here = dirname(fileURLToPath(import.meta.url));
+    const prevDataDir = process.env.SANCTIONS_DATA_DIR;
     const dataDir = mkdtempSync(join(tmpdir(), "op-ofac-"));
     process.env.SANCTIONS_DATA_DIR = dataDir;
     try {
@@ -607,6 +630,7 @@ try {
   assert(indexSrc.includes("/sanctions/screen"), "preserves #66 screen lookup");
   assert(indexSrc.includes("/sanctions/dataset"), "preserves #66 dataset lookup");
   assert(indexSrc.includes("indexerSanctionsStore"), "preserves #66 store constructor");
+  assert(indexSrc.includes("screenWithSharedOfficialStore"), "shared #61 store keeps LOCAL fixture screen");
   assert(readFileSync(join(here, "geo-policy-resolve.ts"), "utf8").includes("export function evaluateRequestGeo"), "official #67 geo plugin present");
   assert(signerSrc.includes("gateProtectedWrite"), "isolated signer gated");
   assert(signerSrc.includes("bindRecoveredIdentity"), "signer binds recovered creator");

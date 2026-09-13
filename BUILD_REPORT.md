@@ -30,7 +30,7 @@
 | No automated complaint override | **Yes** | `NO_AUTOMATED_OVERRIDE`; explicit review is queued, not applied |
 | Close #64 | **No** | Stays open until independent audit + post-merge verify |
 | Claimed-wallet spoof cannot gate/log identity | **Yes** | `extractWallet()` is a no-op (same as #68 `extractSubjectWallet`). Subject is #68 `wallet-proof` / `recoverOfficialSubject`. Spoofed `body.wallet` / `x-reactor-wallet` ignored; not `DENY_ADDRESS_BLOCKED` |
-| Fixture fallback LOCAL/test-only | **Yes** | `allowFixtureSanctionsRefresh` uses `productionHardGatesApply`. Bound `#61` store on LOCAL loads pinned OFAC XML (no live treasury.gov unless `SANCTIONS_NETWORK=1`) so `#62` HTTP allow paths see `freshness=current`. STAGING/TESTNET/PROD/PRODUCTION refuse fixtures even with `SANCTIONS_FIXTURE=1` |
+| Fixture fallback LOCAL/test-only | **Yes** | `allowFixtureSanctionsRefresh` uses `productionHardGatesApply`. Bound `#61` store on LOCAL loads pinned OFAC XML (no live treasury.gov unless `SANCTIONS_NETWORK=1`) so `#64` ops freshness is current. Shared-store rebind keeps `#62` LOCAL fixture screen when the dataset is empty (`OPERATOR_POLICY_BLOCKED_WALLETS` + `OPERATOR_POLICY_DATASET_FRESHNESS`) so `operator-policy-http` still gets `DENY_ADDRESS_BLOCKED`. STAGING/TESTNET/PROD/PRODUCTION refuse fixtures even with `SANCTIONS_FIXTURE=1` |
 | Same-address refresh restart-safe | **Yes** | t0 refresh → t1 same addresses → new `OfficialListRegistry`/`createSanctionsOps` `loadFromDisk` ages from t1. Version id is `ofac-<content16>-<gen12>` or official #61 id. Adapter keeps generation metadata. |
 
 ---
