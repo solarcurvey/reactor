@@ -17,6 +17,8 @@ import {
   ARC_TESTNET_CHAIN_ID,
   EXPLORER,
   isAnvil0Key,
+  LOCAL_AUTHORIZE_STANDING_BLOCKERS,
+  mergeJourneyStandingBlockers,
   productionQuoteBody,
   refuseMainnet,
 } from "./arc-testnet-lib.ts";
@@ -128,9 +130,20 @@ async function indexerJson(url: string, path: string, body: unknown): Promise<{ 
   return { status: res.status, body: json };
 }
 
-function finish(journey: Journey, code: number) {
+function isStandingBlocker(b: string): boolean {
+  return (LOCAL_AUTHORIZE_STANDING_BLOCKERS as readonly string[]).includes(b);
+}
+
+function persistJourney(journey: Journey) {
+  if (!argFlag("--local")) {
+    journey.blockers = mergeJourneyStandingBlockers(journey.blockers);
+  }
   writeFileSync(outPath, JSON.stringify(journey, null, 2) + "\n");
   console.log(JSON.stringify(journey, null, 2));
+}
+
+function finish(journey: Journey, code: number) {
+  persistJourney(journey);
   process.exit(code);
 }
 
@@ -656,13 +669,17 @@ async function main() {
     journey.claimedArcTestnet = false;
   } else {
     const okSteps = journey.steps.filter((s) => s.status === "ok" && s.tx);
-    const failed = journey.steps.some((s) => s.status === "failed" || s.status === "blocked") || journey.blockers.length > 0;
-    journey.claimedArcTestnet = Boolean(dep.claimedArcTestnet && !failed && okSteps.length >= 3);
+    const operationalFailed =
+      journey.steps.some((s) => s.status === "failed" || s.status === "blocked") ||
+      journey.blockers.some((b) => !isStandingBlocker(b));
+    journey.claimedArcTestnet = Boolean(dep.claimedArcTestnet && !operationalFailed && okSteps.length >= 3);
   }
 
-  writeFileSync(outPath, JSON.stringify(journey, null, 2) + "\n");
-  console.log(JSON.stringify(journey, null, 2));
-  if (journey.blockers.length || journey.steps.some((s) => s.status === "failed" || s.status === "blocked")) {
+  persistJourney(journey);
+  const operationalFailed =
+    journey.steps.some((s) => s.status === "failed" || s.status === "blocked") ||
+    journey.blockers.some((b) => !isStandingBlocker(b));
+  if (operationalFailed) {
     process.exit(2);
   }
 }

@@ -1,6 +1,6 @@
 # BUILD REPORT — Issue #16 Arc Public Testnet rehearsal
 
-**Status:** Rebased onto `origin/main` `922f909` (squash-merged **#48** handbook after **#80** Industrial Forge / **#81** / **#46** / **#75** / **#44**). Same draft PR #52 / same branch. Protocol **0.3.4**. Factory **V1** unchanged. **#16 stays open.** LOCAL authorize Instant RHRSL + Fair RHRFL explorer hashes are in `deployments/arc-testnet-journey.json` (Blockscout `result=success`). Not full PROD. `claimedProdPath` stays **false**.
+**Status:** Rebased onto `origin/main` `922f909` (squash-merged **#48** handbook after **#80** Industrial Forge / **#81** / **#46** / **#75** / **#44**). Same draft PR #52 / same branch. Protocol **0.3.4**. Factory **V1** unchanged. **#16 stays open.** LOCAL authorize Instant RHRSL + Fair RHRFL explorer hashes are in `deployments/arc-testnet-journey.json` (Blockscout `result=success`, `claimedArcTestnet: true`). `blockers` lists the LOCAL/non-PROD gaps (`authorizeEnv: LOCAL`, no Turnstile, disposable signer = deployer, Mock USDC-6, not production Next+wallet). Not full PROD. `claimedProdPath` stays **false**.
 **Not audited. Not mainnet.**
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 

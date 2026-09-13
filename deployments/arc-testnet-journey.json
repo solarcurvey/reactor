@@ -81,5 +81,13 @@
       "explorer": "https://testnet.arcscan.app/tx/0xd27d86b7b2309b2296e54ca18ff0a31aa20bdb5f4c0b8a61011c2c836d9a522f"
     }
   ],
-  "blockers": []
+  "blockers": [
+    "authorizeEnv is LOCAL — REACTOR_ENV=PROD was not used",
+    "no Cloudflare Turnstile (LOCAL indexer authorize skips CHALLENGE)",
+    "PRICING_SIGNER_PK is the disposable deployer EOA / on-chain LaunchSigner — not an isolated signer ≠ deployer ≠ Keeper",
+    "Instant/Fair quote is Mock USDC-6 0x44CBe037ABFA8696E4466cA9D278Dbbe44B932dC, not canonical 0x3600000000000000000000000000000000000000",
+    "not production Next + wallet harness (scripted LOCAL indexer; wagmi injected() only; no WalletConnect)",
+    "Guardian/Keeper/LaunchSigner are not a production Safe",
+    "Not full PROD — claimedArcTestnet records the LOCAL authorize Instant/Fair explorer path only"
+  ]
 }

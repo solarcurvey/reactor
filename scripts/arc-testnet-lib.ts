@@ -332,6 +332,30 @@ export async function codeSize(rpc: string, address: `0x${string}`): Promise<num
   return hex === "0x" ? 0 : (hex.length - 2) / 2;
 }
 
+/**
+ * Standing LOCAL/non-PROD gaps for `deployments/arc-testnet-journey.json`.
+ * These are not Instant/Fair execution failures. `claimedArcTestnet` may stay
+ * true for the recorded LOCAL authorize explorer path. Do not treat an empty
+ * `blockers` array as "no gaps" while `note` / `authorizeEnv` document LOCAL.
+ */
+export const LOCAL_AUTHORIZE_STANDING_BLOCKERS = [
+  "authorizeEnv is LOCAL — REACTOR_ENV=PROD was not used",
+  "no Cloudflare Turnstile (LOCAL indexer authorize skips CHALLENGE)",
+  "PRICING_SIGNER_PK is the disposable deployer EOA / on-chain LaunchSigner — not an isolated signer ≠ deployer ≠ Keeper",
+  "Instant/Fair quote is Mock USDC-6 0x44CBe037ABFA8696E4466cA9D278Dbbe44B932dC, not canonical 0x3600000000000000000000000000000000000000",
+  "not production Next + wallet harness (scripted LOCAL indexer; wagmi injected() only; no WalletConnect)",
+  "Guardian/Keeper/LaunchSigner are not a production Safe",
+  "Not full PROD — claimedArcTestnet records the LOCAL authorize Instant/Fair explorer path only",
+] as const;
+
+export function mergeJourneyStandingBlockers(existing: string[] = []): string[] {
+  const out = [...existing];
+  for (const b of LOCAL_AUTHORIZE_STANDING_BLOCKERS) {
+    if (!out.includes(b)) out.push(b);
+  }
+  return out;
+}
+
 export function waitingAddressFromEnv(env: NodeJS.ProcessEnv = process.env): `0x${string}` | undefined {
   const a = env.ARC_TESTNET_ADDRESS ?? env.ARC_TESTNET_DEPLOYER;
   if (a && /^0x[a-fA-F0-9]{40}$/.test(a)) return a as `0x${string}`;

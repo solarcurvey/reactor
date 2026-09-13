@@ -7,11 +7,15 @@ import {
   isAnvil0Key,
   productionQuoteBody,
   assembleProdPathReport,
+  mergeJourneyStandingBlockers,
+  LOCAL_AUTHORIZE_STANDING_BLOCKERS,
   redactSecrets,
   refuseMainnet,
   ANVIL0_PK,
   type FaucetAttempt,
 } from "./arc-testnet-lib.ts";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 function throws(fn: () => void, re: RegExp) {
   let err: unknown;
@@ -105,5 +109,31 @@ assert.ok(prodPath.blockers.some((b) => /TURNSTILE_SECRET/.test(b)));
 assert.ok(prodPath.blockers.some((b) => /isolated signer/.test(b)));
 assert.ok(prodPath.blockers.some((b) => /injected/.test(b)));
 assert.doesNotMatch(prodPath.blockers.join(" "), /claimedProdPath stays true/i);
+
+assert.ok(LOCAL_AUTHORIZE_STANDING_BLOCKERS.length > 0);
+assert.ok(mergeJourneyStandingBlockers([]).length >= LOCAL_AUTHORIZE_STANDING_BLOCKERS.length);
+assert.ok(mergeJourneyStandingBlockers(["rpc down"]).includes("rpc down"));
+
+const journey = JSON.parse(readFileSync(join(import.meta.dirname, "../deployments/arc-testnet-journey.json"), "utf8")) as {
+  claimedArcTestnet: boolean;
+  authorizeEnv: string;
+  blockers: string[];
+  note: string;
+};
+assert.equal(journey.claimedArcTestnet, true, "LOCAL authorize explorer path stays claimed");
+assert.match(journey.authorizeEnv, /LOCAL/);
+assert.ok(journey.blockers.length > 0, "journey blockers must not be empty while note documents LOCAL/non-PROD gaps");
+assert.ok(journey.blockers.some((b) => /LOCAL/.test(b)));
+assert.ok(journey.blockers.some((b) => /Turnstile/i.test(b)));
+assert.ok(journey.blockers.some((b) => /Mock USDC-6|0x3600/i.test(b)));
+assert.ok(journey.blockers.some((b) => /isolated signer|deployer/i.test(b)));
+assert.match(journey.note, /Not full PROD/);
+
+const prodFile = JSON.parse(readFileSync(join(import.meta.dirname, "../deployments/arc-testnet-prod-path.json"), "utf8")) as {
+  claimedProdPath: boolean;
+  blockers: string[];
+};
+assert.equal(prodFile.claimedProdPath, false);
+assert.ok(prodFile.blockers.length > 0);
 
 console.log("arc-testnet-lib tests ok");
