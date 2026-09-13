@@ -96,7 +96,6 @@ async function relay(role) {
   const rpc = required("REACTOR_RPC_URL");
   const source = required("REACTOR_SIGNED_JOB_SOURCE_URL");
   const delay = relayDelayMs(role, process.env.REACTOR_RELAY_DELAY_MS);
-  if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
 
   const backend = await awsKmsBackend();
   const relayAddress = await resolveKmsAddress(backend, keyId, process.env.REACTOR_EXPECTED_KMS_ADDRESS || undefined);
@@ -114,6 +113,10 @@ async function relay(role) {
   if (!raw) return { ok: true, role, idle: true, relay: relayAddress };
   const envelope = raw.envelope ?? (Array.isArray(raw.jobs) ? raw.jobs[0] : raw);
   if (!envelope) return { ok: true, role, idle: true, relay: relayAddress };
+
+  // Relay B's grace period applies only when a real pending envelope exists.
+  // Idle ticks return immediately, avoiding ~15s of billed Lambda duration per minute.
+  if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
 
   const verified = await verifySignedEnvelope(envelope, { chainId, gateway, jobSigner });
   const used = await client.readContract({
