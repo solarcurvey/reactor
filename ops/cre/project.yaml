@@ -1,0 +1,16 @@
+# CRE project root for `cre workflow simulate` / `cre workflow build`.
+# Official CLI ≥1.0.7. Live DON deploy is not claimed. Arc Mainnet 5042 writes are not claimed.
+#
+# CRE catalog `arc-testnet` is EIP-155 1883. This repo’s Anvil / Arc Public Testnet demo is 5042002.
+# Those are not the same network. Do not invent a 1883 AutomationGateway or explorer hash.
+staging-settings:
+  rpcs:
+    # HTTP-trigger courier does not call EVM in this PoC. Sepolia is only so a logged-in
+    # `cre workflow simulate` can register a default EVM capability if the CLI requires one.
+    - chain-name: ethereum-testnet-sepolia
+      url: https://ethereum-sepolia-rpc.publicnode.com
+
+production-settings:
+  rpcs:
+    - chain-name: ethereum-testnet-sepolia
+      url: https://ethereum-sepolia-rpc.publicnode.com

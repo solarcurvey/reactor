@@ -33,6 +33,7 @@ const gAbi = parseAbi([
   "function authorizeFactory(address factory, uint32 version)",
   "function setAdapter(address adapter, bool approved)",
   "function pauseLaunches(bool paused)",
+  "function setKeeper(address next)",
 ]);
 const rAbi = parseAbi([
   "function setUsdc(address token)",
@@ -214,6 +215,10 @@ export function buildBatches(addrs: Addrs) {
   addA("sealProtocolVaults", [router], () => tx(router, routerAbi, "sealProtocolVaults", [], [], "A", "sealProtocolVaults"));
   addA("bindRouteExecutor", [curve, userRouter], () =>
     tx(curve, curveAbi, "bindRouteExecutor", [userRouter], ["executor"], "A", "bindRouteExecutor"),
+  );
+  const gateway = addr(process.env.AUTOMATION_GATEWAY ?? addrs.AutomationGateway);
+  addA("setKeeper AutomationGateway", [gateway], () =>
+    tx(guardian, gAbi, "setKeeper", [gateway], ["next"], "A", "setKeeper AutomationGateway"),
   );
 
   const batchB: BuilderTx[] = [

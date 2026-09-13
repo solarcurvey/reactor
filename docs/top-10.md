@@ -4,7 +4,7 @@
 
 THE REACTOR UI is `/reactor`. It shows indexer ranks plus onchain epoch events. A compromised indexer or job signer can submit a legal-looking epoch that is economically wrong. Relayers / CRE cannot substitute ranking. That is residual risk **#1**. See [Trust](/docs/trust).
 
-Canonical compute is indexer `ValuationService` + persisted markets (`GET /top10`). Schema **v11** stores `top10_candidate_epochs` / `top10_candidate_rows`. Web `/api/reactor/top10` **proxies** that snapshot. The designated Keeper and the public Reactor page consume the same payload. Onchain `valuationSnapshotHash` binding is draft **#54**, not current `main`. Relayers / CRE cannot substitute ranking. Not a per-request Factory RPC. Serve and Keeper share `TOP10_SNAPSHOT_TTL_SEC` (15 minutes).
+Canonical compute is indexer `ValuationService` + persisted markets (`GET /top10`). Schema **v11** stores `top10_candidate_epochs` / `top10_candidate_rows`. Web `/api/reactor/top10` **proxies** that snapshot. The job signer and the public Reactor page consume the same payload. `valuationSnapshotHash` is bound onchain on `submitEpoch`. Relayers / CRE cannot substitute ranking. Not a per-request Factory RPC. Serve and Keeper share `TOP10_SNAPSHOT_TTL_SEC` (15 minutes).
 
 Live UI: a bottom-right toast appears when `Top10Buy` is committed (SSE `burn` + `eventKind=Top10Buy`). Two same-tx logs at different `logIndex` values are two notices. `EpochSubmitted` updates THE REACTOR table; it is not a buy+burn confirm. Ranks stay offchain.
 

@@ -15,6 +15,18 @@ forge test test/attack/CurveFreeze.t.sol -vv
 forge test --match-path test/integration/* -vv
 ```
 
+Automation gateway (signed jobs; relayers cannot steer):
+
+```bash
+forge test --match-contract AutomationGateway -vv
+forge test --match-contract MaintenanceFailover -vv
+npx --yes tsx packages/reactor/src/maintenance-job.test.ts
+pnpm exec tsx scripts/cre-workflow-simulate.ts --verify  # signed-job courier + honest auth-blocked CLI; not the CRE tenant AC
+npx --yes tsx scripts/maintenance-failover.ts   # requires Foundry; CI full/main job solidity + size-guard
+REQUIRE_ANVIL=1 npx --yes tsx scripts/autonomous-relay-failover.ts  # deployed Gateway + two relayers
+# Indexer unit suite does not spawn forge or anvil.
+```
+
 Indexer Top-10 / web ranker / keeper / valuation / indexer schema (no per-request RPC):
 
 ```bash
@@ -49,6 +61,9 @@ npx --yes tsx packages/reactor/src/wallet-proof.test.ts
 npx --yes tsx apps/indexer/src/operator-policy.test.ts
 npx --yes tsx apps/web/src/lib/operator-policy-bff.test.ts
 pnpm test:operator-policy-http  # real indexer + production Next HTTP matrix (CI full/main job operator-policy-http)
+npx --yes tsx packages/reactor/src/sanctions-ops.test.ts   # #64 freshness SLA / last-known-good
+npx --yes tsx packages/reactor/src/sanctions-audit.test.ts
+npx --yes tsx apps/indexer/src/sanctions-ops.test.ts
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
 pnpm docs:links                 # in-repo /docs slugs + relative files (CI docs-links job; no network). Do not restore docs-sync.yml
 pnpm test:web-unit              # top10 / marketdata / limited-json / fee-legs / constants-sync / brand voice
@@ -65,7 +80,7 @@ tsx apps/web/src/lib/qa-inject.test.ts
 tsx apps/web/e2e/console-gate.test.ts
 tsx apps/web/e2e/contrast.test.ts
 # CI full/main: .github/workflows/ci.yml job live-toasts-ui. Fast PR: identity unit via test:lib. #38 stays open until post-merge verify.
-# CI full/main: .github/workflows/ci.yml job obs-ui. Fast PR: obs unit via test:lib. #39 stays open until merge + post-merge verify.
+# CI full/main / ci-full: .github/workflows/ci.yml job obs-ui. Fast PR: obs unit via test:lib. Playwright smoke + obs-failure-injection assert protocolVersion from docs/version.json via CJS-safe e2e/protocol-version.ts (this draft 0.4.0; do not keep #46 0.3.4 pins; do not use import.meta in Playwright specs — apps/web is not "type":"module"). #39 stays open until merge + post-merge verify.
 pnpm test:web-security          # production next build/start: live headers, bundle sentinel, XSS corpus
 # CI full/main: .github/workflows/ci.yml job web-production-security
 # CI full/main: .github/workflows/ci.yml job web-qa. #36 closed after #49 post-merge `ad7b457` / 34729758795; gate remains required.
@@ -80,6 +95,9 @@ pnpm test:e2e:release           # production `next build`/`next start` + EIP-119
 `pnpm docs:check` (and `.github/workflows/ci.yml` job `constants-version-deployments`) **must fail** when generated constants, `docs/version.json`, Factory labels, or deployment tables have drifted from Solidity/config. Do not edit generated `docs/versioning.md` / `docs/deployments.md` / `docs/changelog.md` by hand — run `pnpm docs:gen`. `pnpm docs:links` (fast via `test:lib`; full-only job `docs-links`) **must fail** on unknown `/docs/<slug>` targets, missing relative files, or a `docs/*.md` page missing from `docs-nav.ts`. It does not fetch http(s) URLs.
 
 Three-tier GitHub Actions (Refs #69): fast PR / full merge-candidate / main post-merge. #17 leftover extras (`docs:links`, Playwright smoke + interactive job `web`) are full-only jobs on the same `ci.yml`. Operator inventory: [`/docs/ci`](docs/ci.md). Do not add a feature-branch `push` + `pull_request` pair.
+
+#51 Foundry proofs stay on the #73 single workflow (no second `push`+`pull_request` file). Fast PR + Solidity paths: `foundry-targeted` `forge test` includes `AutomationGateway` / `MaintenanceFailover`. Full/main job `solidity + size-guard` re-runs `forge test` plus `scripts/maintenance-failover.ts`, `scripts/autonomous-relay-failover.ts`, and `scripts/cre-workflow-simulate.ts --verify` (signed MaintenanceJob interface; auth-blocked official CLI is not the tenant AC). `pnpm test:lib` also runs `--verify`. Row **60** is merged #68 / #62 operator-policy. Row **61** is merged #70 / #64 sanctions-ops. Row **62** is merged #75 / #65 restricted-access UX. Row **63** is AutomationGateway. Issue **#51 stays open**. `pnpm --filter indexer test` must not spawn `forge` or `anvil`.
+
 
 Public-fork hardening (Refs #72) is `scripts/ci-public-harden.test.ts` inside `pnpm test:lib`. It does not skip Foundry, `docs:check`, `test:web-security`, or `live-toasts-ui`. Personal-mailbox trailers were remapped 2026-09-12. AC1 is advertised refs only; residual dangling SHAs are accepted. Do not publicize without founder instruction — see `/docs/publicization`.
 
@@ -321,6 +339,7 @@ pnpm --filter indexer watchdog
 | 60 | Operator policy gate (#62): recovered wallet proof; sign-as-BLOCKED + claim CLEAR still denies; blocked geo / allow / stale dataset / missing proof / public GET reads + `GET /operator-policy/status` (#65 contract) / denial before signer/upload/tx payload. Official `#66` `indexerSanctionsStore().screen` + `#67` `evaluateRequestGeo` bind against `apps/indexer/src` (LOCAL FX DENY; HMAC `UA-14` oblast UNKNOWN; HMAC `UA-DPR` DENY). Production HTTP: real indexer + `next start` matrix (`pnpm test:operator-policy-http`, full-only job `operator-policy-http`). | `packages/reactor/src/sanctions-policy.test.ts`, `packages/reactor/src/wallet-proof.test.ts`, `apps/indexer/src/operator-policy.test.ts`, `apps/web/src/lib/operator-policy-bff.test.ts`, `scripts/operator-policy-http.test.ts` |
 | 61 | Sanctions freshness SLA, last-known-good refresh, stale protected writes, health versions, audit redaction, failure-injection alerts; recovered-identity-only gate (merged #62 `operator-policy.ts`); LOCAL/test-only fixture fallback (bound `#61` store loads pinned OFAC XML, no live treasury.gov unless `SANCTIONS_NETWORK=1`); same-address refresh generation is restart-safe (`retrievedAt` from t1 after `loadFromDisk`) (#64) | `packages/reactor/src/sanctions-ops.test.ts`, `packages/reactor/src/sanctions-audit.test.ts`, `apps/indexer/src/sanctions-ops.test.ts`, `scripts/operator-policy-http.test.ts` |
 | 62 | Restricted-access UX (#65): `/restricted` + disabled write CTAs on deny/unavailable; public reads remain; no IP/screening leak; no VPN guidance; official `GET /operator-policy/status` + challenge signing helper + write gate; pending-proof stays Launch Instant. Stale/missing official-list (#64) surfaces as temporarily unavailable. Production `next build`/`next start` matrix (`restricted-prod.spec.ts` via `test:web-security`): blocked wallet / blocked geo / stale-unavailable / allowed, desktop + 390px CTA/banner layout, fail-closed, ignored LOCAL flags, real #62 write-gate bypass. Production visual/a11y/reflow gate (`e2e/a11y.spec.ts` via `web-qa`): `/restricted` + denied launch/token — axe + `assertNoSubAaMutedText` + 320px / 200% reflow. `/restricted` muted copy is `text-zinc-400`. `/restricted` server-reads `?kind=` (no `useSearchParams`) so production hydration matches. Dev path: `pnpm test:restricted`. Issue stays open. | `operator-policy-ux.test.ts`, `operator-policy-status.test.ts`, `e2e/restricted.spec.ts`, `e2e/restricted-prod.spec.ts`, `e2e/restricted-policy.ts`, `e2e/a11y.spec.ts` |
+| 63 | AutomationGateway signed `MaintenanceJob`s (#51): typed actions only (no generic `target.call`); EIP-712 bind; first valid consume + second relayer `Replay`; relayers have no decision authority. Issue stays open. | `AutomationGateway.t.sol`, `AutomationGatewayAuth.t.sol`, `MaintenanceFailover.t.sol`, `packages/reactor/src/maintenance-job.test.ts` |
 
 ## Arc smoke
 

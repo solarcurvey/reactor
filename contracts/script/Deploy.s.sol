@@ -39,6 +39,7 @@ import {CoreLiquidityVault} from "../src/CoreLiquidityVault.sol";
 import {CoreBuybackExecutor} from "../src/CoreBuybackExecutor.sol";
 import {RouteGuard} from "../src/libraries/RouteGuard.sol";
 import {InstantLaunchModule} from "../src/InstantLaunchModule.sol";
+import {AutomationGateway} from "../src/AutomationGateway.sol";
 import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
 
 contract Deploy is Script {
@@ -69,6 +70,7 @@ contract Deploy is Script {
         CoreVesting vesting;
         CoreLiquidityVault coreLp;
         CoreBuybackExecutor coreBuyback;
+        AutomationGateway gateway;
     }
 
     function run() external {
@@ -212,8 +214,17 @@ contract Deploy is Script {
         a.curve.bindRouteExecutor(address(a.userRouter));
         _verifyGenesis(a);
         _tinyBuyback(a);
+        _installGateway(a, deployer);
         a.auth.pauseLaunches(false);
         a.vesting.activateLaunch();
+    }
+
+    /// @notice After the one-shot local smoke buyback, Keeper becomes the gateway. Job signer ≠ Guardian.
+    function _installGateway(Addresses memory a, address deployer) internal {
+        address signer = vm.envOr("JOB_SIGNER", vm.envOr("KEEPER", deployer));
+        a.gateway = new AutomationGateway(a.auth, signer, a.selfBurn, a.flywheel, a.buyback);
+        a.auth.setKeeper(address(a.gateway));
+        require(a.auth.keeper() == address(a.gateway), "GATEWAY_KEEPER");
     }
 
     /// @notice Production constructors only. No Guardian calls. Safe MultiSend completes genesis.
@@ -270,6 +281,8 @@ contract Deploy is Script {
         a.userRouter =
             new UserRouteExecutor(a.auth, a.hook, IReactorSwapper(address(a.router)), a.curve, address(a.usdc));
         a.userQuoter = new UserRouteQuoter(a.auth, a.hook, IReactorSwapper(address(a.router)), a.curve, address(a.usdc));
+        address signer = vm.envOr("JOB_SIGNER", vm.envOr("KEEPER", address(1)));
+        a.gateway = new AutomationGateway(a.auth, signer, a.selfBurn, a.flywheel, a.buyback);
         require(a.auth.launchesPaused(), "LAUNCHES_MUST_STAY_PAUSED");
         require(a.curve.routeExecutor() == address(0), "EXECUTOR_MUST_WAIT_FOR_SAFE");
         require(a.core.balanceOf(a.auth.guardian()) == 0, "GUARDIAN_CORE");
@@ -358,6 +371,8 @@ contract Deploy is Script {
         console2.log("CoreVesting", address(a.vesting));
         console2.log("CoreLiquidityVault", address(a.coreLp));
         console2.log("CoreBuybackExecutor", address(a.coreBuyback));
+        console2.log("AutomationGateway", address(a.gateway));
+        if (address(a.gateway) != address(0)) console2.log("JobSigner", a.gateway.jobSigner());
         console2.log("FairVault", address(a.factory.fairVault()));
         console2.log("RoutingRegistry", address(a.routes));
         _write(a);
@@ -402,6 +417,9 @@ contract Deploy is Script {
             _kv("CoreVesting", address(a.vesting)),
             _kv("CoreLiquidityVault", address(a.coreLp)),
             _kv("CoreBuybackExecutor", address(a.coreBuyback)),
+            address(a.gateway) != address(0)
+                ? string.concat(_kv("AutomationGateway", address(a.gateway)), _kv("JobSigner", a.gateway.jobSigner()))
+                : "",
             _kvLast("FairClaimVault", address(a.factory.fairVault())),
             "  },\n",
             '  "hookFlags": "0x30CC",\n',

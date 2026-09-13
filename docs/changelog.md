@@ -2,7 +2,7 @@
 
 # Changelog
 
-Protocol release **0.3.4** (`v0.3.4`). Factory **V1** is unchanged by this number.
+Protocol release **0.4.0** (`v0.4.0`). Factory **V1** is unchanged by this number.
 
 The canonical file is `CHANGELOG.md` at the repo root. Same content below.
 
@@ -14,9 +14,36 @@ Versioning: [Semantic Versioning](https://semver.org/) for the **protocol releas
 - Git tag: `vMAJOR.MINOR.PATCH` (see [Versioning](docs/versioning.md) and `CONTRIBUTING.md`)
 - Factory **V1 stays V1 forever**. A new fee split or curve is Factory V2, not a protocol patch.
 
+## [0.4.0] - 2026-09-12
+
+`AutomationGateway` replaces the privileged Keeper EOA. Tokenomics **unchanged**. Factory **V1**. No mainnet.
+
+### Added / Changed
+
+- Standalone `AutomationGateway` is `ReactorGuardian.keeper`. Relayers (Chainlink CRE / Gelato / any EOA) submit short-lived EIP-712 `MaintenanceJob`s. Typed entrypoints only: SelfBurn execute, Flywheel settle / submitEpoch / Top-10 buy / roll, Buyback execute. No generic `target.call`.
+- Job binds gateway + chainId + action + payload hash + jobId + validAfter/deadline + snapshot. First valid consume wins. Relayers cannot weaken hops/minOut/amount or substitute Top-10 ranks. `submitEpoch` binds ValuationService snapshot + `/pricing/health`.
+- Signed job TTL is the interval `deadline - validAfter` (≤ 30 minutes), not remaining time at execution. An old `validAfter` plus a near-future deadline is `BadWindow`.
+- Decision service, auth signer, relayer, and Guardian are separate roles. CRE does **not** decentralize Top-10 ranking.
+- Daemon signs jobs behind the existing `#6` lease fence (`withSignAndBroadcastFence`). `InstantCurve.graduate` stays permissionless.
+- Foundry auth suite: wrong-chain, wrong-gateway, `WrongAction`, `UnknownAction`, tamper, expiry, replay, signer rotation, gateway pause, dual-relayer race, compromised relayer. Canonical action inventory (ids 0–5) is in `docs/automation.md`.
+- Dual-relayer failover is a **local-forge execution** (`MaintenanceFailover.t.sol` via `scripts/maintenance-failover.ts`): first valid consume wins; the second relayer is a `Replay` no-op. A second **autonomous** path (`scripts/autonomous-relay-failover.ts`) deploys `AutomationGateway` and runs two proofs: A and B start together with A’s submit RPC down (B consumes without waiting for A=`consumed`); simultaneous A/B race with exactly one `JobConsumed`. After #73 those proofs live on `.github/workflows/ci.yml` (`foundry-targeted` `forge test` on fast+Solidity; `scripts/maintenance-failover.ts` + `scripts/autonomous-relay-failover.ts` on full/main `solidity + size-guard`). No second workflow. The indexer unit suite does not spawn `forge` or `anvil`. Evidence: `ops/cre/simulation/failover-rehearsal.json` and `autonomous-relay-failover.json`. Not a live CRE DON, not a claimed Arc Public Testnet deploy, and not Arc Mainnet.
+- Replayed onto main `4915f3e` (squash-merged **#80** Industrial Forge / Refs #55 after **#81** `ff444cb` / **#46** `789eb5c` observability / **#75** / **#44**). Frozen fail-close ranking is preserved. Privileged Keeper EOA is **not** restored. Factory **V1** / economics unchanged. Merged #80 Direction C chrome/assets, #46 `obs-ui` / redacted telemetry / error boundaries, #75 `/restricted` + official `GET /operator-policy/status`, #44 `e2e-release-gate`, #70 freshness SLA, #68 operator-policy, #67 geo, and #66 `@reactor/sanctions` stay on main. **#17 / #39 / #51 / #55 / #60 / #63 / #64 / #65 / #69 stay open.** **#39 is open/reopened** — merged #46 landed repo CI; close still requires the real configured telemetry-provider symbolication proof. **#35** closed after merged #44. Refs #51 only — do not close. Issue **#51 stays open** until authenticated CRE simulate **and** post-merge `Guardian.keeper == AutomationGateway` verify.
+- CRE courier uses the same signed `MaintenanceJob` interface (`ops/cre/maintenance-courier`). The #51 Arc Testnet CRE **simulator** AC is **not closed**: authenticated `cre workflow simulate` needs a CRE tenant (`CRE_API_KEY` / `cre login`), which this environment and public CI do not have. Auth-blocked CLI output is recorded and labeled not-the-AC (`ops/cre/simulation/cre-tenant-blocker.json`). Live DON on EIP-155 1883 is not claimed. Arc Mainnet (5042) CRE production writes are **not listed, not configured, and not claimed**.
+
+### Tokenomics
+
+- No change. Different split = new Factory version, not an edit to V1.
+
+### Known limits (honest)
+
+- Not audited. No public mainnet.
+- Client telemetry is operator-trusted computation, not an oracle. Enabling Sentry shares redacted failure text with that vendor.
+- Top-10 ranks remain an offchain API. CRE is a courier.
+- Factory V1 runtime must stay ≤ 23,552.
+
 ## [0.3.4] - 2026-09-12
 
-Frontend production observability, error boundaries, and release telemetry. Rebased onto main `4207356` (#75 Restricted-access UX after #44 E2E release gate / #70 sanctions freshness / #79 CI evidence / #68 operator-policy / #67 geo / #66 OFAC / #49 UI QA / #42 full GitHub CI extras / #50 indexed board + page-budget / #58 typecheck / #73 three-tier CI / #77 / #76 / #74 public-scrub harden / #59 / #47 CSP). Tokenomics **unchanged**. Factory **V1**. No mainnet.
+Frontend production observability, error boundaries, and release telemetry. Merged as **#46** (`789eb5c`) onto main after **#75**. Tokenomics **unchanged**. Factory **V1**. No mainnet.
 
 ### Added / Changed
 
@@ -29,17 +56,7 @@ Frontend production observability, error boundaries, and release telemetry. Reba
 - Hidden source maps when `REACTOR_SOURCEMAPS=1` or `SENTRY_AUTH_TOKEN` is set. Production does not serve `*.map`. First-party symbolication resolves a generated production stack to original source and records exact release SHA / env / chain. A configured DSN POSTs those symbolicated frames to the Sentry store API; CI proves that path against an in-process staging vendor mock (`obs/vendor-proof.test.ts`) — no org token in the repo. Upload script archives maps; `REACTOR_SOURCEMAPS_REQUIRE=1` fails if maps are missing. Optional live Sentry upload when org/project/token are set (post-merge #39 close gate).
 - Exact-head CI job **`obs-ui`** is folded into `.github/workflows/ci.yml` (full / main / `ci-full`). Fast PR runs obs units via `test:lib`. Playwright `obs-failure-injection.spec.ts` stays full-tier. No second `push`+`pull_request` workflow. Matches #73 / #74: `contents: read`, `persist-credentials: false`, no secrets.
 - Privacy redaction: keys, mnemonics, JWT/Bearer, Turnstile, launch signatures, cookies, secret query params. 32-byte hex is truncated.
-- Issue **#39 stays open** until merge + post-merge live vendor verify (configured staging/org Sentry that symbolicates a deliberate production error). This branch owns **0.3.4**; later branches rebase onto it. If #54 `0.4.0` lands first, rebase onto that tip and do not restore 0.3.4. Do not restore 0.3.3.
-
-### Tokenomics
-
-- No change. Different split = new Factory version, not an edit to V1.
-
-### Known limits (honest)
-
-- Not audited. No public mainnet.
-- Client telemetry is operator-trusted computation, not an oracle. Enabling Sentry shares redacted failure text with that vendor.
-- Factory V1 runtime must stay ≤ 23,552.
+- Issue **#39 stays open** until post-merge live vendor verify (configured staging/org Sentry that symbolicates a deliberate production error).
 
 ## [0.3.3] - 2026-09-12
 
@@ -107,6 +124,7 @@ Founder-locked **Industrial Forge** brand (Direction C, issue #55 — **stays op
 ### Added / Changed
 
 - Exact official-list digital-currency address screening (`@reactor/sanctions`, `GET /sanctions/screen`). Official Treasury/OFAC HTTPS XML only (default refresh: SDN + Consolidated, classic and advanced). Decision is `blocked` / `clear` / `unavailable` plus dataset version — not a boolean, not legal/OFAC compliance, not hop attribution, not a #60 policy gate. Completeness floor 85% (explicit shrink override only). **#61 closed** after #66 `d08aa1c` / [`34731099571`](https://github.com/solarcurvey/reactor/actions/runs/34731099571). Parent **#60** stays open. Economics unchanged.
+
 - Live UI: bottom-right toasts for **confirmed** CORE `BuybackExecuted` / `COREBurned` and Top-10 `Top10Buy` after indexer SSE commit. First-session `hello.head` skips history; reconnect `?after=` delivers missed live events once. Dedupe is canonical `(chainId, txHash, logIndex, eventKind)` on a module `seen` set that outlives the visible toast array (dismiss, stack cap, remount). Hover/focus pauses auto-dismiss; safe-area insets; reduced-motion skips enter animation. Visible CI gate `live-toasts-ui`. Refs #38 — stays open until post-merge verify. Economics unchanged.
 - Playwright `toHaveScreenshot` against the production `next build` artifact (`playwright.qa.config.ts` + #35 `start-web.mjs`). Viewports: 1440, **1280 laptop**, 390, **360 narrow Android**. Shared fixture fails on unexpected `console.error`, hydration warnings, and `pageerror` (narrow `?inject=` allowlists only; diagnostics attach on failure). After the #44 rebase, overlapping goldens were recaptured so Launch/trade phase and wallet chrome match Industrial Forge on CI Chromium — the gate is not loosened.
 - State matrix: Discover loading/empty/search/filter, launch ticker/upload/Standard vs Rewards/Dev Buy, tx pending/confirmed/reverted, wallet menu, dialogs, live toasts, quote ecosystem.

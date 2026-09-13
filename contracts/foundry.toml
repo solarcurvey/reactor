@@ -14,6 +14,7 @@ fs_permissions = [
   { access = "read-write", path = "../deployments" },
   { access = "read-write", path = "../apps/web/src/lib/deployment.json" },
   { access = "read-write", path = "../apps/indexer/src/deployment.json" },
+  { access = "read-write", path = "../ops/cre/simulation" },
 ]
 verbosity = 2
 

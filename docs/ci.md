@@ -72,7 +72,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | `constants-version-deployments` | always | `pnpm test:lib` (includes `docs:check` + `docs:links` + `safe-genesis-builder.test.ts` + #61 sanctions fixtures + #63 geo-policy tests) |
 | `page-budget` | always | `pnpm test:page-budget` (4k-market HTTP/RPC budgets; also in `test:lib`) |
 | `foundry-targeted` | fast + Solidity paths | `forge test` (default profile) + `pnpm size:guard` |
-| `solidity + size-guard` | full / main | `FOUNDRY_PROFILE=ci forge test` + Attack suite + CREATE2 `test_hookBits` + `pnpm size:guard` |
+| `solidity + size-guard` | full / main | `FOUNDRY_PROFILE=ci forge test` + Attack suite + CREATE2 `test_hookBits` + `pnpm size:guard` + #51 dual-relayer rehearsal scripts + `cre-workflow-simulate.ts --verify` |
 | `web-production-security` | full / main | `pnpm test:restricted` (dev restricted UX + #62 write gate) then `pnpm test:web-security` (production Next + live headers + bundle sentinel + XSS corpus + `restricted-prod` four-state matrix) |
 | `operator-policy-http` | full / main | `pnpm test:operator-policy-http` — real indexer + production Next HTTP matrix (#62). LOCAL `#64` freshness is pinned `#61` fixtures (no live OFAC unless `SANCTIONS_NETWORK=1`). Required by `ci-ok`. |
 | `web-qa` | full / main | `pnpm --filter web test:qa` (production Next visual / a11y / failure-injection). Gate landed on PR #49; current Industrial Forge + #44 chrome goldens live on PR #80. |
@@ -80,7 +80,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | `obs-ui` | full / main | obs unit + first-party source-map symbolication + configured-DSN vendor proof (`vendor-proof.test.ts`) + production `next start` Playwright `obs-failure-injection.spec.ts` (Web Vitals / six-class runbook / redacted inject) |
 | `postgres-ms-timestamps` | full / main | `test:pg` + `test:pg-lease` (two-worker) + `pg-smoke` |
 | `docs-links` | full / main | `pnpm docs:links` (in-repo slugs/files only; no network). Also in `test:lib` on the fast gate. |
-| `web` | full / main | Playwright smoke + interactive (`e2e/smoke.spec.ts`, `e2e/interactive.spec.ts`). Capture shots stay `CAPTURE=1` local-only. Live-toasts Playwright stays on `live-toasts-ui`. |
+| `web` | full / main | Playwright smoke + interactive (`e2e/smoke.spec.ts`, `e2e/interactive.spec.ts`). Specs stay CJS-safe (no `import.meta`; `apps/web` is not `"type":"module"`). Capture shots stay `CAPTURE=1` local-only. Live-toasts Playwright stays on `live-toasts-ui`. |
 | `e2e-release-gate` | full / main | `pnpm test:e2e:release` (production Next + EIP-1193 / MV3 wallet; `xvfb-run`) |
 | `ci-ok` | always | When `full=true`: all of the above full jobs **and** `page-budget` `== success` (including `web-qa`, `obs-ui`, and `e2e-release-gate`). When `full=false`: only `decide` + `constants-version-deployments` + `page-budget`. Skipped ≠ pass on the full path (`scripts/ci-ok.sh`). |
 

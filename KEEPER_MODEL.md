@@ -1,17 +1,23 @@
 # KEEPER MODEL
 
-Maintenance is **not** permissionless. A single designated REACTOR Keeper (backend-controlled address) runs every maintenance job. There is no bounty, no `KeeperReserve`, no public settle farming.
+Maintenance is **not** permissionless. `ReactorGuardian.keeper` is the onchain `AutomationGateway`. Relayers (Chainlink CRE, Gelato, a standby wallet, anyone) only deliver a short-lived EIP-712 `MaintenanceJob`. They have **no decision authority**. There is no bounty, no `KeeperReserve`, no public settle farming.
+
+**Roles — do not collapse:** the **decision service** (ValuationService + route sim + `/pricing/health`) chooses ranks and floors; the **auth signer** (`gateway.jobSigner`) signs that exact job; the **relayer** submits it; **Guardian** pauses / rotates. CRE does **not** decentralize Top-10 ranking. Authenticated `cre workflow simulate` on catalog 1883 is a remaining #51 external blocker (`ops/cre/simulation/cre-tenant-blocker.json`) — not a live DON and not 5042.
 
 ## Jobs
 
-The Keeper (and only the Keeper, and only while not paused) may:
+The gateway (and only the gateway, and only while not paused) may:
 
-1. Flywheel quote → USDC (`FlywheelVault.settleQuote`)
-2. Submit a Top-10 epoch (`submitEpoch`)
-3. Top-10 buy+burn (`executeTop10Buyback`)
-4. Roll the epoch (`rollEpoch`)
-5. CORE quote → CORE buy+burn (`BuybackVault.execute`)
-6. Standard SelfBurn (`SelfBurnVault.execute`)
+| ID | Job | Gateway | Vault |
+| --- | --- | --- | --- |
+| 0 | SelfBurn | `executeSelfBurn` | `SelfBurnVault.execute` |
+| 1 | Flywheel quote → USDC | `settleQuote` | `FlywheelVault.settleQuote` |
+| 2 | Submit Top-10 epoch | `submitEpoch` | `FlywheelVault.submitEpoch` |
+| 3 | Top-10 buy+burn | `executeTop10Buyback` | `FlywheelVault.executeTop10Buyback` |
+| 4 | Roll epoch | `rollEpoch` | `FlywheelVault.rollEpoch` |
+| 5 | CORE quote → CORE buy+burn | `executeBuyback` | `BuybackVault.execute` |
+
+Canonical table + test names: [Automation](/docs/automation).
 
 The Keeper is **not** an owner. It cannot configure quotes, adapters, fees, Guardian, or vault recipients. It cannot withdraw.
 
@@ -27,7 +33,7 @@ Eligibility (API, not the contract):
 - Nested quote USD resolved offchain
 - If a mark is unreliable: **skip that token or pause the epoch — never guess**
 
-The Keeper publishes `epochId + targets + weights`. The contract checks **structure only**:
+The decision service publishes `epochId + targets + weights` bound to `valuationSnapshotHash` + pricing-health. Relayers cannot substitute ranking. The flywheel contract still checks **structure only**:
 
 - Real graduated REACTOR tokens
 - Not CORE
@@ -58,17 +64,17 @@ Guardrails:
 - User SELL floors (`minQuoteOut` / `minFinalOut`) are **not** Keeper jobs. They come from the selected `PreviewedRoute` (`splitPreviewRoute.terminalOut` + final USDC), never from launch-token `amountIn`.
 - `POST /quote` maintenance kinds report official edges in `exemptOfficialLegs[]` (0 user fee) — never as charged `feeLegs[]`. User tickets bind `feeLegs[]` to the `pickBest` winner only.
 
-Daemon: `apps/indexer/src/keeper.ts` — SelfBurn, Flywheel settle, CORE settle, epoch publish, Top-10 exec, CORE burn, optional graduate assist. Simulate → minOut → submit → receipt → reconcile. Idempotent job IDs. Modes `DRY_RUN` / `LOCAL` / `ARC_TESTNET`. Mainnet 5042 disabled. Ambiguous RPC does not double-exec.
+Daemon: `apps/indexer/src/keeper.ts` — decision + **job signer**. Simulate as the gateway → conservative minOut → sign `MaintenanceJob` (exact hops / minOut / amount / snapshot) → any relayer submits to `AutomationGateway`. Optional permissionless `graduate` assist (not a gateway job). Idempotent job IDs. Modes `DRY_RUN` / `LOCAL` / `ARC_TESTNET`. Mainnet 5042 disabled. Ambiguous RPC does not double-exec. Signing and broadcast sit inside the same `leader_locks` fence (`withSignAndBroadcastFence`).
 
 Leadership is a single `leader_locks` lease (not `pg_advisory_lock`). `ts` and `lease_until` are wall-clock **milliseconds** (`Date.now()` + TTL), `BIGINT` on Postgres (schema v6). Job `keeper_operations.ts` is the same unit. Do not store unix seconds in those columns.
 
 Default TTL is ~50s and **shorter than possible tick work**, so a live leader must renew `lease_until` (default every 15s, and immediately before each broadcast) while keeping the acquire-generation fence (`ts`) fixed. A standby that acquires after expiry gets a new fence; the previous owner cannot renew or send. That is the split-brain fence — see `/docs/keeper` Operations. Production concurrency is proven with **two independent Postgres pools** (`test:pg-lease`). SQLite unit + pg-lease TTL cases inject the lease clock so CI does not race `setInterval` against a 400ms TTL; production still uses `Date.now()` + `setInterval`. `apps/indexer/src/watchdog.ts` is an independent fail-closed process.
 
-Fee exemption is only via the sealed executor contracts (SelfBurn, Flywheel, Buyback) calling `protocolSwap` / `buyExempt`. The Keeper EOA is never allowlisted.
+Fee exemption is only via the sealed executor contracts (SelfBurn, Flywheel, Buyback) calling `protocolSwap` / `buyExempt`. The job signer EOA and relayer EOAs are never allowlisted. The gateway is `keeper` so vault `onlyKeeper` sees the gateway, not the courier.
 
 ## Trust — operational risk
 
-`route` and `minOut` are **operational** risk on the Keeper key and its simulator.
+`route` and `minOut` are **operational** risk on the **job signer** and its simulator. A compromised relayer cannot weaken floors or swap Top-10 members. Dual-relayer races are first-valid-consume; the loser is `Replay` (local-forge evidence: `ops/cre/simulation/failover-rehearsal.json`; autonomous deployed-Gateway evidence: `ops/cre/simulation/autonomous-relay-failover.json`). Authenticated CRE simulate remains an external blocker: `ops/cre/simulation/cre-tenant-blocker.json`.
 
 Mitigations:
 
@@ -77,9 +83,9 @@ Mitigations:
 - Per-op / epoch limits; cannot spend holder Rewards or another token’s SelfBurn
 - Guardian can pause or replace the Keeper immediately
 
-A compromised Keeper can waste a pot on a bad route (sandwich / poor `minOut`) within those bounds. It cannot redirect pots to itself, change fees, or empty official LP.
+A compromised **job signer** can waste a pot on a bad signed route (sandwich / poor `minOut`) within those bounds. It cannot redirect pots to itself, change fees, or empty official LP. Guardian can pause the gateway or rotate the signer immediately.
 
-Monitoring / watchdog processes must use **separate** keys from the Keeper.
+Monitoring / watchdog processes must use **separate** keys from the job signer. In PROD the relayer key must also be distinct. See `INCIDENT_RESPONSE.md` and `/docs/automation`.
 
 ## Retired
 

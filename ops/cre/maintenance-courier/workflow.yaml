@@ -1,0 +1,24 @@
+# Official CRE workflow.yaml. Simulate from ops/cre:
+#   cre workflow simulate maintenance-courier --target staging-settings \
+#     --non-interactive --trigger-index 0 \
+#     --http-payload @../simulation/signed-job-http-payload.json
+#
+# Default --broadcast is false (dry run). Do not pass --broadcast here — there is
+# no claimed AutomationGateway on CRE catalog 1883, and 5042 writes are blocked.
+staging-settings:
+  user-workflow:
+    workflow-name: "reactor-maintenance-courier-staging"
+    deployment-registry: "private"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.staging.json"
+    secrets-path: ""
+
+production-settings:
+  user-workflow:
+    workflow-name: "reactor-maintenance-courier-production"
+    deployment-registry: "private"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.production.json"
+    secrets-path: ""

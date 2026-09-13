@@ -18,17 +18,47 @@ import {
   assertKeySeparation,
   saveJob,
   withLeaderLock,
-  withBroadcastFence,
+  withSignAndBroadcastFence,
   LeaderLeaseLostError,
   type LeaderLease,
 } from "./keeper-jobs.ts";
 import { planFeeExemptRoute, syncOfficialFactoryVenues } from "./route-graph.ts";
 import { acceptTop10Snapshot } from "../../../packages/reactor/src/top10.ts";
 import { indexCalls, readContractsBatched } from "../../../packages/reactor/src/rpc-batch.ts";
+import {
+  ACTION_BUYBACK,
+  ACTION_ROLL_EPOCH,
+  ACTION_SELF_BURN,
+  ACTION_SETTLE_QUOTE,
+  ACTION_SUBMIT_EPOCH,
+  ACTION_TOP10_BUYBACK,
+  MAINTENANCE_JOB_TYPES,
+  buybackPayload,
+  encodeBuybackCall,
+  encodeRollCall,
+  encodeSelfBurnCall,
+  encodeSettleCall,
+  encodeSubmitEpochCall,
+  encodeTop10Call,
+  epochSnapshotHash,
+  hashHops,
+  jobIdFromOp,
+  makeJob,
+  maintenanceDomain,
+  pricingHealthHash,
+  rollPayload,
+  selfBurnPayload,
+  settlePayload,
+  top10Payload,
+  valuationSnapshotHash,
+  type MaintenanceHop,
+  type MaintenanceJob,
+} from "../../../packages/reactor/src/maintenance-job.ts";
 
 /**
- * Designated Keeper daemon.
- * Simulate with safe params → read returned expected output → conservative minOut → submit → verify.
+ * Decision/signer daemon. Onchain Keeper is AutomationGateway.
+ * Simulate as the gateway → sign a short-lived MaintenanceJob → any relayer submits.
+ * Relayers have no ranking or minOut authority. InstantCurve.graduate stays permissionless.
  * Modes: DRY_RUN | LOCAL | ARC_TESTNET. Chain 5042 (mainnet) is hard-disabled.
  * Never logs private keys. Never submits minOut 0 or 1.
  */
@@ -66,6 +96,8 @@ const flywheelAbi = parseAbi([
   "function epochFinalized() view returns (bool)",
   "function usdcPot() view returns (uint256)",
   "function quoteAccrued(address) view returns (uint256)",
+  "function settleTake(address) view returns (uint256)",
+  "function top10Share(address) view returns (uint256)",
   `function settleQuote(address quote, ${hopTuple} hops, uint256 minOut) returns (uint256 usdcReceived)`,
   `function previewSettleQuote(address quote, ${hopTuple} hops)`,
   `function previewTop10Hops(address token, ${hopTuple} hops)`,
@@ -96,9 +128,11 @@ const selfBurnAbi = parseAbi([
   "function accrued(address) view returns (uint256)",
   "function quoteOf(address) view returns (address)",
   "function execute(address token, uint256 minTargetOut) returns (uint256 burnedAmount)",
+  "function executeTake(address token) view returns (uint256)",
 ]);
 const buybackAbi = parseAbi([
   "function accrued(address) view returns (uint256)",
+  "function executeTake(address) view returns (uint256)",
   `function execute(address quote, ${hopTuple} hops, uint256 minOut) returns (uint256 coreBought)`,
   `function previewExecuteHops(address quote, ${hopTuple} hops)`,
   "error PreviewHops(uint256[] hopOuts, uint256 finalOut)",
@@ -128,7 +162,9 @@ const erc20Abi = parseAbi(["function balanceOf(address) view returns (uint256)"]
 type Top10 = {
   pauseEpoch: boolean;
   reason: string;
+  source?: string;
   computedTs?: number;
+  valuationSnapshotHash?: string;
   rows: Array<{ token: string; weightBps: number; symbol: string; quote?: string }>;
 };
 type JobState = {
@@ -150,14 +186,25 @@ const chain = defineChain({
 });
 const client = createPublicClient({ chain, transport: http(RPC) });
 
-function keeperKey(chainId: number): `0x${string}` | null {
-  const env = process.env.KEEPER_PRIVATE_KEY;
-  if (env) {
-    if (env.length < 10) throw new Error("KEEPER_PRIVATE_KEY malformed");
-    assertKeySeparation({ keeper: env, pricing: process.env.PRICING_SIGNER_PK, guardian: process.env.GUARDIAN_PK });
-    return env as `0x${string}`;
+function resolveKeys(chainId: number): { signer: `0x${string}`; relayer: `0x${string}` } | null {
+  const prod = (process.env.REACTOR_ENV ?? "").toUpperCase() === "PROD";
+  const signerEnv = process.env.JOB_SIGNER_PRIVATE_KEY ?? process.env.KEEPER_PRIVATE_KEY;
+  const relayerEnv = process.env.RELAYER_PRIVATE_KEY ?? signerEnv;
+  if (signerEnv) {
+    if (signerEnv.length < 10) throw new Error("JOB_SIGNER_PRIVATE_KEY / KEEPER_PRIVATE_KEY malformed");
+    assertKeySeparation({
+      jobSigner: signerEnv,
+      relayer: relayerEnv,
+      pricing: process.env.PRICING_SIGNER_PK,
+      guardian: process.env.GUARDIAN_PK,
+      launch: process.env.LAUNCH_SIGNER_PK,
+      requireRelayerDistinct: prod,
+    });
+    return { signer: signerEnv as `0x${string}`, relayer: (relayerEnv ?? signerEnv) as `0x${string}` };
   }
-  if (chainId === LOCAL_CHAIN && MODE === "LOCAL" && (process.env.REACTOR_ENV ?? "LOCAL").toUpperCase() === "LOCAL") return ANVIL0;
+  if (chainId === LOCAL_CHAIN && MODE === "LOCAL" && (process.env.REACTOR_ENV ?? "LOCAL").toUpperCase() === "LOCAL") {
+    return { signer: ANVIL0, relayer: ANVIL0 };
+  }
   if (chainId === LOCAL_CHAIN && MODE === "ARC_TESTNET") return null;
   return null;
 }
@@ -257,7 +304,7 @@ async function submitOnce(state: KeeperState, id: string, send: () => Promise<He
   try {
     hash =
       jobStore && activeLease
-        ? await withBroadcastFence(jobStore, activeLease, send)
+        ? await withSignAndBroadcastFence(jobStore, activeLease, send)
         : await send();
   } catch (e) {
     if (e instanceof LeaderLeaseLostError) throw e;
@@ -384,6 +431,18 @@ async function hopsOrEmpty(tokenIn: `0x${string}`, tokenOut: `0x${string}`, adap
   return planned.hops.map((h) => ({ ...h, minOut: 1n }));
 }
 
+function asMaintHops(hops: Hop[]): MaintenanceHop[] {
+  return hops.map((h) => ({
+    adapter: h.adapter as `0x${string}`,
+    tokenIn: h.tokenIn as `0x${string}`,
+    tokenOut: h.tokenOut as `0x${string}`,
+    minOut: h.minOut,
+    data: (h.data || "0x") as Hex,
+  }));
+}
+
+const ZERO32 = "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
+
 /** One simulated out per hop. Never reuse last-leg as an intermediate floor. */
 export function stampHopMinOuts(hops: Hop[], hopSimOuts: bigint[], slipBps = SLIP_BPS): Hop[] {
   if (hops.length !== hopSimOuts.length) throw new Error("need one sim out per hop");
@@ -504,7 +563,7 @@ async function tickBody(chainId: number) {
   }
 
   const gate = canBroadcast(chainId);
-  const key = keeperKey(chainId);
+  const keys = resolveKeys(chainId);
   if (!gate.ok) {
     writeBeat({
       ok: true,
@@ -518,15 +577,27 @@ async function tickBody(chainId: number) {
     });
     return;
   }
-  if (!key) {
-    writeBeat({ ok: false, reason: "no keeper key", chainId });
+  if (!keys) {
+    writeBeat({ ok: false, reason: "no job signer key", chainId });
     return;
   }
 
-  const account = privateKeyToAccount(key);
-  const wallet = createWalletClient({ account, chain, transport: http(RPC) });
+  const signerAccount = privateKeyToAccount(keys.signer);
+  const relayerAccount = privateKeyToAccount(keys.relayer);
+  const wallet = createWalletClient({ account: relayerAccount, chain, transport: http(RPC) });
+  const gateway = addrs.AutomationGateway as `0x${string}` | undefined;
+  const nowSec = (await client.getBlock()).timestamp;
+  const signJob = (job: MaintenanceJob) =>
+    signerAccount.signTypedData({
+      domain: maintenanceDomain(job.chainId, job.gateway),
+      types: MAINTENANCE_JOB_TYPES,
+      primaryType: "MaintenanceJob",
+      message: job,
+    });
   let ran = 0;
-  const send = (to: `0x${string}`, data: Hex) => wallet.sendTransaction({ to, data, account, chain });
+  const send = (to: `0x${string}`, data: Hex) =>
+    wallet.sendTransaction({ to, data, account: relayerAccount, chain });
+  const keeperFrom = gateway ?? signerAccount.address;
   const run = async (id: string, to: `0x${string}`, data: Hex) => {
     if (ran >= MAX_JOBS_PER_TICK) return;
     if (state.jobs[id]?.status === "done") return;
@@ -592,7 +663,7 @@ async function tickBody(chainId: number) {
               abi: selfBurnAbi,
               functionName: "execute",
               args: [token, 1n],
-              account: account.address,
+              account: keeperFrom,
             })
             .catch(() => null);
           if (!sim || sim.result === undefined) continue;
@@ -603,11 +674,29 @@ async function tickBody(chainId: number) {
             writeBeat({ ok: false, reason: `weak selfburn minOut ${token}`, jobs });
             continue;
           }
-          await run(
-            `selfburn:${token.toLowerCase()}:${acc.toString()}`,
-            selfBurn,
-            encodeFunctionData({ abi: selfBurnAbi, functionName: "execute", args: [token, minOut] }),
-          );
+          if (!gateway) {
+            writeBeat({ ok: false, reason: "AutomationGateway missing — refuse EOA keeper path", jobs });
+            continue;
+          }
+          const take = (await client.readContract({
+            address: selfBurn,
+            abi: selfBurnAbi,
+            functionName: "executeTake",
+            args: [token],
+          })) as bigint;
+          if (take === 0n) continue;
+          const opId = `selfburn:${token.toLowerCase()}:${acc.toString()}`;
+          const job = makeJob({
+            gateway,
+            chainId: BigInt(chainId),
+            action: ACTION_SELF_BURN,
+            payloadHash: selfBurnPayload(token, take, minOut),
+            jobId: jobIdFromOp(opId),
+            nowSec,
+            snapshotHash: ZERO32,
+          });
+          const sig = await signJob(job);
+          await run(opId, gateway, encodeSelfBurnCall(job, sig, token, take, minOut));
         }
       }
     }
@@ -637,7 +726,7 @@ async function tickBody(chainId: number) {
       }
       let hops2 = hops;
       if (hops.length > 0) {
-        const stamped = await previewAndStamp(flywheel, flywheelAbi, "previewSettleQuote", [q, hops], account.address, hops);
+        const stamped = await previewAndStamp(flywheel, flywheelAbi, "previewSettleQuote", [q, hops], keeperFrom, hops);
         if (!stamped) continue;
         hops2 = stamped;
       }
@@ -648,7 +737,7 @@ async function tickBody(chainId: number) {
           abi: flywheelAbi,
           functionName: "settleQuote",
           args: [q, hops2, probeMin],
-          account: account.address,
+          account: keeperFrom,
         })
         .catch(() => null);
       if (!sim || sim.result === undefined) continue;
@@ -659,11 +748,30 @@ async function tickBody(chainId: number) {
         continue;
       }
       if (minOut <= 1n && q.toLowerCase() !== usdc.toLowerCase()) continue;
-      await run(
-        `settle:${q.toLowerCase()}:${acc.toString()}`,
-        flywheel,
-        encodeFunctionData({ abi: flywheelAbi, functionName: "settleQuote", args: [q, hops2, minOut] }),
-      );
+      if (!gateway) {
+        writeBeat({ ok: false, reason: "AutomationGateway missing — refuse EOA keeper path", jobs });
+        continue;
+      }
+      const take = (await client.readContract({
+        address: flywheel,
+        abi: flywheelAbi,
+        functionName: "settleTake",
+        args: [q],
+      })) as bigint;
+      if (take === 0n) continue;
+      const hopsH = hashHops(asMaintHops(hops2));
+      const opId = `settle:${q.toLowerCase()}:${acc.toString()}`;
+      const job = makeJob({
+        gateway,
+        chainId: BigInt(chainId),
+        action: ACTION_SETTLE_QUOTE,
+        payloadHash: settlePayload(q, take, minOut, hopsH),
+        jobId: jobIdFromOp(opId),
+        nowSec,
+        snapshotHash: hopsH,
+      });
+      const sig = await signJob(job);
+      await run(opId, gateway, encodeSettleCall(job, sig, q, take, asMaintHops(hops2), minOut));
     }
   }
 
@@ -684,7 +792,7 @@ async function tickBody(chainId: number) {
       }
       let hops2 = hops;
       if (hops.length > 0) {
-        const stamped = await previewAndStamp(buyback, buybackAbi, "previewExecuteHops", [q, hops], account.address, hops);
+        const stamped = await previewAndStamp(buyback, buybackAbi, "previewExecuteHops", [q, hops], keeperFrom, hops);
         if (!stamped) continue;
         hops2 = stamped;
       }
@@ -694,7 +802,7 @@ async function tickBody(chainId: number) {
           abi: buybackAbi,
           functionName: "execute",
           args: [q, hops2, 1n],
-          account: account.address,
+          account: keeperFrom,
         })
         .catch(() => null);
       if (!sim || sim.result === undefined) continue;
@@ -704,11 +812,30 @@ async function tickBody(chainId: number) {
       } catch {
         continue;
       }
-      await run(
-        `core:${q.toLowerCase()}:${acc.toString()}`,
-        buyback,
-        encodeFunctionData({ abi: buybackAbi, functionName: "execute", args: [q, hops2, minOut] }),
-      );
+      if (!gateway) {
+        writeBeat({ ok: false, reason: "AutomationGateway missing — refuse EOA keeper path", jobs });
+        continue;
+      }
+      const take = (await client.readContract({
+        address: buyback,
+        abi: buybackAbi,
+        functionName: "executeTake",
+        args: [q],
+      })) as bigint;
+      if (take === 0n) continue;
+      const hopsH = hashHops(asMaintHops(hops2));
+      const opId = `core:${q.toLowerCase()}:${acc.toString()}`;
+      const job = makeJob({
+        gateway,
+        chainId: BigInt(chainId),
+        action: ACTION_BUYBACK,
+        payloadHash: buybackPayload(q, take, minOut, hopsH),
+        jobId: jobIdFromOp(opId),
+        nowSec,
+        snapshotHash: hopsH,
+      });
+      const sig = await signJob(job);
+      await run(opId, gateway, encodeBuybackCall(job, sig, q, take, asMaintHops(hops2), minOut));
     }
   }
 
@@ -724,15 +851,43 @@ async function tickBody(chainId: number) {
       client.readContract({ address: flywheel, abi: flywheelAbi, functionName: "epochFinalized" }),
     ]);
     if (!finalized) {
-      const data = encodeFunctionData({
-        abi: flywheelAbi,
-        functionName: "submitEpoch",
-        args: [epoch, body.rows.map((r) => r.token as `0x${string}`), body.rows.map((r) => BigInt(r.weightBps))],
+      if (!gateway) {
+        writeBeat({ ok: false, reason: "AutomationGateway missing — refuse EOA keeper path", jobs });
+        return;
+      }
+      let health: unknown = { ok: false, reason: "unfetched" };
+      try {
+        const hr = await fetch(`${INDEXER_BASE}/pricing/health`);
+        health = await hr.json();
+      } catch (e) {
+        writeBeat({ ok: false, pauseEpoch: true, reason: `pricing health unreachable: ${e}` });
+        return;
+      }
+      const healthH = pricingHealthHash(health);
+      const targets = body.rows.map((r) => r.token as `0x${string}`);
+      const weights = body.rows.map((r) => BigInt(r.weightBps));
+      const valuation =
+        (body.valuationSnapshotHash as Hex | undefined) ??
+        valuationSnapshotHash({
+          source: body.source ?? "valuation-service",
+          computedTs: body.computedTs ?? 0,
+          pauseEpoch: body.pauseEpoch,
+          rows: body.rows,
+        });
+      const snap = epochSnapshotHash(epoch, targets, weights, valuation, healthH);
+      const opId = `epoch:${epoch.toString()}:${body.rows.map((x) => x.token).join(",")}`;
+      const job = makeJob({
+        gateway,
+        chainId: BigInt(chainId),
+        action: ACTION_SUBMIT_EPOCH,
+        payloadHash: snap,
+        jobId: jobIdFromOp(opId),
+        nowSec,
+        snapshotHash: snap,
       });
-      const r = await submitOnce(
-        state,
-        `epoch:${epoch.toString()}:${body.rows.map((x) => x.token).join(",")}`,
-        () => send(flywheel, data),
+      const sig = await signJob(job);
+      const r = await submitOnce(state, opId, () =>
+        send(gateway, encodeSubmitEpochCall(job, sig, epoch, targets, weights, valuation, healthH)),
       );
       jobs.push(`epoch:${r.status}`);
       submitted = r.status === "done";
@@ -789,7 +944,7 @@ async function tickBody(chainId: number) {
             flywheelAbi,
             "previewTop10Hops",
             [row.token as `0x${string}`, hops],
-            account.address,
+            keeperFrom,
             hops,
           );
           if (!stamped) continue;
@@ -801,7 +956,7 @@ async function tickBody(chainId: number) {
             abi: flywheelAbi,
             functionName: "executeTop10Buyback",
             args: [row.token as `0x${string}`, hops2, 1n],
-            account: account.address,
+            account: keeperFrom,
           })
           .catch(() => null);
         if (!sim || sim.result === undefined) continue;
@@ -811,15 +966,30 @@ async function tickBody(chainId: number) {
         } catch {
           continue;
         }
-        await run(
-          `top10:${epoch.toString()}:${row.token.toLowerCase()}`,
-          flywheel,
-          encodeFunctionData({
-            abi: flywheelAbi,
-            functionName: "executeTop10Buyback",
-            args: [row.token as `0x${string}`, hops2, minOut],
-          }),
-        );
+        if (!gateway) {
+          writeBeat({ ok: false, reason: "AutomationGateway missing — refuse EOA keeper path", jobs });
+          continue;
+        }
+        const take = (await client.readContract({
+          address: flywheel,
+          abi: flywheelAbi,
+          functionName: "top10Share",
+          args: [row.token as `0x${string}`],
+        })) as bigint;
+        if (take === 0n) continue;
+        const hopsH = hashHops(asMaintHops(hops2));
+        const opId = `top10:${epoch.toString()}:${row.token.toLowerCase()}`;
+        const job = makeJob({
+          gateway,
+          chainId: BigInt(chainId),
+          action: ACTION_TOP10_BUYBACK,
+          payloadHash: top10Payload(row.token as `0x${string}`, take, minOut, hopsH),
+          jobId: jobIdFromOp(opId),
+          nowSec,
+          snapshotHash: hopsH,
+        });
+        const sig = await signJob(job);
+        await run(opId, gateway, encodeTop10Call(job, sig, row.token as `0x${string}`, take, asMaintHops(hops2), minOut));
       }
       const pot = (await client.readContract({ address: flywheel, abi: flywheelAbi, functionName: "usdcPot" })) as bigint;
       const allBought = await Promise.all(
@@ -833,7 +1003,23 @@ async function tickBody(chainId: number) {
         ),
       );
       if (allBought.every(Boolean) || pot === 0n) {
-        await run(`roll:${epoch.toString()}`, flywheel, encodeFunctionData({ abi: flywheelAbi, functionName: "rollEpoch" }));
+        if (!gateway) {
+          writeBeat({ ok: false, reason: "AutomationGateway missing — refuse EOA keeper path", jobs });
+        } else {
+          const opId = `roll:${epoch.toString()}`;
+          const payload = rollPayload(epoch);
+          const job = makeJob({
+            gateway,
+            chainId: BigInt(chainId),
+            action: ACTION_ROLL_EPOCH,
+            payloadHash: payload,
+            jobId: jobIdFromOp(opId),
+            nowSec,
+            snapshotHash: payload,
+          });
+          const sig = await signJob(job);
+          await run(opId, gateway, encodeRollCall(job, sig, epoch));
+        }
       }
     }
   }

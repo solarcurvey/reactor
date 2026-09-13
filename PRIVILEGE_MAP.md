@@ -2,13 +2,14 @@
 
 Every privileged function is **GUARDIAN** or **KEEPER** only. There is no Ownable, admin, bootstrap, or first-caller-wins bind.
 
-Guardian is immutable. Keeper is replaceable by Guardian.
+Guardian is immutable. Keeper is replaceable by Guardian (production: `AutomationGateway`). The job signer on the gateway is replaceable by Guardian. Relayers are not privileged.
 
 ## Guardian-only
 
 | Contract | Function | Notes |
 | --- | --- | --- |
-| `ReactorGuardian` | `setKeeper` | Replace designated Keeper |
+| `ReactorGuardian` | `setKeeper` | Replace designated Keeper (set to `AutomationGateway`) |
+| `AutomationGateway` | `setJobSigner` / `pauseGateway` | Rotate auth signer; halt job consume |
 | `ReactorGuardian` | `setPricingSigner` | Launch-pricing EIP-712 signer (starts as Keeper) |
 | `ReactorGuardian` | `setLaunchSigner` | LaunchAuthorization signer. Falls back to pricingSigner until set. ≠ Keeper ≠ Safe |
 | `ReactorGuardian` | `bindTickerRegistry` | One-time global `TickerRegistry` |
@@ -30,16 +31,17 @@ Guardian is immutable. Keeper is replaceable by Guardian.
 | `FlywheelVault` | `bind` | One-time |
 | `ReactorRouter` | `setProtocolVault` / `sealProtocolVaults` | One-time window; sealed forever |
 
-## Keeper-only
+## Keeper-only (msg.sender = AutomationGateway)
 
 | Contract | Function | Notes |
 | --- | --- | --- |
-| `FlywheelVault` | `settleQuote` | Quote → USDC; returns `usdcReceived`; Keeper sim minOut |
-| `FlywheelVault` | `submitEpoch` | Structural Top-10 only |
+| `FlywheelVault` | `settleQuote` | Quote → USDC; returns `usdcReceived`; signed hops/minOut/amount |
+| `FlywheelVault` | `submitEpoch` | Structural Top-10 only; snapshot + pricing-health bound in the job |
 | `FlywheelVault` | `executeTop10Buyback` | Returns `targetBought`; requires realistic `minTargetOut` |
 | `FlywheelVault` | `rollEpoch` | After finalize |
 | `BuybackVault` | `execute` / `executeCoreBuyback` | Returns `coreBought`; `minOut` > 1 in production; `burn()` |
 | `SelfBurnVault` | `execute` | Returns `burnedAmount`; `minTargetOut` > 1 in production |
+| `AutomationGateway` | typed jobs / `onReport` | Anyone may submit a valid signature. No `target.call` |
 
 ## One-time address assignment (no first-caller-wins)
 

@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { ANVIL_ACCOUNT0_PK } from "../src/lib/secret-sentinel";
 import { anvilMnemonic } from "../src/lib/obs/inject-sentinels";
+import { PROTOCOL_VERSION, RELEASE_PREFIX } from "./protocol-version";
 
 const ANVIL_PK = `0x${ANVIL_ACCOUNT0_PK}`;
 const MNEMONIC = anvilMnemonic();
@@ -22,7 +23,7 @@ async function captureTelemetry(page: import("@playwright/test").Page) {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ ok: true, release: "reactor@0.3.4+e2e" }),
+      body: JSON.stringify({ ok: true, release: `reactor@${PROTOCOL_VERSION}+e2e` }),
     });
   });
   return posts;
@@ -49,8 +50,8 @@ test("version endpoint exposes exact env/chain/build tags", async ({ request }) 
     mainnet?: boolean;
     audited?: boolean;
   };
-  expect(body.protocolVersion).toBe("0.3.4");
-  expect(body.release).toMatch(/^reactor@0\.3\.4\+/);
+  expect(body.protocolVersion).toBe(PROTOCOL_VERSION);
+  expect(body.release).toMatch(RELEASE_PREFIX);
   expect(body.chainId).toBe(5042002);
   expect(body.chainName).toBe("REACTOR local (Arc-compatible)");
   expect(typeof body.reactorEnv).toBe("string");
@@ -71,8 +72,8 @@ test("core-page Web Vitals are recorded on /trade", async ({ page }) => {
   expect(perf).toBeTruthy();
   expect(String(perf?.message ?? "")).toMatch(/^(LCP|INP|CLS|FCP|TTFB) /);
   expect(perf?.chainId).toBe(5042002);
-  expect(perf?.protocolVersion).toBe("0.3.4");
-  expect(String(perf?.release)).toMatch(/^reactor@0\.3\.4\+/);
+  expect(perf?.protocolVersion).toBe(PROTOCOL_VERSION);
+  expect(String(perf?.release)).toMatch(RELEASE_PREFIX);
   expect(perf?.page).toBe(false);
 });
 
@@ -99,8 +100,8 @@ test("failure injection fires every outage-class hook and redacts secret sentine
     expect(ev?.outageClass).toBe(row.outageClass);
     expect(ev?.chainId).toBe(5042002);
     expect(ev?.chainName).toBe("REACTOR local (Arc-compatible)");
-    expect(ev?.protocolVersion).toBe("0.3.4");
-    expect(String(ev?.release)).toMatch(/^reactor@0\.3\.4\+/);
+    expect(ev?.protocolVersion).toBe(PROTOCOL_VERSION);
+    expect(String(ev?.release)).toMatch(RELEASE_PREFIX);
     expect(typeof ev?.traceId).toBe("string");
   }
 

@@ -1,0 +1,32 @@
+{
+  "recorded": "2026-09-13",
+  "kind": "external-blocker-cre-tenant-auth",
+  "ac": "Arc Testnet CRE workflow/simulation PoC (#51)",
+  "closed": false,
+  "doNotTreatAsAc": [
+    "ops/cre/simulation/cre-workflow-simulate.cli.txt",
+    "ops/cre/simulation/cre-workflow-simulate.json",
+    "ops/cre/simulation/arc-testnet-poc.json"
+  ],
+  "required": "Authenticated `cre workflow simulate` with compiled=true and a Workflow Simulation Result, using the signed MaintenanceJob HTTP payload on CRE catalog arc-testnet (EIP-155 1883). Live DON not required. Arc Mainnet 5042 production-write remains unclaimed.",
+  "blocker": {
+    "creCli": "v1.29.0",
+    "creWhoami": "not logged in and no CRE_API_KEY set",
+    "creLoginNonInteractive": "login is not supported in non-interactive mode, use CRE_API_KEY instead",
+    "publicCiSecrets": "ci.yml ships no secrets (Refs #74 / #72)",
+    "githubSecretsList": "this agent cannot read Actions secrets (403)"
+  },
+  "unstick": {
+    "createKey": "https://app.chain.link (Account Settings) → CRE_API_KEY",
+    "command": "cd ops/cre && cre workflow simulate maintenance-courier --target staging-settings --non-interactive --trigger-index 0 --http-payload @simulation/signed-job-http-payload.json",
+    "broadcast": false,
+    "note": "Do not add CRE_API_KEY to the public ci.yml. Do not invent a 1883 Gateway or explorer hash."
+  },
+  "networks": {
+    "creCatalogName": "arc-testnet",
+    "creArcTestnetEip155": 1883,
+    "repoLocal": 5042002,
+    "repoArcMainnet": 5042,
+    "creArcMainnetProductionWrite": "not listed / not used / not claimed"
+  }
+}

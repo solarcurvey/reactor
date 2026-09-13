@@ -76,8 +76,10 @@
     { "name": "CoreLiquidityVault", "addressKey": "CoreLiquidityVault", "factoryVersion": null },
     { "name": "CoreBuybackExecutor", "addressKey": "CoreBuybackExecutor", "factoryVersion": null },
     { "name": "PoolManager (v4-core, BUSL)", "addressKey": "PoolManager", "factoryVersion": null },
+    { "name": "AutomationGateway", "addressKey": "AutomationGateway", "factoryVersion": null },
     { "name": "Launch Signer (EOA role)", "addressKey": "LaunchSigner", "factoryVersion": null },
-    { "name": "Keeper (EOA role)", "addressKey": "Keeper", "factoryVersion": null },
+    { "name": "Keeper (Guardian.keeper slot)", "addressKey": "Keeper", "factoryVersion": null },
+    { "name": "Job Signer (EOA role)", "addressKey": "JobSigner", "factoryVersion": null },
     { "name": "Pricing Signer (EOA role)", "addressKey": "PricingSigner", "factoryVersion": null }
   ]
 }

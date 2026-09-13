@@ -22,6 +22,7 @@ import {
 } from "../../../packages/reactor/src/top10.ts";
 import { fdvUsd6 } from "../../../packages/reactor/src/prices.ts";
 import { loadValuationService } from "./valuation-store.ts";
+import { valuationSnapshotHash } from "../../../packages/reactor/src/maintenance-job.ts";
 import type { Store } from "./db.ts";
 
 export const CURRENT_EPOCH_ID = "current";
@@ -41,6 +42,8 @@ export type Top10EpochPayload = {
   nowSec: number;
   epochId: string;
   trust: string;
+  /** EIP-712 bind for AutomationGateway.submitEpoch. Not an oracle. */
+  valuationSnapshotHash: string;
 };
 
 export type Top10RankOpts = {
@@ -233,7 +236,7 @@ export async function computeTop10Epoch(store: Store, opts: Top10RankOpts): Prom
     : ranked.rows.length === 0
       ? "no graduated names with a defensible 10–15m VWAP ≥ $250k"
       : "canonical ValuationService ranks from indexed 12m VWAP + persisted current_supply";
-  return {
+  const payload = {
     source: TOP10_SOURCE,
     pauseEpoch: ranked.pauseEpoch,
     reason,
@@ -244,7 +247,14 @@ export async function computeTop10Epoch(store: Store, opts: Top10RankOpts): Prom
     nowSec,
     epochId: CURRENT_EPOCH_ID,
     trust: TOP10_TRUST,
+    valuationSnapshotHash: valuationSnapshotHash({
+      source: TOP10_SOURCE,
+      computedTs,
+      pauseEpoch: ranked.pauseEpoch,
+      rows: ranked.rows,
+    }),
   };
+  return payload;
 }
 
 export async function persistTop10Epoch(store: Store, payload: Top10EpochPayload): Promise<void> {
@@ -350,5 +360,11 @@ export function failClosedTop10(reason: string, nowSec = Math.floor(Date.now() /
     nowSec,
     epochId: CURRENT_EPOCH_ID,
     trust: "Fail closed. Keeper must skip this epoch.",
+    valuationSnapshotHash: valuationSnapshotHash({
+      source: TOP10_SOURCE,
+      computedTs: nowSec,
+      pauseEpoch: true,
+      rows: [],
+    }),
   };
 }

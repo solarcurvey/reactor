@@ -73,7 +73,7 @@ Quote is `POST /quote` on the indexer (not a `ReactorClient` method). Helpers in
 
 ## `@reactor/core` exports
 
-`planCandidates`, `pickBest`, `applyMinOuts`, `ValuationService`, `consensusUsd6`, `launchBlockedByValuation`, `evaluateAdmission`, `fairCurveConfig`, `launchConfigHash`, `INSTANT_CURVE_V1`, `FAIR_V1`, `normalizeTicker`, `RESERVED_TICKERS`, and Top-10 rank helpers (`rankTop10`, VWAP, `acceptTop10Snapshot` / `TOP10_SNAPSHOT_TTL_SEC`). Official ranks still come from indexer `GET /top10`. Signed-job `MaintenanceJob` / `AutomationGateway` helpers land with draft **#54**, not this handbook.
+`planCandidates`, `pickBest`, `applyMinOuts`, `ValuationService`, `consensusUsd6`, `launchBlockedByValuation`, `evaluateAdmission`, `fairCurveConfig`, `launchConfigHash`, `INSTANT_CURVE_V1`, `FAIR_V1`, `normalizeTicker`, `RESERVED_TICKERS`, Top-10 rank helpers (`rankTop10`, VWAP, `acceptTop10Snapshot` / `TOP10_SNAPSHOT_TTL_SEC`), and `MaintenanceJob` EIP-712 helpers. Official ranks still come from indexer `GET /top10`. Relayers submit signed jobs to `AutomationGateway` — they do not rank.
 
 Also re-exported from `@reactor/sdk`: `normalizeTicker`, `tryNormalizeTicker`, `isReservedTicker`, `MAX_TICKER_LEN`, `RESERVED_TICKERS`, `evaluateAdmission`, `serializeLaunchAuth`, `INSTANT_CURVE_V1`, `FAIR_V1`.
 

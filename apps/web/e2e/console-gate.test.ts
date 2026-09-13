@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   allowsForInjects,
   formatDiagnosticReport,
@@ -114,5 +117,26 @@ assert(
   !isBestEffortTelemetryBackpressure(diag({ text: "Failed to load resource: 429", location: "http://127.0.0.1:43147/quote:0:0" })),
   "non-telemetry 429 is not ingest backpressure",
 );
+
+function* specFiles(dir: string): Generator<string> {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) {
+      if (name === "extension") continue;
+      yield* specFiles(p);
+    } else if (name.endsWith(".spec.ts")) {
+      yield p;
+    }
+  }
+}
+
+const e2eDir = dirname(fileURLToPath(import.meta.url));
+for (const p of specFiles(e2eDir)) {
+  const src = readFileSync(p, "utf8");
+  assert(
+    !/\bimport\.meta\b/.test(src),
+    `${p} must stay CJS-safe for Playwright (no import.meta; apps/web is not "type":"module")`,
+  );
+}
 
 console.log("console-gate ok");

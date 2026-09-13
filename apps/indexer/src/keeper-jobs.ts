@@ -119,10 +119,32 @@ export async function withLeaderLock<T>(
   }
 }
 
-export function assertKeySeparation(opts: { keeper?: string; pricing?: string; guardian?: string }) {
-  const keys = [opts.keeper, opts.pricing, opts.guardian].filter(Boolean);
-  const set = new Set(keys);
-  if (set.size !== keys.length) throw new Error("key reuse forbidden: Guardian / Keeper / Pricing signer must be distinct");
+export function assertKeySeparation(opts: {
+  keeper?: string;
+  jobSigner?: string;
+  relayer?: string;
+  pricing?: string;
+  guardian?: string;
+  launch?: string;
+  requireRelayerDistinct?: boolean;
+}) {
+  const privileged = [opts.jobSigner ?? opts.keeper, opts.pricing, opts.guardian, opts.launch].filter(Boolean);
+  const set = new Set(privileged);
+  if (set.size !== privileged.length) {
+    throw new Error("key reuse forbidden: Guardian / job signer / Pricing / Launch signer must be distinct");
+  }
+  if (opts.requireRelayerDistinct && opts.relayer && (opts.jobSigner ?? opts.keeper) && opts.relayer === (opts.jobSigner ?? opts.keeper)) {
+    throw new Error("relayer must not hold the maintenance job signer key");
+  }
+}
+
+/** Sign + broadcast must sit inside the #6 lease fence. Lost fence refuses both. */
+export async function withSignAndBroadcastFence<T>(
+  store: Store,
+  lease: LeaderLease,
+  signAndSend: () => Promise<T>,
+): Promise<T> {
+  return withBroadcastFence(store, lease, signAndSend);
 }
 
 void (null as unknown as Hex);

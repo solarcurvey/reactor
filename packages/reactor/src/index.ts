@@ -14,3 +14,4 @@ export * from "./sanctions-policy.ts";
 export * from "./wallet-proof.ts";
 export * from "./sanctions-audit.ts";
 export * from "./sanctions-ops.ts";
+export * from "./maintenance-job.ts";

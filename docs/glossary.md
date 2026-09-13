@@ -26,9 +26,9 @@
 | `minQuoteOut` | SELL first-leg quote floor (quote units, not tokenIn) |
 | `minOut` / `minFinalOut` | Final output floor (USDC on a nested SELL) |
 | Guardian | Only privileged security authority |
-| Keeper | Designated maintenance. One atomic lease (renew + fence). `AutomationGateway` is draft **#54** |
-| Job signer | Offchain key that will sign `MaintenanceJob` when **#54** lands. Not on current `main` |
-| Relayer | CRE / Gelato / any EOA courier in the **#54** model — not current `main` |
+| Keeper | `AutomationGateway`. Relayers deliver signed jobs. One atomic lease (renew + fence) |
+| Job signer | Offchain key that signs `MaintenanceJob`. Not the relayer |
+| Relayer | CRE / Gelato / any EOA that submits a signed job |
 | CORE | Protocol token (`CoreToken`). Never Top-10. Genesis 100M vest + 900M locked |
 | Factory V1 | Immutable on-chain factory label. Not protocol semver |
 | Protocol {{protocolVersion}} | This software + docs release |

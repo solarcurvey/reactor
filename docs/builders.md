@@ -36,7 +36,7 @@ CHALLENGE ≠ ALLOW. `@reactor/sdk` `ReactorClient.authorize` posts the public i
 
 | Package | Version | Role |
 | --- | --- | --- |
-| `@reactor/core` | {{coreVersion}} | Constants, routes, valuation, admission helpers. Signed-job `MaintenanceJob` lands with draft **#54**, not this handbook. |
+| `@reactor/core` | {{coreVersion}} | Constants, routes, valuation, admission helpers, signed-job `MaintenanceJob` |
 | `@reactor/sdk` | {{sdkVersion}} | `ReactorClient` (`baseUrl`): `authorize`, `admit`, `markets`, `ticker`, `stream` |
 | `@reactor/sanctions` | {{protocolVersion}} | Exact official-list digital-currency address `screen()` (not compliance; not hop attribution) |
 

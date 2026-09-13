@@ -47,7 +47,7 @@ Still **3.5%** of quote notional. Because a Standard 2% and the protocol 0.5% wo
 | Top-10 flywheel | **1.0%** | 1.0% |
 | CORE buy+burn (USDC reserve) | **2.5%** | 0.5% |
 
-No double-charge. Maintenance buys are fee-exempt only through `CoreBuybackExecutor` (a sealed protocol vault). The Keeper EOA is not exempt. `minTargetOut` required; 20% chunk + cooldown.
+No double-charge. Maintenance buys are fee-exempt only through `CoreBuybackExecutor` (a sealed protocol vault). Relayer EOAs and the job signer are not exempt. `minTargetOut` required; 20% chunk + cooldown.
 
 ## Top-10
 

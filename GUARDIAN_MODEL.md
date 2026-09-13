@@ -8,7 +8,7 @@ There is no owner, admin, proxy admin, upgrader, governor, or treasury owner.
 
 `ReactorGuardian.guardian` is set in the constructor and cannot change.
 
-`keeper` starts as a backend-controlled address and **can** be replaced by the Guardian.
+`keeper` starts as a backend-controlled address and **can** be replaced by the Guardian. Production sets `keeper` to `AutomationGateway`. The job **auth signer** lives on the gateway (`setJobSigner`) and is **not** the relayer.
 
 ## Guardian MAY
 
@@ -16,7 +16,9 @@ There is no owner, admin, proxy admin, upgrader, governor, or treasury owner.
 | --- | --- |
 | Pause / unpause launches | `pauseLaunches` |
 | Pause / unpause Keeper | `pauseKeeper` |
-| Replace Keeper | `setKeeper` |
+| Replace Keeper | `setKeeper` (production: `AutomationGateway`) |
+| Rotate maintenance job signer | `AutomationGateway.setJobSigner` |
+| Pause / unpause gateway | `AutomationGateway.pauseGateway` (in addition to `pauseKeeper`) |
 | Replace launch-pricing signer | `setPricingSigner` |
 | Replace Launch Signer | `setLaunchSigner` (≠ Keeper ≠ Guardian Safe) |
 | Bind global ticker registry | `bindTickerRegistry` (one-time) |

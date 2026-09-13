@@ -1,0 +1,22 @@
+{
+  "recorded": "2026-09-12",
+  "kind": "local-forge-execution-plus-job-interface",
+  "creTrust": "Courier only. Not a Top-10 oracle.",
+  "networks": {
+    "localForge": "MaintenanceFailover.t.sol",
+    "repoLocal": 5042002,
+    "creArcTestnetEip155": 1883,
+    "repoArcMainnet": 5042,
+    "creArcMainnetProductionWrite": "not listed / not used / not claimed"
+  },
+  "executionEvidence": "ops/cre/simulation/failover-rehearsal.json",
+  "creWorkflowSimulate": "ops/cre/simulation/cre-workflow-simulate.json",
+  "calldataIdentity": {
+    "interface": "MaintenanceJob EIP-712 calldata identity (not an execution proof)",
+    "jobId": "0x2dec2bc408e191ba4b6dac32bd863684471e107fde8a75f9737bfa6f4338aa6c",
+    "identicalRelayers": true,
+    "calldataHash": "0x203b092f0c44c481e7a375ba698e7ee4a626bafe7fc062ad47ddb1bea5fd862f",
+    "creOnReportHash": "0x1fefd632c5d77225235705ba831b36422a06a7294d8f6427e0c2194e95d4612f",
+    "note": "Same encode path as ops/cre/workflow.ts. This file is local-forge + calldata identity, not official cre workflow simulate. See cre-workflow-simulate.json."
+  }
+}
