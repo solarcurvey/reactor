@@ -139,7 +139,7 @@ contract ReactorFactory {
     }
 
     function bindCurve(InstantCurve curve_, SelfBurnVault selfBurn_) external {
-        if (msg.sender != auth.guardian()) revert ReactorGuardian.NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert ReactorGuardian.NotGuardian();
         if (address(curve) != address(0)) revert AlreadyBound();
         if (address(curve_) == address(0) || address(selfBurn_) == address(0)) revert BadParams();
         curve = curve_;
@@ -154,7 +154,7 @@ contract ReactorFactory {
     }
 
     function bindLaunchModule(address m) external {
-        if (msg.sender != auth.guardian()) revert ReactorGuardian.NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert ReactorGuardian.NotGuardian();
         if (address(launchModule) != address(0)) revert AlreadyBound();
         if (m == address(0)) revert BadParams();
         launchModule = IInstantLaunchModule(m);
@@ -171,7 +171,7 @@ contract ReactorFactory {
     }
 
     function bindUserRouter(address exec) external {
-        if (msg.sender != auth.guardian()) revert ReactorGuardian.NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert ReactorGuardian.NotGuardian();
         curve.bindRouteExecutor(exec);
     }
 

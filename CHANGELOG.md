@@ -8,6 +8,29 @@ Versioning: [Semantic Versioning](https://semver.org/) for the **protocol releas
 - Git tag: `vMAJOR.MINOR.PATCH` (see [Versioning](docs/versioning.md) and `CONTRIBUTING.md`)
 - Factory **V1 stays V1 forever**. A new fee split or curve is Factory V2, not a protocol patch.
 
+## [0.3.5] - 2026-09-13
+
+EOA-friendly one-shot `completeGenesis` when the chain has no Gnosis Safe (Refs **#85**). Tokenomics **unchanged**. Factory **V1**. No mainnet.
+
+### Added / Changed
+
+- `ReactorGuardian.completeGenesis` — Guardian EOA/Safe one-shot Batch A after `SAFE_GENESIS` constructors. `onlyGuardian`. Internal checks match `VerifyGenesis` / `GenesisComplete.verify`. Transient `isGuardian(address(auth))` **seals** (`genesisSealed`). Launches stay paused unless `unpauseAfterVerify`.
+- `finalizeGenesis` — tiny Batch B (vesting T0 + `pauseLaunches(false)` last) after an optional verify gap.
+- Peripherals (hook, factory, vaults, registry, router, curve, CORE LP/vesting) accept `auth.isGuardian(msg.sender)` instead of `msg.sender == guardian()` only. `TickerRegistry` still permanently accepts `address(auth)` for proxied ticker admin.
+- Safe MultiSend (`SafeGenesisBatch.s.sol`, `pnpm safe:genesis`) is unchanged for chains that have Safe.
+- Tests: `CompleteGenesis.t.sol` (happy path, non-guardian, double-call, post-seal EOA-only binds).
+- Docs: [EOA genesis](docs/eoa-genesis.md). Keep [#16](https://github.com/solarcurvey/reactor/issues/16) open.
+
+### Tokenomics
+
+- No change. Different split = new Factory version, not an edit to V1.
+
+### Known limits (honest)
+
+- Not audited. No public mainnet.
+- Existing paused constructors need this bytecode on a **new** deploy (`guardian` is immutable).
+- Factory V1 runtime must stay ≤ 23,552.
+
 ## [0.3.4] - 2026-09-12
 
 Frontend production observability, error boundaries, and release telemetry. Rebased onto main `4207356` (#75 Restricted-access UX after #44 E2E release gate / #70 sanctions freshness / #79 CI evidence / #68 operator-policy / #67 geo / #66 OFAC / #49 UI QA / #42 full GitHub CI extras / #50 indexed board + page-budget / #58 typecheck / #73 three-tier CI / #77 / #76 / #74 public-scrub harden / #59 / #47 CSP). Tokenomics **unchanged**. Factory **V1**. No mainnet.

@@ -42,7 +42,7 @@ contract ReactorLiquidityVault is IUnlockCallback {
     }
 
     function bindFactory(address factory_) external {
-        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert NotGuardian();
         if (factory != address(0)) revert AlreadyBound();
         if (factory_ == address(0)) revert NotFactory();
         factory = factory_;
@@ -57,7 +57,7 @@ contract ReactorLiquidityVault is IUnlockCallback {
     }
 
     function bindLaunchModule(address m) external {
-        if (msg.sender != factory && msg.sender != auth.guardian()) revert NotFactory();
+        if (msg.sender != factory && !auth.isGuardian(msg.sender)) revert NotFactory();
         if (launchModule != address(0)) revert AlreadyBound();
         if (m == address(0)) revert NotFactory();
         launchModule = m;

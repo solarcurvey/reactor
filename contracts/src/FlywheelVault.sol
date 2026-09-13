@@ -76,7 +76,7 @@ contract FlywheelVault {
     }
 
     function bind(ReactorFactory factory_) external {
-        if (msg.sender != auth.guardian()) revert ReactorGuardian.NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert ReactorGuardian.NotGuardian();
         if (address(factory) != address(0)) revert AlreadyBound();
         if (address(factory_) == address(0)) revert Bad();
         factory = factory_;

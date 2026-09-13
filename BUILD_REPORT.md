@@ -1,4 +1,23 @@
-# BUILD REPORT — Handbook rebase onto main #80 (Refs #14)
+# BUILD REPORT — EOA `completeGenesis` (Refs #85)
+
+**Status:** Draft implementation for **[#85](https://github.com/solarcurvey/reactor/issues/85)**. Guardian EOA can finish Batch-A wiring in one tx after `SAFE_GENESIS` constructors. Auth-contract proxy is **transient** and **seals**. Safe MultiSend unchanged. Factory **V1** economics unchanged. No chain **5042**. **#16 stays open** (live redeploy + Instant/Fair smoke still required).
+**Not audited. Not mainnet.**
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.5** (`docs/version.json`) |
+| Factory | **V1** — **unchanged** |
+| Intent | EOA-friendly one-shot (or 2-tx verify gap) genesis without widening admin trust |
+| Onchain | `isGuardian`, `completeGenesis`, `finalizeGenesis`, `genesisSealed` |
+| Tests | `CompleteGenesis.t.sol`: happy path, non-guardian, double-call, post-seal EOA-only binds, Safe-style individual binds |
+| Docs | `/docs/eoa-genesis`, Guardian / privilege / security / testnet runbook |
+| Close #85 | After review + CI |
+| Close #16 | **No** |
+
+---
+
+# Prior — Handbook rebase onto main #80 (Refs #14)
 
 **Status:** Same draft PR **#48** / same branch `cursor/extensive-gitbook-docs-afa6`, rebased onto `origin/main` `4915f3e` (squash-merged **#80** Industrial Forge). The four #14 AC surfaces (body search, `docs:links`, docs-copy + visual baselines, badge matrix) are **implemented; full hosted proof pending**. Handbook chrome muted copy is `text-zinc-400` (AA floor) — do not restore `text-zinc-500` on `/docs`. Issue **#14 stays open**. **#54 is not a prerequisite.** Do not merge #48. Do not close #14.
 **Not audited. Not mainnet.**

@@ -39,6 +39,7 @@ const requiredSlugs = [
   "sanctions",
   "operator-policy",
   "guardian",
+  "eoa-genesis",
   "keeper",
   "automation",
   "api",

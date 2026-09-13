@@ -36,6 +36,219 @@
   },
   {
     "type": "function",
+    "name": "authorizeFactory",
+    "inputs": [
+      {
+        "name": "factory",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "version",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "bindTickerRegistry",
+    "inputs": [
+      {
+        "name": "tickers_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "completeGenesis",
+    "inputs": [
+      {
+        "name": "w",
+        "type": "tuple",
+        "internalType": "struct GenesisTypes.Wiring",
+        "components": [
+          {
+            "name": "pricingSigner",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "launchSigner",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "deployer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tickers",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "factory",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "registry",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "usdc",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "hook",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "coreLp",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "userAdapter",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "protocolAdapter",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "buyback",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "flywheel",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "launchModule",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "vault",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "curve",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "selfBurn",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "coreBuyback",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "router",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "userRouter",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "vesting",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "core",
+            "type": "address",
+            "internalType": "address"
+          }
+        ]
+      },
+      {
+        "name": "unpauseAfterVerify",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "deprecateFactory",
+    "inputs": [
+      {
+        "name": "factory",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "finalizeGenesis",
+    "inputs": [
+      {
+        "name": "vesting_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "genesisFinalized",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "genesisSealed",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "guardian",
     "inputs": [],
     "outputs": [
@@ -43,6 +256,25 @@
         "name": "",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isGuardian",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -69,6 +301,19 @@
         "name": "",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "launchSigner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -127,6 +372,24 @@
   },
   {
     "type": "function",
+    "name": "permanentlyLockTicker",
+    "inputs": [
+      {
+        "name": "ticker",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "canonicalToken",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "pricingSigner",
     "inputs": [],
     "outputs": [
@@ -167,6 +430,19 @@
   },
   {
     "type": "function",
+    "name": "reserveTicker",
+    "inputs": [
+      {
+        "name": "ticker",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "setAdapter",
     "inputs": [
       {
@@ -198,6 +474,19 @@
   },
   {
     "type": "function",
+    "name": "setLaunchSigner",
+    "inputs": [
+      {
+        "name": "next",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "setPricingSigner",
     "inputs": [
       {
@@ -208,6 +497,19 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "tickers",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ITickerAdmin"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -243,6 +545,25 @@
   },
   {
     "type": "event",
+    "name": "GenesisCompleted",
+    "inputs": [
+      {
+        "name": "unpaused",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "GenesisFinalized",
+    "inputs": [],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "KeeperPause",
     "inputs": [
       {
@@ -257,6 +578,25 @@
   {
     "type": "event",
     "name": "KeeperReplaced",
+    "inputs": [
+      {
+        "name": "previous",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "next",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LaunchSignerReplaced",
     "inputs": [
       {
         "name": "previous",
@@ -307,6 +647,19 @@
   },
   {
     "type": "event",
+    "name": "TickerRegistryBound",
+    "inputs": [
+      {
+        "name": "tickers",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "TradingPause",
     "inputs": [
       {
@@ -320,12 +673,47 @@
   },
   {
     "type": "error",
+    "name": "AlreadyBound",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadWiring",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GenesisAlreadyFinalized",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GenesisAlreadySealed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GenesisNotComplete",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "KeeperIsPaused",
     "inputs": []
   },
   {
     "type": "error",
+    "name": "KeyReuse",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "LaunchesArePaused",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "LaunchesMustStayPaused",
     "inputs": []
   },
   {
@@ -336,6 +724,11 @@
   {
     "type": "error",
     "name": "NotKeeper",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ReentrantGenesis",
     "inputs": []
   },
   {

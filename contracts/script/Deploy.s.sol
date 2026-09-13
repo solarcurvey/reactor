@@ -83,7 +83,7 @@ contract Deploy is Script {
         if (safeGenesis) {
             require(guardian != deployer, "SAFE_MUST_BE_GUARDIAN");
             require(a.auth.launchesPaused(), "LAUNCHES_MUST_STAY_PAUSED");
-            // Constructors only. Guardian genesis is a later Safe MultiSend — see SafeGenesisBatch.s.sol.
+            // Constructors only. Guardian genesis is later Safe MultiSend or EOA completeGenesis.
             _deployUnsigned(a);
             require(a.core.balanceOf(deployer) == 0, "DEPLOYER_CORE");
         } else {

@@ -11,7 +11,7 @@
 | `CoreLiquidityVault` | No | Official CORE/USDC LP | Single-sided 900M lock; no withdraw |
 | `CoreBuybackExecutor` | No | Transient USDC | Only fee-exempt official CORE buy |
 | `MockERC20` | No | Optional faucet mint (test) | Labeled mock quotes (ZEC/BTC/NVDA) |
-| `ReactorGuardian` | No | None | Immutable Guardian + replaceable Keeper + pauses + adapters |
+| `ReactorGuardian` | No | None | Immutable Guardian + replaceable Keeper + pauses + adapters + EOA `completeGenesis` (sealed) |
 | `QuoteAssetRegistry` | No | None | External quotes Guardian-curated; native quotes from graduation |
 | `ReactorHook` | No | Transient quote during swap | Official-pool identity + 3.5% quote fee |
 | `ReactorLiquidityVault` | No | Official LP positions | Lock-only v4 positions |

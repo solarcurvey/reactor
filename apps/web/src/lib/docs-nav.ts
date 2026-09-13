@@ -246,8 +246,16 @@ export const DOCS: DocNav[] = [
     title: "Guardian",
     group: "Launch",
     file: "guardian.md",
-    blurb: "Only privileged security authority. Immutable Safe. Cannot steal LP or rewrite 2/1/0.5.",
-    keywords: "pause setKeeper setUsdPegOne authorizeFactory Safe genesis Batch A B",
+    blurb: "Only privileged security authority. Immutable Safe or EOA. Cannot steal LP or rewrite 2/1/0.5.",
+    keywords: "pause setKeeper setUsdPegOne authorizeFactory Safe genesis Batch A B completeGenesis",
+  },
+  {
+    slug: "eoa-genesis",
+    title: "EOA genesis",
+    group: "Launch",
+    file: "eoa-genesis.md",
+    blurb: "One-shot completeGenesis for an EOA Guardian when the chain has no Gnosis Safe.",
+    keywords: "completeGenesis finalizeGenesis isGuardian SAFE_GENESIS Arc EOA #85 Batch A B",
   },
   {
     slug: "keeper",

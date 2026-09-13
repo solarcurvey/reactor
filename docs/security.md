@@ -59,7 +59,7 @@ Fee exemption is only via sealed executor contracts calling `protocolSwap` / `bu
 7. usdPegOne-only $1. EURC is not $1.
 8. Launch auth digest is unique. Replay is `TickerRegistry.usedAuthorization[digest]`.
 9. External USD marks are offchain multi-source consensus. PROD never falls back to a static dollar.
-10. One-time binds are Guardian-only + freeze, not first-caller-wins.
+10. One-time binds are Guardian-only + freeze, not first-caller-wins. EOA `completeGenesis` uses a **transient** `isGuardian(address(auth))` window that **seals**; post-seal binds are EOA/Safe only. Safe MultiSend unchanged. See [EOA genesis](/docs/eoa-genesis).
 11. Exact-in + nonzero minOut + incomplete-fill revert on the router.
 12. Public JSON POSTs stream-cap at 16KiB / 64KiB.
 

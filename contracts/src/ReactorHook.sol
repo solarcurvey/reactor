@@ -120,49 +120,49 @@ contract ReactorHook is IHooks, IUnlockCallback {
     }
 
     function bindFactory(address factory_) external {
-        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert NotGuardian();
         if (factory != address(0)) revert AlreadyBound();
         if (factory_ == address(0)) revert NotFactory();
         factory = factory_;
     }
 
     function bindBuyback(BuybackVault vault_) external {
-        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert NotGuardian();
         if (address(buybackVault) != address(0)) revert AlreadyBound();
         if (address(vault_) == address(0)) revert NotFactory();
         buybackVault = vault_;
     }
 
     function bindFlywheel(IFeeSink vault_) external {
-        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert NotGuardian();
         if (address(flywheelVault) != address(0)) revert AlreadyBound();
         if (address(vault_) == address(0)) revert NotFactory();
         flywheelVault = vault_;
     }
 
     function bindCurve(address curve_) external {
-        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert NotGuardian();
         if (curve != address(0)) revert AlreadyBound();
         if (curve_ == address(0)) revert NotFactory();
         curve = curve_;
     }
 
     function bindLaunchModule(address m) external {
-        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert NotGuardian();
         if (launchModule != address(0)) revert AlreadyBound();
         if (m == address(0)) revert NotFactory();
         launchModule = m;
     }
 
     function bindSelfBurn(address vault_) external {
-        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert NotGuardian();
         if (address(selfBurn) != address(0)) revert AlreadyBound();
         if (vault_ == address(0)) revert NotFactory();
         selfBurn = ISelfBurnSink(vault_);
     }
 
     function bindCoreVault(address vault_) external {
-        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert NotGuardian();
         if (coreLpVault != address(0)) revert AlreadyBound();
         if (vault_ == address(0)) revert NotFactory();
         coreLpVault = vault_;

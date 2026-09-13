@@ -2,7 +2,7 @@
 
 Launch. Reflect. Burn. Token launchpad for Arc.
 
-Official REACTOR pools are Uniswap v4 markets with a 0% LP fee and a 3.5% quote-side protocol charge (2% holders / 1% Top-10 / 0.5% CORE buy+burn). Protocol 0.3.4. Factory V1. Not audited. No public mainnet.
+Official REACTOR pools are Uniswap v4 markets with a 0% LP fee and a 3.5% quote-side protocol charge (2% holders / 1% Top-10 / 0.5% CORE buy+burn). Protocol 0.3.5. Factory V1. Not audited. No public mainnet.
 
 ## Docs
 - /docs How REACTOR works
@@ -35,6 +35,7 @@ Official REACTOR pools are Uniswap v4 markets with a 0% LP fee and a 3.5% quote-
 - /docs/sanctions Address screening
 - /docs/operator-policy Operator policy
 - /docs/guardian Guardian
+- /docs/eoa-genesis EOA genesis
 - /docs/keeper Keeper
 - /docs/automation Automation
 - /docs/api API

@@ -51,14 +51,14 @@ contract ReactorRouter is IUnlockCallback {
     /// @notice Guardian one-shot deploy wiring. Cannot mark an EOA. Nobody can call after seal.
     function setProtocolVault(address vault, bool allowed) external {
         if (protocolVaultsSealed) revert Sealed();
-        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert NotGuardian();
         if (allowed && vault.code.length == 0) revert WalletExemptForbidden();
         protocolVault[vault] = allowed;
         emit ProtocolVaultSet(vault, allowed);
     }
 
     function sealProtocolVaults() external {
-        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert NotGuardian();
         protocolVaultsSealed = true;
         emit ProtocolVaultsSealed();
     }
