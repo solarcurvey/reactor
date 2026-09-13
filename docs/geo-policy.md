@@ -83,7 +83,7 @@ LOCAL geo is the `x-reactor-geo-fixture` header (or an in-process `createFixture
 
 ## What this is not
 
-- Not wired as a request gate on `/quote`, `/launch/authorize`, or the web app.
+- Not itself an HTTP route. HTTP enforcement of the decision is [operator policy](/docs/operator-policy) (#62). The Next launch-pricing BFF forwards recovered-wallet proof only — trusted geo HMAC is an indexer-edge concern, not a browser replay.
 - Not OFAC SDN / address screening.
 - Not KYC.
 - Not a trustless onchain control.
