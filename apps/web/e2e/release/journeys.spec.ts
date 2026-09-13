@@ -151,7 +151,7 @@ test.describe("wrong chain + user reject", () => {
 
     test("banner and switch restore local chain 5042002", async ({ page }) => {
       await page.goto("/");
-      const connect = page.getByTestId("wallet-connect").first();
+      const connect = page.getByTestId("wallet-connect");
       await expect(connect).toBeVisible({ timeout: 20_000 });
       await connect.click();
       await expect(page.getByText(/Wrong network/i)).toBeVisible();
@@ -167,8 +167,8 @@ test.describe("wrong chain + user reject", () => {
 
     test("connect stays disconnected on 4001", async ({ page }) => {
       await page.goto("/wallet");
-      await page.getByTestId("wallet-connect").first().click();
-      await expect(page.getByTestId("wallet-connect").first()).toBeVisible();
+      await page.getByTestId("wallet-connect").click();
+      await expect(page.getByTestId("wallet-connect")).toBeVisible();
       await expect(page.getByTestId("wallet-disconnect")).toHaveCount(0);
     });
   });

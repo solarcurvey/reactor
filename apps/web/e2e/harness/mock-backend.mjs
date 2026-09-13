@@ -23,8 +23,14 @@ function resetControl() {
   delayed.clear();
 }
 
-function cors(res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+function allowOrigin(req) {
+  const origin = req?.headers?.origin;
+  return typeof origin === "string" && origin.length > 0 ? origin : "*";
+}
+
+function cors(res, req) {
+  res.setHeader("Access-Control-Allow-Origin", allowOrigin(req));
+  res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "*");
 }
@@ -479,7 +485,7 @@ function launchAuth(body) {
 }
 
 function handleIndexer(req, res, url, bodyText) {
-  cors(res);
+  cors(res, req);
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     res.end();
@@ -493,10 +499,11 @@ function handleIndexer(req, res, url, bodyText) {
   // Keep-alive hello so the live-toast EventSource is not a 404 console.error.
   if (url.pathname === "/stream") {
     res.writeHead(200, {
-      "Content-Type": "text/event-stream; charset=utf-8",
+      "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": allowOrigin(req),
+      Vary: "Origin",
     });
     res.write(`event: hello\nid: 1\ndata: ${JSON.stringify({ ok: true, last: 0, head: 1 })}\n\n`);
     const ping = setInterval(() => {
@@ -622,7 +629,7 @@ function handleIndexer(req, res, url, bodyText) {
 }
 
 function handleRpc(req, res, bodyText) {
-  cors(res);
+  cors(res, req);
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     res.end();
@@ -646,7 +653,7 @@ const rpc = createServer(async (req, res) => {
     const body = req.method === "POST" ? await readBody(req) : "";
     handleRpc(req, res, body);
   } catch (e) {
-    cors(res);
+    cors(res, req);
     res.writeHead(500, { "content-type": "application/json" });
     res.end(JSON.stringify({ error: e instanceof Error ? e.message : "rpc fail" }));
   }
@@ -658,7 +665,7 @@ const indexer = createServer(async (req, res) => {
     const body = req.method === "POST" ? await readBody(req) : "";
     handleIndexer(req, res, url, body);
   } catch (e) {
-    cors(res);
+    cors(res, req);
     res.writeHead(500, { "content-type": "application/json" });
     res.end(JSON.stringify({ error: e instanceof Error ? e.message : "indexer fail" }));
   }

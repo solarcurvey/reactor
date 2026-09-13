@@ -5,7 +5,7 @@ test.describe("MetaMask/Rabby-style extension wallet", () => {
   test("connect + confirm trade through extension prompt", async ({ page, context, extensionId }) => {
     await page.goto(`${WEB_URL}/token/${TOKENS.NEON}`);
     await expect(page.getByRole("heading", { name: /Neon/i })).toBeVisible();
-    await page.getByTestId("wallet-connect").first().click();
+    await page.getByTestId("wallet-connect").click();
     await confirmPrompt(context, extensionId);
     await expect(page.getByTestId("wallet-menu-trigger")).toBeVisible({ timeout: 15_000 });
 
@@ -21,9 +21,9 @@ test.describe("MetaMask/Rabby-style extension wallet", () => {
 
   test("extension reject connect stays disconnected", async ({ page, context, extensionId }) => {
     await page.goto(`${WEB_URL}/wallet`);
-    await page.getByTestId("wallet-connect").first().click();
+    await page.getByTestId("wallet-connect").click();
     await rejectPrompt(context, extensionId);
-    await expect(page.getByTestId("wallet-connect").first()).toBeVisible();
+    await expect(page.getByTestId("wallet-connect")).toBeVisible();
     await expect(page.getByTestId("wallet-disconnect")).toHaveCount(0);
   });
 
@@ -31,18 +31,18 @@ test.describe("MetaMask/Rabby-style extension wallet", () => {
     await page.goto(`${WEB_URL}/wallet`);
     const lockedPrompt = await openPrompt(context, extensionId);
     await lockedPrompt.locator("#locked").check();
-    await page.getByTestId("wallet-connect").first().click();
+    await page.getByTestId("wallet-connect").click();
     await confirmPrompt(context, extensionId);
     await expect(page.getByTestId("wallet-disconnect")).toHaveCount(0);
     await unlockPrompt(context, extensionId);
-    await page.getByTestId("wallet-connect").first().click();
+    await page.getByTestId("wallet-connect").click();
     await confirmPrompt(context, extensionId);
     await expect(page.getByTestId("wallet-menu-trigger")).toBeVisible({ timeout: 15_000 });
   });
 
   test("extension account switch + InstantCurve buy", async ({ page, context, extensionId }) => {
     await page.goto(`${WEB_URL}/token/${TOKENS.NEON}`);
-    await page.getByTestId("wallet-connect").first().click();
+    await page.getByTestId("wallet-connect").click();
     await confirmPrompt(context, extensionId);
     await expect(page.getByTestId("wallet-menu-trigger")).toBeVisible({ timeout: 15_000 });
     const switchPrompt = await openPrompt(context, extensionId);

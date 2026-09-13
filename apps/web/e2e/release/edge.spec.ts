@@ -40,7 +40,7 @@ test.describe("wallet edge cases", () => {
     await page.goto("/wallet");
     await connectWallet(page);
     await disconnectWallet(page);
-    await expect(page.getByTestId("wallet-connect").first()).toBeVisible();
+    await expect(page.getByTestId("wallet-connect")).toBeVisible();
     await connectWallet(page);
     await expect(page.locator("main").getByText(/0xf39F/i).first()).toBeVisible();
   });
@@ -73,7 +73,7 @@ test.describe("wallet edge cases", () => {
   test("locked wallet cannot connect", async ({ page }) => {
     await page.goto("/wallet");
     await page.evaluate(() => window.__reactorE2e?.lock());
-    await page.getByTestId("wallet-connect").first().click();
+    await page.getByTestId("wallet-connect").click();
     await expect(page.getByTestId("wallet-disconnect")).toHaveCount(0);
     await page.evaluate(() => window.__reactorE2e?.unlock());
     await connectWallet(page);
