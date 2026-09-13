@@ -1,6 +1,6 @@
 # BUILD REPORT — Eliminate RPC waterfalls (#37)
 
-**Status:** Addresses issue **#37** on the same PR / branch. Rebased onto `origin/main` `300b7e5` (#73 CI cost cut / three-tier Actions after #77 founder residual). Issue **#37 stays open** — `Refs #37`, do not auto-close.
+**Status:** Addresses issue **#37** on the same PR / branch. Rebased onto `origin/main` `c03c698` (#58 next-build lint after #73 three-tier CI). Issue **#37 stays open** — `Refs #37`, do not auto-close.
 **Not audited. Not mainnet.**  
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Do not close #37 from this file.** Issue stays open until merge **and** post-merge verify.
@@ -40,6 +40,12 @@
 | Close #37 | **Stays open** until merge + post-merge verify. Do not close from BUILD_REPORT. `Refs #37`. |
 | Close #10 | Stays open (merged #53). Do not `Fixes #10`. |
 | Top-10 as onchain oracle | Frozen offchain by design. TTL is offchain policy. |
+
+---
+
+# Prior — merged #58 next-build lint / typecheck
+
+**Status:** Merged on `origin/main` `c03c698`. `ohlcv-chart.tsx` lint/typecheck only. Architecture and tokenomics unchanged.
 
 ---
 
