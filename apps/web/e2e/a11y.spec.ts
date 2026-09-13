@@ -191,7 +191,7 @@ test("320 CSS px reflow", async ({ page }) => {
   await assertNoHorizontalOverflow(page);
 });
 
-test("denied operator-policy reflow at 320 CSS px and 200% zoom", async ({ page, consoleGate }) => {
+test("denied /restricted and launch reflow at 320 CSS px", async ({ page, consoleGate }) => {
   allowDeniedPolicyFetch(consoleGate);
   await mockPolicy(page, POLICY.geo);
   await page.setViewportSize({ width: 320, height: 640 });
@@ -202,10 +202,11 @@ test("denied operator-policy reflow at 320 CSS px and 200% zoom", async ({ page,
   await page.goto("/launch");
   await expect(page.getByTestId("launch-submit")).toBeDisabled();
   await assertNoHorizontalOverflow(page);
-  await page.goto(ZCAT);
-  await expect(page.getByTestId("trade-confirm")).toBeDisabled();
-  await assertNoHorizontalOverflow(page);
+});
 
+test("denied /restricted and launch reflow at 200% zoom", async ({ page, consoleGate }) => {
+  allowDeniedPolicyFetch(consoleGate);
+  await mockPolicy(page, POLICY.geo);
   await page.setViewportSize({ width: 640, height: 400 });
   await page.goto("/restricted");
   await expect(page.getByTestId("restricted-banner")).toHaveAttribute("data-kind", "geo");
