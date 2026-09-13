@@ -15,3 +15,4 @@ export * from "./wallet-proof.ts";
 export * from "./sanctions-audit.ts";
 export * from "./sanctions-ops.ts";
 export * from "./maintenance-job.ts";
+export * from "./maintenance-envelope.ts";
