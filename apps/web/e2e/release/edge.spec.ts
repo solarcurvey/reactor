@@ -65,8 +65,14 @@ test.describe("wallet edge cases", () => {
     await page.getByRole("button", { name: /^Quote$/ }).click();
     await expect(page.locator("body")).toContainText(/Quoted out:\s+\d/i, { timeout: 15_000 });
     await page.evaluate(() => window.__reactorE2e?.setChainId(1));
-    // #47 tx-guard: writesEnabled drops immediately — Confirm becomes "Wrong network" and is disabled.
-    await expect(page.getByRole("button", { name: /Wrong network/i })).toBeVisible();
+    // #47 tx-guard + #65 operated writes: writesEnabled drops immediately.
+    // Confirm and Claim both become "Wrong network" — do not use getByRole name (strict-mode).
+    const confirm = page.getByTestId("trade-confirm");
+    const claim = page.getByTestId("rewards-claim");
+    await expect(confirm).toHaveText(/Wrong network/i);
+    await expect(confirm).toBeDisabled();
+    await expect(claim).toHaveText(/Wrong network/i);
+    await expect(claim).toBeDisabled();
     await expect(page.getByText(/Wrong network|Writes are blocked|Network changed\. Re-quote/i).first()).toBeVisible();
   });
 
