@@ -23,7 +23,7 @@ export function Modal({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/70 data-[state=open]:animate-none" />
         <Dialog.Content
           data-testid="modal"
-          className="fixed left-1/2 top-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-[#121418] p-4 shadow-xl focus:outline-none"
+          className="fixed left-1/2 top-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[var(--rx-radius-card)] border border-rx-steel bg-rx-slag p-4 shadow-xl focus:outline-none"
         >
           <Dialog.Title className="text-lg font-semibold text-white">{title}</Dialog.Title>
           <div className="mt-3">{children}</div>

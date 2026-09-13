@@ -1,51 +1,32 @@
 /**
- * REACTOR brand tokens — STUB (Refs #55).
- * Direction A (Terminal Core) is wired to the current shipped UI.
- * Directions B and C are documented only. Not founder-locked.
- * See /docs/brand. Do not treat these values as the approved identity.
+ * REACTOR brand tokens — Direction C Industrial Forge.
+ * Founder-locked 2026-09-13 (Davis, PR #78 / issue #55).
+ * Presentation only. Frozen V1 economics unchanged.
  */
 
-:root,
-[data-brand="terminal"] {
-  --rx-void: #0b0d10;
-  --rx-graphite: #121418;
-  --rx-core: #7ee8ff;
-  --rx-core-dim: #16303a;
-  --rx-ink: #f4f7fb;
-  --rx-muted: #a1a1aa;
-  --rx-ring: #7ee8ff;
-  --rx-cta-ink: #09090b;
-  --rx-up: #3dcc8a;
-  --rx-down: #f87171;
-  --rx-warn: #fbbf24;
-  --rx-radius-card: 1rem;
-  --rx-radius-chip: 999px;
-  --background: var(--rx-void);
-  --foreground: var(--rx-ink);
-  --graphite: var(--rx-graphite);
-  --ring: var(--rx-ring);
-}
-
-/*
-  Direction B — Market Tape (proposal only; do not apply without founder pick)
-
-  --rx-void: #0a0c0b;
-  --rx-graphite: #141816;
-  --rx-core: #e8b86d;
-  --rx-ink: #f3f4f0;
-  --rx-muted: #a3a89c;
-  --rx-up: #3dcc8a;
-  --rx-down: #e85d4c;
-  --rx-radius-card: 8px;
-  --rx-radius-chip: 6px;
-
-  Direction C — Industrial Forge (proposal only; do not apply without founder pick)
-
+:root {
   --rx-void: #12110f;
   --rx-graphite: #2a2c2e;
   --rx-core: #ff6b2b;
+  --rx-core-dim: #7a2e14;
   --rx-ink: #ece8e1;
   --rx-muted: #9aa4ad;
+  --rx-ring: #8a8e92;
+  --rx-cta-ink: #12110f;
+  --rx-up: #3dcc8a;
+  --rx-down: #e85d4c;
+  --rx-warn: #e8b86d;
   --rx-radius-card: 4px;
   --rx-radius-chip: 2px;
-*/
+  --rx-radius-control: 4px;
+  --background: var(--rx-void);
+  --foreground: var(--rx-ink);
+  --graphite: var(--rx-graphite);
+  --ring: var(--rx-core);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --rx-motion: 0;
+  }
+}

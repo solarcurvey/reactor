@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="REACTOR Token launch on Arc">
+  <rect width="1200" height="630" fill="#12110f"/>
+  <rect x="0" y="0" width="8" height="630" fill="#ff6b2b"/>
+  <g transform="translate(80,190)">
+    <circle cx="90" cy="90" r="72" fill="none" stroke="#8a8e92" stroke-width="16"/>
+    <path d="M156 90a64 64 0 0 1-10.2 34.6" fill="none" stroke="#ff6b2b" stroke-width="16"/>
+    <polygon points="90,58 116,73 116,107 90,122 64,107 64,73" fill="#ff6b2b"/>
+  </g>
+  <g fill="#ece8e1" font-family="DejaVu Sans, sans-serif" font-size="72" font-weight="700">
+    <text x="300" y="270">R</text>
+    <text x="355" y="270">E</text>
+    <text x="405" y="270">A</text>
+    <text x="460" y="270">C</text>
+    <text x="515" y="270">T</text>
+    <text x="560" y="270">O</text>
+    <text x="620" y="270">R</text>
+  </g>
+  <g fill="#9aa4ad" font-family="DejaVu Sans, sans-serif" font-size="20">
+    <text x="300" y="330">T</text>
+    <text x="314" y="330">O</text>
+    <text x="329" y="330">K</text>
+    <text x="343" y="330">E</text>
+    <text x="358" y="330">N</text>
+    <text x="380" y="330">L</text>
+    <text x="394" y="330">A</text>
+    <text x="409" y="330">U</text>
+    <text x="423" y="330">N</text>
+    <text x="438" y="330">C</text>
+    <text x="452" y="330">H</text>
+    <text x="474" y="330">O</text>
+    <text x="489" y="330">N</text>
+    <text x="511" y="330">A</text>
+    <text x="526" y="330">R</text>
+    <text x="540" y="330">C</text>
+  </g>
+  <g fill="#ece8e1" font-family="DejaVu Sans, sans-serif" font-size="20">
+    <text x="300" y="390">L</text>
+    <text x="314" y="390">a</text>
+    <text x="326" y="390">u</text>
+    <text x="338" y="390">n</text>
+    <text x="349" y="390">c</text>
+    <text x="361" y="390">h</text>
+    <text x="388" y="390">R</text>
+    <text x="403" y="390">e</text>
+    <text x="414" y="390">f</text>
+    <text x="426" y="390">l</text>
+    <text x="438" y="390">e</text>
+    <text x="449" y="390">c</text>
+    <text x="461" y="390">t</text>
+    <text x="488" y="390">B</text>
+    <text x="503" y="390">u</text>
+    <text x="514" y="390">r</text>
+    <text x="526" y="390">n</text>
+  </g>
+</svg>

@@ -64,7 +64,7 @@ export default function HomePage() {
     <div>
       <section className="flex flex-wrap items-end justify-between gap-4 border-b border-white/8 pb-5">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-200/80">Launch. Reflect. Burn.</p>
+          <p className="text-[11px] uppercase tracking-[0.28em] text-rx-cool">Launch. Reflect. Burn.</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
             Choose what your token earns.
           </h1>
@@ -74,16 +74,16 @@ export default function HomePage() {
             creator cut. No transfer tax.
           </p>
           <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-zinc-300">
-              Protocol 0.3.0
+            <span className="rounded-[var(--rx-radius-chip)] border border-white/10 bg-white/[0.04] px-2.5 py-1 text-zinc-300">
+              Protocol 0.3.3
             </span>
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-zinc-300">
+            <span className="rounded-[var(--rx-radius-chip)] border border-white/10 bg-white/[0.04] px-2.5 py-1 text-zinc-300">
               Factory V1
             </span>
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 tabular-nums text-zinc-300">
+            <span className="rounded-[var(--rx-radius-chip)] border border-white/10 bg-white/[0.04] px-2.5 py-1 tabular-nums text-zinc-300">
               24h vol ${formatUnitsSafe(vol24, 6, 0)}
             </span>
-            <span className="rounded-full border border-amber-300/20 bg-amber-300/5 px-2.5 py-1 text-amber-100/80">
+            <span className="rounded-[var(--rx-radius-chip)] border border-amber-300/20 bg-amber-300/5 px-2.5 py-1 text-amber-100/80">
               Not audited · no mainnet
             </span>
           </div>
@@ -113,7 +113,7 @@ export default function HomePage() {
               type="button"
               aria-pressed={filter === f}
               onClick={() => setFilter(f)}
-              className={`rounded-full px-3 py-1 text-[12px] ${
+              className={`rounded-[var(--rx-radius-chip)] px-3 py-1 text-[12px] ${
                 filter === f ? "bg-white text-zinc-950" : "bg-white/5 text-zinc-400"
               }`}
             >
@@ -127,7 +127,7 @@ export default function HomePage() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search name / ticker / quote"
             aria-label="Search name, ticker, or quote"
-            className="h-8 w-44 rounded-full border border-white/10 bg-black/30 px-3 text-[12px] text-zinc-200 outline-none placeholder:text-zinc-400"
+            className="h-8 w-44 rounded-[var(--rx-radius-chip)] border border-rx-steel bg-black/30 px-3 text-[12px] text-zinc-200 outline-none placeholder:text-zinc-400"
           />
           <span data-visual-dynamic className="text-[11px] tabular-nums text-zinc-400">
             {list.length} markets · {live.ok ? "live" : "polling"}
@@ -157,7 +157,7 @@ export default function HomePage() {
       )}
 
       {list.length > 0 && scene.state !== "loading" && scene.state !== "empty" && scene.inject !== "empty" && (
-        <div className="mt-3 overflow-x-auto rounded-2xl border border-white/8">
+        <div className="mt-3 overflow-x-auto rounded-[var(--rx-radius-card)] border border-white/8">
           <table className="w-full text-left text-[13px]" aria-label="Indexed markets">
             <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.16em] text-zinc-400">
               <tr>
@@ -180,7 +180,7 @@ export default function HomePage() {
                     <td className="px-3 py-2 tabular-nums text-zinc-400">{i + 1}</td>
                     <td className="px-3 py-2">
                       <Link href={href} className="flex items-center gap-2">
-                        <span className="grid h-7 w-7 place-items-center overflow-hidden rounded-full border border-white/10 bg-zinc-900 text-[10px] text-cyan-100">
+                        <span className="grid h-7 w-7 place-items-center overflow-hidden rounded-[var(--rx-radius-chip)] border border-white/10 bg-zinc-900 text-[10px] text-rx-paper">
                           <SafeTokenImage src={t.image} className="h-full w-full object-cover" />
                           {!t.image ? t.symbol.slice(0, 2) : null}
                         </span>
@@ -197,7 +197,7 @@ export default function HomePage() {
                     <td className="px-3 py-2">
                       <Link
                         href={quotePath(t.quoteSymbol ?? "x")}
-                        className="rounded-full bg-cyan-300/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cyan-100"
+                        className="rounded-[var(--rx-radius-chip)] bg-rx-heat/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-rx-paper"
                       >
                         {t.rewardsMode === false ? "BUY+BURN" : `EARNS ${t.quoteSymbol ?? "X"}`}
                       </Link>
@@ -228,7 +228,7 @@ export default function HomePage() {
                       {formatUnitsSafe(t.lifetimeRewards ?? 0n, t.quoteDecimals ?? 18, 3)} {t.quoteSymbol}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <Link href={href} className="text-[11px] uppercase tracking-wider text-cyan-200 hover:underline">
+                      <Link href={href} className="text-[11px] uppercase tracking-wider text-rx-cool hover:underline">
                         {t.mode === 1 && !t.marketLive ? "Auction" : "Trade"}
                       </Link>
                     </td>

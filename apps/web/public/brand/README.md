@@ -1,9 +1,11 @@
-# Brand concepts (not locked)
+# REACTOR brand assets
 
-Refs #55. Founder direction only. Do **not** use these as production favicon / OG / app icons.
+Founder-locked **Direction C — Industrial Forge** (2026-09-13, Refs #55).
 
-- `concepts/` — original SVG marks for directions A / B / C
-- `boards/` — chrome-tone rasters; type on the PNGs is placeholder, not copy
-- `wordmark-dark.svg` — Direction A lockup sketch
+- `mark.svg` / `mark-light.svg` — canonical vessel
+- `wordmark-dark.svg` / `wordmark-light.svg`
+- `app-192.png` / `app-512.png` — PWA
+- `og-default.png` / `og-token-fallback.png` — social
+- `concepts/` — archived A/B/C proposal marks (history only)
 
-Canonical write-up: `/docs/brand`. Specimen: `/brand`.
+Issue #55 stays open until #36 visual baselines cover this lock.

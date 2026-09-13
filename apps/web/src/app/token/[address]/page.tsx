@@ -45,7 +45,7 @@ export default function TokenPage() {
     return (
       <div aria-busy="true">
         <p className="text-sm text-zinc-400">Loading token…</p>
-        <div className="mt-4 h-48 animate-pulse rounded-2xl bg-white/[0.04]" />
+        <div className="mt-4 h-48 animate-pulse rounded-[var(--rx-radius-card)] bg-white/[0.04]" />
       </div>
     );
   }
@@ -62,7 +62,7 @@ export default function TokenPage() {
       <div>
         <h1 className="text-2xl font-semibold">Token not found</h1>
         <p className="mt-2 text-sm text-zinc-400">This address is not a factory launch on the connected chain.</p>
-        <Link href="/" className="mt-4 inline-block text-sm text-cyan-200 underline">
+        <Link href="/" className="mt-4 inline-block text-sm text-rx-cool underline">
           Back to the board
         </Link>
       </div>
@@ -81,14 +81,14 @@ export default function TokenPage() {
           </UntrustedText>
           <Link
             href={quotePath(t.quoteSymbol ?? "x")}
-            className="rounded-full bg-cyan-300/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cyan-100"
+            className="rounded-[var(--rx-radius-chip)] bg-rx-heat/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-rx-paper"
           >
             {t.rewardsMode === false ? "BUY+BURN" : `EARNS ${t.quoteSymbol}`}
           </Link>
           {t.marketLive ? (
             <Badge>Official v4</Badge>
           ) : t.bonding ? (
-            <Badge className="border-cyan-300/30 bg-cyan-300/10 text-cyan-100">
+            <Badge className="border-rx-heat/40 bg-rx-heat/10 text-rx-paper">
               {((t.bondingBps ?? 0) / 100).toFixed(1)}% bonded
             </Badge>
           ) : t.mode === 1 ? (
@@ -96,13 +96,13 @@ export default function TokenPage() {
           ) : null}
         </div>
         <div className="flex flex-wrap gap-3 text-[11px] uppercase tracking-wider">
-          <Link href="/docs/fees" className="text-zinc-400 hover:text-cyan-200">
+          <Link href="/docs/fees" className="text-zinc-400 hover:text-rx-cool">
             Fees
           </Link>
-          <Link href="/docs/curve" className="text-zinc-400 hover:text-cyan-200">
+          <Link href="/docs/curve" className="text-zinc-400 hover:text-rx-cool">
             Curve
           </Link>
-          <Link href="/trade" className="text-zinc-400 hover:text-cyan-200">
+          <Link href="/trade" className="text-zinc-400 hover:text-rx-cool">
             All markets
           </Link>
         </div>
@@ -120,7 +120,7 @@ export default function TokenPage() {
                 <button
                   key={x.id}
                   onClick={() => setInterval(x.id)}
-                  className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${
+                  className={`rounded-[var(--rx-radius-chip)] px-2 py-0.5 text-[10px] uppercase ${
                     interval === x.id ? "bg-white text-zinc-950" : "bg-white/5 text-zinc-400"
                   }`}
                 >
@@ -164,8 +164,8 @@ export default function TokenPage() {
                 <span>Bonding</span>
                 <span>{((t.bondingBps ?? 0) / 100).toFixed(1)}%</span>
               </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full bg-cyan-300" style={{ width: `${Math.min(100, (t.bondingBps ?? 0) / 100)}%` }} />
+              <div className="mt-2 h-1.5 overflow-hidden rounded-[var(--rx-radius-chip)] bg-white/10">
+                <div className="h-full bg-rx-heat" style={{ width: `${Math.min(100, (t.bondingBps ?? 0) / 100)}%` }} />
               </div>
               <p className="mt-2 text-zinc-400">
                 {formatUnitsSafe(t.realQuote ?? 0n, t.quoteDecimals ?? 18, 2)} /{" "}
@@ -190,13 +190,13 @@ export default function TokenPage() {
           </UntrustedText>
           {(t.website || t.twitter || t.telegram) && (
             <div className="mt-3 flex flex-wrap gap-3 text-[12px]">
-              <SafeExternalLink href={t.website} className="text-cyan-200 underline underline-offset-2">
+              <SafeExternalLink href={t.website} className="text-rx-cool underline underline-offset-2">
                 Website
               </SafeExternalLink>
-              <SafeExternalLink href={t.twitter} className="text-cyan-200 underline underline-offset-2">
+              <SafeExternalLink href={t.twitter} className="text-rx-cool underline underline-offset-2">
                 X
               </SafeExternalLink>
-              <SafeExternalLink href={t.telegram} className="text-cyan-200 underline underline-offset-2">
+              <SafeExternalLink href={t.telegram} className="text-rx-cool underline underline-offset-2">
                 Telegram
               </SafeExternalLink>
             </div>
@@ -228,7 +228,7 @@ function Meta({ label, value, href }: { label: string; value: string; href?: str
     <div>
       <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       {href ? (
-        <a className="font-mono text-cyan-100 underline-offset-2 hover:underline" href={href} target="_blank" rel="noopener noreferrer">
+        <a className="font-mono text-rx-paper underline-offset-2 hover:underline" href={href} target="_blank" rel="noopener noreferrer">
           {value}
         </a>
       ) : (

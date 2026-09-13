@@ -4,6 +4,15 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-rx-slag: var(--rx-void);
+  --color-rx-steel: var(--rx-graphite);
+  --color-rx-heat: var(--rx-core);
+  --color-rx-paper: var(--rx-ink);
+  --color-rx-cool: var(--rx-muted);
+  --color-rx-ring: var(--rx-ring);
+  --color-rx-up: var(--rx-up);
+  --color-rx-down: var(--rx-down);
+  --color-rx-warn: var(--rx-warn);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -18,8 +27,7 @@ body {
 body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   background-image:
-    radial-gradient(900px 480px at 50% -10%, rgba(126, 232, 255, 0.09), transparent 55%),
-    radial-gradient(700px 360px at 100% 10%, rgba(80, 140, 180, 0.08), transparent 50%),
+    radial-gradient(720px 380px at 0% 0%, color-mix(in srgb, var(--rx-core) 8%, transparent), transparent 55%),
     linear-gradient(var(--rx-void), var(--rx-void));
 }
 
@@ -47,9 +55,9 @@ body {
   left: 0.75rem;
   top: -3.5rem;
   z-index: 70;
-  border-radius: 999px;
-  background: #7ee8ff;
-  color: #0b0d10;
+  border-radius: var(--rx-radius-control);
+  background: var(--rx-core);
+  color: var(--rx-cta-ink);
   padding: 0.45rem 0.9rem;
   font-size: 0.8rem;
   font-weight: 600;
@@ -64,7 +72,7 @@ button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid #7ee8ff;
+  outline: 2px solid var(--rx-core);
   outline-offset: 2px;
 }
 
@@ -96,19 +104,19 @@ select:focus-visible {
 .docs-prose h1 {
   font-size: 1.75rem;
   letter-spacing: -0.02em;
-  color: #fff;
+  color: var(--rx-ink);
 }
 
 .docs-prose h2 {
   margin-top: 1.75rem;
   font-size: 1.15rem;
-  color: #f4f7fb;
+  color: var(--rx-ink);
 }
 
 .docs-prose h3 {
   margin-top: 1.25rem;
   font-size: 0.95rem;
-  color: #d4d4d8;
+  color: var(--rx-muted);
 }
 
 .docs-prose code {

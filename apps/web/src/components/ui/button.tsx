@@ -4,16 +4,15 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 disabled:pointer-events-none disabled:opacity-40",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--rx-radius-control)] text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rx-heat/60 disabled:pointer-events-none disabled:opacity-40",
   {
     variants: {
       variant: {
-        default:
-          "bg-cyan-300 text-zinc-950 hover:bg-cyan-200 shadow-[0_0_24px_rgba(125,232,255,0.28)]",
+        default: "bg-rx-heat text-rx-slag hover:bg-[#ff8148]",
         outline:
-          "border border-white/12 bg-white/4 text-zinc-100 hover:bg-white/8 hover:border-cyan-300/40",
-        ghost: "text-zinc-300 hover:bg-white/6 hover:text-white",
-        danger: "bg-red-500/90 text-white hover:bg-red-400",
+          "border border-rx-steel bg-rx-steel/30 text-rx-paper hover:bg-rx-steel/50 hover:border-rx-heat/50",
+        ghost: "text-rx-cool hover:bg-white/6 hover:text-rx-paper",
+        danger: "bg-rx-down/90 text-white hover:bg-rx-down",
       },
       size: {
         default: "h-11 px-5",

@@ -71,7 +71,7 @@ export default function OpsPage() {
   return (
     <div>
       <div className="border-b border-white/8 pb-4">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-200/80">Internal</p>
+        <p className="text-[11px] uppercase tracking-[0.28em] text-rx-cool">Internal</p>
         <h1 className="mt-1 text-2xl font-semibold text-white">Ops</h1>
         <p className="mt-1 max-w-2xl text-[13px] text-zinc-400">
           Internal only — not in public nav. Requires OPS_TOKEN. Keeper / Watchdog / Pricing signer keys stay isolated.
@@ -81,7 +81,7 @@ export default function OpsPage() {
 
       {isLoading && <p className="mt-6 text-sm text-zinc-400">Reading ops…</p>}
       {isError && (
-        <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
+        <div className="mt-6 rounded-[var(--rx-radius-card)] border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
           Ops read failed.{" "}
           <button className="underline" onClick={() => refetch()}>
             Retry

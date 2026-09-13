@@ -19,7 +19,7 @@ Any change to the following **must** update the corresponding docs **in the same
 | CORE genesis / vest / book | `CORE_GENESIS.md`, `CORE_LIQUIDITY_DESIGN.md`, `/docs/core` |
 | Backend trust assumptions | `THREAT_MODEL.md`, `/docs/index` (Trust), `AUDIT_HANDOFF.md` |
 | User-facing behavior | matching `/docs` audience page + `UX_REFERENCE.md` if UX |
-| Brand / visual identity / launch assets | [`/docs/brand`](docs/brand.md), `UX_REFERENCE.md`, `PROJECT.md` brand constraints. Founder lock is #55 — do not close it from a proposal |
+| Brand / visual identity / launch assets | [`/docs/brand`](docs/brand.md), `UX_REFERENCE.md`, `PROJECT.md`. Founder-locked C (Industrial Forge). #55 stays open until #36 baselines match |
 | Deployed addresses / chain / verification | `deployments/registry.json` + `pnpm docs:gen` (never invent mainnet addresses) |
 | Protocol release identity | `docs/version.json`, `CHANGELOG.md`, git tag, `pnpm docs:gen` |
 

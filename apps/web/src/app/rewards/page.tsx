@@ -33,7 +33,7 @@ export default function RewardsPage() {
         />
       )}
       {(rows ?? []).length > 0 && (
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-white/8">
+        <div className="mt-4 overflow-x-auto rounded-[var(--rx-radius-card)] border border-white/8">
           <table className="w-full min-w-[520px] text-left text-[13px]">
             <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.16em] text-zinc-400">
               <tr>

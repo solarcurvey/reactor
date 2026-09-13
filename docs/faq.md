@@ -34,7 +34,7 @@
 
 **Is this repository public?** Not unless the founder flips visibility. Do not publicize without that instruction. The operator checklist is [Repo publicization](/docs/publicization) (Refs #72). Personal-mailbox trailers were remapped to GitHub noreply on advertised refs; residual GitHub dangling objects are accepted. Agents must not flip visibility.
 
-**Is the brand locked?** No. Three directions are on [Brand (proposal)](/docs/brand) (Refs #55). Davis picks A, B, or C. Do not treat concept marks or CSS tokens as the approved identity.
+**Is the brand locked?** Direction **C — Industrial Forge** is founder-locked (2026-09-13). Handbook: [Brand](/docs/brand). Issue #55 stays open until #36 visual/a11y baselines cover that lock.
 
 **What does CI run?** Fast PR: `pnpm test:lib` (indexer + web unit + `docs:check` + `docs:links` + cheap security). Full merge-candidate / main: that plus Foundry (`FOUNDRY_PROFILE=ci`, Attack suite, CREATE2, size guard), production Next security, live-toasts, Postgres, and Playwright smoke + interactive. See [CI and cost](/docs/ci).
 

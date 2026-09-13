@@ -30,7 +30,7 @@ export function TxStatus({ state }: { state: QaState | null }) {
       role={alert ? "alert" : "status"}
       aria-live={alert ? "assertive" : "polite"}
       className={`mt-3 rounded-xl border px-3 py-2 text-[13px] ${
-        alert ? "border-red-500/30 bg-red-500/10 text-red-50" : "border-cyan-300/25 bg-cyan-300/10 text-cyan-50"
+        alert ? "border-red-500/30 bg-red-500/10 text-red-50" : "border-rx-heat/30 bg-rx-heat/10 text-rx-paper"
       }`}
     >
       <p className="font-medium">{copy.title}</p>

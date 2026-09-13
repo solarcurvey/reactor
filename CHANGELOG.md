@@ -33,9 +33,11 @@ External quote USD marks are a configured provider registry with multi-source co
 
 ## [Unreleased]
 
-UI QA gate (issue #36 — **stays open** until merge + post-merge verify) plus indexed read-path / page-budget (issue #37) and full GitHub CI extras (#17). Public launchpad treats token metadata as untrusted (#41 / #47). Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33). Tokenomics **unchanged**. Factory **V1**. No mainnet.
+Founder-locked **Direction C — Industrial Forge** brand (Refs #55). UI QA gate (issue #36 — **stays open** until merge + post-merge verify) plus indexed read-path / page-budget (issue #37) and full GitHub CI extras (#17). Public launchpad treats token metadata as untrusted (#41 / #47). Top-10 ranks move to the canonical indexer ValuationService (issue #10 / PR #33). Tokenomics **unchanged**. Factory **V1**. No mainnet.
 
 ### Added / Changed
+
+- Brand: slag / steel / heat tokens, vessel mark + wordmark, favicon / Apple / PWA / OG assets, Industrial Forge chrome on Discover, terminal, Launch, Rewards, THE REACTOR, CORE, docs, toasts. #55 stays open until #36 recaptures visual baselines.
 
 - Key pages prefer indexed HTTP: `/quote-assets` for the launch picker, `/markets?q=` for search, `/markets/:token` for a single market, `/page/token/:token` for market + candles + tape in one hop.
 - Independent RPC reads go through `readContractsBatched`: probe canonical Multicall3, require one successful `multicall`, otherwise `Promise.all`. Arc is not assumed to ship Multicall3.

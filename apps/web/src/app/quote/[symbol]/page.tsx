@@ -33,7 +33,7 @@ export default function QuotePage() {
 
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/80">{sym} ON REACTOR</p>
+      <p className="text-[11px] uppercase tracking-[0.22em] text-rx-cool">{sym} ON REACTOR</p>
       <h1 className="mt-1 text-2xl font-semibold">{sym} ecosystem</h1>
       <p className="mt-1 max-w-2xl text-[13px] text-zinc-400">
         Markets priced in {sym}. Holder-reward total is the conserved 2% bucket only — we do not add Top-10 or CORE
@@ -58,7 +58,7 @@ export default function QuotePage() {
       <div className="mt-6 space-y-2">
         {markets.map((t) => (
           <Link key={t.token} href={tokenPath(t.token)}>
-            <Card className="flex items-center justify-between p-3 hover:border-cyan-300/30">
+            <Card className="flex items-center justify-between p-3 hover:border-rx-heat/40">
               <div>
                 <div className="font-medium text-white">
                   {t.name} <span className="font-mono text-xs text-zinc-400">${t.symbol}</span>

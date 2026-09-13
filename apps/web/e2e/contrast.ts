@@ -50,12 +50,13 @@ export function meetsContrastAa(fg: string, bg: string, large = false): boolean 
  * silently dropping below AA. Values match `globals.css` tokens.
  */
 export const BRAND_CONTRAST_PAIRS = [
-  { name: "foreground on background", fg: "#f4f7fb", bg: "#0b0d10", large: false },
-  { name: "foreground on graphite", fg: "#f4f7fb", bg: "#121418", large: false },
-  { name: "skip-link on cyan", fg: "#0b0d10", bg: "#7ee8ff", large: false },
-  { name: "cyan ring on background", fg: "#7ee8ff", bg: "#0b0d10", large: false },
-  { name: "muted zinc-400 on background", fg: "#a1a1aa", bg: "#0b0d10", large: false },
-  { name: "muted zinc-400 on graphite", fg: "#a1a1aa", bg: "#121418", large: false },
+  { name: "paper on slag", fg: "#ece8e1", bg: "#12110f", large: false },
+  { name: "paper on steel", fg: "#ece8e1", bg: "#2a2c2e", large: false },
+  { name: "skip-link slag on heat", fg: "#12110f", bg: "#ff6b2b", large: false },
+  { name: "heat on slag", fg: "#ff6b2b", bg: "#12110f", large: false },
+  { name: "cool on slag", fg: "#9aa4ad", bg: "#12110f", large: false },
+  { name: "muted zinc-400 on slag", fg: "#a1a1aa", bg: "#12110f", large: false },
+  { name: "muted zinc-400 on steel", fg: "#a1a1aa", bg: "#2a2c2e", large: false },
 ] as const;
 
 export function brandContrastFailures(): { name: string; ratio: number }[] {

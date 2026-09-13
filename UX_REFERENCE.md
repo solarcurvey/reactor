@@ -1,6 +1,6 @@
 # UX_REFERENCE
 
-Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy, assets, or code were taken.** Working UI default is graphite + cyan core + concentric mark (Direction A). **Not founder-locked.** Three directions: [`/docs/brand`](docs/brand.md) (Refs #55).
+Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy, assets, or code were taken.** Founder-locked brand is **Direction C — Industrial Forge** (slag / steel / heat). Handbook: [`/docs/brand`](docs/brand.md) (Refs #55). #36 must recapture visual baselines against C.
 
 ## Layout density
 
@@ -26,7 +26,7 @@ Indexer / RPC / `POST /quote` outages use a shared `role="alert"` banner + Retry
 
 ## Accessibility
 
-Skip-to-main, labelled search/trade/launch fields, `aria-pressed` on chips and buy/sell, `aria-current` on nav, accessible home mark on 390 (logo is otherwise SVG-only). Dialogs (Account, confirm) trap focus and restore it. Live toasts use `role="status"|"alert"` + `aria-live`. `prefers-reduced-motion` kills pulse. Keyboard reaches filters, launch quote buttons, and the ticket. CI axe is `wcag2a/21a/2aa` **including color-contrast** (canvas / CORE mark / live ticks excluded as unmeasurable). Brand tokens are also asserted deterministically; muted copy uses `text-zinc-400` (stock zinc-500/600 fail AA on `#0b0d10`). Plus 200% zoom / 320 CSS px reflow. The QA fixture also fails the production-build gate on unexpected console errors, hydration warnings, and uncaught page exceptions.
+Skip-to-main, labelled search/trade/launch fields, `aria-pressed` on chips and buy/sell, `aria-current` on nav, accessible home mark on 390 (logo is otherwise SVG-only). Dialogs (Account, confirm) trap focus and restore it. Live toasts use `role="status"|"alert"` + `aria-live`. `prefers-reduced-motion` kills pulse. Keyboard reaches filters, launch quote buttons, and the ticket. CI axe is `wcag2a/21a/2aa` **including color-contrast** (canvas / CORE mark / live ticks excluded as unmeasurable). Brand tokens are also asserted deterministically (Industrial Forge paper/heat/cool on slag); muted copy uses `text-zinc-400` (stock zinc-500/600 fail AA on `#12110f`). Plus 200% zoom / 320 CSS px reflow. The QA fixture also fails the production-build gate on unexpected console errors, hydration warnings, and uncaught page exceptions.
 
 ## Mobile 390 / 360 Android
 

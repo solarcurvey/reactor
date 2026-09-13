@@ -1,4 +1,27 @@
-# BUILD REPORT — UI QA visual / a11y / failure-injection gate
+# BUILD REPORT — Brand lock C Industrial Forge (Refs #55)
+
+**Status:** Draft PR **#78** for issue **#55**. Davis locked **Direction C — Industrial Forge** on 2026-09-13. Implementation of that lock, rebased onto `origin/main` **`ad7b457`** (#49 UI QA / #36 gate after #42 `80d3cac`). **Do not close #55.** Issue stays open until the implemented C system is independently audited and production surfaces / assets / #36 baselines satisfy its AC. Recapture visual baselines on this PR — do not weaken or bypass `web-qa`.
+**Not audited. Not mainnet.**  
+**Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Apply founder-locked Industrial Forge: tokens, vessel mark/wordmark, favicon/OG/manifest, product + docs chrome, voice. Keep #49 QA / a11y / inject surface. |
+| Docs | `/docs/brand` is the locked handbook |
+| Close #55 | **No** — remaining: #36 baseline recapture + independent review of the implemented C system |
+| Close #36 | **No** — recapture approved-C pixels in `web-qa`; do not skip or loosen that gate |
+
+## Founder decision
+
+**Locked: C — Industrial Forge.** Do not reopen A/B/C unless a concrete accessibility or technical blocker needs a narrowly scoped adjustment.
+
+---
+
+# Prior — UI QA visual / a11y / failure-injection gate (#49 / #36)
 
 **Status:** Issue [#36](https://github.com/solarcurvey/reactor/issues/36) **stays open** until merge + post-merge verify. Same branch/PR, rebased onto `origin/main` `80d3cac` (#42 full GitHub CI extras after #50 `e5fd745` / #58 / #73 / #77 / #76 / #74 / #59 / #47 / #43). Child of #15. `web-qa.yml` is folded into `.github/workflows/ci.yml` job `web-qa` (full/main only). `page-budget` stays the always-on #37 job. #42 `docs-links` + Playwright `web` + Safe genesis stay. Pixel baselines stay on this PR. QA injects wrap `load*` — do not restore the old N+1 `/markets` board. QA gates unchanged.
 **Not audited. Not mainnet.**  

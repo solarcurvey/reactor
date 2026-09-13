@@ -292,16 +292,16 @@ export default function LaunchPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-200/80">Instant · bonding → v4 · Factory V1</p>
+      <p className="text-[11px] uppercase tracking-[0.22em] text-rx-cool">Instant · bonding → v4 · Factory V1</p>
       <h1 className="mt-1 text-2xl font-semibold">Ignite a market</h1>
       <p className="mt-1 text-[13px] text-zinc-400">
         You pick image, name, ticker, description, quote, and Standard vs Rewards. Protocol owns supply, curve, FDV,
         and fees. Same Instant config for every launch.{" "}
-        <Link href="/docs/creators" className="text-cyan-200 underline">
+        <Link href="/docs/creators" className="text-rx-cool underline">
           Creator docs
         </Link>
         {" · "}
-        <Link href="/docs/tickers" className="text-cyan-200 underline">
+        <Link href="/docs/tickers" className="text-rx-cool underline">
           Ticker rules
         </Link>
       </p>
@@ -414,14 +414,14 @@ export default function LaunchPage() {
               aria-pressed={quote === q.token}
               onClick={() => setQuote(q.token)}
               className={`flex items-center justify-between rounded-xl border px-4 py-2.5 text-left ${
-                quote === q.token ? "border-cyan-300/50 bg-cyan-300/10" : "border-white/8 bg-black/20"
+                quote === q.token ? "border-rx-heat/50 bg-rx-heat/10" : "border-white/8 bg-black/20"
               }`}
             >
               <span>
                 <span className="font-medium">{q.symbol}</span>
                 <span className="ml-2 text-xs text-zinc-400">{q.name}</span>
               </span>
-              <span className="text-[11px] uppercase tracking-wider text-cyan-100">EARNS {q.symbol}</span>
+              <span className="text-[11px] uppercase tracking-wider text-rx-paper">EARNS {q.symbol}</span>
             </button>
           ))}
           {quotesError && (
@@ -440,11 +440,11 @@ export default function LaunchPage() {
                 type="button"
                 aria-pressed={rewards}
                 onClick={() => setRewards(true)}
-                className={`rounded-2xl border p-4 text-left ${
-                  rewards ? "border-cyan-300/50 bg-cyan-300/10" : "border-white/8 bg-black/20"
+                className={`rounded-[var(--rx-radius-card)] border p-4 text-left ${
+                  rewards ? "border-rx-heat/50 bg-rx-heat/10" : "border-white/8 bg-black/20"
                 }`}
               >
-                <div className="text-[11px] uppercase tracking-wider text-cyan-200">
+                <div className="text-[11px] uppercase tracking-wider text-rx-cool">
                   EARNS {selected?.symbol ?? "X"}
                 </div>
                 <div className="mt-1 text-sm font-medium">Rewards · 2% to holders</div>
@@ -454,7 +454,7 @@ export default function LaunchPage() {
                 type="button"
                 aria-pressed={!rewards}
                 onClick={() => setRewards(false)}
-                className={`rounded-2xl border p-4 text-left ${
+                className={`rounded-[var(--rx-radius-card)] border p-4 text-left ${
                   !rewards ? "border-amber-300/50 bg-amber-300/10" : "border-white/8 bg-black/20"
                 }`}
               >
@@ -507,8 +507,8 @@ export default function LaunchPage() {
           auctionBps / minRaise.
         </div>
         {(needsChallenge || siteKey) && (
-          <div className="rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-3">
-            <p className="text-[12px] text-cyan-100">
+          <div className="rounded-xl border border-rx-steel bg-rx-heat/10 p-3">
+            <p className="text-[12px] text-rx-paper">
               {needsChallenge
                 ? "Admission returned CHALLENGE. Solve Turnstile, then launch again — a solved challenge can ALLOW under limits."
                 : "Cloudflare Turnstile is required when the launch signer is wired."}

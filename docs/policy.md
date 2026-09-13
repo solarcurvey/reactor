@@ -2,7 +2,7 @@
 
 Documentation is **mandatory in the same run** as any behavior change: contracts, tokenomics, Factory, Guardian/Keeper, routing, admission, API, SDK, CORE, tickers, trust, UX, brand.
 
-Brand / visual identity lives in [Brand (proposal)](/docs/brand) until the founder locks one direction (Refs #55). Do not close #55 from a proposal PR. Do not claim the brand is finalized.
+Brand / visual identity: founder-locked **Direction C — Industrial Forge**. Handbook: [Brand](/docs/brand). Issue #55 stays open until production surfaces and #36 baselines match. Do not change frozen V1 economics for paint.
 
 Protocol semver: `docs/version.json`. Factory `FACTORY_VERSION` is a different immutable number.
 

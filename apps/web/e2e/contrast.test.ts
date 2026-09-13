@@ -14,13 +14,14 @@ function assert(cond: unknown, msg: string): asserts cond {
 
 assert(Math.abs(contrastRatio("#ffffff", "#000000") - 21) < 0.01, "white/black is 21:1");
 assert(meetsContrastAa("#ffffff", "#000000"), "white/black AA");
-assert(meetsContrastAa("#f4f7fb", "#0b0d10"), "brand foreground AA");
-assert(meetsContrastAa("#7ee8ff", "#0b0d10"), "cyan on background AA");
-assert(meetsContrastAa("#0b0d10", "#7ee8ff"), "skip-link AA");
-assert(meetsContrastAa("#a1a1aa", "#0b0d10"), "zinc-400 on background is the muted floor");
-assert(!meetsContrastAa("#71717a", "#0b0d10"), "stock zinc-500 fails AA on background — do not use for body/label copy");
-assert(!meetsContrastAa("#52525b", "#0b0d10"), "stock zinc-600 fails AA on background");
-assert(parseCssColor("#0b0d10")?.r === 11, "hex parse");
+assert(meetsContrastAa("#ece8e1", "#12110f"), "paper on slag AA");
+assert(meetsContrastAa("#ff6b2b", "#12110f"), "heat on slag AA");
+assert(meetsContrastAa("#12110f", "#ff6b2b"), "skip-link slag on heat AA");
+assert(meetsContrastAa("#9aa4ad", "#12110f"), "cool on slag AA");
+assert(meetsContrastAa("#a1a1aa", "#12110f"), "zinc-400 on slag is the muted floor");
+assert(!meetsContrastAa("#71717a", "#12110f"), "stock zinc-500 fails AA on slag — do not use for body/label copy");
+assert(!meetsContrastAa("#52525b", "#12110f"), "stock zinc-600 fails AA on slag");
+assert(parseCssColor("#12110f")?.r === 18, "hex parse");
 assert(AXE_CONTRAST_EXCLUDE.includes("canvas"), "canvas excluded");
 assert(AXE_CONTRAST_EXCLUDE.includes("[data-visual-mask]"), "chart/CORE mask excluded");
 assert(!AXE_CONTRAST_EXCLUDE.includes("body"), "no page-wide exclude");

@@ -18,18 +18,18 @@ export function OhlcvChart({ candles }: { candles: Candle[] }) {
       const created = lc.createChart(ref.current, {
         height: 320,
         autoSize: true,
-        layout: { background: { color: "transparent" }, textColor: "#a1a1aa" },
+        layout: { background: { color: "transparent" }, textColor: "#9aa4ad" },
         grid: { vertLines: { color: "rgba(255,255,255,0.04)" }, horzLines: { color: "rgba(255,255,255,0.04)" } },
         rightPriceScale: { borderVisible: false },
         timeScale: { borderVisible: false },
       });
       chart = created;
       const series = created.addSeries(lc.CandlestickSeries, {
-        upColor: "#7ee8ff",
-        downColor: "#f43f5e",
+        upColor: "#3dcc8a",
+        downColor: "#e85d4c",
         borderVisible: false,
-        wickUpColor: "#7ee8ff",
-        wickDownColor: "#f43f5e",
+        wickUpColor: "#3dcc8a",
+        wickDownColor: "#e85d4c",
       });
       series.setData(
         candles

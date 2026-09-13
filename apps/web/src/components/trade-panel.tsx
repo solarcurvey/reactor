@@ -294,7 +294,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
 
   return (
     <Card className="p-4">
-      <div className="mb-3 flex rounded-full bg-black/30 p-1">
+      <div className="mb-3 flex rounded-[var(--rx-radius-control)] bg-black/30 p-1">
         {(["buy", "sell"] as const).map((s) => (
           <button
             key={s}
@@ -307,8 +307,8 @@ export function TradePanel({ t }: { t: LaunchToken }) {
               setAggregateImpactBps(0);
               setReactorFeeCount(0);
             }}
-            className={`flex-1 rounded-full py-2 text-sm capitalize ${
-              side === s ? "bg-cyan-300 text-zinc-950" : "text-zinc-400"
+            className={`flex-1 rounded-[var(--rx-radius-chip)] py-2 text-sm capitalize ${
+              side === s ? "bg-rx-heat text-rx-slag" : "text-rx-cool"
             }`}
           >
             {s}
@@ -485,7 +485,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
           Graduate to locked v4
         </Button>
       )}
-      {hash && <p className="mt-3 break-all font-mono text-[11px] text-cyan-200">tx {hash}</p>}
+      {hash && <p className="mt-3 break-all font-mono text-[11px] text-rx-cool">tx {hash}</p>}
     </Card>
   );
 }

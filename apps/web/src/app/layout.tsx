@@ -22,8 +22,26 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "REACTOR — Launch. Reflect. Burn.",
-  description: "Launch markets that pay holders. Official REACTOR pools on Arc.",
+  title: "REACTOR — Token launch on Arc",
+  description: "Launch markets that pay holders. Official REACTOR pools on Arc. Not an AI trading terminal.",
+  applicationName: "REACTOR",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }, { url: "/brand/mark.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  manifest: "/site.webmanifest",
+  openGraph: {
+    title: "REACTOR",
+    description: "Token launch markets on Arc. Launch. Reflect. Burn.",
+    siteName: "REACTOR",
+    images: [{ url: "/brand/og-default.png", width: 1200, height: 630, alt: "REACTOR — Token launch on Arc" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "REACTOR — Token launch on Arc",
+    description: "Launch markets that pay holders. Official REACTOR pools on Arc.",
+    images: ["/brand/og-default.png"],
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -49,8 +67,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   >
                     {children}
                   </main>
-                  <footer className="border-t border-white/6 px-4 py-6 text-center text-[11px] uppercase tracking-[0.16em] text-zinc-400">
-                    REACTOR · Built on Arc · Not audited · Test / local only
+                  <footer className="border-t border-rx-steel px-4 py-6 text-center text-[11px] uppercase tracking-[0.12em] text-rx-cool">
+                    REACTOR · Token launch on Arc · Not audited · Test / local only
                   </footer>
                 </LiveToastProvider>
               </LiveCacheProvider>

@@ -198,7 +198,7 @@ export function LiveToasts() {
           className={`pointer-events-auto rounded-xl border px-3 py-2 text-[13px] ${
             t.tone === "alert"
               ? "border-red-500/30 bg-red-500/10 text-red-50"
-              : "border-cyan-300/25 bg-cyan-300/10 text-cyan-50"
+              : "border-rx-heat/30 bg-rx-heat/10 text-rx-paper"
           }`}
         >
           <p className="font-medium">{t.title}</p>
@@ -212,11 +212,11 @@ export function LiveToasts() {
           data-kind={t.kind}
           data-identity={t.id}
           role="status"
-          className="pointer-events-auto rounded-2xl border border-cyan-300/25 bg-[#121418]/95 px-3.5 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-md"
+          className="pointer-events-auto rounded-[var(--rx-radius-card)] border border-rx-steel bg-rx-slag/95 px-3.5 py-3"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-200/80">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-rx-cool">
                 {t.kind === "core" ? "CORE" : "Top-10"} · confirmed
               </p>
               <h2 className="mt-0.5 text-[13px] font-medium text-white">{t.title}</h2>
@@ -225,7 +225,7 @@ export function LiveToasts() {
             <button
               type="button"
               aria-label="Dismiss notification"
-              className="rounded-full px-1.5 text-[14px] text-zinc-400 hover:text-white"
+              className="rounded-[var(--rx-radius-chip)] px-1.5 text-[14px] text-rx-cool hover:text-rx-paper"
               onClick={() => setToasts((rows) => rows.filter((row) => row.id !== t.id))}
             >
               ×
@@ -235,7 +235,7 @@ export function LiveToasts() {
             href={explorerTx(t.tx)}
             target="_blank"
             rel="noreferrer"
-            className="mt-2 inline-block text-[11px] uppercase tracking-wider text-cyan-200 hover:underline"
+            className="mt-2 inline-block text-[11px] uppercase tracking-wider text-rx-cool hover:text-rx-paper hover:underline"
           >
             View tx
           </a>

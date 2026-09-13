@@ -8,7 +8,9 @@
 
 **This amendment (full GitHub CI extras, Refs #17, rebased onto #50 / `e5fd745`):** leftover #17 gates land on the #69 three-tier `ci.yml` — not a second workflow. `docs:links`, `scripts/safe-genesis-builder.test.ts`, and `page-budget.test.ts` are in `test:lib`. Playwright smoke + interactive is full-only job `web`. Always-on `page-budget` stays required by `ci-ok`. Foundry Attack / CREATE2 / size-guard, Postgres, production Next security, and live-toasts stay on the #73 jobs. A skipped job is not a pass. Architecture and tokenomics unchanged. See `/docs/ci`.
 
-**This amendment (brand direction proposal, Refs #55):** founder-facing visual systems A/B/C, domain/collision note, launch-asset checklist, and cheap CSS/SVG stubs. **Not locked. Do not close #55.** No contract, fee, Factory, CORE, or routing change. Production `logo.tsx` unchanged. See `/docs/brand`.
+**This amendment (brand lock C, Refs #55):** founder (Davis, 2026-09-13) locked **Direction C — Industrial Forge**. Tokens, vessel mark, wordmark, favicon/OG/manifest, and product chrome. **Do not close #55** until #36 baselines match. No contract, fee, Factory, CORE, or routing change. See `/docs/brand`.
+
+**This amendment (brand direction proposal, Refs #55):** earlier pass shipped A/B/C options only. Superseded by the C lock above.
 
 **This amendment (CI cost, Refs #69, rebased onto #77):** GitHub Actions is three-tier (fast PR / full merge-candidate / main). Feature-branch `push` no longer duplicates `pull_request`. `keeper-lease-pg` is folded into `postgres-ms-timestamps`. Required commands are unchanged in substance (`test:lib`, `test:web-security`, `test:live-toasts`, `test:pg` + `test:pg-lease`, Foundry on full/main). A skipped job is not a pass. Architecture and tokenomics unchanged. See `/docs/ci`.
 

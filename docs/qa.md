@@ -44,7 +44,7 @@ Charts and the CORE mark are masked. Live/polling text is hidden.
 
 ## Accessibility
 
-`@axe-core/playwright` runs `wcag2a` / `wcag21a` / `wcag2aa` **including `color-contrast`** on production surfaces. The only scoped excludes are unmeasurable nodes: `canvas`, `[data-visual-mask]` (OHLCV / CORE mark), and `[data-visual-dynamic]` (live ticks). Documented in `e2e/contrast.ts`. Token pairs are also pinned by `assertBrandPaletteContrast` (zinc-400 is the muted floor on `#0b0d10` / `#121418`; stock zinc-500/600 fail AA and must not be body/label copy). Axe often cannot score text on the body gradient, so `assertAxe` also runs `assertNoSubAaMutedText` and fails if any `[class]` still carries `text-zinc-500|600|700` or those placeholder variants. Extra specs:
+`@axe-core/playwright` runs `wcag2a` / `wcag21a` / `wcag2aa` **including `color-contrast`** on production surfaces. The only scoped excludes are unmeasurable nodes: `canvas`, `[data-visual-mask]` (OHLCV / CORE mark), and `[data-visual-dynamic]` (live ticks). Documented in `e2e/contrast.ts`. Token pairs are also pinned by `assertBrandPaletteContrast` (Industrial Forge paper `#ece8e1` / heat `#ff6b2b` / cool `#9aa4ad` on slag `#12110f`; zinc-400 is the muted floor on slag / steel; stock zinc-500/600 fail AA and must not be body/label copy). Axe often cannot score text on the body gradient, so `assertAxe` also runs `assertNoSubAaMutedText` and fails if any `[class]` still carries `text-zinc-500|600|700` or those placeholder variants. Extra specs:
 
 - Dialog **focus trap** and **restore** (Account modal, confirm trade)
 - **200% zoom** / 320 CSS px — no horizontal overflow

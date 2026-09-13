@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="REACTOR token">
+  <rect width="1200" height="630" fill="#12110f"/>
+  <rect x="0" y="0" width="8" height="630" fill="#ff6b2b"/>
+  <g transform="translate(80,210) scale(0.7)">
+    <circle cx="90" cy="90" r="72" fill="none" stroke="#8a8e92" stroke-width="16"/>
+    <path d="M156 90a64 64 0 0 1-10.2 34.6" fill="none" stroke="#ff6b2b" stroke-width="16"/>
+    <polygon points="90,58 116,73 116,107 90,122 64,107 64,73" fill="#ff6b2b"/>
+  </g>
+  <g fill="#ece8e1" font-family="DejaVu Sans, sans-serif" font-size="56" font-weight="700">
+    <text x="260" y="300">R</text>
+    <text x="304" y="300">E</text>
+    <text x="344" y="300">A</text>
+    <text x="388" y="300">C</text>
+    <text x="432" y="300">T</text>
+    <text x="468" y="300">O</text>
+    <text x="516" y="300">R</text>
+  </g>
+  <g fill="#9aa4ad" font-family="DejaVu Sans, sans-serif" font-size="22">
+    <text x="260" y="360">Token</text>
+    <text x="340" y="360">launch</text>
+    <text x="430" y="360">market</text>
+    <text x="525" y="360">on</text>
+    <text x="560" y="360">Arc</text>
+  </g>
+</svg>

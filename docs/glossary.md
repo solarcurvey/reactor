@@ -25,7 +25,7 @@
 | Protocol 0.3.2 | This software + docs release |
 | Fast / full / main CI | Three-tier GitHub Actions ([CI and cost](/docs/ci)). Fast = PR units + `docs:check` + `docs:links`. Full = merge-candidate + production Next / Foundry / Postgres / Playwright smoke. Main = one post-merge SHA |
 | Repo publicization | Operator checklist to maybe make the GitHub repo public later. Not mainnet readiness. Do not flip visibility without founder instruction. AC1 is advertised refs only; Support purge/GC is an accepted residual. |
-| Brand system | Founder direction only (Refs #55). Three options in [/docs/brand](/docs/brand). **Not locked.** Do not treat marks or tokens as the approved identity. |
+| Brand system | Founder-locked **Direction C — Industrial Forge** (2026-09-13). Handbook: [/docs/brand](/docs/brand). Issue #55 stays open until #36 baselines match. |
 | Millisecond columns | `Date.now()` wall clock: admission hits, issuance `updated_ms`, leader lease, Keeper jobs, alerts. Postgres `BIGINT` (schema v6) |
 | Unix-seconds columns | `Date.now()/1000` or `block.timestamp`: trades, ticker lock, receipt expiry |
 | Arc gas USDC | Native 18-decimal gas unit |
