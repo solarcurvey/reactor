@@ -18,7 +18,7 @@ Supply is **1B / 18**. Instant: 79.31% on the bonding curve, 20.69% locked v4 at
 
 ## Admission is mandatory
 
-Every launch, including USDC, goes through `POST /launch/authorize`. REACTOR-operated admit / authorize / upload / quote paths also run the [operator policy](/docs/operator-policy) gate (recovered wallet proof + trusted geo) **before** a receipt or signature. That is a hosted-service control, not an onchain block.
+Every launch, including USDC, goes through `POST /launch/authorize`. REACTOR-operated admit / authorize / upload / quote paths also run the [operator policy](/docs/operator-policy) gate (recovered wallet proof + trusted geo + official-list freshness) **before** a receipt or signature. A stale or missing official-list snapshot fail-closes those writes as temporarily unavailable. That is a hosted-service control, not an onchain block.
 
 1. The launch page renders a **real Cloudflare Turnstile** widget (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`). There is no `window.turnstileToken` stub.
 2. Admission returns **ALLOW**, **CHALLENGE**, or **DENY**. CHALLENGE is **not** a signature.
@@ -27,6 +27,8 @@ Every launch, including USDC, goes through `POST /launch/authorize`. REACTOR-ope
 5. The isolated signer consumes the receipt **once** (durable store required — a down database is 503, not a signature) and checks the hash. Then EIP-712.
 
 Turnstile `siteverify` runs when `TURNSTILE_SECRET` is set. LOCAL bypass only if the secret is unset and `TURNSTILE_REQUIRED !== 1`.
+
+REACTOR-operated admit / authorize / upload also follow the hosted access decision. If that decision is deny or unavailable, **Launch Instant** / **Open Fair Launch** stay disabled and no wallet transaction is prompted. `/restricted` explains the three public states (account, location, temporarily unavailable). This does not block a direct onchain Factory call. See [Restricted access](/docs/restricted-access).
 
 ## Instant vs Fair binding
 

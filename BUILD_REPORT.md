@@ -1,21 +1,58 @@
-# BUILD REPORT — Production-build browser + wallet E2E release gate (#35)
+# BUILD REPORT — Restricted-access UX (Refs #65)
 
-**Status:** Child of #15. Refs #35 / Refs #15 only (do not `Fixes` / `Closes` #35 or #15). Continues landing the production E2E gate for #15. Rebased onto `origin/main` `cc82cd4` (#70 sanctions ops after #79 / `35552f6` / #68 / `2002aed`). Frozen economics / architecture. **Not audited. Not mainnet.**
+**Status:** Draft PR **#75** on `cursor/restricted-access-ux-f91b` rebasing onto `origin/main` `b190e86` (squash-merged **#44** after **#70** / **#79** / **#68**). Refs **#65** (child of RELEASE GATE **#60**). **Do not close #65, #63, or #60.** Keep **DRAFT**. Frozen economics. No mainnet.
+**Not audited. Not mainnet.**
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
-**Economics / 3.5% / 2/1/0.5 / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+Official **#62 / PR #68** and **#64 / PR #70** are on `main`. This branch binds launchpad UX to `GET /operator-policy/status` (same `evaluateOperatorPolicy` as write gates) and `GET /operator-policy/challenge` (signing helper only). Disclosure matches merged #64: stale/missing official-list fail-closes operated writes and surfaces as temporarily unavailable. **#63** geo core is accepted on #67; founder **reopened #63** until this user-visible restricted state lands via #65 / #75.
 
-## This HEAD
+## This HEAD (#65)
 
 | Item | Value |
 | --- | --- |
 | Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
+| Intent | Dedicated `/restricted` production state, disable operated write CTAs before wallet prompts, honest disclosure of hosted sanctions/geo controls and what they cannot do on permissionless chain reads. |
+| Server dependency | Official #62 / #68 `apps/indexer/src/operator-policy.ts` + `packages/reactor/src/sanctions-policy.ts`. Decision read is `GET /operator-policy/status` (`readOperatorPolicyStatus` / same `evaluateOperatorPolicy` as write gates). No proof → `UNAVAILABLE_WALLET_MISSING` unless geo is independently `DENY`. Challenge is not a decision. Subject is the EIP-191 signer. Claimed browser wallet is ignored. |
+| Tests | Follow-up after exact-head `c1f6a78` re-run [`34738474644`](https://github.com/solarcurvey/reactor/actions/runs/34738474644) failed `web-qa` on React #418 (hydration text/HTML) for denied `/restricted` a11y/reflow. Two hydrate races: (1) `useSearchParams` + text Suspense fallback vs the restricted tree; (2) mocked `/api/operator-policy` painting deny UI before a Suspense child hydrates. `/restricted` is a dynamic server page that passes `?kind=` into the client view (no client URL read during render). Provider refresh waits until after mount. `useOperatorPolicy()` stays pending until **that consumer** mounted (same class as WalletButton). Denied 320px / 200% reflow is one page per test. Diagnostics / axe / muted-text AA gates are unchanged. Prior green [`34738256919`](https://github.com/solarcurvey/reactor/actions/runs/34738256919) on `c1f6a78` is **not** the closer. `/restricted` muted copy is `text-zinc-400`. Production four-state AC closed on this PR. |
+| Rebase | Onto `origin/main` `b190e86` (squash-merged **#44** after **#70** / `cc82cd4`). Same PR **#75** / same branch. Kept #44 `e2e-release-gate`, launch/trade phase + submit lock, and official-shaped `#68` `/operator-policy/status` on the #35 mock so invented `E2E_LOCAL` cannot fail-close ALLOW journeys. Official #61/#62 plugins and #64 ops are on `main`. #63 geo core is on `main` via #67 and **stays open** until this UX lands. Indexer uses canonical `operator-policy.ts`; bind is the #65 test/fixture adapter. |
+| #44 coexistence | Exact-head full run [`34737996588`](https://github.com/solarcurvey/reactor/actions/runs/34737996588) on `311957f`: `web-qa` / `web-production-security` / `operator-policy-http` / Foundry / Postgres / `docs-links` green; `e2e-release-gate` failed only on `edge.spec.ts` “chain change mid-flow” — Playwright strict-mode, two “Wrong network” buttons (`trade-confirm` + `rewards-claim`). Locator now uses those test ids. Product copy unchanged. Ready-for-review rerun [`34738474644`](https://github.com/solarcurvey/reactor/actions/runs/34738474644) on `c1f6a78`: `e2e-release-gate` green; `web-qa` failed React 418 on denied `/restricted`+launch reflow (mocked `/api/operator-policy` could paint deny UI before hydrate). Provider now keeps the SSR pending tree until after mount (same pattern as WalletButton). `/restricted` no longer uses `useSearchParams`/Suspense. Denied 320px / 200% reflow is one page per test. |
+
+| Mainnet | **Blocked** |
+
+## Closed this run (#65 ACs — issue stays open)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Dedicated `/restricted` state | **Yes** | Server `apps/web/src/app/restricted/page.tsx` + client `restricted-view.tsx` + amber banner. `?kind=` is request-scoped (no `useSearchParams`) so production hydration matches. |
+| Neutral account / location / temporary copy | **Yes** | `RESTRICTED_PAGE_COPY` + banner `data-kind` |
+| Write CTAs disabled before wallet prompts | **Yes** | `useOperatedWrites` on trade / launch / fair / rewards |
+| Public reads remain | **Yes** | Markets / search / token / docs routes unchanged |
+| No IP / screening leak | **Yes** | Minimized `publicPolicyView` / official `publicStatusView` |
+| No VPN / bypass guidance | **Yes** | `copyContainsForbiddenGuidance` |
+| Honest onchain-cannot-censor disclosure | **Yes** | `RESTRICTED_DISCLOSURE` |
+| Docs match #61–#64 | **Yes** | Restricted-access / trust / FAQ / index disclose 7-day SLA fail-closed, last-known-good, no hop analytics, no dataset hash in the browser. Production `next start` four-state matrix is in `e2e/restricted-prod.spec.ts`. Production a11y/reflow covers `/restricted` + denied launch/token. |
+| Bind to #62 / #68 | **Yes** | Official `operator-policy.ts` on `main` |
+| Close #65 / #63 | **No** | Stay open until #75 merges + post-merge verify. `Refs #65`. |
+
+---
+
+# Prior — Production-build browser + wallet E2E release gate (merged #44, Refs #35)
+
+**Status:** Squash-merged **#44** (`b190e86`) on `origin/main`. Child of #15. Refs #35 / Refs #15 only (do not `Fixes` / `Closes` #35 or #15). Continues landing the production E2E gate for #15. Frozen economics / architecture. **Not audited. Not mainnet.**
+
+**Economics / 3.5% / 2/1/0.5 / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## That HEAD (#35)
+
+| Item | Value |
+| --- | --- |
 | Intent | Production `next build` + `next start` Playwright release gate with a deterministic EIP-1193 wallet fixture **and** a MetaMask/Rabby-style unpacked MV3 extension. Browser matrix Chromium / Firefox / WebKit plus iPhone-class and narrow-Android. Nested USDC BUY+SELL assert `UserRouteExecutor` target/calldata/result. Shared `console.error` / `pageerror` fixture fails teardown. No Anvil private keys, no mainnet keys, no isolated signer. |
 | Proof | Rebased onto `main` `cc82cd4` (#70 sanctions freshness after #79 / #68 / #67 / #66 / #49 / #42 / #50 / #58). Kept #70 freshness/audit/alerts/runbook (`#64` stays open). Kept #79 accepted #17 / #42 evidence (`11fdadb` / `34727535121`, `80d3cac` / `34727638255`). Kept #68 operator-policy / wallet-proof. Kept #67 geo-policy tests in `test:lib`. Kept #66 `@reactor/sanctions` fixtures in `test:lib`. Kept #49 `web-qa` (visual / a11y / failure-injection). Ticket/launch phase lines use visible `text-zinc-400` (same AA muted floor as #49 — do not hide the line and do not weaken `assertNoSubAaMutedText`). Disconnect stays in the #49 Account modal. `/wallet` is a status card only — the header `WalletButton` is the single connect/account control (`wallet-menu-trigger` is unique). Ready graduate token stays on the E2E mock only — not an extra Discover fixture card. Rewards wallet copy waits until mount. WalletButton keeps the SSR Connect tree until hydrate so a second `page.goto` after EIP-1193 connect cannot React-418. Kept #42 `docs-links` / Playwright `web` / Safe genesis / solc prefetch. Kept #50 indexed search / `useSwapSeries` / `readTicketWallet` / always-on `page-budget`. Live quote default stays **30s** (`?? 30_000`); E2E short TTL is `NEXT_PUBLIC_QUOTE_TTL_MS` only. Mock indexer serves `#50` `GET /quote-assets`, `GET /markets/:token`, and `GET /page/token/:token`, plus `#68` `GET /operator-policy/challenge` and `GET /operator-policy/status` so quote/launch/upload can attach a wallet proof. EIP-1193 `rejectTx` is Confirm-buy / `eth_sendTransaction` only (challenge `personal_sign` auto-signs). Extension Quote Confirm covers the proof, then Confirm covers the trade. WebKit console-gate stays pinned to exact `/127.0.0.1:18448/stream` pageerror only. Home+launch waits for mock `GET /markets` before leaving `/` so iPhone WebKit does not abort that fetch and mis-report it as CORS. Indexed bonding/ready rows bind official `InstantCurve`; REVIEW_FIXTURES merge restores `curve` / `ready` / fixture quote on `/page/token` so BUY/graduate do not fall through to the router. `ci-ok` requires `e2e-release-gate` **and** `web-qa` **and** `page-budget`. #35 stays open until post-merge. **Refs #35 / Refs #15 only.** |
 | Review shots | Refreshed for the visible AA `text-zinc-400` phase line (including quote-413 / wallet-revert / tx-reverted 1440). Discover board stays on the #49 fixture set (Ready is mock-only). Disconnect stays in the Account modal. `/wallet` no longer duplicates the header wallet control. |
 | Mainnet | **Blocked** |
 
-## Closed this run (#35 implementation)
+## Closed that run (#35 implementation)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
@@ -34,6 +71,7 @@
 | Unexpected console.error / pageerror fail the suite | **Yes** | Shared `attachConsoleGate` on EIP-1193 and extension page fixtures. Records error-level `console` + `pageerror`. Documented allowlist: Chromium HTTP 503 on `/api/launch-pricing` (Dev Buy authorize-down); Next.js RSC prefetch fallback (iPhone WebKit + Firefox) / WebKit `?_rsc=` access-control; WebKit EventSource `/stream` access-control only (not `/markets` — mock JSON echoes Origin so indexed GETs are real CORS). Home+launch waits for mock `GET /markets` before `/launch`. Mock `/stream` and `json()` echo the request `Origin`. Teardown throws captured diagnostics. Trace/screenshot/network stay retain-on-failure. |
 | Folded into #73 `ci.yml` | **Yes** | Full-only `e2e-release-gate`. `ci-ok` requires it **and** #49 `web-qa` **and** always-on `page-budget` from #50 **and** #42 `docs-links` / `web`. `scripts/ci-cost.test.ts` forbids `e2e-release.yml` and `web-qa.yml`. |
 | Docs | **Yes** | `TESTING.md` §41 + table 49/49b, `AUDIT_HANDOFF.md`, `docs/builders.md`, `docs/ci.md`, `CHANGELOG` Unreleased, `pnpm docs:gen`. `docs:check` rejects leftover conflict markers. |
+
 
 ---
 

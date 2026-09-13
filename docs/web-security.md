@@ -65,6 +65,10 @@ Keeper / Launch signer / Guardian **private keys**, Turnstile/admission HMAC sec
 
 `apps/web/src/lib/tx-guard.test.ts` — metadata cannot become `to` / recipient; indexer `tx` discarded; chain mismatch throws.
 
-`pnpm test:web-security` — **production** `next build` + `next start`, live response-header assertions, client-bundle sentinel, and Playwright XSS corpus on home / search / token terminal / trade / reactor activity / launch toasts.
+`pnpm test:web-security` — **production** `next build` + `next start`, live response-header assertions, client-bundle sentinel, Playwright XSS corpus on home / search / token terminal / trade / reactor activity / launch toasts, and the #65 restricted-access matrix (`e2e/restricted-prod.spec.ts`: blocked wallet / geo / stale / allow on desktop + 390px, fail-closed, ignored LOCAL flags, real #62 write-gate bypass).
+
+## Restricted access (operated services)
+
+`/restricted` and disabled Confirm / Launch / Quote CTAs are UX over a server policy decision. Account status uses a recovered EIP-191 wallet proof, not a claimed browser wallet. The browser is not given raw IP, screening records, or list metadata. Client “clear” / country headers cannot override. This does not censor permissionless chain reads. Next reads indexer `GET /operator-policy/status` only (same `evaluateOperatorPolicy` as write gates) and never treats `/operator-policy/challenge` as a decision. Production `next start` fail-closes if `/status` is missing. Pending-proof reasons stay Launch Instant in the UI; writes still require a recovered proof at the gate. `/restricted` reads `?kind=` on the server (no `useSearchParams`) so production hydration matches. See [Restricted access](/docs/restricted-access).
 
 See [Media](/docs/media), [Trust](/docs/trust), [Admission](/docs/admission), [Creators](/docs/creators).

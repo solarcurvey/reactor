@@ -13,7 +13,7 @@ This software is **not audited**. There is **no public mainnet**. Local and test
 | Trader | [Trade on REACTOR](/docs/traders) |
 | Creator | [Launch a token](/docs/creators) |
 | Builder | [API, SDK, events](/docs/builders) · [Read path](/docs/perf) · [UI QA](/docs/qa) |
-| Protocol | [Curve](/docs/curve) · [Fees](/docs/fees) · [Quoter](/docs/quoting) · [Trust](/docs/trust) · [Operator policy](/docs/operator-policy) |
+| Protocol | [Curve](/docs/curve) · [Fees](/docs/fees) · [Quoter](/docs/quoting) · [Trust](/docs/trust) · [Operator policy](/docs/operator-policy) · [Restricted access](/docs/restricted-access) |
 | Reference | [API](/docs/api) · [Arc](/docs/arc) · [FAQ](/docs/faq) · [CI](/docs/ci) · [Versioning](/docs/versioning) · [Repo publicization](/docs/publicization) |
 
 ## The machine
@@ -57,6 +57,6 @@ See [Trust](/docs/trust) for the rest of the top 10.
 - Token names / tickers / descriptions / URLs / images are **untrusted** in the public UI. No raw HTML. [Browser security](/docs/web-security).
 - Exact official-list address screening (`GET /sanctions/screen`) is **not** legal/OFAC compliance. It is the `#61` lookup used by the operator-policy gate. [Address screening](/docs/sanctions).
 - Geo jurisdiction checks are a **server** ALLOW / DENY / UNKNOWN policy over trusted edge metadata. The UI does not ship a country deny list. Not a legal opinion. HTTP enforcement is [Operator policy](/docs/operator-policy). [Geo policy](/docs/geo-policy).
-- Operator policy (recovered wallet proof + trusted geo) is enforced on REACTOR-operated write/authorization APIs only. `GET /operator-policy/status` is the public decision read for hosted UX. Public market/docs reads and onchain contracts are not this gate. [Operator policy](/docs/operator-policy).
+- Operator policy (recovered wallet proof + trusted geo + official-list freshness) is enforced on REACTOR-operated write/authorization APIs only. A stale or missing official-list snapshot (7-day SLA) fail-closes those writes as temporarily unavailable. `GET /operator-policy/status` is the public decision read for hosted UX. `/restricted` is the dedicated launchpad state. Public market/docs reads and onchain contracts are not this gate. [Operator policy](/docs/operator-policy) · [Restricted access](/docs/restricted-access) · [Sanctions ops](/docs/sanctions-ops).
 
-Continue: [curve math](/docs/curve) · [nested fees](/docs/fees) · [Guardian](/docs/guardian) · [Keeper](/docs/keeper) · [tickers](/docs/tickers) · [admission](/docs/admission) · [operator policy](/docs/operator-policy) · [browser security](/docs/web-security) · [address screening](/docs/sanctions) · [geo policy](/docs/geo-policy) · [sanctions ops](/docs/sanctions-ops) · [incident response](/docs/incident-response) · [repo publicization](/docs/publicization)
+Continue: [curve math](/docs/curve) · [nested fees](/docs/fees) · [Guardian](/docs/guardian) · [Keeper](/docs/keeper) · [tickers](/docs/tickers) · [admission](/docs/admission) · [operator policy](/docs/operator-policy) · [restricted access](/docs/restricted-access) · [browser security](/docs/web-security) · [address screening](/docs/sanctions) · [geo policy](/docs/geo-policy) · [sanctions ops](/docs/sanctions-ops) · [incident response](/docs/incident-response) · [repo publicization](/docs/publicization)

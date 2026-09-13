@@ -29,6 +29,8 @@ USDC → nested quote → official/bonding goes through `UserRouteExecutor`. Bon
 
 Names, tickers, descriptions, and images on the board are **untrusted creator strings**. The UI strips HTML and will not follow `javascript:` / arbitrary image hosts. A token name cannot change the wallet `to` / recipient — Confirm is disabled on the wrong chain. See [Browser security](/docs/web-security).
 
+`POST /quote` is hosted write assistance. When the server policy decision is deny or unavailable (including a stale or missing official-list snapshot under the 7-day SLA), the ticket is not returned and the Confirm / Quote buttons stay disabled **before** a wallet prompt. The board, charts, and tape remain readable. See [Restricted access](/docs/restricted-access) and [Sanctions ops](/docs/sanctions-ops).
+
 ## When a service is down
 
 The UI **fails visible**. It does not invent a quote ticket or pretend the board is empty when the indexer is unreachable.

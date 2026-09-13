@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { injected } from "wagmi/connectors";
+import { OperatorPolicyProvider } from "@/components/operator-policy-provider";
 import { arcLocal } from "@/lib/chain";
 import { createAppQueryClient } from "@/lib/query";
 
@@ -20,7 +21,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(() => createAppQueryClient());
   return (
     <WagmiProvider config={config}>
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      <QueryClientProvider client={client}>
+        <OperatorPolicyProvider>{children}</OperatorPolicyProvider>
+      </QueryClientProvider>
     </WagmiProvider>
   );
 }

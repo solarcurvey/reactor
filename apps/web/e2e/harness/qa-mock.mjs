@@ -43,6 +43,23 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  /* Allowed-user baseline for production-like QA snapshots (#65). */
+  if (url.pathname === "/operator-policy/status") {
+    json(res, 200, {
+      ok: true,
+      decision: "allow",
+      reason: "ALLOW",
+      kind: "allow",
+      error: "",
+      disclaimer:
+        "REACTOR-operated services only. Public contracts remain callable onchain. Not a legal or OFAC-compliance opinion.",
+      policy: "reactor-operator-policy-v1",
+      writesAllowed: true,
+      source: "indexer",
+    });
+    return;
+  }
+
   if (url.pathname === "/markets") {
     json(res, 200, { items: [] });
     return;

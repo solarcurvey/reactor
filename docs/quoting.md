@@ -2,7 +2,7 @@
 
 User quotes are a **single `eth_call`** over the whole route (`UserRouteQuoter.previewBuy` / `previewSell`). The quoter **executes hops in-place** (no nested revert that would undo intermediate balances) and then reverts `PreviewRoute`. The indexer also sends ERC-20 **state overrides** that credit the quoter — not the user wallet — on candidate `balanceOf` slots. Nested hops do **not** need intermediate wallet balances. The user can hold only USDC.
 
-`POST /quote` is a REACTOR-operated write-assist path: the [operator policy](/docs/operator-policy) gate (recovered EIP-191 wallet proof + trusted geo) runs **before** any ticket / `tx` payload. `recipient` is overwritten to the recovered signer. Public `GET` market/docs reads are not gated.
+`POST /quote` is a REACTOR-operated write-assist path: the [operator policy](/docs/operator-policy) gate (recovered EIP-191 wallet proof + trusted geo) runs **before** any ticket / `tx` payload. `recipient` is overwritten to the recovered signer. When the decision is deny or unavailable, the launchpad does not prompt a wallet and does not treat a client “clear” flag as authority. Public `GET` market/docs reads are not gated. See [Restricted access](/docs/restricted-access).
 
 ## What is simulated
 

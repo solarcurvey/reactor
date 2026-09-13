@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePublicClient, useSignMessage, useWriteContract } from "wagmi";
-import { signOperatorWalletProof } from "@/lib/wallet-proof";
+import { usePublicClient, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "viem/actions";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
@@ -21,7 +20,8 @@ import {
   type TicketFeeLeg,
 } from "@/lib/fee-legs";
 import { TxGuardError, resolveTradeWrite, sanitizeRouteHops } from "@/lib/tx-guard";
-import { useOfficialChain } from "@/lib/use-official-chain";
+import { useOperatedWrites } from "@/lib/use-operated-writes";
+import { RestrictedNotice } from "./restricted-notice";
 import { UntrustedText } from "./untrusted-text";
 import { FAILURE_COPY, isQuoteInject } from "@/lib/qa-inject";
 import { useQaInject, useQaScene } from "@/components/qa-inject-provider";
@@ -42,10 +42,20 @@ const PHASE_LABEL: Record<TradePhase, string> = {
 };
 
 export function TradePanel({ t }: { t: LaunchToken }) {
-  const { address, isConnected, writesEnabled, matched, mismatchMessage, chainId } = useOfficialChain();
+  const {
+    address,
+    isConnected,
+    writesEnabled,
+    matched,
+    mismatchMessage,
+    chainId,
+    policy,
+    policyBlocked,
+    writeBlockMessage,
+    writeButtonLabel,
+  } = useOperatedWrites();
   const client = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
-  const { signMessageAsync } = useSignMessage();
   const submitLock = useRef(false);
   const [phase, setPhase] = useState<TradePhase>("idle");
   const [quotedFor, setQuotedFor] = useState<string | null>(null);
@@ -147,7 +157,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
     }
     setPhase("quoting");
     try {
-      const proof = await signOperatorWalletProof((message) => signMessageAsync({ message }));
+      const proof = await policy.ensureProof();
       const res = await fetch(`${INDEXER_URL}/quote`, {
         method: "POST",
         headers: { "content-type": "application/json", ...proof },
@@ -175,6 +185,9 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         tx?: { to: string; data: `0x${string}`; functionName: string };
       };
       if (!res.ok || !q.ok || !q.amountOut) {
+        if (policy.applyWriteError(q)) {
+          throw new Error(q.error ?? q.reason ?? "REACTOR-operated quote assistance is unavailable.");
+        }
         throw new Error(q.error ?? q.reason ?? "Quote API unavailable");
       }
       setQuotedOut(BigInt(q.amountOut));
@@ -211,6 +224,11 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       setError(FAILURE_COPY["wallet-revert"].body);
       return;
     }
+    if (policyBlocked) {
+      submitLock.current = false;
+      setError(writeBlockMessage ?? policy.userMessage);
+      return;
+    }
     if (!address || !client) {
       submitLock.current = false;
       setError("Connect a wallet on the local Arc-compatible chain.");
@@ -218,7 +236,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
     }
     if (!writesEnabled) {
       submitLock.current = false;
-      setError(mismatchMessage);
+      setError(writeBlockMessage ?? mismatchMessage);
       return;
     }
     if (parsed === 0n) {
@@ -469,24 +487,28 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         />{" "}
         %
       </div>
+      <RestrictedNotice className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/8 px-3 py-2 text-[12px] text-amber-50" />
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <Button variant="outline" className="flex-1" onClick={refreshQuote} disabled={!writesEnabled || parsed === 0n || phase === "awaiting_wallet" || phase === "pending"}>
-          Quote
+          {policyBlocked ? writeButtonLabel("Quote") : "Quote"}
         </Button>
         <Button
           className="flex-1"
           onClick={submit}
           disabled={!writesEnabled || isPending || phase === "awaiting_wallet" || phase === "pending" || (!t.marketLive && !t.bonding)}
+          data-testid="trade-confirm"
         >
           {!matched
             ? "Wrong network"
-            : !t.marketLive && !t.bonding
-              ? "Market not live"
-              : phase === "awaiting_wallet"
-                ? "Awaiting signature…"
-                : phase === "pending" || isPending
-                ? "Pending…"
-                : `Confirm ${side}`}
+            : policyBlocked
+              ? writeButtonLabel(`Confirm ${side}`)
+              : !t.marketLive && !t.bonding
+                ? "Market not live"
+                : phase === "awaiting_wallet"
+                  ? "Awaiting signature…"
+                  : phase === "pending" || isPending
+                    ? "Pending…"
+                    : `Confirm ${side}`}
         </Button>
       </div>
       <p data-testid="trade-phase" data-phase={phase} className="mt-2 text-[11px] uppercase tracking-wider text-zinc-400">
@@ -523,7 +545,10 @@ export function TradePanel({ t }: { t: LaunchToken }) {
           className="mt-3 w-full"
           variant="outline"
           onClick={async () => {
-            if (!client) return;
+            if (!client || policyBlocked || !writesEnabled) {
+              setError(writeBlockMessage ?? mismatchMessage);
+              return;
+            }
             try {
               const write = resolveTradeWrite({
                 chainId,
@@ -557,7 +582,8 @@ export function TradePanel({ t }: { t: LaunchToken }) {
 }
 
 export function RewardsModule({ t }: { t: LaunchToken }) {
-  const { address, isConnected, writesEnabled, chainId } = useOfficialChain();
+  const { address, isConnected, writesEnabled, chainId, policyBlocked, writeBlockMessage, writeButtonLabel } =
+    useOperatedWrites();
   const client = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
   const { data: ticketWallet, refetch } = useTicketWallet({
@@ -577,6 +603,10 @@ export function RewardsModule({ t }: { t: LaunchToken }) {
 
   async function claim() {
     setMsg(null);
+    if (policyBlocked || !writesEnabled) {
+      setMsg(writeBlockMessage ?? "REACTOR-operated services are not available for this request.");
+      return;
+    }
     if (!address) return;
     try {
       const write = resolveTradeWrite({
@@ -615,8 +645,8 @@ export function RewardsModule({ t }: { t: LaunchToken }) {
         <Button variant="outline" onClick={refresh} disabled={!isConnected}>
           Refresh
         </Button>
-        <Button onClick={claim} disabled={!writesEnabled || isPending}>
-          {isPending ? "Claiming…" : "Claim"}
+        <Button onClick={claim} disabled={!writesEnabled || isPending} data-testid="rewards-claim">
+          {isPending ? "Claiming…" : writeButtonLabel("Claim")}
         </Button>
       </div>
       {msg && (

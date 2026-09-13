@@ -73,7 +73,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | `page-budget` | always | `pnpm test:page-budget` (4k-market HTTP/RPC budgets; also in `test:lib`) |
 | `foundry-targeted` | fast + Solidity paths | `forge test` (default profile) + `pnpm size:guard` |
 | `solidity + size-guard` | full / main | `FOUNDRY_PROFILE=ci forge test` + Attack suite + CREATE2 `test_hookBits` + `pnpm size:guard` |
-| `web-production-security` | full / main | `pnpm test:web-security` (production Next + live headers + bundle sentinel + XSS corpus) |
+| `web-production-security` | full / main | `pnpm test:restricted` (dev restricted UX + #62 write gate) then `pnpm test:web-security` (production Next + live headers + bundle sentinel + XSS corpus + `restricted-prod` four-state matrix) |
 | `operator-policy-http` | full / main | `pnpm test:operator-policy-http` — real indexer + production Next HTTP matrix (#62). LOCAL `#64` freshness is pinned `#61` fixtures (no live OFAC unless `SANCTIONS_NETWORK=1`). Required by `ci-ok`. |
 | `web-qa` | full / main | `pnpm --filter web test:qa` (production Next visual / a11y / failure-injection). Pixel baselines live on PR #49. |
 | `live-toasts-ui` | full / main | `pnpm test:live-toasts` identity + Playwright |
@@ -100,9 +100,10 @@ Open product issues keep their acceptance commands. Attach new heavy jobs to **t
 | #38 | Live toasts | `live-toasts-ui` (full). Units also run in `test:lib` on the fast gate. |
 | #41 / TESTING row 51 | Hostile metadata / CSP | Cheap units in `test:lib`; production build + Playwright corpus in `web-production-security`. |
 | #61 (merged #66, closed) | Exact official-list OFAC screening fixtures | Cheap units in `test:lib` (`@reactor/sanctions` + `sanctions-api.test.ts`). Closed after `d08aa1c` / `34731099571`. Live HTTPS is `SANCTIONS_NETWORK=1` / `test:sanctions:network` only — not a CI job. |
-| #63 (merged #67, closed) | Trusted geo / jurisdiction policy units | `geo-policy.test.ts` in `test:lib`. Closed after `e712617` / `34731788819` (founder closed after post-merge verify). |
+| #63 (merged #67 core; **reopened**) | Trusted geo / jurisdiction policy units + user-visible restricted state via #65 | `geo-policy.test.ts` in `test:lib`. Core accepted after `e712617` / `34731788819`. **#63 stays open** until PR #75 / #65 user-visible restricted state + post-merge verify. |
 | #62 (merged #68, closed) | Operator policy gate | Cheap units in `test:lib` (`sanctions-policy`, `wallet-proof`, `operator-policy`, BFF, status GET). Full-only job `operator-policy-http` starts the real indexer + production Next and hits `/quote`, `/launch/authorize`, `/upload`, Next `/api/launch-pricing`. Official `#66`/`#67` bind via `tryBindOfficialPolicyPlugins`. Official #65 read: `GET /operator-policy/status`. Closed after `2002aed` / `34733128955`. No new workflow. |
-| #60 / #64 / #65 / #69 | Sanctions parent + freshness / UX + CI cost | **Stay open.** |
+| #65 (PR #75) | Restricted-access UX + #62 write-gate e2e | Full-only step on `web-production-security`: `pnpm test:restricted` (dev) then `pnpm test:web-security` (production `next build`/`next start` matrix in `restricted-prod.spec.ts`: wallet / geo / stale / allow on desktop + 390px, fail-closed, ignored LOCAL flags, write-gate bypass). Full-only `web-qa` also runs `e2e/a11y.spec.ts` for `/restricted` + denied launch/token (axe + `assertNoSubAaMutedText` + 320px / 200% reflow). Do not add a second workflow. **#65 stays open.** |
+| #60 / #64 / #69 | Sanctions parent + freshness + CI cost | **Stay open.** |
 | #35–#41 / #51 / #60 | Existing test requirements | Unchanged in substance. Reachable via `TESTING.md` commands and the full gate. |
 
 Recommended required checks (branch protection): **`constants-version-deployments`** (always present), **`page-budget`** (always present — #37 4k-market HTTP/RPC budgets), and **`ci-ok`** (present on merge-candidate + main; requires `page-budget` success). Do not require a check that the fast tier skips.

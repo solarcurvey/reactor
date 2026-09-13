@@ -54,3 +54,5 @@ The isolated launch-pricing signer (`127.0.0.1:43149`) is not a public API; it u
 Issue **#63** adds `evaluateRequestGeo` on the indexer (trusted edge HMAC + versioned deny revision → ALLOW / DENY / UNKNOWN). It is **not** a public endpoint. HTTP write/authorization enforcement is [Operator policy](/docs/operator-policy). Browser country headers are ignored. See [Geo policy](/docs/geo-policy).
 
 See [Markets](/docs/markets), [Quoting](/docs/quoting), [Admission](/docs/admission), [Operator policy](/docs/operator-policy).
+
+The public Next BFF `GET /api/operator-policy` is the launchpad’s UX status. It never echoes raw IP, country ISO, SDN names, or claimed-wallet flags as authority. Write CTAs disable on `deny` / `unavailable`. See [Restricted access](/docs/restricted-access).

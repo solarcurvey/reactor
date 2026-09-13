@@ -199,7 +199,7 @@ jobs:
     needs: decide
     if: needs.decide.outputs.full == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
@@ -214,6 +214,8 @@ jobs:
             ${{ runner.os }}-playwright-
       - name: Install Playwright Chromium
         run: pnpm --filter web exec playwright install --with-deps chromium
+      - name: Restricted-access UX (dev Playwright + #62 write gate)
+        run: pnpm test:restricted
       - name: Production headers, bundle sentinel, browser XSS corpus
         run: pnpm test:web-security
 

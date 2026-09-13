@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePublicClient, useSignMessage, useWriteContract } from "wagmi";
-import { signOperatorWalletProof } from "@/lib/wallet-proof";
+import { usePublicClient, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "viem/actions";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,17 +18,28 @@ import { TurnstileWidget, turnstileSiteKey } from "@/components/turnstile";
 import { sanitizeDescription, sanitizeMediaUrl, sanitizeTokenName, untrustedMetadataReasons } from "@/lib/untrusted-metadata";
 import { SafeTokenImage } from "@/components/safe-media";
 import { TxGuardError, resolveTradeWrite } from "@/lib/tx-guard";
-import { useOfficialChain } from "@/lib/use-official-chain";
+import { useOperatedWrites } from "@/lib/use-operated-writes";
+import { RestrictedNotice } from "@/components/restricted-notice";
 import { UntrustedText } from "@/components/untrusted-text";
 
 export default function LaunchPage() {
   const router = useRouter();
-  const { address, isConnected, writesEnabled, matched, mismatchMessage, chainId } = useOfficialChain();
+  const {
+    address,
+    isConnected,
+    writesEnabled,
+    matched,
+    mismatchMessage,
+    chainId,
+    policy,
+    policyBlocked,
+    writeBlockMessage,
+    writeButtonLabel,
+  } = useOperatedWrites();
   const client = usePublicClient();
   const { data: quotes, isError: quotesError, error: quotesErr, refetch: refetchQuotes } = useQuotes();
   const scene = useQaScene();
   const { writeContractAsync, isPending } = useWriteContract();
-  const { signMessageAsync } = useSignMessage();
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
   const [image, setImage] = useState("");
@@ -95,7 +105,7 @@ export default function LaunchPage() {
   const tickerStatus = tickerOverride || tickerRemote || "";
 
   async function authorizeLaunch(quoteAddr: `0x${string}`, ticker: string, mode: "instant" | "fair") {
-    const proof = await signOperatorWalletProof((message) => signMessageAsync({ message }));
+    const proof = await policy.ensureProof();
     const res = await fetch("/api/launch-pricing", {
       method: "POST",
       headers: { "content-type": "application/json", ...proof },
@@ -151,6 +161,9 @@ export default function LaunchPage() {
       throw new Error(body.error ?? "Complete the Cloudflare Turnstile challenge, then retry. CHALLENGE is not ALLOW.");
     }
     if (!res.ok || !body.auth || !body.signature) {
+      if (policy.applyWriteError(body)) {
+        throw new Error(body.error ?? "REACTOR-operated launch authorization is unavailable.");
+      }
       throw new Error(body.error ?? body.reasons?.join(", ") ?? "Launch authorization unavailable");
     }
     return {
@@ -178,6 +191,11 @@ export default function LaunchPage() {
     if (submitLock.current) return;
     submitLock.current = true;
     setError(null);
+    if (policyBlocked) {
+      submitLock.current = false;
+      setError(writeBlockMessage ?? policy.userMessage);
+      return;
+    }
     if (!isConnected || !client || !selected || !address) {
       submitLock.current = false;
       setError("Connect a wallet and pick a quote asset.");
@@ -185,7 +203,7 @@ export default function LaunchPage() {
     }
     if (!writesEnabled) {
       submitLock.current = false;
-      setError(mismatchMessage);
+      setError(writeBlockMessage ?? mismatchMessage);
       return;
     }
     try {
@@ -339,6 +357,8 @@ export default function LaunchPage() {
         </Link>
       </p>
 
+      <RestrictedNotice className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/8 px-4 py-3 text-[13px] text-amber-50" />
+
       <Card className="mt-4 space-y-3 p-4">
         <div className="grid gap-2 sm:grid-cols-2">
           <div>
@@ -385,10 +405,13 @@ export default function LaunchPage() {
               }
               try {
                 const { INDEXER_URL } = await import("@/lib/chain");
-                const proof = await signOperatorWalletProof((message) => signMessageAsync({ message }));
-                const res = await fetch(`${INDEXER_URL}/upload`, { method: "POST", headers: proof, body: file });
-                const body = (await res.json()) as { publicUrl?: string; uri?: string; error?: string };
-                if (!res.ok) throw new Error(body.error ?? "upload failed");
+                const proof = await policy.ensureProof();
+                const res = await fetch(`${INDEXER_URL}/upload`, { method: "POST", headers: { ...proof }, body: file });
+                const body = (await res.json()) as { publicUrl?: string; uri?: string; error?: string; reason?: string };
+                if (!res.ok) {
+                  if (policy.applyWriteError(body)) throw new Error(body.error ?? "upload unavailable");
+                  throw new Error(body.error ?? "upload failed");
+                }
                 const next = sanitizeMediaUrl(body.publicUrl ?? body.uri ?? "");
                 if (!next) throw new Error("upload returned a URL the launchpad will not render");
                 setImage(next);
@@ -580,8 +603,11 @@ export default function LaunchPage() {
         className="mt-4 w-full"
         onClick={submit}
         disabled={isPending || phase === "awaiting_wallet" || phase === "pending" || !writesEnabled || !name || !symbol || !quote}
+        data-testid="launch-submit"
       >
-        {!matched ? "Wrong network" : phase === "awaiting_wallet" || isPending ? "Signing…" : path === "instant" ? "Launch Instant" : "Open Fair Launch"}
+        {writeButtonLabel(
+          phase === "awaiting_wallet" || isPending ? "Signing…" : path === "instant" ? "Launch Instant" : "Open Fair Launch",
+        )}
       </Button>
     </div>
   );

@@ -8,6 +8,7 @@ import { Nav } from "@/components/nav";
 import { NetworkBanner } from "@/components/network-banner";
 import { QaInjectBar } from "@/components/qa-inject-bar";
 import { QaInjectProvider } from "@/components/qa-inject-provider";
+import { RestrictedBanner } from "@/components/restricted-banner";
 import { LiveToastProvider } from "@/components/live-toasts";
 import { LiveCacheProvider } from "@/lib/sse";
 
@@ -36,6 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             Skip to main content
           </a>
           <NetworkBanner />
+          <RestrictedBanner />
           <Suspense fallback={null}>
             <QaInjectProvider>
               <LiveCacheProvider>

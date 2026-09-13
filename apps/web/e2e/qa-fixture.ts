@@ -8,17 +8,19 @@ import {
   type PageDiagnostic,
 } from "./console-gate";
 
+export type DiagnosticAllow = RegExp | ((d: PageDiagnostic) => boolean);
+
 export type ConsoleGate = {
   records: PageDiagnostic[];
   injects: Set<string>;
-  extraAllows: RegExp[];
-  allow(pattern: RegExp): void;
+  extraAllows: DiagnosticAllow[];
+  allow(pattern: DiagnosticAllow): void;
 };
 
 function install(page: Page): ConsoleGate {
   const records: PageDiagnostic[] = [];
   const injects = new Set<string>();
-  const extraAllows: RegExp[] = [];
+  const extraAllows: DiagnosticAllow[] = [];
 
   const noteUrl = (url: string) => {
     const kind = parseInjectFromUrl(url);
@@ -64,8 +66,12 @@ export const test = base.extend<{ consoleGate: ConsoleGate }>({
       noteCurrent(page, gate);
       await use(gate);
       noteCurrent(page, gate);
-      const allows = [...allowsForInjects(gate.injects), ...gate.extraAllows];
-      const unexpected = unexpectedDiagnostics(gate.records, allows);
+      const regexAllows = gate.extraAllows.filter((a): a is RegExp => a instanceof RegExp);
+      const predAllows = gate.extraAllows.filter((a): a is (d: PageDiagnostic) => boolean => typeof a === "function");
+      const allows = [...allowsForInjects(gate.injects), ...regexAllows];
+      const unexpected = unexpectedDiagnostics(gate.records, allows).filter(
+        (d) => !predAllows.some((fn) => fn(d)),
+      );
       const payload = diagnosticPayload(gate.records, unexpected);
       if (unexpected.length > 0 || testInfo.status !== testInfo.expectedStatus) {
         await testInfo.attach("page-diagnostics.json", {
