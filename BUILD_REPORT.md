@@ -14,8 +14,8 @@ Official **#62 / PR #68** is on `main`. This branch binds launchpad UX to `GET /
 | Factory | **V1** — **unchanged** |
 | Intent | Dedicated `/restricted` production state, disable operated write CTAs before wallet prompts, honest disclosure of hosted sanctions/geo controls and what they cannot do on permissionless chain reads. |
 | Server dependency | Official #62 / #68 `apps/indexer/src/operator-policy.ts` + `packages/reactor/src/sanctions-policy.ts`. Decision read is `GET /operator-policy/status` (`readOperatorPolicyStatus` / same `evaluateOperatorPolicy` as write gates). No proof → `UNAVAILABLE_WALLET_MISSING` unless geo is independently `DENY`. Challenge is not a decision. Subject is the EIP-191 signer. Claimed browser wallet is ignored. |
-| Tests | Local this HEAD on `35552f6`: `pnpm test:lib` green; Playwright `e2e/restricted.spec.ts` **7/7**; `pnpm test:web-security` **4/4** including production `restricted-prod.spec.ts`. LOCAL page `?fixture=` is forwarded by the provider; production ignores it. |
-| Rebase | Onto `origin/main` `35552f6` (merged **#79** docs evidence onto post-#68 `2002aed`). Same PR **#75** / same branch. Official #61/#62 plugins are on `main`. #63 geo core is on `main` via #67 and **stays open** until this UX lands. Indexer uses canonical `operator-policy.ts`; bind is the #65 test/fixture adapter. |
+| Tests | Verify incoming after rebase onto `cc82cd4` (#70). Prior local on `35552f6`: `pnpm test:lib` green; Playwright `e2e/restricted.spec.ts` **7/7**; `pnpm test:web-security` **4/4**. LOCAL page `?fixture=` is forwarded by the provider; production ignores it. |
+| Rebase | Onto `origin/main` `cc82cd4` (merged **#70** after **#79** / **#68**). Same PR **#75** / same branch. Official #61/#62 plugins and #64 ops are on `main`. #63 geo core is on `main` via #67 and **stays open** until this UX lands. Indexer uses canonical `operator-policy.ts`; bind is the #65 test/fixture adapter. |
 
 | Mainnet | **Blocked** |
 
