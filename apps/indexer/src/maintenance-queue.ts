@@ -194,7 +194,6 @@ export async function recordManagedRelayResult(
     jobId,
   );
   if (!row) throw new Error("managed relay result references unknown job");
-  const resultJson = JSON.stringify(input);
   await store.run(
     `INSERT INTO managed_maintenance_results(result_id,job_id,relay,status,tx_hash,result_json,ts)
      VALUES(?,?,?,?,?,?,?)`,
@@ -203,15 +202,23 @@ export async function recordManagedRelayResult(
     input.relay,
     input.status,
     input.txHash ?? "",
-    resultJson,
+    JSON.stringify(input),
     nowMs,
   );
-  if (input.status === "consumed" || input.status === "already-used" || input.status === "replay") {
-    await store.run(
-      "UPDATE managed_maintenance_jobs SET status='completed', updated_ts=? WHERE job_id=?",
-      nowMs,
-      jobId,
-    );
+}
+
+/** Only canonical/onchain reconciliation may retire a signed job. Relay claims alone never do. */
+export async function completeManagedMaintenance(store: Store, jobId: Hex, nowMs = Date.now()): Promise<void> {
+  await ensureManagedMaintenanceQueue(store);
+  const r = await store.runChanges(
+    "UPDATE managed_maintenance_jobs SET status='completed', updated_ts=? WHERE job_id=? AND status='signed'",
+    nowMs,
+    jobId.toLowerCase(),
+  );
+  if (r.changes === 0) {
+    const row = await store.get<{ status: string }>("SELECT status FROM managed_maintenance_jobs WHERE job_id=?", jobId.toLowerCase());
+    if (!row) throw new Error("cannot complete unknown managed maintenance job");
+    if (row.status !== "completed") throw new Error(`cannot complete managed maintenance job from ${row.status}`);
   }
 }
 

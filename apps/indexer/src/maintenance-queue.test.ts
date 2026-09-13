@@ -16,6 +16,7 @@ import { maintenanceEnvelopeToJson, type UnsignedMaintenanceEnvelope } from "../
 import { openStore } from "./db.ts";
 import {
   attachSignedMaintenance,
+  completeManagedMaintenance,
   enqueueUnsignedMaintenance,
   managedMaintenanceResults,
   nextSignedMaintenance,
@@ -85,7 +86,9 @@ try {
     relay: "B",
     txHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   }, 1300);
-  assert.equal(await nextSignedMaintenance(store, Number(nowSec + 3n)), undefined, "consumed job must leave ready queue");
+  assert.ok(await nextSignedMaintenance(store, Number(nowSec + 3n)), "relay consumed claim alone must not retire job");
+  await completeManagedMaintenance(store, unsigned.job.jobId, 1301);
+  assert.equal(await nextSignedMaintenance(store, Number(nowSec + 3n)), undefined, "canonical completion must retire job");
   const results = await managedMaintenanceResults(store, unsigned.job.jobId);
   assert.deepEqual(results.map((r) => r.status), ["failed", "consumed"]);
 

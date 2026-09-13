@@ -25,7 +25,14 @@ const tokens = {
   "relay-A": "relay-a-token-abcdefghijklmnopqrstuvwxyz",
   "relay-B": "relay-b-token-abcdefghijklmnopqrstuvwxyz",
 } as const;
-const { server, port } = await startMaintenanceQueueServer({ store, tokens: { ...tokens }, port: 0, host: "127.0.0.1" });
+const used = new Set<string>();
+const { server, port } = await startMaintenanceQueueServer({
+  store,
+  tokens: { ...tokens },
+  usedJobVerifier: async (jobId) => used.has(jobId.toLowerCase()),
+  port: 0,
+  host: "127.0.0.1",
+});
 const base = `http://127.0.0.1:${port}`;
 
 async function req(path: string, token?: string, init: RequestInit = {}) {
@@ -67,6 +74,7 @@ try {
   await enqueueUnsignedMaintenance(store, maintenanceEnvelopeToJson(unsigned));
 
   assert.equal((await req("/ops/maintenance/unsigned", tokens["relay-A"])).status, 403, "relay must not read unsigned decision jobs");
+  assert.equal((await req("/ops/maintenance/unsigned", tokens.authorizer, { method: "POST", body: "{}" })).status, 404, "no network unsigned enqueue path");
   const u = await req("/ops/maintenance/unsigned", tokens.authorizer);
   assert.equal(u.status, 200);
   const uj = await u.json() as { item: unknown };
@@ -92,16 +100,20 @@ try {
   assert.equal((await req("/ops/maintenance/result", tokens["relay-A"], { method: "POST", body: JSON.stringify(failed) })).status, 200);
   assert.equal((await req("/ops/maintenance/signed", tokens["relay-B"])).status, 200, "A failure must leave B failover job available");
 
-  const consumed = {
+  const fakeConsumed = {
     status: "consumed",
     jobId: unsigned.job.jobId,
     relay: "B",
     txHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   };
-  assert.equal((await req("/ops/maintenance/result", tokens["relay-B"], { method: "POST", body: JSON.stringify(consumed) })).status, 200);
+  assert.equal((await req("/ops/maintenance/result", tokens["relay-B"], { method: "POST", body: JSON.stringify(fakeConsumed) })).status, 409, "relay claim without usedJob must not retire queue item");
+  assert.equal((await req("/ops/maintenance/signed", tokens["relay-A"])).status, 200);
+
+  used.add(unsigned.job.jobId.toLowerCase());
+  assert.equal((await req("/ops/maintenance/result", tokens["relay-B"], { method: "POST", body: JSON.stringify(fakeConsumed) })).status, 200);
   assert.equal((await req("/ops/maintenance/signed", tokens["relay-A"])).status, 204);
 
-  console.log("maintenance queue API role tests: ok");
+  console.log("maintenance queue API role/onchain-completion tests: ok");
 } finally {
   await new Promise<void>((resolve, reject) => server.close((e) => e ? reject(e) : resolve()));
   await store.close();

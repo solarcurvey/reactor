@@ -1,9 +1,12 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import { AddressInfo } from "node:net";
+import { createPublicClient, http, parseAbi, type Address, type Hex } from "viem";
+import deployment from "./deployment.json" with { type: "json" };
 import { openStore, type Store } from "./db.ts";
 import {
   attachSignedMaintenance,
+  completeManagedMaintenance,
   nextSignedMaintenance,
   nextUnsignedMaintenance,
   recordManagedRelayResult,
@@ -12,9 +15,10 @@ import {
 import { maintenanceEnvelopeToJson } from "../../../packages/reactor/src/maintenance-envelope.ts";
 
 const MAX_BODY = 128 * 1024;
+const gatewayAbi = parseAbi(["function usedJob(bytes32) view returns (bool)"]);
 type QueueRole = "authorizer" | "relay-A" | "relay-B";
-
 type QueueTokens = Record<QueueRole, string>;
+type UsedJobVerifier = (jobId: Hex) => Promise<boolean>;
 
 function json(res: ServerResponse, code: number, body: unknown) {
   res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" });
@@ -54,11 +58,28 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
+function defaultUsedJobVerifier(): UsedJobVerifier {
+  const prod = (process.env.REACTOR_ENV ?? "").toUpperCase() === "PROD" || process.env.NODE_ENV === "production";
+  const rpc = process.env.MAINTENANCE_RPC_URL ?? process.env.NEXT_PUBLIC_RPC_URL ?? deployment.rpc;
+  const configuredGateway = process.env.MAINTENANCE_GATEWAY_ADDRESS;
+  const fallbackGateway = (deployment.addresses as Record<string, string>).AutomationGateway;
+  if (prod && (!process.env.MAINTENANCE_RPC_URL || !configuredGateway)) {
+    throw new Error("production maintenance queue requires explicit MAINTENANCE_RPC_URL and MAINTENANCE_GATEWAY_ADDRESS");
+  }
+  const gateway = (configuredGateway ?? fallbackGateway) as Address | undefined;
+  if (!rpc || !gateway || !/^0x[0-9a-fA-F]{40}$/.test(gateway)) {
+    throw new Error("maintenance queue onchain usedJob verifier unavailable");
+  }
+  const client = createPublicClient({ transport: http(rpc, { timeout: 8_000 }) });
+  return async (jobId: Hex) => client.readContract({ address: gateway, abi: gatewayAbi, functionName: "usedJob", args: [jobId] });
+}
+
 export async function handleMaintenanceQueueRequest(
   req: IncomingMessage,
   res: ServerResponse,
   store: Store,
   tokens: QueueTokens,
+  usedJobVerifier: UsedJobVerifier,
 ): Promise<void> {
   const url = new URL(req.url ?? "/", "http://127.0.0.1");
   if (req.method === "GET" && url.pathname === "/health") {
@@ -121,7 +142,22 @@ export async function handleMaintenanceQueueRequest(
         return;
       }
       await recordManagedRelayResult(store, body);
-      json(res, 200, { stored: true, jobId: body.jobId, status: body.status });
+      const terminalClaim = body.status === "consumed" || body.status === "already-used" || body.status === "replay";
+      if (terminalClaim) {
+        const used = await usedJobVerifier(body.jobId);
+        if (!used) {
+          json(res, 409, {
+            stored: true,
+            completed: false,
+            jobId: body.jobId,
+            status: body.status,
+            error: "relay terminal claim not confirmed by AutomationGateway.usedJob",
+          });
+          return;
+        }
+        await completeManagedMaintenance(store, body.jobId);
+      }
+      json(res, 200, { stored: true, completed: terminalClaim, jobId: body.jobId, status: body.status });
       return;
     }
     json(res, 404, { error: "not found" });
@@ -135,6 +171,7 @@ export async function handleMaintenanceQueueRequest(
 export async function startMaintenanceQueueServer(opts?: {
   store?: Store;
   tokens?: QueueTokens;
+  usedJobVerifier?: UsedJobVerifier;
   port?: number;
   host?: string;
 }) {
@@ -145,10 +182,11 @@ export async function startMaintenanceQueueServer(opts?: {
     "relay-B": process.env.MAINTENANCE_RELAY_B_TOKEN ?? "",
   };
   assertTokenSet(tokens);
+  const usedJobVerifier = opts?.usedJobVerifier ?? defaultUsedJobVerifier();
   const requestedPort = opts?.port ?? Number(process.env.MAINTENANCE_API_PORT ?? 43150);
   const host = opts?.host ?? process.env.MAINTENANCE_API_HOST ?? "127.0.0.1";
   const server = createServer((req, res) => {
-    handleMaintenanceQueueRequest(req, res, store, tokens).catch((e) => {
+    handleMaintenanceQueueRequest(req, res, store, tokens, usedJobVerifier).catch((e) => {
       console.error("maintenance queue request failed", e);
       if (!res.headersSent) json(res, 500, { error: "internal" });
       else res.end();

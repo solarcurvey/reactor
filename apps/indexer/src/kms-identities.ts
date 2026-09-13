@@ -1,15 +1,24 @@
+import { execFileSync } from "node:child_process";
 import { getAddress } from "viem";
-import { createAwsKmsDigestSigner } from "./aws-kms-backend.ts";
-import { KmsDigestSigner } from "./kms-evm.ts";
+import { kmsPublicKeyToAddress } from "./kms-evm.ts";
+import { validateAwsKmsPublicKey, type AwsKmsPublicKeyResult } from "./aws-kms-backend.ts";
 
 const names = ["MAINTENANCE_KMS_KEY_ID", "RELAY_A_KMS_KEY_ID", "RELAY_B_KMS_KEY_ID"] as const;
 const rows = [] as Array<{ role: string; keyId: string; address: string }>;
 for (const name of names) {
   const keyId = process.env[name];
   if (!keyId) throw new Error(`${name} required`);
-  const backend = await createAwsKmsDigestSigner({ keyId, region: process.env.AWS_REGION });
-  const signer = new KmsDigestSigner(backend);
-  rows.push({ role: name, keyId, address: getAddress(await signer.address()) });
+  const raw = execFileSync(
+    "aws",
+    ["kms", "get-public-key", "--key-id", keyId, "--output", "json"],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] },
+  );
+  const result = JSON.parse(raw) as AwsKmsPublicKeyResult & { PublicKey?: string };
+  const validated = validateAwsKmsPublicKey({
+    ...result,
+    PublicKey: result.PublicKey ? Buffer.from(result.PublicKey, "base64") : undefined,
+  });
+  rows.push({ role: name, keyId, address: getAddress(kmsPublicKeyToAddress(validated)) });
 }
 const addresses = rows.map((r) => r.address.toLowerCase());
 if (new Set(addresses).size !== addresses.length) throw new Error("KMS EVM addresses must be distinct");
