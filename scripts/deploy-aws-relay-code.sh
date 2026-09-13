@@ -11,11 +11,12 @@ test -n "$REGION" || { echo "AWS_REGION or AWS_RELAY_REGION is required" >&2; ex
 test -n "$PREFIX" || { echo "AWS_RELAY_NAME_PREFIX is required" >&2; exit 1; }
 test -f "$ZIP_PATH" || { echo "bundle missing: $ZIP_PATH (run pnpm build:aws-relay)" >&2; exit 1; }
 
-# This helper deliberately changes Lambda code only. The OIDC role in
-# infra/aws-relay has no IAM/KMS/config/pass-role authority.
-for suffix in maintenance-authorizer relay-a relay-b; do
+# GitHub/OIDC is intentionally allowed to update only the liveness relays.
+# The maintenance-authorizer Lambda carries kms:Sign on the trusted decision key;
+# its code/config changes require the human-reviewed Terraform/admin path.
+for suffix in relay-a relay-b; do
   fn="${PREFIX}-${suffix}"
-  echo "deploying reviewed code to $fn"
+  echo "deploying reviewed relay code to $fn"
   aws --region "$REGION" lambda update-function-code \
     --function-name "$fn" \
     --zip-file "fileb://$ZIP_PATH" \
@@ -23,4 +24,4 @@ for suffix in maintenance-authorizer relay-a relay-b; do
   aws --region "$REGION" lambda wait function-updated --function-name "$fn"
 done
 
-echo "AWS relay code deployed to all three functions; IAM/KMS/runtime configuration unchanged."
+echo "AWS Relay A/B code deployed; maintenance-authorizer/IAM/KMS/runtime configuration unchanged."
