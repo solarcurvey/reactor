@@ -2,14 +2,14 @@
 
 > `AutomationGateway` is `ReactorGuardian.keeper` on this draft. Relayers have no ranking, route, or floor authority. See [Keeper](/docs/keeper).
 
-Maintenance is **not** a privileged EOA calling vaults. `AutomationGateway` is `ReactorGuardian.keeper`. Relayers (Chainlink CRE, Gelato, a standby wallet, anyone) only **deliver** a short-lived EIP-712 `MaintenanceJob`. They have no ranking, route, or floor authority.
+Maintenance is **not** a privileged EOA calling vaults. `AutomationGateway` is `ReactorGuardian.keeper`. Relayers (AWS managed relays, Chainlink CRE, Gelato, anyone) only **deliver** a short-lived EIP-712 `MaintenanceJob`. They have no ranking, route, or floor authority.
 ## Four roles (do not collapse)
 
 | Role | What it does | What it cannot do |
 | --- | --- | --- |
 | **Decision service** | Indexer ValuationService + `GET /top10` + `/pricing/health` + fee-exempt route sim | Write onchain. Guess a mark. Change 2/1/0.5 |
 | **Auth signer** | `AutomationGateway.jobSigner` — signs the exact job (action, payload hash, hops, minOut, amount, snapshot) | Call vaults. The signer key is not `keeper` |
-| **Relayer** | Submits a signed job (CRE / Gelato / daemon / any EOA) | Change targets, hops, minOut, or amount. First valid consume wins |
+| **Relayer** | Submits a signed job (AWS Relay A/B / CRE / Gelato / any EOA) | Change targets, hops, minOut, or amount. First valid consume wins |
 | **Guardian** | Pause gateway or Keeper, rotate `jobSigner`, replace `keeper` with a new gateway | Rank Top-10, withdraw LP, rewrite fees |
 
 CRE does **not** decentralize Top-10 ranking. Ranks remain trusted offchain computation. CRE (when used) is a courier of an already-signed job.
@@ -27,7 +27,7 @@ Inventory (action id is the signed `MaintenanceJob.action`):
 | 4 | Roll epoch | `rollEpoch` | `FlywheelVault.rollEpoch` | `test_top10ThenRollThroughGateway` |
 | 5 | CORE buyback | `executeBuyback` | `BuybackVault.execute` | `test_buybackThroughGateway` |
 
-There is no generic `target.call(calldata)`. `onReport` decodes the same `MaintenanceJob` + typed args for CRE-native report delivery. Unknown `action` is `UnknownAction`. Calling the wrong typed entrypoint for a signed action is `WrongAction`.
+There is no generic `target.call(calldata)`. `onReport` decodes the same `MaintenanceJob` + typed args for CRE/native report delivery and for the provider-agnostic managed relay. Unknown `action` is `UnknownAction`. Calling the wrong typed entrypoint for a signed action is `WrongAction`.
 `InstantCurve.graduate` is **permissionless** and is **not** a gateway job.
 
 ## Job bind
@@ -46,7 +46,29 @@ Two recorded proofs, same `MaintenanceJob` format:
 
 After #73 those proofs run on `.github/workflows/ci.yml`: fast+Solidity `foundry-targeted` `forge test` covers the Foundry contracts; full/main `solidity + size-guard` also re-runs both rehearsal scripts. The indexer unit suite does not spawn `forge` or `anvil`. Encode-only calldata identity is not that proof. See [CI and cost](/docs/ci).
 
-Those Anvil / Foundry rehearsals prove Gateway consume / Replay semantics. They are **not** the #83 production key model (AWS KMS secp256k1 authorizer + dual managed relays, no raw `JOB_SIGNER_PRIVATE_KEY` fallback).
+Those Anvil / Foundry rehearsals prove Gateway consume / Replay semantics. They are **not** the #83 production key model.
+
+## AWS KMS production baseline (#83)
+
+V1 production execution uses:
+
+`ValuationService → KMS-backed MaintenanceJob authorizer → signed envelope → Relay A / delayed Relay B → AutomationGateway`
+
+Implementation lives in `apps/indexer/src/aws-relay/`; infrastructure lives in `infra/aws-relay/`.
+
+- Three distinct AWS KMS `ECC_SECG_P256K1` keys: maintenance authorizer, Relay A, Relay B.
+- Production code refuses raw `JOB_SIGNER_PRIVATE_KEY`, `KEEPER_PRIVATE_KEY`, or `RELAYER_PRIVATE_KEY` fallbacks in this managed path.
+- KMS DER ECDSA output is parsed, low-s normalized and locally recovery-verified before use.
+- Relays independently recompute the signed action payload/snapshot and exact `AutomationGateway.onReport` calldata; endpoint-supplied calldata is not blindly trusted.
+- Relay A is immediate. Relay B waits 15 seconds **only when a pending envelope exists**, then checks `usedJob(jobId)` and avoids a second broadcast if A already consumed the job. Idle ticks return immediately.
+- Both relays preflight the exact Gateway call before signing a transaction.
+- Each Lambda has reserved concurrency 1; scheduled async retries are disabled. The next one-minute tick is the retry boundary, preventing overlapping invocation storms.
+- GitHub OIDC is deliberately **relay-code-only**. An explicit `lambda:*` deny prevents that role from controlling or invoking the maintenance-authorizer Lambda; authorizer code/config changes remain on the human-reviewed Terraform/admin path. This matters because control of authorizer code would indirectly grant use of its KMS signing authority.
+- There is no VPC/NAT Gateway, dedicated RDS, Kubernetes, or always-on EC2 requirement for this executor.
+
+Build: `pnpm build:aws-relay`. Cheap cryptographic/IaC gates: `pnpm test:aws-relay`, which also assembles the Lambda ZIP. `scripts/deploy-aws-relay-code.sh` updates Relay A/B only; #69 keeps deployment wiring inside the single existing `.github/workflows/ci.yml` if/when that manual OIDC gate is added. The maintenance authorizer is never GitHub code-deployed.
+
+The remaining production gates are intentionally external: authenticated canonical plan/envelope persistence, real AWS KMS-derived addresses, Arc Public Testnet A/B failover/replay transactions + gas measurements, and final Guardian/Gateway onchain state. Until those are recorded, #83 stays open.
 
 ## Production path vs optional CRE
 
@@ -54,6 +76,6 @@ Those Anvil / Foundry rehearsals prove Gateway consume / Replay semantics. They 
 
 Authenticated `cre workflow simulate` on catalog 1883 is **optional interoperability evidence**. It is not a #54 merge blocker and not the #51 production closer. Official `cre workflow build` (CLI v1.33.0, no tenant) compiled the signed-job courier to WASM — `ops/cre/simulation/cre-workflow-build.json`. That compile is **not** a `Workflow Simulation Result`. The tenant-auth attempt remains unrun (`ops/cre/simulation/cre-tenant-blocker.json` `closed:false`).
 
-Not a live CRE DON. Not claimed Arc Public Testnet. Not Arc Mainnet 5042. No human or AI click in the autonomous loop.
+Not a live CRE DON. The AWS implementation is not claimed deployed until real KMS/Testnet evidence is recorded. Arc Mainnet 5042 remains disabled for this pre-production path. No human or AI click belongs in the normal autonomous loop.
 
-See `KEEPER_MODEL.md`, [Keeper](/docs/keeper), [Trust](/docs/trust), `ops/cre/README.md`, `INCIDENT_RESPONSE.md`.
+See `KEEPER_MODEL.md`, [Keeper](/docs/keeper), [Trust](/docs/trust), `infra/aws-relay/README.md`, `ops/cre/README.md`, `INCIDENT_RESPONSE.md`.

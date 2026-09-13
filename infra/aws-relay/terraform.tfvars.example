@@ -1,0 +1,9 @@
+aws_region            = "us-east-1"
+name_prefix           = "reactor-testnet"
+lambda_zip_path       = "../../dist/reactor-aws-relay.zip"
+chain_id              = 1883
+gateway_address       = "0x0000000000000000000000000000000000000000"
+rpc_url               = "https://REPLACE_ME"
+plan_url              = "https://REPLACE_ME/automation/plan"
+signed_job_sink_url   = "https://REPLACE_ME/automation/signed"
+signed_job_source_url = "https://REPLACE_ME/automation/signed/next"
