@@ -90,7 +90,7 @@ export default function OpsPage() {
   return (
     <div>
       <div className="border-b border-white/8 pb-4">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-200/80">Internal</p>
+        <p className="rx-kicker">Internal</p>
         <h1 className="mt-1 text-2xl font-semibold text-white">Ops</h1>
         <p className="mt-1 max-w-2xl text-[13px] text-zinc-400">
           Internal only — not in public nav. Requires OPS_TOKEN. Keeper / Watchdog / Pricing signer keys stay isolated.
@@ -185,7 +185,7 @@ export default function OpsPage() {
       </div>
 
       <Card className="mt-3 p-4">
-        <div className="text-[11px] uppercase tracking-wider text-zinc-500">Web outage paging</div>
+        <div className="rx-kicker">Web outage paging</div>
         <p className="mt-2 text-[13px] text-zinc-300">
           Encode the runbook: page on clustered render / API / RPC / quote / SSE / simulation. Expected wallet{" "}
           <code>4001</code> never pages. Release {releaseInfo().release} · {releaseInfo().reactorEnv} · chain{" "}
@@ -193,7 +193,7 @@ export default function OpsPage() {
         </p>
         <table className="mt-3 w-full text-left font-mono text-[11px] text-zinc-300">
           <thead>
-            <tr className="text-zinc-500">
+            <tr className="text-zinc-400">
               <th className="pb-1">class</th>
               <th className="pb-1">count / window</th>
               <th className="pb-1">consecutive</th>

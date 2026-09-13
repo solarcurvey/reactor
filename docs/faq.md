@@ -46,6 +46,8 @@
 
 **Is this repository public?** Not unless the founder flips visibility. Do not publicize without that instruction. The operator checklist is [Repo publicization](/docs/publicization) (Refs #72). Personal-mailbox trailers were remapped to GitHub noreply on advertised refs; residual GitHub dangling objects are accepted. Agents must not flip visibility.
 
+**Is the brand locked?** Visual direction yes — **Industrial Forge** (Direction C), founder-approved. Canonical tokens and assets are in [Brand](/docs/brand). Issue [#55](https://github.com/solarcurvey/reactor/issues/55) stays open until independent audit of the production surfaces. Not a protocol change.
+
 **What does CI run?** Fast PR: `pnpm test:lib` (indexer + web unit + `docs:check` + `docs:links` + cheap security). Full merge-candidate / main: that plus Foundry (`FOUNDRY_PROFILE=ci`, Attack suite, CREATE2, size guard), production Next security, live-toasts, Postgres, Playwright smoke + interactive, and #35 `e2e-release-gate`. See [CI and cost](/docs/ci).
 
 **Why didn't the full CI suite run?** Draft feature-branch updates and **docs-only / trivial** PRs (even ready-for-review) run the fast gate only (`pnpm test:lib`, plus targeted Foundry if Solidity changed). A non-draft **code** PR, the `ci-full` label, or `workflow_dispatch` tier **full** runs the heavy matrix. See [CI and cost](/docs/ci).

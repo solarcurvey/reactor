@@ -17,7 +17,7 @@ export function ServiceFailure({
     <div
       role="alert"
       data-testid={`failure-${kind}`}
-      className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4"
+      className="mt-6 rounded-[4px] border border-red-500/30 bg-red-500/10 p-4"
     >
       <h2 className="text-sm font-semibold text-red-50">{copy.title}</h2>
       <p className="mt-1 text-sm text-red-100/90">{copy.body}</p>

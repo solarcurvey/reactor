@@ -12,6 +12,7 @@ import { RestrictedBanner } from "@/components/restricted-banner";
 import { LiveToastProvider } from "@/components/live-toasts";
 import { LiveCacheProvider } from "@/lib/sse";
 import { releaseInfo } from "@/lib/obs/release";
+import { BRAND_COPY } from "@/lib/brand";
 
 const rel = releaseInfo();
 
@@ -26,9 +27,35 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "REACTOR — Launch. Reflect. Burn.",
-  description: "Launch markets that pay holders. Official REACTOR pools on Arc.",
+  metadataBase: new URL("https://reactor.markets"),
+  title: {
+    default: BRAND_COPY.title,
+    template: "%s · REACTOR",
+  },
+  description: BRAND_COPY.description,
+  applicationName: BRAND_COPY.product,
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  manifest: "/site.webmanifest",
+  openGraph: {
+    title: BRAND_COPY.ogTitle,
+    description: BRAND_COPY.ogDescription,
+    siteName: BRAND_COPY.product,
+    images: [{ url: "/og/default.png", width: 1200, height: 630, alt: BRAND_COPY.title }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: BRAND_COPY.ogTitle,
+    description: BRAND_COPY.ogDescription,
+    images: ["/og/default.png"],
+  },
   other: {
+    "msapplication-TileColor": "#12110f",
     "reactor-release": rel.release,
     "reactor-build-sha": rel.buildSha,
     "reactor-protocol": rel.protocolVersion,
@@ -60,11 +87,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     {children}
                   </main>
                   <footer
-                    className="border-t border-white/6 px-4 py-6 text-center text-[11px] uppercase tracking-[0.16em] text-zinc-400"
+                    className="border-t border-white/8 px-4 py-6 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-rx-muted"
                     title={rel.release}
                     data-release={rel.release}
                   >
-                    REACTOR · Built on Arc · Not audited · Test / local only
+                    REACTOR · Token launch on Arc · Not audited · Test / local only
                   </footer>
                 </LiveToastProvider>
               </LiveCacheProvider>

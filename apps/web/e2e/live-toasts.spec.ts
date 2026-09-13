@@ -131,7 +131,7 @@ test("bottom-right toasts only confirmed live CORE and Top-10 buy+burn", async (
   const vp = page.viewportSize();
   expect(box && vp && box.x + box.width > vp.width * 0.6 && box.y + box.height > vp.height * 0.7).toBeTruthy();
 
-  await page.getByRole("navigation").getByRole("link", { name: /^Reactor$/ }).click();
+  await page.getByRole("navigation").getByRole("link", { name: /^THE REACTOR$/ }).click();
   await expect(page.getByRole("heading", { name: /Top-10 flywheel/i })).toBeVisible();
   await expect(page.getByTestId("live-toast")).toHaveCount(3);
 });

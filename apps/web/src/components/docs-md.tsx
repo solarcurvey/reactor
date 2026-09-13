@@ -12,7 +12,7 @@ function inline(text: string) {
     const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(p);
     if (link) {
       return (
-        <SafeDocLink key={i} href={link[2]!} className="text-cyan-200 underline underline-offset-2">
+        <SafeDocLink key={i} href={link[2]!} className="rx-link">
           {link[1]}
         </SafeDocLink>
       );

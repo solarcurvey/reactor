@@ -1,6 +1,8 @@
 # Docs policy
 
-Documentation is **mandatory in the same run** as any behavior change: contracts, tokenomics, Factory, Guardian/Keeper, routing, admission, API, SDK, CORE, tickers, trust, UX.
+Documentation is **mandatory in the same run** as any behavior change: contracts, tokenomics, Factory, Guardian/Keeper, routing, admission, API, SDK, CORE, tickers, trust, UX, brand.
+
+Brand / visual identity is [Industrial Forge](/docs/brand) (Direction C, founder-locked). Issue [#55](https://github.com/solarcurvey/reactor/issues/55) stays open until independent audit. Do not change frozen economics for visual reasons.
 
 Protocol semver: `docs/version.json`. Factory `FACTORY_VERSION` is a different immutable number.
 

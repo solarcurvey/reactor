@@ -1,6 +1,6 @@
 # UX_REFERENCE
 
-Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy, assets, or code were taken.** REACTOR brand stays graphite + cyan core + concentric mark.
+Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy, assets, or code were taken.** Canonical brand is Industrial Forge (Direction C): slag + steel + heat, vessel mark. See [`/docs/brand`](docs/brand.md).
 
 ## Layout density
 
@@ -22,8 +22,8 @@ Structure-only notes from public Stonk-class launchpads (2026-09-11). **No copy,
 - Board / search / token page / quote picker read the indexer (`/markets`, `/page/token`, `/quote-assets`). Search is SQL `q` + `stage`, not a client filter of the full board. Token page is one aggregated hop. Live swap tickets stay `POST /quote` (30s, fail-closed) — not a cached mark. Expensive catalog/CORE/wallet reads do not refetch on window focus. SSE trade prints patch cached rows; they do not refetch the board.
 - Confirmed CORE and Top-10 buy+burn land as **bottom-right** toasts after indexer SSE commit (not mempool, not epoch submit, not Standard SelfBurn). Dedupe is `(chainId, tx, logIndex, eventKind)` and survives dismiss. Auto-dismiss pauses on hover/focus. Safe-area insets. `prefers-reduced-motion` skips the enter animation. Explorer tx link.
 - Internal `/ops` shows official-list dataset version, content hash, freshness, and operator/geo policy versions. Not in public nav.
-- Restricted access is a dedicated `/restricted` page plus an amber banner. Confirm / Launch / Quote / bid / claim disable before a wallet prompt when the server decision is deny or unavailable. Three public states only: account, location, temporarily unavailable. Stale or missing official-list freshness (#64) is the temporary state. Copy matches merged #61–#64 (exact-list screen, trusted geo, recovered-wallet write gate, 7-day freshness / stale fail-closed). `/restricted` muted headings and disclosure use `text-zinc-400` (same AA floor as the rest of the product). `?kind=` is applied from the server request (not `useSearchParams`) so production `next start` hydration matches. No VPN/bypass copy. Markets and docs stay readable.
-- Route/app failures show a graphite error boundary (retry + Discover + Docs) with the release SHA and `ref {traceId} · chain {chainId}` — not a blank page and not a protocol-pause banner. Trade / launch / fair request errors show the same ref.
+- Restricted access is a dedicated `/restricted` page plus an amber banner. Confirm / Launch / Quote / bid / claim disable before a wallet prompt when the server decision is deny or unavailable. Three public states only: account, location, temporarily unavailable. Stale or missing official-list freshness (#64) is the temporary state. Copy matches merged #61–#64 (exact-list screen, trusted geo, recovered-wallet write gate, 7-day freshness / stale fail-closed). `/restricted` muted headings and disclosure use `text-zinc-400` (same AA floor as the rest of the product). Brand chrome matches Industrial Forge: heat `rx-kicker`, 0–4px radius, no cyan; amber is the semantic deny warning only. `?kind=` is applied from the server request (not `useSearchParams`) so production `next start` hydration matches. No VPN/bypass copy. Markets and docs stay readable.
+- Route/app failures show an Industrial Forge error boundary (heat `rx-kicker`, retry + Discover + Docs) with the release SHA and `ref {traceId} · chain {chainId}` — not a blank page and not a protocol-pause banner. Trade / launch / fair request errors show the same ref.
 
 ## Failures (visible, not empty)
 
@@ -31,7 +31,7 @@ Indexer / RPC / `POST /quote` outages use a shared `role="alert"` banner + Retry
 
 ## Accessibility
 
-Skip-to-main, labelled search/trade/launch fields, `aria-pressed` on chips and buy/sell, `aria-current` on nav, accessible home mark on 390 (logo is otherwise SVG-only). Dialogs (Account, confirm) trap focus and restore it. Live toasts use `role="status"|"alert"` + `aria-live`. `prefers-reduced-motion` kills pulse. Keyboard reaches filters, launch quote buttons, and the ticket. CI axe is `wcag2a/21a/2aa` **including color-contrast** (canvas / CORE mark / live ticks excluded as unmeasurable). Brand tokens are also asserted deterministically; muted copy uses `text-zinc-400` (stock zinc-500/600 fail AA on `#0b0d10`). Plus 200% zoom / 320 CSS px reflow, including `/restricted` and a denied operator-policy launch/token. The QA fixture also fails the production-build gate on unexpected console errors, hydration warnings, and uncaught page exceptions.
+Skip-to-main, labelled search/trade/launch fields, `aria-pressed` on chips and buy/sell, `aria-current` on nav, accessible home mark on 390 (logo is otherwise SVG-only). Dialogs (Account, confirm) trap focus and restore it. Live toasts use `role="status"|"alert"` + `aria-live`. `prefers-reduced-motion` kills pulse. Keyboard reaches filters, launch quote buttons, and the ticket. CI axe is `wcag2a/21a/2aa` **including color-contrast** (canvas / CORE mark / live ticks excluded as unmeasurable). Brand tokens are also asserted deterministically; muted copy uses `#9AA4AD` / `text-zinc-400` (stock zinc-500/600 fail AA on slag `#12110F`). Plus 200% zoom / 320 CSS px reflow, including `/restricted` and a denied operator-policy launch/token. The QA fixture also fails the production-build gate on unexpected console errors, hydration warnings, and uncaught page exceptions.
 
 ## Mobile 390 / 360 Android
 

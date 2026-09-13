@@ -1,9 +1,11 @@
 # REACTOR
 
 **Launch. Reflect. Burn.**  
-**Choose what your token earns.** Launch markets that pay holders in the quote you pick.
+**Choose what your token earns.** Rewards pay holders in the quote you pick; Standard burns the 2%.
 
-Token launchpad for **Arc**. Official REACTOR pools are Uniswap v4 markets with a **0% LP fee** and a **3.5% quote-side protocol charge** (2% holders / 1% Top-10 flywheel / 0.5% CORE buy+burn). Maintenance is a designated Keeper. The only security authority is an immutable Guardian. Built on Arc.
+Token launchpad for **Arc** — not an AI trading terminal. Official REACTOR pools are Uniswap v4 markets with a **0% LP fee** and a **3.5% quote-side protocol charge** (2% holders / 1% Top-10 flywheel / 0.5% CORE buy+burn). Maintenance is a designated Keeper. The only security authority is an immutable Guardian. Built on Arc.
+
+Visual identity is **Industrial Forge** (founder-locked Direction C). Vessel mark, slag / steel / heat. See [`docs/brand.md`](docs/brand.md). Issue #55 stays open until independent audit.
 
 > This repository is **not audited**. Do not deploy to Arc Mainnet (chain 5042).
 

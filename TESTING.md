@@ -51,7 +51,7 @@ npx --yes tsx apps/web/src/lib/operator-policy-bff.test.ts
 pnpm test:operator-policy-http  # real indexer + production Next HTTP matrix (CI full/main job operator-policy-http)
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
 pnpm docs:links                 # in-repo /docs slugs + relative files (CI docs-links job; no network)
-pnpm test:web-unit              # top10 / marketdata / limited-json / fee-legs / constants-sync
+pnpm test:web-unit              # top10 / marketdata / limited-json / fee-legs / constants-sync / brand voice
 pnpm test:ci-cost               # #69: no duplicate push+PR, concurrency, docs-only classification, fail-safe paths
 npx --yes tsx scripts/ci-public-harden.test.ts  # #72: permissions / persist-credentials / no pull_request_target
 # CI: .github/workflows/ci.yml contents:read; actions/checkout persist-credentials:false.
@@ -66,7 +66,7 @@ tsx apps/web/e2e/contrast.test.ts
 # CI full/main: .github/workflows/ci.yml job obs-ui. Fast PR: obs unit via test:lib. #39 stays open until merge + post-merge verify.
 pnpm test:web-security          # production next build/start: live headers, bundle sentinel, XSS corpus
 # CI full/main: .github/workflows/ci.yml job web-production-security
-# CI full/main: .github/workflows/ci.yml job web-qa. #36 closed after #49 post-merge `ad7b457` / 34729758795.
+# CI full/main: .github/workflows/ci.yml job web-qa. #36 closed after #49 post-merge `ad7b457` / 34729758795; gate remains required.
 pnpm test:e2e:release           # production `next build`/`next start` + EIP-1193 wallet gate (issue #35)
 # CI full/main: .github/workflows/ci.yml job e2e-release-gate. Do not add e2e-release.yml.
 # Real Postgres (docker compose postgres on :54329, or local 5432)
@@ -192,7 +192,7 @@ CI=1 pnpm --filter web test:qa
 pnpm --filter web test:update-screenshots   # Linux Chromium only — same as Actions; against next build
 ```
 
-`playwright.qa.config.ts` builds with `e2e/harness/start-web.mjs` (shared #35 path), `qa-mock.mjs`, and `qa-rpc.mjs` (JSON-RPC stub on the compiled RPC URL — not Anvil). Viewports include 1280 laptop and 360 Android. `?inject=` covers quote 429/413/5xx/stale/expired/noroute, pricing, upload, SSE, empty, invalid token/ticker, wallet reject/revert. Axe `color-contrast` is on (only canvas / visual-mask / visual-dynamic excluded); muted text is `text-zinc-400` and leftover `text-zinc-500|600|700` fails `assertNoSubAaMutedText`. The shared console/pageerror fixture fails the run on unexpected `console.error`, hydration warnings, and uncaught page exceptions (narrow inject allowlists only). Production builds omit the flags and ignore inject. See `/docs/qa`. Issue **#36 closed** after #49 post-merge `ad7b457` / [`34729758795`](https://github.com/solarcurvey/reactor/actions/runs/34729758795).
+`playwright.qa.config.ts` builds with `e2e/harness/start-web.mjs` (shared #35 path), `qa-mock.mjs`, and `qa-rpc.mjs` (JSON-RPC stub on the compiled RPC URL — not Anvil). Viewports include 1280 laptop and 360 Android. `?inject=` covers quote 429/413/5xx/stale/expired/noroute, pricing, upload, SSE, empty, invalid token/ticker, wallet reject/revert. Axe `color-contrast` is on (only canvas / visual-mask / visual-dynamic excluded); Industrial Forge muted floor is `#9AA4AD` / `text-zinc-400` and leftover `text-zinc-500|600|700` fails `assertNoSubAaMutedText`. The shared console/pageerror fixture fails the run on unexpected `console.error`, hydration warnings, and uncaught page exceptions (narrow inject allowlists only). Production builds omit the flags and ignore inject. After a wallet-E2E rebase, recapture overlapping goldens so they show Industrial Forge **and** #44 phase/wallet chrome — do not keep pre-#44 pixels and do not loosen `maxDiffPixelRatio`. See `/docs/qa`. Issue **#36 closed** after #49 post-merge `ad7b457` / [`34729758795`](https://github.com/solarcurvey/reactor/actions/runs/34729758795). `web-qa` remains required.
 
 ### Production-build browser + wallet gate (issue #35)
 

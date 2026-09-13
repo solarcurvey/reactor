@@ -12,7 +12,7 @@ export function RestrictedNotice({ className }: { className?: string }) {
       data-testid="restricted-notice"
       className={
         className ??
-        "rounded-xl border border-amber-300/20 bg-amber-300/8 px-4 py-3 text-[13px] text-amber-50"
+        "rounded-[4px] border border-amber-300/20 bg-amber-300/8 px-4 py-3 text-[13px] text-amber-50"
       }
     >
       <p>{policy.userMessage}</p>

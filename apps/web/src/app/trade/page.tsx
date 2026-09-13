@@ -18,7 +18,7 @@ export default function TradePage() {
   return (
     <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
       <div>
-        <p className="text-[11px] uppercase tracking-[0.24em] text-cyan-200/80">Official pool</p>
+        <p className="rx-kicker">Official pool</p>
         <h1 className="mt-1 text-2xl font-semibold">Trade</h1>
         <p className="mt-1 text-[13px] text-zinc-400">
           Exact-in only. 3.5% quote charge: 2% holders / 1% flywheel / 0.5% CORE. Incomplete fills revert.
@@ -32,15 +32,15 @@ export default function TradePage() {
         )}
         {!isLoading && live.length === 0 && (
           <p className="mt-6 text-sm text-zinc-400">
-            No live official pools. <Link href="/launch" className="text-cyan-200 underline">Ignite one</Link>.
+            No live official pools. <Link href="/launch" className="rx-link">Ignite one</Link>.
           </p>
         )}
-        <div className="mt-4 divide-y divide-white/6 rounded-2xl border border-white/8">
+        <div className="mt-4 divide-y divide-white/6 rounded-[4px] border border-white/8">
           {live.map((t) => (
             <div
               key={t.token}
               className={`flex items-center justify-between px-3 py-2.5 text-sm ${
-                token?.token === t.token ? "bg-cyan-300/10" : "hover:bg-white/[0.03]"
+                token?.token === t.token ? "bg-rx-heat/12" : "hover:bg-white/[0.03]"
               }`}
             >
               <button type="button" onClick={() => setSel(t.token)} className="text-left">
@@ -49,7 +49,7 @@ export default function TradePage() {
                 </UntrustedText>
                 <span className="ml-2 text-[11px] text-zinc-400">earns {t.quoteSymbol}</span>
               </button>
-              <Link href={tokenPath(t.token)} className="text-[11px] text-cyan-200">
+              <Link href={tokenPath(t.token)} className="text-[11px] font-semibold text-rx-ember">
                 Detail
               </Link>
             </div>

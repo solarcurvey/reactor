@@ -1,12 +1,39 @@
-# BUILD REPORT — CI docs-only path filter (Refs #69 residual)
+# BUILD REPORT — Industrial Forge brand implementation (Refs #55)
 
-**Status:** Open PR **#81** on `cursor/ci-docs-only-path-filter-e078`, rebased onto `origin/main` `789eb5c` (squash-merged **#46**). Addresses founder re-audit gap (2). **Do not close #69.** Do not `Fixes` / `Closes` #69. Frozen economics. No mainnet.
+**Status:** Implementation PR for issue **#55**. Founder (Davis) locked **Direction C — Industrial Forge**. This pass applies C to production surfaces and assets. Rebased onto `origin/main` `ff444cb` after squash-merged **#81** / #69 (docs-only path filter), **#46** / #39 (production observability), **#75** / #65 (restricted-access UX), **#44** / #35 (wallet E2E), **#70** / #64 (sanctions freshness), **#79** / #17 CI-evidence docs, **#68** / #62, **#67** / #63, **#66** / #61. **Do not close #55** until independent audit. Issue **#36 is closed** (`ad7b457`, post-merge `34729758795`); `web-qa` remains required and covers the approved-C state — do not weaken that gate. #81 `ci-decide` / `ci-ok` (docs-only cheap path; force-full still executes every required job), #39 observability (`obs-ui`, error boundaries, release SHA, vendor-proof) and #65 `/restricted` UX (denied-policy a11y/reflow, four-state matrix, hydration fixes), #35 `e2e-release-gate` and #64 sanctions-ops docs/runbook plus #66/#67/#68/#79 policy/CI-evidence content are preserved. Brand chrome is additive on those surfaces: `/restricted` kicker is `rx-kicker` (heat, no cyan), links and deny banners use 0–4px radius; amber remains the semantic warning, not a Direction B accent. #46 error boundaries keep `obs-ui` / release SHA / `traceId` and use heat kickers (no leftover cyan/pills). `SupportRef` and error mono use `text-zinc-400` (not zinc-500). Copy, testids, and policy behavior are unchanged.
+**Not audited. Not mainnet.**
+**Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
+
+## This HEAD
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.4** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
+| Intent | Implement founder-locked Industrial Forge across tokens, logo, chrome, favicon/OG/app icons, voice, a11y, and docs. |
+| Docs | `/docs/brand`, glossary/FAQ/policy/index/qa, `UX_REFERENCE.md`, `PROJECT.md`, `CONTRIBUTING.md` |
+| Production chrome | `logo.tsx`, primitives, Discover / Launch / terminal / THE REACTOR / CORE / docs |
+| Assets | `/favicon.svg`, `/favicon.ico`, Apple touch, 192/512, OG 1200×630, wordmarks |
+| Close #55 | **No** — keep open for independent audit |
+| #36 | **Closed** after `ad7b457` + post-merge `34729758795`. Approved-C + #44 chrome baselines are on this PR; `web-qa` stays required |
+| Voice | One AI rule: `BRAND_AI_DISAMBIGUATION` in first-use metadata only; chrome/OG stay AI-free. Description is mode-correct: Rewards pay holders; Standard burns — not “every launch pays holders.” |
+| Rebase | Onto `ff444cb` after **#81**. Same PR **#80** / same branch. Keep #81 `scripts/ci-decide.sh` / `scripts/ci-ok.sh` (docs-only/trivial ready PRs stay cheap; `ci-full` / dispatch / `main` still force every required job including `web-qa` + `obs-ui`), #39 `obs-ui` / error boundaries / release SHA / vendor-proof, #65 `/restricted` routes, amber banner, `text-zinc-400` muted floor, denied-policy a11y/reflow, production four-state matrix, and hydration fixes; plus #35 `e2e-release-gate`, #70 freshness/runbook, #79 CI-evidence docs, and #66/#67/#68 policy layers. Overlapping `web-qa` goldens recaptured as approved-C Industrial Forge **plus** #44 visible phase / stacked Quote-Confirm / wallet chrome (CI Chromium actuals from [`34737657863`](https://github.com/solarcurvey/reactor/actions/runs/34737657863)). Do not reuse [`34738076304`](https://github.com/solarcurvey/reactor/actions/runs/34738076304) (`25deda3` on `b190e86`) or pre-#81 [`34741435433`](https://github.com/solarcurvey/reactor/actions/runs/34741435433) (`7e62e69` on `789eb5c`) as merge proof for this tree. Brand chrome on `/restricted` is heat kicker + 4px radius (no cyan / no pill links). Do not weaken the gate. #55 stays open. |
+
+## Founder decision
+
+**Locked:** Direction C — Industrial Forge. Stands out more than A/B. Do not reopen A/B/C unless a concrete accessibility/technical blocker requires a narrow adjustment.
+
+---
+
+# Prior — CI docs-only path filter (merged #81, Refs #69 residual)
+
+**Status:** Squash-merged **#81** (`ff444cb`) on `origin/main`. Addresses founder re-audit gap (2). **Do not close #69.** Frozen economics. No mainnet.
 **Not audited. Not mainnet.**
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
 Gap (1) source (`obs-ui`) is now on `main` via **#46**. #69 still needs **one green protected-main full run** after this cost fix (and after #46) that executes `obs-ui` rather than skip-as-pass.
 
-## This HEAD (#69 gap 2)
+## That HEAD (#69 gap 2)
 
 | Item | Value |
 | --- | --- |
@@ -17,7 +44,7 @@ Gap (1) source (`obs-ui`) is now on `main` via **#46**. #69 still needs **one gr
 | Tests | `pnpm test:ci-cost` — docs-only ready PR does not launch heavy jobs; `ci-full` / dispatch / main still do; `ci-ok` rejects `skipped` on full and accepts those skips on cheap. |
 | Mainnet | **Blocked** |
 
-## Closed this run (#69 gap 2 — issue stays open)
+## Closed that run (#69 gap 2 — issue stays open)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
@@ -31,9 +58,9 @@ Gap (1) source (`obs-ui`) is now on `main` via **#46**. #69 still needs **one gr
 
 ---
 
-# Prior — Protocol 0.3.4 frontend observability (merged #46)
+# Prior — Production web observability (merged #46, Refs #39)
 
-**Status:** Rebased onto latest `origin/main` `4207356` (**#75** Restricted-access UX after **#44** E2E release gate / #70 / #79 / #68 / #67 / #66 / #49 / #50 / #42 / #58). Same PR **#46** / issue **#39**. This pass keeps **`obs-ui`** (production `next start`), first-party resolve, configured-DSN **staging vendor proof** (`obs/vendor-proof.test.ts`), and `/api/telemetry` **429 backpressure** so #49 `web-qa` does not treat Chromium ingest 429 as a page diagnostic (quote `?inject=quote-429` stays fail-visible). Live org/project still post-merge. **#39 stays open until merge + post-merge verify.** #75 `/restricted` + disabled write CTAs stay from main. #70 sanctions ops docs/nav + #79 #17 evidence + #68 operator-policy + #67 geo + #66 OFAC stay from main. #44 `e2e-release-gate` stays from main.
+**Status:** Squash-merged **#46** (`789eb5c`) on `origin/main`. Refs **#39**. Rebased onto `4207356` (**#75** Restricted-access UX after **#44** E2E release gate / #70 / #79 / #68 / #67 / #66 / #49 / #50 / #42 / #58) before merge. This pass keeps **`obs-ui`** (production `next start`), first-party resolve, configured-DSN **staging vendor proof** (`obs/vendor-proof.test.ts`), and `/api/telemetry` **429 backpressure** so #49 `web-qa` does not treat Chromium ingest 429 as a page diagnostic (quote `?inject=quote-429` stays fail-visible). Live org/project still post-merge. **#39 stays open until post-merge live vendor verify.** #75 `/restricted` + disabled write CTAs stay from main. #70 sanctions ops docs/nav + #79 #17 evidence + #68 operator-policy + #67 geo + #66 OFAC stay from main. #44 `e2e-release-gate` stays from main.
 
 **Not audited. Not mainnet.**  
 **Economics / 3.5% / curve / Top-10 ranking / Keeper routing / Factory V1 constants: unchanged.**  
@@ -48,7 +75,7 @@ Gap (1) source (`obs-ui`) is now on `main` via **#46**. #69 still needs **one gr
 **#70 sanctions freshness SLA / `/ops` dataset card / sanctions-ops docs+nav: kept.**  
 
 **#73 three-tier CI + #74 / #76 / #77 public-fork harden + rewrite + advertised-ref residual notes: kept.**  
-**Merge train:** this branch owns **0.3.4** and lands independently before docs PR **#48** (do not fold handbook work here). Later branches rebase onto 0.3.4 unless #54 `0.4.0` lands first. Do not restore **0.3.3**.
+**Merge train:** #46 landed **0.3.4** independently before docs PR **#48**. Later branches rebase onto 0.3.4 unless #54 `0.4.0` lands first. Do not restore **0.3.3**.
 
 **Rebase (`4207356`):** mechanical replay of #39 onto #75 / #44 / #70 / #79 / #68. Shared `docs/*` / `docs-nav` / `/ops` / `package.json` / `TESTING` / `AUDIT_HANDOFF` / `trust.md` / `ci.yml` keep main's restricted-access UX, `e2e-release-gate`, operator-policy, sanctions freshness, #17 evidence cites, geo HMAC, and `@reactor/sanctions` fixtures; observability (`obs-ui`, error boundaries, vendor-proof, outage paging) stays. Launch/trade keep `policy.ensureProof` **and** `reactorFetch` / `SupportRef` plus #44 phase / submit-lock / receipt polling. Do not weaken restricted-access, operator-policy, or e2e-release-gate. No economics / Factory / hook rewrite.
 
@@ -62,7 +89,7 @@ Gap (1) source (`obs-ui`) is now on `main` via **#46**. #69 still needs **one gr
 | Review shots | Error-boundary + observability docs |
 | Mainnet | **Blocked** |
 
-## Closed this run (#39 ACs — issue stays open)
+## Closed that run (#39 ACs — issue stays open)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |
@@ -86,7 +113,7 @@ Gap (1) source (`obs-ui`) is now on `main` via **#46**. #69 still needs **one gr
 **Not audited. Not mainnet.**
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
-Official **#62 / PR #68** and **#64 / PR #70** are on `main`. Launchpad UX binds to `GET /operator-policy/status` (same `evaluateOperatorPolicy` as write gates) and `GET /operator-policy/challenge` (signing helper only). Disclosure matches merged #64: stale/missing official-list fail-closes operated writes and surfaces as temporarily unavailable. **#63** geo core is accepted on #67; founder **reopened #63** until this user-visible restricted state lands via #65 / #75.
+Official **#62 / PR #68** and **#64 / PR #70** are on `main`. Hosted UX binds to `GET /operator-policy/status` (same `evaluateOperatorPolicy` as write gates) and `GET /operator-policy/challenge` (signing helper only). Disclosure matches merged #64: stale/missing official-list fail-closes operated writes and surfaces as temporarily unavailable. **#63** geo core is accepted on #67; founder **reopened #63** until this user-visible restricted state lands via #65 / #75.
 
 ## That HEAD (#65)
 
@@ -99,7 +126,6 @@ Official **#62 / PR #68** and **#64 / PR #70** are on `main`. Launchpad UX binds
 | Tests | Follow-up after exact-head `c1f6a78` re-run [`34738474644`](https://github.com/solarcurvey/reactor/actions/runs/34738474644) failed `web-qa` on React #418 (hydration text/HTML) for denied `/restricted` a11y/reflow. Two hydrate races: (1) `useSearchParams` + text Suspense fallback vs the restricted tree; (2) mocked `/api/operator-policy` painting deny UI before a Suspense child hydrates. `/restricted` is a dynamic server page that passes `?kind=` into the client view (no client URL read during render). Provider refresh waits until after mount. `useOperatorPolicy()` stays pending until **that consumer** mounted (same class as WalletButton). Denied 320px / 200% reflow is one page per test. Diagnostics / axe / muted-text AA gates are unchanged. Prior green [`34738256919`](https://github.com/solarcurvey/reactor/actions/runs/34738256919) on `c1f6a78` is **not** the closer. `/restricted` muted copy is `text-zinc-400`. Production four-state AC closed on this PR. |
 | Rebase | Onto `origin/main` `b190e86` (squash-merged **#44** after **#70** / `cc82cd4`). Same PR **#75** / same branch. Kept #44 `e2e-release-gate`, launch/trade phase + submit lock, and official-shaped `#68` `/operator-policy/status` on the #35 mock so invented `E2E_LOCAL` cannot fail-close ALLOW journeys. Official #61/#62 plugins and #64 ops are on `main`. #63 geo core is on `main` via #67 and **stays open** until this UX lands. Indexer uses canonical `operator-policy.ts`; bind is the #65 test/fixture adapter. |
 | #44 coexistence | Exact-head full run [`34737996588`](https://github.com/solarcurvey/reactor/actions/runs/34737996588) on `311957f`: `web-qa` / `web-production-security` / `operator-policy-http` / Foundry / Postgres / `docs-links` green; `e2e-release-gate` failed only on `edge.spec.ts` “chain change mid-flow” — Playwright strict-mode, two “Wrong network” buttons (`trade-confirm` + `rewards-claim`). Locator now uses those test ids. Product copy unchanged. Ready-for-review rerun [`34738474644`](https://github.com/solarcurvey/reactor/actions/runs/34738474644) on `c1f6a78`: `e2e-release-gate` green; `web-qa` failed React 418 on denied `/restricted`+launch reflow (mocked `/api/operator-policy` could paint deny UI before hydrate). Provider now keeps the SSR pending tree until after mount (same pattern as WalletButton). `/restricted` no longer uses `useSearchParams`/Suspense. Denied 320px / 200% reflow is one page per test. |
-
 | Mainnet | **Blocked** |
 
 ## Closed that run (#65 ACs — issue stays open)
@@ -122,13 +148,14 @@ Official **#62 / PR #68** and **#64 / PR #70** are on `main`. Launchpad UX binds
 # Prior — Production-build browser + wallet E2E release gate (merged #44, Refs #35)
 
 **Status:** Squash-merged **#44** (`b190e86`) on `origin/main`. Child of #15. Refs #35 / Refs #15 only (do not `Fixes` / `Closes` #35 or #15). Continues landing the production E2E gate for #15. Frozen economics / architecture. **Not audited. Not mainnet.**
-
 **Economics / 3.5% / 2/1/0.5 / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
 ## That HEAD (#35)
 
 | Item | Value |
 | --- | --- |
+| Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
+| Factory | **V1** — **unchanged** |
 | Intent | Production `next build` + `next start` Playwright release gate with a deterministic EIP-1193 wallet fixture **and** a MetaMask/Rabby-style unpacked MV3 extension. Browser matrix Chromium / Firefox / WebKit plus iPhone-class and narrow-Android. Nested USDC BUY+SELL assert `UserRouteExecutor` target/calldata/result. Shared `console.error` / `pageerror` fixture fails teardown. No Anvil private keys, no mainnet keys, no isolated signer. |
 | Proof | Rebased onto `main` `cc82cd4` (#70 sanctions freshness after #79 / #68 / #67 / #66 / #49 / #42 / #50 / #58). Kept #70 freshness/audit/alerts/runbook (`#64` stays open). Kept #79 accepted #17 / #42 evidence (`11fdadb` / `34727535121`, `80d3cac` / `34727638255`). Kept #68 operator-policy / wallet-proof. Kept #67 geo-policy tests in `test:lib`. Kept #66 `@reactor/sanctions` fixtures in `test:lib`. Kept #49 `web-qa` (visual / a11y / failure-injection). Ticket/launch phase lines use visible `text-zinc-400` (same AA muted floor as #49 — do not hide the line and do not weaken `assertNoSubAaMutedText`). Disconnect stays in the #49 Account modal. `/wallet` is a status card only — the header `WalletButton` is the single connect/account control (`wallet-menu-trigger` is unique). Ready graduate token stays on the E2E mock only — not an extra Discover fixture card. Rewards wallet copy waits until mount. WalletButton keeps the SSR Connect tree until hydrate so a second `page.goto` after EIP-1193 connect cannot React-418. Kept #42 `docs-links` / Playwright `web` / Safe genesis / solc prefetch. Kept #50 indexed search / `useSwapSeries` / `readTicketWallet` / always-on `page-budget`. Live quote default stays **30s** (`?? 30_000`); E2E short TTL is `NEXT_PUBLIC_QUOTE_TTL_MS` only. Mock indexer serves `#50` `GET /quote-assets`, `GET /markets/:token`, and `GET /page/token/:token`, plus `#68` `GET /operator-policy/challenge` and `GET /operator-policy/status` so quote/launch/upload can attach a wallet proof. EIP-1193 `rejectTx` is Confirm-buy / `eth_sendTransaction` only (challenge `personal_sign` auto-signs). Extension Quote Confirm covers the proof, then Confirm covers the trade. WebKit console-gate stays pinned to exact `/127.0.0.1:18448/stream` pageerror only. Home+launch waits for mock `GET /markets` before leaving `/` so iPhone WebKit does not abort that fetch and mis-report it as CORS. Indexed bonding/ready rows bind official `InstantCurve`; REVIEW_FIXTURES merge restores `curve` / `ready` / fixture quote on `/page/token` so BUY/graduate do not fall through to the router. `ci-ok` requires `e2e-release-gate` **and** `web-qa` **and** `page-budget`. #35 stays open until post-merge. **Refs #35 / Refs #15 only.** |
 | Review shots | Refreshed for the visible AA `text-zinc-400` phase line (including quote-413 / wallet-revert / tx-reverted 1440). Discover board stays on the #49 fixture set (Ready is mock-only). Disconnect stays in the Account modal. `/wallet` no longer duplicates the header wallet control. |
