@@ -6,12 +6,11 @@ Treat every offchain number as **trusted computation** unless a contract check i
 
 ## The list
 
-1. **Top-10 ranks are an offchain API.** Indexer ValuationService + persisted `current_supply` produce `GET /top10` (schema **v11**). A snapshot older than 15 minutes is not served or submitted. Empty `current_supply` after v9 pauses the epoch (no mint-supply fallback). Contracts check structure only (length, weights, CORE exclusion, graduated, no dupes). They do not compute ranks. A compromised indexer or job signer can submit a legal-looking epoch that is economically wrong. Relayers / CRE cannot substitute ranking.
+1. **Top-10 ranks are an offchain API.** Indexer ValuationService + persisted `current_supply` produce `GET /top10` (schema **v11**). A snapshot older than 15 minutes is not served or submitted. Empty `current_supply` after v9 pauses the epoch (no mint-supply fallback). Contracts check structure only (length, weights, CORE exclusion, graduated, no dupes). They do not compute ranks. A compromised indexer or maintenance job signer can submit a legal-looking epoch that is economically wrong. Relays / CRE cannot substitute ranking.
 2. **Launch Signer prices non-$1 quotes via ValuationService** (multi-source consensus). Not an onchain oracle. Admission + receipt required. Provider outage or deviation refuses the signature. The isolated signer **fail-closes** if the durable store is down — it must not skip receipt consume or the signed-auth issuance bucket.
 3. **Indexer charts, 24h USD, and candles can lag or be wrong.** Onchain truth wins. A tick does not leave events without a cursor (or a cursor without those events): protocol logs, token burn journal / `current_supply` writes, and `indexer_state` advance in one transaction. That is crash consistency, not an oracle. Bounded `totalSupply()` reconcile can still repair `current_supply`; it does not replace the journal.
 4. **Guardian can pause, quarantine, rotate signer, permanently lock tickers.** Cannot steal locked LP or change 2/1/0.5. Compromise halts the product; it does not rewrite economics. See [Guardian](/docs/guardian).
-5. **`AutomationGateway` is the designated Keeper.** Decision service + job signer choose ranks/routes; relayers (CRE / Gelato / any EOA) only deliver the signed job. One lease (`leader_locks.lease_until` in **milliseconds**, `BIGINT`) with renew + acquire-generation fence (TTL is failover, not a tick budget). Simulated minOut is bound in the job. Cannot configure. CRE does not decentralize Top-10. See [Keeper](/docs/keeper) · [Automation](/docs/automation).
-
+5. **`AutomationGateway` is the designated Keeper.** Decision service + maintenance job signer choose ranks/routes; relayers only deliver the signed job. Production #83 uses a dedicated AWS KMS secp256k1 authorizer plus two distinct KMS-backed transaction relays. Relay A/B do not have maintenance signing permission. Jobs bind simulated `minOut`, amount, route/hops, chain, Gateway, validity, replay id and relevant snapshot. A compromised relay affects liveness/gas only; a compromised decision service or authorizer is the material operational trust risk. CRE does not decentralize Top-10. See [Keeper](/docs/keeper) · [Automation](/docs/automation).
 6. **Cloudflare Turnstile + issuance bucket are offchain.** A bypassed LOCAL env is not production. Store unavailability is an outage (503), not a throttle bypass.
 7. **Funding-cluster is a heuristic** (network + optional first funder). Not KYC, not chain analysis.
 8. **Arc Testnet PoolManager is not deployed.** Local demo uses official v4-core under BUSL (non-production).
@@ -29,6 +28,7 @@ Treat every offchain number as **trusted computation** unless a contract check i
 20. **Geo / jurisdiction policy is an offchain server decision** (`evaluateRequestGeo` → ALLOW / DENY / UNKNOWN). Production country/region come only from a verified edge HMAC (`GEO_EDGE_SECRET`). Browser `CF-IPCountry` / `X-Country` / `X-Forwarded-For` are not trusted. LOCAL uses fixture codes (`FX` / `FY`) and cannot load the production deny revision. VPN/Tor labels are best-effort only. Oblast-only Donetsk/Luhansk (`UA-14` / `UA-09`) is UNKNOWN, not a whole-oblast DENY ([FAQ 1009](https://ofac.treasury.gov/faqs/1009)). This is **not** a legal opinion, **not** OFAC-compliance, and **not** address screening (#61). HTTP enforcement is operator policy (#62). See [Geo policy](/docs/geo-policy).
 21. **Operator policy (sanctions / geo) is offchain and REACTOR-operated only.** `POST /launch/admit`, `POST /launch/authorize`, the isolated launch signer, `POST /quote`, `POST /upload`, and the Next `POST /api/launch-pricing` BFF fail closed on a blocked **recovered** wallet, blocked geo, missing/invalid wallet proof, or stale/unavailable required policy. The screened subject is the EIP-191 signer of a server challenge — not `body.wallet` / `x-reactor-wallet`. Browser `sanctionsClear` / country / IP flags are ignored. `GET /operator-policy/status` is the minimized public decision for #65 UX (same reasons; no internals). The launchpad `/restricted` state and disabled Confirm / Launch / Quote CTAs are UX over that server decision. They do not pause Factory / Router / Curve / Hook and do not censor permissionless chain reads. The browser never receives raw IP, screening-entry metadata, list UIDs, or dataset hashes. Address screening is **#61** (merged **#66**); trusted geo is **#63** (merged **#67**); enforcement is **#62** (merged **#68**); official-list freshness is **#64** (merged **#70**). A stale or missing snapshot (7-day SLA) is the public “temporarily unavailable” state — never treated as clear. Public `GET` market/docs paths (including `/sanctions/screen`) are not blocked for cosmetic denial. Immutable contracts remain callable onchain — this is not a protocol pause and not a legal/OFAC-compliance opinion. See [Operator policy](/docs/operator-policy), [Restricted access](/docs/restricted-access), and [Sanctions ops](/docs/sanctions-ops).
 22. **Official-list freshness is fail-closed on operated writes.** The 7-day SLA (`ofac-official-list-v1`) is offchain. Stale or missing data is never treated as clear. Refresh is scheduled + at startup; a bad/partial fetch keeps last-known-good. Gated identity is the merged #62 recovered EIP-191 wallet (`operator-policy.ts`), not `body.wallet` / `x-reactor-wallet`. Fixture refresh is LOCAL/test-only — STAGING/TESTNET/PROD require the official #61 source. Audit lines hash the recovered wallet and drop raw IP, signatures, and request bodies. There is no automated override on a user complaint. [Sanctions ops](/docs/sanctions-ops) · [Runbook](/docs/sanctions-runbook) · [Incident response](/docs/incident-response).
+23. **AWS managed automation is operational infrastructure, not protocol authority.** The three KMS keys are separate from Guardian, launch/pricing signers and deployer. GitHub OIDC can replace code on the three named Lambdas only; it cannot sign with KMS, pass roles or change Lambda configuration. Lambda concurrency is one per worker and scheduled async retries are disabled. The authorizer itself remains trusted because it can authorize bad-but-type-valid jobs if the canonical decision service is compromised; KMS protects key extraction, not bad decisions. See `infra/aws-relay/README.md`.
 
 ## What is onchain truth
 
@@ -39,6 +39,7 @@ Treat every offchain number as **trusted computation** unless a contract check i
 - Instant `ready` / graduate
 - Top-10 **structure** of a submitted epoch (not the USD that produced it)
 - Guardian pauses and adapter allowlists
+- `AutomationGateway.usedJob(jobId)`, configured `jobSigner`, and Guardian Keeper address
 
 ## What is not onchain truth
 
@@ -47,7 +48,8 @@ Treat every offchain number as **trusted computation** unless a contract check i
 - External quote USD (ZEC, WBTC, …)
 - Turnstile / admission ALLOW
 - Indexer SSE events
-- Keeper `minOut` simulations
+- Maintenance route/minOut simulations
+- AWS Lambda/KMS/CloudWatch health
 
 `fdv_usd6` uses `tokens.current_supply`, which **tracks** remaining `totalSupply()` after `burn()`. It is not claimed identical at every instant.
 
@@ -55,11 +57,14 @@ Treat every offchain number as **trusted computation** unless a contract check i
 
 | Surface | On failure |
 | --- | --- |
-| Isolated signer store down | **503** `SIGNER_STORE_UNAVAILABLE` — no signature |
+| Isolated launch signer store down | **503** `SIGNER_STORE_UNAVAILABLE` — no launch signature |
 | Valuation consensus missing / stale / deviant | Refuse launch auth; pause material Top-10; trading continues |
 | Quote preview fail / dust | `ok: false` — no calldata, no `minOut` 0/1 |
-| Keeper lease lost mid-tick | Refuse further broadcasts |
+| Maintenance KMS signer unavailable / signature recovery mismatch | No `MaintenanceJob`; pots accumulate until signer recovers/rotates |
+| Relay A unavailable | Relay B may deliver the same immutable signed job after its delay |
+| Both relays unavailable | No maintenance execution; do not restore privileged EOA path |
+| PROD managed-relay raw private-key env present | Lambda invocation fails closed |
 | PROD missing Turnstile / Anvil `#0` signer | Process refuses to start |
 | PROD missing R2/S3 | Uploads fail closed |
 
-See [Security](/docs/security), `THREAT_MODEL.md`, `AUDIT_HANDOFF.md`.
+See [Security](/docs/security), [Automation](/docs/automation), `THREAT_MODEL.md`, `AUDIT_HANDOFF.md`.
