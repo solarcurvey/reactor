@@ -17,7 +17,7 @@
 | Address screen | Merged `#66` `indexerSanctionsStore().screen` / `GET /sanctions/screen` (lookup API stays ungated) |
 | Trusted geo | Merged `#67` `evaluateRequestGeo` / `geo-policy-resolve.ts` |
 | Status API (#65) | `GET /operator-policy/status` — minimized public decision (`publicStatusView`). Same gate. Official contract for PR #75. |
-| Tests | Unit matrix + production-shaped indexer HTTP + Next `/api/launch-pricing` BFF. Denial before signer/upload/tx canary payloads. Status GET matrix. |
+| Tests | Unit matrix + production-shaped indexer HTTP + Next `/api/launch-pricing` BFF. Denial before signer/upload/tx canary payloads. Status GET matrix. Official `#66` `sanctions.ts` + `#67` `geo-policy-resolve.ts` bind against `apps/indexer/src` (LOCAL without dataset keeps address fixtures; PROD binds both). |
 | Docs | `/docs/operator-policy`, trust, API, admission, FAQ, builders, SDK, TESTING row 60, `/docs/ci` |
 
 ## Closed this run (#62 ACs — issue stays open)
@@ -36,6 +36,7 @@
 | Docs list exact surfaces | **Yes** | `/docs/operator-policy` |
 | No economics redesign / no onchain-block claim | **Yes** | Disclaimer on every denial |
 | Preserve #66 screening APIs | **Yes** | `GET /sanctions/screen`, `GET /sanctions/dataset`, `indexerSanctionsStore().screen` |
+| Official #66+#67 plugin path | **Yes** | `tryBindOfficialPolicyPlugins` against `apps/indexer/src` binds both. LOCAL without dataset keeps address fixtures. Fixtures remain unit-test only. |
 
 ---
 

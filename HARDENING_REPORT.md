@@ -212,7 +212,7 @@ Economics / 3.5% / Factory V1 / no mainnet: unchanged.
 
 ## Operator policy (#62)
 
-Shared offchain gate on REACTOR-operated write/authorization HTTP. Fail closed. Browser flags are not authority. Does not block public contracts. Address/geo plugins are #61/#63. Issue stays open until independent verify.
+Shared offchain gate on REACTOR-operated write/authorization HTTP. Fail closed. Browser flags are not authority. Does not block public contracts. Address screen binds merged #66 `indexerSanctionsStore().screen`. Trusted geo binds merged #67 `evaluateRequestGeo`. Issue stays open until independent verify.
 
 ## Remaining risks / mainnet blockers
 

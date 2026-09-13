@@ -5,9 +5,11 @@
  * into /quote, /launch/*, /upload, or the isolated signer.
  *
  * Address screening and trusted geo are injected:
- *   - official #61 / #63 modules via `tryBindOfficialPolicyPlugins`
+ *   - official #66 `sanctions.ts` (`indexerSanctionsStore().screen`) when the
+ *     dataset is current (LOCAL) or production hard-gates apply
+ *   - official #67 `geo-policy-resolve.ts` (`evaluateRequestGeo`)
  *   - LOCAL fixture providers (deterministic; not production authority)
- *   - production without plugins fail-closes (unavailable)
+ *   - production without both official plugins fail-closes (unavailable)
  *
  * Browser JSON / query / `x-sanctions-clear` / `CF-IPCountry` /
  * `x-reactor-wallet` / body.wallet never become the screened subject.
@@ -68,6 +70,8 @@ export const OPERATOR_POLICY_PUBLIC_READS = [
   { method: "GET", pathname: "/candles" },
   { method: "GET", pathname: "/swaps" },
   { method: "GET", pathname: "/m" },
+  { method: "GET", pathname: "/sanctions/screen" },
+  { method: "GET", pathname: "/sanctions/dataset" },
 ] as const;
 
 /** Client-supplied flags that must never become authority. */
@@ -284,6 +288,7 @@ export function isPublicReadPath(method: string, pathname: string): boolean {
   const p = pathname.replace(/\/+$/, "") || "/";
   if (p === "/health" || p === "/markets" || p === "/quote-assets" || p === "/valuation" || p === "/top10") return true;
   if (p === "/operator-policy/challenge" || p === "/operator-policy/status") return true;
+  if (p === "/sanctions/screen" || p === "/sanctions/dataset") return true;
   if (p === "/pricing/health" || p === "/stream" || p === "/events" || p === "/reactor" || p === "/keeper") return true;
   if (p.startsWith("/ticker/") || p.startsWith("/candles/") || p.startsWith("/swaps/") || p.startsWith("/m/")) return true;
   return false;
@@ -436,9 +441,27 @@ export async function readOperatorPolicyStatus(input: {
   return { status: gate.decision.httpStatus, body: publicStatusView(gate.decision) };
 }
 
+type OfficialSanctionsStore = {
+  screen: (address: string) => { decision: string; reason?: string; freshness: string };
+  freshness?: () => string;
+};
+
 /**
- * Optional #61 / #63 bind. Missing modules are not an error — production
- * then fail-closes until those plugins exist.
+ * Official #66 `sanctions.ts` is usable when `screen` exists and either the
+ * dataset is current (LOCAL) or production hard-gates apply (fail-closed).
+ * LOCAL without a current dataset keeps fixtures so demo/tests still launch.
+ */
+function officialAddressStoreUsable(store: OfficialSanctionsStore, env: NodeJS.ProcessEnv): boolean {
+  if (typeof store.screen !== "function") return false;
+  if (productionHardGatesApply(env)) return true;
+  if (typeof store.freshness === "function") return store.freshness() === "current";
+  const probe = store.screen("0x0000000000000000000000000000000000000001");
+  return probe.freshness === "current";
+}
+
+/**
+ * Official #66 `sanctions.ts` + #67 `geo-policy-resolve.ts` bind.
+ * `officialBound` is true only when both plugins attach. Production fail-closes otherwise.
  */
 export async function tryBindOfficialPolicyPlugins(
   env: NodeJS.ProcessEnv = process.env,
@@ -454,11 +477,11 @@ export async function tryBindOfficialPolicyPlugins(
   if (existsSync(sanctionsPath)) {
     try {
       const mod = (await import(sanctionsPath)) as {
-        indexerSanctionsStore?: () => { screen: (address: string) => { decision: string; reason?: string; freshness: string } };
+        indexerSanctionsStore?: () => OfficialSanctionsStore;
       };
       if (typeof mod.indexerSanctionsStore === "function") {
         const store = mod.indexerSanctionsStore();
-        if (typeof store.screen === "function") {
+        if (officialAddressStoreUsable(store, env)) {
           screenFn = (addressIn: string) => {
             const r = store.screen(addressIn);
             return {

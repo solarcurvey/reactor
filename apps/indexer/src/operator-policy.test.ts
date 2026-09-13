@@ -1,6 +1,7 @@
 import { createServer, request as httpRequest, type IncomingMessage, type ServerResponse } from "node:http";
 import { AddressInfo } from "node:net";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
@@ -15,6 +16,7 @@ import {
   issueOperatorWalletChallenge,
   isProtectedWritePath,
   isPublicReadPath,
+  officialPolicyPluginsBound,
   readOperatorPolicyStatus,
   resetOperatorPolicyState,
   setFixtureBlockedWallets,
@@ -232,6 +234,9 @@ resetOperatorPolicyState();
   assert(isPublicReadPath("GET", "/markets"), "markets is public read");
   assert(isPublicReadPath("GET", "/operator-policy/challenge"), "challenge is public");
   assert(isPublicReadPath("GET", "/operator-policy/status"), "status is public");
+  assert(isPublicReadPath("GET", "/sanctions/screen"), "#66 screen lookup is public");
+  assert(isPublicReadPath("GET", "/sanctions/dataset"), "#66 dataset lookup is public");
+  assert(!isProtectedWritePath("GET", "/sanctions/screen"), "screen lookup is not a write");
 }
 
 {
@@ -414,6 +419,68 @@ try {
   }
 
   {
+    resetOperatorPolicyState();
+    const here = dirname(fileURLToPath(import.meta.url));
+    const prevDataDir = process.env.SANCTIONS_DATA_DIR;
+    const emptyDir = mkdtempSync(join(tmpdir(), "op-ofac-empty-"));
+    process.env.SANCTIONS_DATA_DIR = emptyDir;
+    try {
+      const localEmpty = await tryBindOfficialPolicyPlugins({ ...process.env, REACTOR_ENV: "LOCAL" }, here);
+      assert(localEmpty.address === false, `LOCAL without current #66 dataset keeps fixtures ${JSON.stringify(localEmpty)}`);
+      assert(localEmpty.geo === true, `official #67 geo binds without a dataset ${JSON.stringify(localEmpty)}`);
+      assert(officialPolicyPluginsBound() === false, "both official plugins required for officialBound");
+      resetOperatorPolicyState();
+      const prodEmpty = await tryBindOfficialPolicyPlugins({ ...process.env, REACTOR_ENV: "PROD" }, here);
+      assert(prodEmpty.address === true, `PROD binds official #66 sanctions.ts even if unavailable ${JSON.stringify(prodEmpty)}`);
+      assert(prodEmpty.geo === true, `official #67 geo-policy-resolve.ts binds ${JSON.stringify(prodEmpty)}`);
+      assert(officialPolicyPluginsBound() === true, "PROD officialBound needs both plugins");
+    } finally {
+      if (prevDataDir === undefined) delete process.env.SANCTIONS_DATA_DIR;
+      else process.env.SANCTIONS_DATA_DIR = prevDataDir;
+      rmSync(emptyDir, { recursive: true, force: true });
+      resetOperatorPolicyState();
+    }
+
+    const dataDir = mkdtempSync(join(tmpdir(), "op-ofac-"));
+    process.env.SANCTIONS_DATA_DIR = dataDir;
+    try {
+      const { indexerSanctionsStore } = await import("./sanctions.ts");
+      const { refreshSanctions } = await import("../../../packages/sanctions/src/refresh.ts");
+      const { FIXTURE_ADDRESSES, pinnedFixtureBodies } = await import("../../../packages/sanctions/src/fixtures.ts");
+      const store = indexerSanctionsStore();
+      const loaded = await refreshSanctions(store, {
+        sourceIds: ["ofac-sdn-xml"],
+        bodies: pinnedFixtureBodies(),
+        now: () => Date.parse("2026-09-12T00:00:00.000Z"),
+        validation: { minAddresses: 1, rejectIfFewerThanPriorRatio: 0 },
+      });
+      assert(loaded.ok, `official fixture dataset ${JSON.stringify(loaded)}`);
+      assert(store.screen(FIXTURE_ADDRESSES.sanctionedEvm).decision === "blocked", "official #66 screen blocked");
+      assert(store.screen(FIXTURE_ADDRESSES.clearEvm).decision === "clear", "official #66 screen clear");
+
+      const bound = await tryBindOfficialPolicyPlugins(process.env, here);
+      assert(bound.address === true, `official #66 sanctions.ts binds ${JSON.stringify(bound)}`);
+      assert(bound.geo === true, `official #67 evaluateRequestGeo binds ${JSON.stringify(bound)}`);
+      assert(officialPolicyPluginsBound() === true, "official #66+#67 path sets officialBound");
+      const before = downstream.ran;
+      const allow = await hit(srv.url, {
+        method: "POST",
+        path: "/quote",
+        body: spoofBody(),
+        headers: await spoofHeaders(clearAcct),
+      });
+      assertAllowed(allow, downstream, before, CLEAR);
+    } finally {
+      if (prevDataDir === undefined) delete process.env.SANCTIONS_DATA_DIR;
+      else process.env.SANCTIONS_DATA_DIR = prevDataDir;
+      rmSync(dataDir, { recursive: true, force: true });
+      bindOperatorPolicyProviders(null);
+      resetOperatorPolicyState();
+      setFixtureBlockedWallets([BLOCKED]);
+    }
+  }
+
+  {
     const prod = await gateProtectedWrite({
       headers: { "cf-ipcountry": "US", "x-sanctions-clear": "1", "x-reactor-wallet": CLAIMED_CLEAR },
       body: spoofBody(),
@@ -453,6 +520,10 @@ try {
   assert(indexSrc.includes("/operator-policy/challenge"), "challenge route mounted");
   assert(indexSrc.includes("/operator-policy/status"), "status route mounted");
   assert(indexSrc.includes("readOperatorPolicyStatus"), "status uses shared reader");
+  assert(indexSrc.includes("/sanctions/screen"), "preserves #66 screen lookup");
+  assert(indexSrc.includes("/sanctions/dataset"), "preserves #66 dataset lookup");
+  assert(indexSrc.includes("indexerSanctionsStore"), "preserves #66 store constructor");
+  assert(readFileSync(join(here, "geo-policy-resolve.ts"), "utf8").includes("export function evaluateRequestGeo"), "official #67 geo plugin present");
   assert(signerSrc.includes("gateProtectedWrite"), "isolated signer gated");
   assert(signerSrc.includes("bindRecoveredIdentity"), "signer binds recovered creator");
 }
