@@ -5,7 +5,10 @@ locals {
     ManagedBy = "terraform"
     Issue     = "83"
   }
+  github_oidc_subject = var.github_oidc_subject != "" ? var.github_oidc_subject : "repo:${var.github_repository}:ref:refs/heads/main"
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_kms_key" "authorizer" {
   description             = "REACTOR MaintenanceJob authorizer"
@@ -54,9 +57,9 @@ resource "aws_iam_role" "authorizer" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
+      Effect    = "Allow"
       Principal = { Service = "lambda.amazonaws.com" }
-      Action = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
   tags = local.tags
@@ -67,9 +70,9 @@ resource "aws_iam_role" "relay_a" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
+      Effect    = "Allow"
       Principal = { Service = "lambda.amazonaws.com" }
-      Action = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
   tags = local.tags
@@ -199,15 +202,16 @@ resource "aws_iam_role_policy" "relay_b" {
 }
 
 resource "aws_lambda_function" "authorizer" {
-  function_name    = "${var.name_prefix}-maintenance-authorizer"
-  role             = aws_iam_role.authorizer.arn
-  handler          = "handler.handler"
-  runtime          = "nodejs22.x"
-  filename         = var.lambda_zip_path
-  source_code_hash = filebase64sha256(var.lambda_zip_path)
-  memory_size      = 256
-  timeout          = 25
-  depends_on       = [aws_cloudwatch_log_group.authorizer]
+  function_name                  = "${var.name_prefix}-maintenance-authorizer"
+  role                           = aws_iam_role.authorizer.arn
+  handler                        = "handler.handler"
+  runtime                        = "nodejs22.x"
+  filename                       = var.lambda_zip_path
+  source_code_hash               = filebase64sha256(var.lambda_zip_path)
+  memory_size                    = 256
+  timeout                        = 25
+  reserved_concurrent_executions = 1
+  depends_on                     = [aws_cloudwatch_log_group.authorizer]
   environment {
     variables = {
       REACTOR_ENV                 = "PROD"
@@ -224,15 +228,16 @@ resource "aws_lambda_function" "authorizer" {
 }
 
 resource "aws_lambda_function" "relay_a" {
-  function_name    = "${var.name_prefix}-relay-a"
-  role             = aws_iam_role.relay_a.arn
-  handler          = "handler.handler"
-  runtime          = "nodejs22.x"
-  filename         = var.lambda_zip_path
-  source_code_hash = filebase64sha256(var.lambda_zip_path)
-  memory_size      = 256
-  timeout          = 25
-  depends_on       = [aws_cloudwatch_log_group.relay_a]
+  function_name                  = "${var.name_prefix}-relay-a"
+  role                           = aws_iam_role.relay_a.arn
+  handler                        = "handler.handler"
+  runtime                        = "nodejs22.x"
+  filename                       = var.lambda_zip_path
+  source_code_hash               = filebase64sha256(var.lambda_zip_path)
+  memory_size                    = 256
+  timeout                        = 45
+  reserved_concurrent_executions = 1
+  depends_on                     = [aws_cloudwatch_log_group.relay_a]
   environment {
     variables = {
       REACTOR_ENV                   = "PROD"
@@ -244,6 +249,7 @@ resource "aws_lambda_function" "relay_a" {
       REACTOR_JOB_SIGNER_KMS_KEY_ID = aws_kms_key.authorizer.arn
       REACTOR_SIGNED_JOB_SOURCE_URL = var.signed_job_source_url
       REACTOR_RELAY_DELAY_MS        = "0"
+      REACTOR_RECEIPT_TIMEOUT_MS    = tostring(var.receipt_timeout_ms)
       REACTOR_METRIC_NAMESPACE      = var.metric_namespace
     }
   }
@@ -251,15 +257,16 @@ resource "aws_lambda_function" "relay_a" {
 }
 
 resource "aws_lambda_function" "relay_b" {
-  function_name    = "${var.name_prefix}-relay-b"
-  role             = aws_iam_role.relay_b.arn
-  handler          = "handler.handler"
-  runtime          = "nodejs22.x"
-  filename         = var.lambda_zip_path
-  source_code_hash = filebase64sha256(var.lambda_zip_path)
-  memory_size      = 256
-  timeout          = 45
-  depends_on       = [aws_cloudwatch_log_group.relay_b]
+  function_name                  = "${var.name_prefix}-relay-b"
+  role                           = aws_iam_role.relay_b.arn
+  handler                        = "handler.handler"
+  runtime                        = "nodejs22.x"
+  filename                       = var.lambda_zip_path
+  source_code_hash               = filebase64sha256(var.lambda_zip_path)
+  memory_size                    = 256
+  timeout                        = 60
+  reserved_concurrent_executions = 1
+  depends_on                     = [aws_cloudwatch_log_group.relay_b]
   environment {
     variables = {
       REACTOR_ENV                   = "PROD"
@@ -271,10 +278,27 @@ resource "aws_lambda_function" "relay_b" {
       REACTOR_JOB_SIGNER_KMS_KEY_ID = aws_kms_key.authorizer.arn
       REACTOR_SIGNED_JOB_SOURCE_URL = var.signed_job_source_url
       REACTOR_RELAY_DELAY_MS        = tostring(var.relay_b_delay_ms)
+      REACTOR_RECEIPT_TIMEOUT_MS    = tostring(var.receipt_timeout_ms)
       REACTOR_METRIC_NAMESPACE      = var.metric_namespace
     }
   }
   tags = local.tags
+}
+
+resource "aws_lambda_function_event_invoke_config" "authorizer" {
+  function_name                = aws_lambda_function.authorizer.function_name
+  maximum_event_age_in_seconds = 60
+  maximum_retry_attempts       = 0
+}
+resource "aws_lambda_function_event_invoke_config" "relay_a" {
+  function_name                = aws_lambda_function.relay_a.function_name
+  maximum_event_age_in_seconds = 60
+  maximum_retry_attempts       = 0
+}
+resource "aws_lambda_function_event_invoke_config" "relay_b" {
+  function_name                = aws_lambda_function.relay_b.function_name
+  maximum_event_age_in_seconds = 60
+  maximum_retry_attempts       = 0
 }
 
 resource "aws_cloudwatch_event_rule" "authorizer" {
@@ -380,8 +404,9 @@ resource "aws_cloudwatch_metric_alarm" "relay_low_balance" {
   tags                = local.tags
 }
 
-# Bootstrap once with a human-admin Terraform apply. Subsequent reviewed deploys
-# may use this GitHub OIDC role; no long-lived AWS access key is stored in GitHub.
+# First apply is intentionally human-admin: it creates KMS keys, IAM roles and
+# the OIDC provider. The GitHub role below is deliberately NOT a Terraform-admin
+# role. It can only replace code on the three existing Lambda functions.
 data "tls_certificate" "github_actions" {
   url = "https://token.actions.githubusercontent.com"
 }
@@ -398,12 +423,14 @@ resource "aws_iam_role" "github_deploy" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
+      Effect    = "Allow"
       Principal = { Federated = aws_iam_openid_connect_provider.github.arn }
-      Action = "sts:AssumeRoleWithWebIdentity"
+      Action    = "sts:AssumeRoleWithWebIdentity"
       Condition = {
-        StringEquals = { "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com" }
-        StringLike   = { "token.actions.githubusercontent.com:sub" = "repo:${var.github_repository}:*" }
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:sub" = local.github_oidc_subject
+        }
       }
     }]
   })
@@ -411,25 +438,30 @@ resource "aws_iam_role" "github_deploy" {
 }
 
 resource "aws_iam_role_policy" "github_deploy" {
-  name = "${var.name_prefix}-terraform-deploy"
+  name = "${var.name_prefix}-lambda-code-deploy-only"
   role = aws_iam_role.github_deploy.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "ReadFunctions"
         Effect = "Allow"
-        Action = [
-          "kms:CreateKey", "kms:DescribeKey", "kms:EnableKey", "kms:DisableKey", "kms:ScheduleKeyDeletion",
-          "kms:CreateAlias", "kms:UpdateAlias", "kms:DeleteAlias", "kms:TagResource", "kms:UntagResource",
-          "iam:CreateRole", "iam:GetRole", "iam:DeleteRole", "iam:TagRole", "iam:UntagRole",
-          "iam:PutRolePolicy", "iam:GetRolePolicy", "iam:DeleteRolePolicy", "iam:PassRole",
-          "lambda:CreateFunction", "lambda:GetFunction", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration",
-          "lambda:DeleteFunction", "lambda:AddPermission", "lambda:RemovePermission", "lambda:TagResource", "lambda:UntagResource",
-          "events:PutRule", "events:DeleteRule", "events:PutTargets", "events:RemoveTargets", "events:DescribeRule", "events:TagResource", "events:UntagResource",
-          "logs:CreateLogGroup", "logs:DeleteLogGroup", "logs:PutRetentionPolicy", "logs:ListTagsForResource", "logs:TagResource", "logs:UntagResource",
-          "cloudwatch:PutMetricAlarm", "cloudwatch:DeleteAlarms", "cloudwatch:DescribeAlarms", "cloudwatch:TagResource", "cloudwatch:UntagResource"
+        Action = ["lambda:GetFunction", "lambda:GetFunctionConfiguration"]
+        Resource = [
+          aws_lambda_function.authorizer.arn,
+          aws_lambda_function.relay_a.arn,
+          aws_lambda_function.relay_b.arn
         ]
-        Resource = "*"
+      },
+      {
+        Sid      = "ReplaceReviewedCodeOnly"
+        Effect   = "Allow"
+        Action   = "lambda:UpdateFunctionCode"
+        Resource = [
+          aws_lambda_function.authorizer.arn,
+          aws_lambda_function.relay_a.arn,
+          aws_lambda_function.relay_b.arn
+        ]
       }
     ]
   })

@@ -1,5 +1,5 @@
 import { createECDH, createPublicKey } from "node:crypto";
-import { encodeAbiParameters } from "viem";
+import { encodeAbiParameters, parseTransaction } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
   jobIdFromOp,
@@ -16,6 +16,7 @@ import {
   parseDerEcdsaSignature,
   publicKeyDerToAddress,
   signDigestWithKms,
+  signTransactionWithKms,
 } from "../apps/indexer/src/aws-relay/kms.mjs";
 import {
   makeSignedEnvelope,
@@ -66,6 +67,13 @@ function derSig(r: bigint, s: bigint) {
   return new Uint8Array(Buffer.concat([Buffer.from([0x30, body.length]), body]));
 }
 
+function signatureRs(signature: `0x${string}`) {
+  return {
+    r: BigInt(`0x${signature.slice(2, 66)}`),
+    s: BigInt(`0x${signature.slice(66, 130)}`),
+  };
+}
+
 async function main() {
   const gateway = "0x0000000000000000000000000000000000000011" as const;
   const token = "0x00000000000000000000000000000000000000aa" as const;
@@ -92,24 +100,23 @@ async function main() {
     primaryType: "MaintenanceJob",
     message: job,
   });
-  const r = BigInt(`0x${signed65.slice(2, 66)}`);
-  const sLow = BigInt(`0x${signed65.slice(66, 130)}`);
-  const sHigh = __kmsTest.CURVE_N - sLow;
+  const typedRs = signatureRs(signed65);
+  const sHigh = __kmsTest.CURVE_N - typedRs.s;
   const publicKey = spkiForPrivateKey(PK);
   assert((await publicKeyDerToAddress(publicKey)) === account.address, "SPKI secp256k1 -> EVM address");
-  const parsed = parseDerEcdsaSignature(derSig(r, sLow));
-  assert(parsed.r === r && parsed.s === sLow, "DER r/s parser");
+  const parsed = parseDerEcdsaSignature(derSig(typedRs.r, typedRs.s));
+  assert(parsed.r === typedRs.r && parsed.s === typedRs.s, "DER r/s parser");
 
-  const backend = {
+  const typedBackend = {
     async getPublicKey() {
       return publicKey;
     },
     async signDigest(_keyId: string, digest: `0x${string}`) {
       assert(digest === canonicalDigest, "KMS must receive exact EIP-712 digest");
-      return derSig(r, sHigh);
+      return derSig(typedRs.r, sHigh);
     },
   };
-  const kmsSig = await signDigestWithKms({ backend, keyId: "alias/reactor-test", digest: canonicalDigest });
+  const kmsSig = await signDigestWithKms({ backend: typedBackend, keyId: "alias/reactor-test", digest: canonicalDigest });
   assert(kmsSig.signer === account.address, "KMS signature recovers expected signer");
   assert(BigInt(kmsSig.s) <= __kmsTest.HALF_N, "KMS signature is low-s normalized");
 
@@ -141,6 +148,43 @@ async function main() {
   } catch (e) {
     assert(e instanceof Error && /payload hash mismatch/.test(e.message), "tampered payload rejected before broadcast");
   }
+
+  // Exercise the full transaction path, not only EIP-712. Mock KMS signs the
+  // exact digest with the deterministic fixture account, then returns DER as AWS does.
+  const txBackend = {
+    async getPublicKey() {
+      return publicKey;
+    },
+    async signDigest(_keyId: string, digest: `0x${string}`) {
+      const sig = await account.sign({ hash: digest });
+      const rs = signatureRs(sig);
+      return derSig(rs.r, rs.s);
+    },
+  };
+  const tx = {
+    type: "eip1559" as const,
+    chainId: 1883,
+    nonce: 7,
+    to: gateway,
+    data: "0x" as const,
+    value: 0n,
+    gas: 80_000n,
+    maxFeePerGas: 100n,
+    maxPriorityFeePerGas: 1n,
+  };
+  const signedTx = await signTransactionWithKms({
+    backend: txBackend,
+    keyId: "alias/reactor-relay-test",
+    expectedAddress: account.address,
+    transaction: tx,
+  });
+  const parsedTx = parseTransaction(signedTx.serializedTransaction);
+  assert(parsedTx.chainId === 1883, "KMS signed tx retains chain id");
+  assert(parsedTx.nonce === 7, "KMS signed tx retains nonce");
+  assert(parsedTx.to?.toLowerCase() === gateway.toLowerCase(), "KMS signed tx retains target");
+  assert(BigInt(parsedTx.r!) === BigInt(signedTx.r), "serialized tx contains recovered r");
+  assert(BigInt(parsedTx.s!) === BigInt(signedTx.s), "serialized tx contains normalized s");
+  assert(Number(parsedTx.yParity) === signedTx.yParity, "serialized tx contains recovered yParity");
 
   assert(relayDelayMs("A") === 0, "relay A immediate");
   assert(relayDelayMs("B") === 15_000, "relay B delayed failover");

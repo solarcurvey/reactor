@@ -13,15 +13,40 @@ Private keys never exist in Terraform variables, Lambda environment variables, f
 
 The relay roles may `kms:GetPublicKey` for their own key and the maintenance public key. This exposes only public material; each relay has `kms:Sign` on its **own** transaction key only. Neither relay can sign a MaintenanceJob.
 
+Each Lambda has reserved concurrency `1`. EventBridge invokes each worker once per minute with async retries disabled: a failed invocation is retried by the next scheduled tick, not by overlapping Lambda retries. Relay receipt waits are bounded below Lambda timeout; Relay B's default delay still leaves execution headroom.
+
+## Trust / deployment boundary
+
+The first Terraform apply is deliberately a human-admin operation because it creates the KMS keys, runtime IAM roles and GitHub OIDC trust. The GitHub OIDC role is **not** a Terraform administrator and cannot:
+
+- call `kms:Sign`;
+- alter or create KMS keys;
+- alter runtime IAM policies;
+- `iam:PassRole`;
+- change Lambda environment/configuration;
+- change EventBridge schedules or alarms.
+
+It may only read and replace code on the three named Lambda functions. Its OIDC trust defaults to the exact `main` branch subject, not every ref in the repository.
+
+`.github/workflows/deploy-aws-relay.yml` is manual (`workflow_dispatch`) and refuses to run unless the checked-out ref is `refs/heads/main`. Configure these non-secret repository variables after the first apply:
+
+- `AWS_RELAY_DEPLOY_ROLE_ARN` — Terraform output `github_deploy_role_arn`;
+- `AWS_RELAY_REGION` — for example `us-east-1`;
+- `AWS_RELAY_NAME_PREFIX` — the applied `name_prefix`.
+
+No long-lived AWS access key belongs in GitHub.
+
 ## One-time operator flow
 
 1. Secure the AWS account/root user with MFA and billing alerts.
 2. Build the Lambda artifact from repository root: `bash scripts/build-aws-relay-bundle.sh`.
 3. Copy `terraform.tfvars.example` to an uncommitted `terraform.tfvars` and fill the Arc/testnet URLs/addresses.
-4. `terraform init && terraform plan && terraform apply` in this directory. The first human-admin apply bootstraps the GitHub OIDC deploy role; future reviewed deploys can assume that role without static AWS keys.
-5. Derive/record the three public EVM addresses from KMS (`GetPublicKey` is public material). Fund relay A/B only; the maintenance authorizer never sends a transaction.
-6. Arc Public Testnet rehearsal: A consumes a real KMS-authorized job, B observes it used; disable A and prove B consumes a fresh job. Retain tx hashes + CloudWatch evidence.
-7. Only after review/audit, approve Guardian Safe cutover so `Guardian.keeper == AutomationGateway` and the Gateway job signer is the maintenance-authorizer KMS address.
+4. As a human-approved AWS administrator, run `terraform init && terraform plan && terraform apply` in this directory. Review the plan: exactly three asymmetric KMS keys, three runtime roles/functions, schedules/alarms, and the code-only GitHub OIDC role.
+5. Record `github_deploy_role_arn` plus region/name-prefix as the three GitHub repository variables above. Do **not** add AWS access-key secrets.
+6. Derive/record the three public EVM addresses from KMS (`GetPublicKey` is public material). Fund Relay A/B only; the maintenance authorizer never sends a transaction.
+7. Arc Public Testnet rehearsal: A consumes a real KMS-authorized job, B observes it used; disable A and prove B consumes a fresh job. Retain tx hashes + CloudWatch evidence.
+8. Only after review/audit, approve Guardian Safe cutover so `Guardian.keeper == AutomationGateway` and the Gateway job signer is the maintenance-authorizer KMS address.
+9. After the infrastructure is stable, ordinary reviewed runtime-code updates may use the manual OIDC deploy workflow from `main`. IAM/KMS/config changes still require a separately reviewed human Terraform apply.
 
 No VPC/NAT Gateway, dedicated RDS, Kubernetes, or always-on EC2 is provisioned here.
 
@@ -46,3 +71,5 @@ No VPC/NAT Gateway, dedicated RDS, Kubernetes, or always-on EC2 is provisioned h
 ```
 
 The authorizer POSTs the signed envelope to `signed_job_sink_url`. `signed_job_source_url` returns that envelope (or `{ "jobs": [...] }`). Relays re-derive the signed payload and exact `onReport` calldata; they do not trust endpoint-provided calldata blindly.
+
+The production endpoint implementation must authenticate authorizer/relay service traffic and persist signed envelopes idempotently by `jobId`; #83 stays open until that integration and real AWS/Testnet evidence exist.

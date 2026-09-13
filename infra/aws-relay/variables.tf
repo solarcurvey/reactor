@@ -49,6 +49,20 @@ variable "relay_b_delay_ms" {
   type        = number
   description = "Relay B grace delay before checking usedJob and broadcasting."
   default     = 15000
+  validation {
+    condition     = var.relay_b_delay_ms >= 0 && var.relay_b_delay_ms <= 30000
+    error_message = "relay_b_delay_ms must be between 0 and 30000."
+  }
+}
+
+variable "receipt_timeout_ms" {
+  type        = number
+  description = "Maximum receipt wait inside one relay invocation. Must leave headroom below Lambda timeout."
+  default     = 20000
+  validation {
+    condition     = var.receipt_timeout_ms >= 5000 && var.receipt_timeout_ms <= 30000
+    error_message = "receipt_timeout_ms must be between 5000 and 30000."
+  }
 }
 
 variable "metric_namespace" {
@@ -70,6 +84,12 @@ variable "alarm_action_arns" {
 
 variable "github_repository" {
   type        = string
-  description = "GitHub owner/repository allowed to assume the deployment role."
+  description = "GitHub owner/repository allowed to assume the code-deploy role."
   default     = "solarcurvey/reactor"
+}
+
+variable "github_oidc_subject" {
+  type        = string
+  description = "Exact GitHub OIDC sub allowed to deploy Lambda code. Empty defaults to repo:<github_repository>:ref:refs/heads/main."
+  default     = ""
 }
