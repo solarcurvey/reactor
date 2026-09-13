@@ -202,6 +202,19 @@ export function parseUxKind(value: unknown): RestrictedUxKind | undefined {
   return undefined;
 }
 
+/**
+ * `/restricted` title/lead kind. Live operator-policy wins; `?kind=` is only a
+ * hydration-safe SSR hint (do not read the URL during the client render).
+ */
+export function restrictedDisplayKind(
+  liveKind: RestrictedUxKind,
+  queryKind?: RestrictedUxKind | null,
+): Exclude<RestrictedUxKind, "allow" | "pending"> | null {
+  if (liveKind === "wallet" || liveKind === "geo" || liveKind === "unavailable") return liveKind;
+  if (queryKind === "wallet" || queryKind === "geo" || queryKind === "unavailable") return queryKind;
+  return null;
+}
+
 export function publicPolicyView(input: {
   reason: OperatorPolicyReason;
   source: PublicOperatorPolicyView["source"];

@@ -62,6 +62,9 @@ export function OperatorPolicyProvider({ children }: { children: React.ReactNode
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const [view, setView] = useState<PublicOperatorPolicyView | null>(null);
+  /* Instant mocked `/api/operator-policy` can resolve before sibling hydrate.
+   * Keep the SSR pending tree until after mount so deny HTML cannot replace
+   * server text mid-hydrate (React #418). */
   const [hydrated, setHydrated] = useState(false);
   const proofRef = useRef<CachedProof | null>(null);
 

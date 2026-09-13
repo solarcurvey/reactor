@@ -12,6 +12,7 @@ export {
   parseUxKind,
   parseWritePolicyError,
   publicPolicyView,
+  restrictedDisplayKind,
   restrictedHref,
   sanitizePublicPolicyView,
   unavailableStubView,

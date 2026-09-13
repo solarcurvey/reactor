@@ -14,6 +14,7 @@ import {
   parseWritePolicyError,
   publicPolicyView,
   publicViewHasSensitiveKeys,
+  restrictedDisplayKind,
   restrictedHref,
   isWalletProofPendingReason,
   launchpadUxFromView,
@@ -93,6 +94,10 @@ const ALL_REASONS = Object.keys(USER_POLICY_MESSAGES) as OperatorPolicyReason[];
   assert(parseUxKind("geo") === "geo", "kind parse");
   assert(parseUxKind("DENY_ADDRESS_BLOCKED") === "wallet", "reason parse");
   assert(parseUxKind("vpn") === undefined, "junk kind ignored");
+  assert(restrictedDisplayKind("pending", "geo") === "geo", "query kind is SSR hint while pending");
+  assert(restrictedDisplayKind("wallet", "geo") === "wallet", "live policy wins over query kind");
+  assert(restrictedDisplayKind("pending", "allow") === null, "allow/pending query is not a display kind");
+  assert(restrictedDisplayKind("allow") === null, "allow has no restricted display kind");
   assert(restrictedHref("geo") === "/restricted?kind=geo", "geo href");
   assert(writeCtaLabel("geo", "Launch Instant") === "Unavailable here", "geo CTA");
   assert(writeCtaLabel("wallet", "Confirm buy") === "Account unavailable", "wallet CTA");
@@ -153,6 +158,19 @@ const ALL_REASONS = Object.keys(USER_POLICY_MESSAGES) as OperatorPolicyReason[];
   }
   assert(joined.includes("policyBlocked"), "submit paths check policyBlocked");
   assert(!/vpn|circumvent|use a proxy/i.test(joined), "write surfaces have no bypass guidance");
+}
+
+{
+  const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../apps/web/src");
+  const page = readFileSync(join(webRoot, "app/restricted/page.tsx"), "utf8");
+  const view = readFileSync(join(webRoot, "app/restricted/restricted-view.tsx"), "utf8");
+  assert(!page.includes("useSearchParams"), "restricted page is a server entry — no useSearchParams");
+  assert(!view.includes("useSearchParams"), "restricted view does not call useSearchParams");
+  assert(page.includes("searchParams"), "server reads request kind");
+  assert(page.includes("force-dynamic"), "restricted page is not a static searchParams shell");
+  assert(view.includes("initialKind"), "client hydrates the server kind prop");
+  const provider = readFileSync(join(webRoot, "components/operator-policy-provider.tsx"), "utf8");
+  assert(provider.includes("hydrated"), "provider delays policy refresh until after mount");
 }
 
 console.log("operator-policy-ux ok");
