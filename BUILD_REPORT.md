@@ -1,6 +1,6 @@
 # BUILD REPORT — Issue #16 Arc Public Testnet rehearsal
 
-**Status:** Rebased onto `origin/main` `4915f3e` (merged **#80** Industrial Forge after **#81** / **#46** / **#75** / **#44**). Same draft PR #52 / same branch. Protocol **0.3.4**. Factory **V1** unchanged. **#16 stays open.** LOCAL authorize Instant RHRSL + Fair RHRFL explorer hashes are in `deployments/arc-testnet-journey.json` (Blockscout `result=success`). Not full PROD. `claimedProdPath` stays **false**.
+**Status:** Rebased onto `origin/main` `922f909` (squash-merged **#48** handbook after **#80** Industrial Forge / **#81** / **#46** / **#75** / **#44**). Same draft PR #52 / same branch. Protocol **0.3.4**. Factory **V1** unchanged. **#16 stays open.** LOCAL authorize Instant RHRSL + Fair RHRFL explorer hashes are in `deployments/arc-testnet-journey.json` (Blockscout `result=success`). Not full PROD. `claimedProdPath` stays **false**.
 **Not audited. Not mainnet.**
 **Economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
@@ -19,7 +19,7 @@
 | Quote | Mock USDC-6 `0x44CBe037ABFA8696E4466cA9D278Dbbe44B932dC` (labeled). Canonical `0x3600…0000` is not the Instant/Fair quote. |
 | PoolManager | Official v4-core BUSL `0xC320E526477A9A9c8919A0A8200eAB38fE55033f` — rehearsal deploy, not a Circle-provided manager |
 | Addresses | `deployments/arc-testnet.json` → `docs/deployments.md` |
-| Workflows | Inherited merged **#80** / **#81** / **#46** / **#75** / **#44** / **#70** / **#79** / **#68** / **#67** / **#66** / **#49** / **#42** / **#50** / **#73** `.github/workflows/ci.yml` (`ci-decide.sh` docs-only cheap path + three-tier + page-budget + `web-qa` + `e2e-release-gate` + `obs-ui` + `docs:links` + sanctions/geo/operator-policy/restricted-access fixtures). Prefer main for CI. Do not rewrite decide-tier. Actions billing empty-step failures are not AC failures. |
+| Workflows | Inherited merged **#48** / **#80** / **#81** / **#46** / **#75** / **#44** / **#70** / **#79** / **#68** / **#67** / **#66** / **#49** / **#42** / **#50** / **#73** `.github/workflows/ci.yml` (`ci-decide.sh` docs-only cheap path + three-tier + page-budget + `web-qa` + `e2e-release-gate` + `obs-ui` + `docs:links` + handbook docs-copy/visual + sanctions/geo/operator-policy/restricted-access fixtures). Prefer main for CI. Do not rewrite decide-tier. Actions billing empty-step failures are not AC failures. |
 | Mainnet | **Blocked** |
 
 Keep **#16 open** until Instant + Fair explorer AC are human-confirmed. Guardian-signed Factory smoke (`pnpm arc:smoke`) is recorded. LOCAL authorize Instant RHRSL + Fair RHRFL (`pnpm arc:wallet-harness`) used `POST /launch/authorize` → `launchStandard` / `createFairLaunch` → `POST /quote` → `UserRouteExecutor`. Blockscout `status=ok` / `result=success`. `pnpm arc:prod-web` wrote env examples + `deployments/arc-testnet-prod-path.json` (`claimedProdPath: false`). Full PROD still needs Turnstile + isolated signer ≠ deployer ≠ Keeper + browser/wallet. No Safe genesis. Do not invent those keys.
