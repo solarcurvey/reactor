@@ -48,6 +48,22 @@ After #73 those proofs run on `.github/workflows/ci.yml`: fast+Solidity `foundry
 
 Those Anvil / Foundry rehearsals prove Gateway consume / Replay semantics. They are **not** the #83 production key model (AWS KMS secp256k1 authorizer + dual managed relays, no raw `JOB_SIGNER_PRIVATE_KEY` fallback).
 
+## AWS managed production path (#83)
+
+The selected V1 production courier is deliberately provider-independent and boring:
+
+`canonical ValuationService/planner -> AWS KMS authorizer -> signed MaintenanceJob -> Relay A / delayed Relay B -> AutomationGateway`
+
+Three distinct AWS KMS `ECC_SECG_P256K1` signing keys are used: maintenance authorizer, Relay A, Relay B. The maintenance key signs only the EIP-712 job digest; relay keys sign only transactions. No production private-key fallback is allowed in the managed path. Each Lambda IAM role can `kms:Sign` only with its own key.
+
+`packages/reactor/src/maintenance-envelope.ts` is the single courier-side binding verifier for all six maintenance actions. AWS, CRE, and future couriers must recompute the exact payload/snapshot binding before calldata encoding rather than reimplementing the rules independently.
+
+Relay A executes immediately. Relay B normally waits 15 seconds and reads `usedJob(jobId)` before signing a transaction, avoiding duplicate gas in the healthy path. If A is unavailable, B executes. A true race is still safe because the Gateway consumes the job once.
+
+Deployment is Lambda + EventBridge + KMS + Secrets Manager + CloudWatch; there is no relay VPC/NAT Gateway, Kubernetes cluster, dedicated database, or always-on EC2 fleet. GitHub deployment uses OIDC, not long-lived AWS credentials. See `ops/aws/README.md` and `ops/aws/terraform/`.
+
+The first AWS apply leaves schedules **off**. Only after public KMS EVM identities, Gateway/jobSigner configuration, operator-only canonical job queue, RPC/API secrets, relay funding and Arc Public Testnet evidence are verified may schedules be enabled. Arc Mainnet 5042 remains hard-disabled in #83.
+
 ## Production path vs optional CRE
 
 **#83** is the chosen production autonomous execution path: `ValuationService → KMS-backed MaintenanceJob authorizer → Relay A / Relay B → AutomationGateway`. Relays provide liveness only. CRE / Gelato / other executors may be added later on the same signed-job interface.
@@ -56,4 +72,4 @@ Authenticated `cre workflow simulate` on catalog 1883 is **optional interoperabi
 
 Not a live CRE DON. Not claimed Arc Public Testnet. Not Arc Mainnet 5042. No human or AI click in the autonomous loop.
 
-See `KEEPER_MODEL.md`, [Keeper](/docs/keeper), [Trust](/docs/trust), `ops/cre/README.md`, `INCIDENT_RESPONSE.md`.
+See `KEEPER_MODEL.md`, [Keeper](/docs/keeper), [Trust](/docs/trust), `ops/aws/README.md`, `ops/cre/README.md`, `INCIDENT_RESPONSE.md`.

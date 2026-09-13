@@ -1,0 +1,103 @@
+name: aws-managed-relay
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Protected GitHub Environment / AWS stack
+        type: choice
+        required: true
+        options: [staging, prod]
+      apply:
+        description: Apply Terraform (false = plan only)
+        type: boolean
+        required: true
+        default: false
+      enable_schedules:
+        description: Enable EventBridge schedules only after identities/secrets/Gateway are verified
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    environment: reactor-${{ inputs.environment }}
+    concurrency:
+      group: aws-managed-relay-${{ inputs.environment }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-pnpm
+
+      - name: Build Lambda bundle
+        run: |
+          mkdir -p ops/aws/dist
+          pnpm dlx esbuild@0.25.10 apps/indexer/src/managed-relay-worker.ts \
+            --bundle --platform=node --target=node22 --format=esm \
+            --external:@aws-sdk/* --outfile=ops/aws/dist/worker.mjs
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform format
+        run: terraform fmt -check -recursive ops/aws/terraform
+
+      - name: Refuse production apply outside main
+        if: inputs.environment == 'prod' && inputs.apply
+        run: |
+          test "${GITHUB_REF}" = "refs/heads/main" || {
+            echo "production apply is allowed only from main" >&2
+            exit 1
+          }
+
+      - name: Configure AWS credentials via GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v6.2.4
+        with:
+          role-to-assume: ${{ vars.REACTOR_AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.REACTOR_AWS_REGION }}
+
+      - name: Terraform init
+        run: |
+          terraform -chdir=ops/aws/terraform/stack init \
+            -backend-config="bucket=${{ vars.REACTOR_TF_STATE_BUCKET }}" \
+            -backend-config="key=managed-relay/${{ inputs.environment }}.tfstate" \
+            -backend-config="region=${{ vars.REACTOR_AWS_REGION }}" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
+
+      - name: Terraform validate
+        run: terraform -chdir=ops/aws/terraform/stack validate
+
+      - name: Terraform plan
+        run: |
+          terraform -chdir=ops/aws/terraform/stack plan -out=tfplan \
+            -var="aws_region=${{ vars.REACTOR_AWS_REGION }}" \
+            -var="environment=${{ inputs.environment }}" \
+            -var="chain_id=${{ vars.REACTOR_CHAIN_ID }}" \
+            -var="gateway_address=${{ vars.REACTOR_GATEWAY_ADDRESS }}" \
+            -var="job_signer_address=${{ vars.REACTOR_JOB_SIGNER_ADDRESS }}" \
+            -var="maintenance_api_base=${{ vars.REACTOR_MAINTENANCE_API_BASE }}" \
+            -var="forbidden_addresses=${{ vars.REACTOR_FORBIDDEN_ADDRESSES }}" \
+            -var="schedules_enabled=${{ inputs.enable_schedules }}"
+
+      - name: Terraform apply
+        if: inputs.apply
+        run: terraform -chdir=ops/aws/terraform/stack apply -auto-approve tfplan
+
+      - name: Print KMS-derived public EVM identities
+        if: inputs.apply
+        run: |
+          IDS="$(terraform -chdir=ops/aws/terraform/stack output -json kms_key_ids)"
+          export MAINTENANCE_KMS_KEY_ID="$(jq -r '.authorizer' <<<"$IDS")"
+          export RELAY_A_KMS_KEY_ID="$(jq -r '."relay-a"' <<<"$IDS")"
+          export RELAY_B_KMS_KEY_ID="$(jq -r '."relay-b"' <<<"$IDS")"
+          export MAINTENANCE_CHAIN_ID="${{ vars.REACTOR_CHAIN_ID }}"
+          export MAINTENANCE_FORBIDDEN_ADDRESSES="${{ vars.REACTOR_FORBIDDEN_ADDRESSES }}"
+          pnpm --filter indexer exec tsx src/kms-identities.ts

@@ -1,0 +1,45 @@
+name: aws-managed-relay-ci
+
+on:
+  pull_request:
+    paths:
+      - "apps/indexer/src/aws-kms-backend*"
+      - "apps/indexer/src/kms-*"
+      - "apps/indexer/src/managed-relay-*"
+      - "packages/reactor/src/maintenance-envelope*"
+      - "ops/aws/**"
+      - ".github/workflows/aws-managed-relay*.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-pnpm
+
+      - name: Bundle Lambda entry
+        run: |
+          mkdir -p ops/aws/dist
+          pnpm dlx esbuild@0.25.10 apps/indexer/src/managed-relay-worker.ts \
+            --bundle --platform=node --target=node22 --format=esm \
+            --external:@aws-sdk/* --outfile=ops/aws/dist/worker.mjs
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform format
+        run: terraform fmt -check -recursive ops/aws/terraform
+
+      - name: Validate bootstrap
+        run: |
+          terraform -chdir=ops/aws/terraform/bootstrap init -backend=false
+          terraform -chdir=ops/aws/terraform/bootstrap validate
+
+      - name: Validate managed-relay stack
+        run: |
+          terraform -chdir=ops/aws/terraform/stack init -backend=false
+          terraform -chdir=ops/aws/terraform/stack validate
