@@ -1,6 +1,6 @@
 # BUILD REPORT — Exact official-list sanctions screening (Refs #61)
 
-**Status:** Branch `cursor/ofac-sanctions-dataset-1a33` / draft PR **#66**, rebased onto `origin/main` `300b7e5` after #73. Issue **#61 stays open** for independent audit (parent RELEASE GATE **#60**). Do not auto-close.  
+**Status:** Branch `cursor/ofac-sanctions-dataset-1a33` / PR **#66**, rebased onto `origin/main` `e5fd745` after #50 (page-budget) and #58. Issue **#61 stays open** until merge **and** post-merge verify (parent RELEASE GATE **#60**). Do not auto-close.  
 **Not audited. Not mainnet. Not a legal/OFAC compliance claim.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Protocol release remains 0.3.3** — do not restore a pre-rewrite version.
@@ -9,7 +9,7 @@
 
 **Re-audit pass (freshness durability):** version id includes `sourceGenerationHash` (retrievedAt + source HTTP/publication metadata), not only the address-set `contentHash`. A same-address refresh persists t1 metadata; `loadFromDisk()` freshness ages from t1.
 
-**Rebase (after #73):** replayed the six #61 commits onto `origin/main` `300b7e5` (single `ci.yml`). Conflicts: `docs-sync.yml` (deleted on main — do not restore; fixtures stay in `test:lib` / `constants-version-deployments`), `AUDIT_HANDOFF.md`, `BUILD_REPORT.md`, `package.json`. Kept #61 screening AC, #73 three-tier single workflow, and #72/#74/#76/#77 publicization/harden (`contents: read`, `persist-credentials: false`, no `pull_request_target`). `test:lib` includes sanctions fixtures, `ci-cost.test.ts`, and `ci-public-harden.test.ts`. Live OFAC HTTPS stays `SANCTIONS_NETWORK=1` / `test:sanctions:network` — not a second workflow.
+**Rebase (after #50 / #58):** replayed the #61 commits onto `origin/main` `e5fd745`. Conflicts (docs/`package.json` only — no economics rewrite): `package.json` / indexer `test` scripts keep **both** #61 sanctions fixtures **and** #50 `indexed` / `page-budget` / `page-reads` / `rpc-batch`; `TESTING.md` row 52 stays #61 (rows 53–56 are #50); `docs/trust.md` keeps indexed-board + screening + unaudited + publicization; `docs/ci.md` keeps always-on `page-budget` **and** the #61 `test:lib` fixture slot; `BUILD_REPORT.md` / `AUDIT_HANDOFF.md` keep both amendments. `#73` single `ci.yml` + `#72/#74/#76/#77` harden kept (`contents: read`, `persist-credentials: false`, no `pull_request_target`). Live OFAC HTTPS stays `SANCTIONS_NETWORK=1` / `test:sanctions:network` — not a second workflow. Do not restore `docs-sync.yml`.
 
 ## This HEAD
 
