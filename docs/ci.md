@@ -16,6 +16,17 @@ A **skipped job is not a pass**. Required release jobs must execute their accept
 
 Docs-only / Solidity-only / web-only drafts do not launch unrelated heavy matrices (no production `next build`, Playwright, Postgres, or CI-fuzz Foundry). On a **final merge candidate** those filters are ignored so #15 / #17 / #18 gates still run.
 
+## Accepted #17 / #42 evidence
+
+Product work for [#17](https://github.com/solarcurvey/reactor/issues/17) landed via [PR #42](https://github.com/solarcurvey/reactor/pull/42). Cite these runs — not older greens:
+
+| Role | SHA | Run | Result |
+| --- | --- | --- | --- |
+| Merge-candidate | `11fdadb` | [`34727535121`](https://github.com/solarcurvey/reactor/actions/runs/34727535121) | exact-head `ci-ok` success |
+| Post-merge `main` | `80d3cac` | [`34727638255`](https://github.com/solarcurvey/reactor/actions/runs/34727638255) | `ci-ok` success |
+
+Later integrated closes: #37 after #50 `e5fd745` / [`34727279555`](https://github.com/solarcurvey/reactor/actions/runs/34727279555); #36 after #49 `ad7b457` / [`34729758795`](https://github.com/solarcurvey/reactor/actions/runs/34729758795); #61 after #66 `d08aa1c` / [`34731099571`](https://github.com/solarcurvey/reactor/actions/runs/34731099571); #63 after #67 `e712617` / [`34731788819`](https://github.com/solarcurvey/reactor/actions/runs/34731788819) (founder closed after post-merge verify); #62 after #68 `2002aed` / [`34733128955`](https://github.com/solarcurvey/reactor/actions/runs/34733128955). **#17 stays open** until this docs PR merges + post-merge docs/CI. **#60 / #64 / #65 / #69 stay open.**
+
 ## Triggers (and the one exception)
 
 | Event | Feature branch | `main` |
@@ -79,16 +90,18 @@ Open product issues keep their acceptance commands. Attach new heavy jobs to **t
 
 | Issue / PR | Gate | Slot |
 | --- | --- | --- |
-| #17 (PR #42) | Full GitHub CI — Foundry, size guard, Attack, CREATE2, `docs:links`, Playwright smoke, Safe genesis | `solidity + size-guard` plus full-only `docs-links` and `web`. Cheap `docs:links` and `safe-genesis-builder.test.ts` also run in `test:lib`. Not a second workflow. |
+| #17 (merged #42) | Full GitHub CI — Foundry, size guard, Attack, CREATE2, `docs:links`, Playwright smoke, Safe genesis | Landed. Accepted `11fdadb` / `34727535121` then `80d3cac` / `34727638255`. Gates remain on this workflow. **#17 stays open** until the docs evidence PR merges + post-merge docs/CI. |
 | #15 / #35 (PR #44) | Production browser + wallet E2E | Add a full-only job (`pnpm test:e2e:release` when that script exists). |
-| #15 / #36 (PR #49) | Visual / a11y / failure-injection | `web-qa` (full). `pnpm --filter web test:qa`. Do not re-add `.github/workflows/web-qa.yml`. |
+| #15 / #36 (merged #49, closed) | Visual / a11y / failure-injection | `web-qa` (full). Closed after `ad7b457` / `34729758795`. |
 | #15 / #18 | Production-readiness parent | Same full-tier rule. Do not move those commands to optional / `continue-on-error`. |
-| #37 (PR #50) | RPC page-budget | **Required** always-on job `page-budget` (`pnpm test:page-budget`) plus the same file in `test:lib`. Also required by `ci-ok`. Cheap SQLite unit — not a full-only heavy gate. |
+| #37 (merged #50, closed) | RPC page-budget | Required always-on `page-budget`. Closed after `e5fd745` / `34727279555`. |
 | #39 (PR #46) | Observability | Full-only `obs-ui` job. |
 | #38 | Live toasts | `live-toasts-ui` (full). Units also run in `test:lib` on the fast gate. |
 | #41 / TESTING row 51 | Hostile metadata / CSP | Cheap units in `test:lib`; production build + Playwright corpus in `web-production-security`. |
-| #61 (PR #66) | Exact official-list OFAC screening fixtures | Cheap units in `test:lib` (`@reactor/sanctions` + `sanctions-api.test.ts`). Live HTTPS is `SANCTIONS_NETWORK=1` / `test:sanctions:network` only — not a CI job. Do not add a second workflow. |
-| #62 (PR #68) | Operator policy gate | Cheap units in `test:lib` (`sanctions-policy`, `wallet-proof`, `operator-policy`, BFF, status GET). Full-only job `operator-policy-http` starts the real indexer + production Next and hits `/quote`, `/launch/authorize`, `/upload`, Next `/api/launch-pricing`. Official `#66`/`#67` bind via `tryBindOfficialPolicyPlugins`. Official #65 read: `GET /operator-policy/status`. No new workflow. |
+| #61 (merged #66, closed) | Exact official-list OFAC screening fixtures | Cheap units in `test:lib` (`@reactor/sanctions` + `sanctions-api.test.ts`). Closed after `d08aa1c` / `34731099571`. Live HTTPS is `SANCTIONS_NETWORK=1` / `test:sanctions:network` only — not a CI job. |
+| #63 (merged #67, closed) | Trusted geo / jurisdiction policy units | `geo-policy.test.ts` in `test:lib`. Closed after `e712617` / `34731788819` (founder closed after post-merge verify). |
+| #62 (merged #68, closed) | Operator policy gate | Cheap units in `test:lib` (`sanctions-policy`, `wallet-proof`, `operator-policy`, BFF, status GET). Full-only job `operator-policy-http` starts the real indexer + production Next and hits `/quote`, `/launch/authorize`, `/upload`, Next `/api/launch-pricing`. Official `#66`/`#67` bind via `tryBindOfficialPolicyPlugins`. Official #65 read: `GET /operator-policy/status`. Closed after `2002aed` / `34733128955`. No new workflow. |
+| #60 / #64 / #65 / #69 | Sanctions parent + freshness / UX + CI cost | **Stay open.** |
 | #35–#41 / #51 / #60 | Existing test requirements | Unchanged in substance. Reachable via `TESTING.md` commands and the full gate. |
 
 Recommended required checks (branch protection): **`constants-version-deployments`** (always present), **`page-budget`** (always present — #37 4k-market HTTP/RPC budgets), and **`ci-ok`** (present on merge-candidate + main; requires `page-budget` success). Do not require a check that the fast tier skips.

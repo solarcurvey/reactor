@@ -101,19 +101,19 @@ After prune: **`main` + 17 open-PR `cursor/*` heads + tag `v0.3.1`.** No leftove
 | `cursor/ci-cost-cut-7753` | #73 | Open (ready) — #69 CI cost |
 | `cursor/fix-live-toasts-import-e635` | #58 | Open |
 | `cursor/restricted-access-ux-f91b` | #75 | Draft — Refs #65 |
-| `cursor/sanctions-ops-freshness-8fcc` | #70 | Draft |
-| `cursor/sanctions-operator-policy-gate-3e7f` | #68 | Draft |
-| `cursor/trusted-geo-policy-1252` | #67 | Draft |
-| `cursor/ofac-sanctions-dataset-1a33` | #66 | Draft |
+| `cursor/sanctions-ops-freshness-8fcc` | #70 | Draft — Refs #64 |
+| `cursor/sanctions-operator-policy-gate-3e7f` | #68 | Later merged as `2002aed` — #62 closed after `34733128955` |
+| `cursor/trusted-geo-policy-1252` | #67 | Later merged as `e712617` — #63 closed after `34731788819` (founder post-merge verify) |
+| `cursor/ofac-sanctions-dataset-1a33` | #66 | Later merged as `d08aa1c` — #61 closed after `34731099571` |
 | `cursor/automation-gateway-51-77bf` | #54 | Draft |
 | `cursor/arc-testnet-deploy-rehearsal-deab` | #52 | Draft — Refs #16 |
-| `cursor/rpc-waterfalls-batching-0e20` | #50 | Draft |
-| `cursor/ui-qa-visual-a11y-gate-de13` | #49 | Draft |
+| `cursor/rpc-waterfalls-batching-0e20` | #50 | Later merged — #37 closed after `e5fd745` / `34727279555` |
+| `cursor/ui-qa-visual-a11y-gate-de13` | #49 | Later merged as `ad7b457` — #36 closed after `34729758795` |
 | `cursor/extensive-gitbook-docs-afa6` | #48 | Draft |
 | `cursor/frontend-observability-e1e7` | #46 | Draft |
 | `cursor/production-discovery-ux-38ee` | #45 | Draft |
 | `cursor/e2e-release-gate-05a7` | #44 | Draft |
-| `cursor/full-github-ci-418f` | #42 | Draft — #17 full CI |
+| `cursor/full-github-ci-418f` | #42 | Later merged as `80d3cac` — accepted `11fdadb` / `34727535121` then post-merge `34727638255` |
 
 #74 (`cursor/public-repo-ci-harden-5b18`) was squash-merged onto the rewritten `main` and the head ref was deleted.
 
@@ -172,7 +172,7 @@ On rewritten `main` (via merged #74; single `.github/workflows/ci.yml` after the
 
 #69 (open PR #73) folded `docs-sync.yml` / `live-toasts.yml` / `keeper-lease-pg.yml` into `.github/workflows/ci.yml` and **kept** `contents: read` plus `persist-credentials: false` on every checkout (including `decide-tier`). Do not re-introduce feature-branch `push` + `pull_request` pairs. Concurrency cancel on PRs / SHA-keyed main must stay.
 
-#37 (open PR #50) makes `page-budget` a **required** always-on job in `.github/workflows/ci.yml` (every PR, including drafts; `ci-ok` requires success). The file is also in `pnpm test:lib`. Do not add a second `push` + `pull_request` workflow for RPC budgets.
+#37 (merged #50, **closed** after `e5fd745` / `34727279555`) makes `page-budget` a **required** always-on job in `.github/workflows/ci.yml` (every PR, including drafts; `ci-ok` requires success). The file is also in `pnpm test:lib`. Do not add a second `push` + `pull_request` workflow for RPC budgets.
 
 GitHub Settings (operator, not this PR): before publicizing, set “Approval for running workflows from outside collaborators” to require approval for first-time / all outside forks. Do not enable “Send write tokens to workflows from pull requests.”
 
@@ -180,9 +180,11 @@ GitHub Settings (operator, not this PR): before publicizing, set “Approval for
 
 Publicizing the repository makes these **open draft PRs** world-readable (titles, diffs, discussion):
 
-#75 restricted-access UX, #70 sanctions freshness, #68 sanctions operator policy, #67 trusted geo/IP, #66 OFAC dataset, #54 AutomationGateway, #52 Arc testnet rehearsal, #50 RPC waterfalls, #49 UI QA, #48 handbook docs, #46 observability, #45 discovery UX, #44 E2E release gate, #42 full GitHub CI.
+#75 restricted-access UX (#65), #70 sanctions freshness (#64), #54 AutomationGateway, #52 Arc testnet rehearsal, #48 handbook docs, #46 observability, #45 discovery UX, #44 E2E release gate.
 
-Also open (not draft): #73 CI cost (#69), #58 live-toasts import.
+Later merged: #42 full GitHub CI (#17 product-landed; issue stays open until docs evidence PR + post-merge docs/CI), #49 UI QA (#36 closed), #50 RPC waterfalls (#37 closed), #66 OFAC dataset (#61 closed), #67 trusted geo (#63 closed), #68 operator policy (#62 closed). **#60 / #64 / #65 / #69 stay open.**
+
+Also open (not draft): #73 CI cost (#69), #58 live-toasts import, #79 #17 CI evidence docs.
 
 Close, convert, or redact before visibility changes if any draft is not ready for a public audience.
 

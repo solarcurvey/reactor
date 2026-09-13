@@ -1,6 +1,6 @@
 # UI QA gate
 
-> Visual baselines, axe + keyboard, and failure-injection against a **production `next build`**. Tokenomics unchanged. Factory **V1**. Not audited. Issue **#36 stays open** until merge + post-merge verify.
+> Visual baselines, axe + keyboard, and failure-injection against a **production `next build`**. Tokenomics unchanged. Factory **V1**. Not audited. Issue **#36 closed** after #49 post-merge `ad7b457` / [`34729758795`](https://github.com/solarcurvey/reactor/actions/runs/34729758795).
 
 CI job `web-qa` (`.github/workflows/ci.yml`, full merge-candidate + main) runs `pnpm --filter web test:qa` → `playwright.qa.config.ts`. That config starts the shared #35 harness (`e2e/harness/start-web.mjs`: `next build` then `next start`), `e2e/harness/qa-mock.mjs` on the indexer port, and `e2e/harness/qa-rpc.mjs` on the compiled `NEXT_PUBLIC_RPC_URL` so wagmi probes do not `ERR_CONNECTION_REFUSED` (Anvil is not part of this artifact; `eth_call` fails closed and review fixtures own displayed numbers). An unexplained screenshot diff, a **serious/critical** axe violation, or an unexpected **console error / hydration warning / page exception** fails the build.
 
