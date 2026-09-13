@@ -13,7 +13,7 @@
 | Intent | Server-side geo policy interface: ALLOW / DENY / UNKNOWN + reason codes; trusted edge HMAC; versioned comprehensive-jurisdiction file with source + effective date; LOCAL fixtures that cannot load production denylists. |
 | Indexer / lib | `packages/reactor/src/geo-policy.test.ts` + `apps/indexer/src/geo-policy.test.ts` + `pnpm docs:check` |
 | Foundry | Not re-run this pass (offchain policy only) |
-| Rebase | Onto `origin/main` `ad7b457c5c594a0f1f5f824a382dc51fed8383be` after merged **#49** (UI QA / #36, which includes #42 / #50 / #58 / #73). Same PR **#67** / same branch. Ready to merge immediately after **#66**. Founder re-audit: SY + oblast overblocks closed; #63 stays open until #62/#65 consume. Protocol **0.3.3** / Factory **V1** unchanged. |
+| Rebase | Onto `origin/main` `d08aa1c55bdfc20f9d93cc33446f9c5542a7d1da` after squash-merged **#66** (exact official-list OFAC screening / #61). Same PR **#67** / same branch. Founder re-audit: SY + oblast overblocks closed; #63 stays open until #62/#65 consume. Protocol **0.3.3** / Factory **V1** unchanged. |
 | Mainnet | **Blocked** |
 
 ## Closed this run (#63 ACs — issue stays open)
