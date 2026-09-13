@@ -19,6 +19,11 @@ apps/web/test-results/
 apps/web/playwright-report/
 apps/web/blob-report/
 artifacts/sourcemaps/
+.aws-relay-build/
+infra/aws-relay/.terraform/
+infra/aws-relay/*.tfstate
+infra/aws-relay/*.tfstate.*
+infra/aws-relay/terraform.tfvars
 # Uniswap + forge libs are reinstalled via `forge install` (pinned in DECISIONS.md)
 contracts/lib/
 .idea/
