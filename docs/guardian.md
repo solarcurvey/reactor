@@ -2,7 +2,9 @@
 
 > The only privileged security authority. Immutable in `ReactorGuardian`. Brake pedal, not steering wheel.
 
-Production Guardian is a Safe. The address itself does not rotate; replace Safe signers offchain if the Guardian is lost. **Deployer ≠ Guardian.** After genesis the deployer EOA has no protocol role.
+Production Guardian is a Safe **when the chain has Safe**. On Arc today the immutable Guardian may be a hardware **EOA**. The address itself does not rotate; replace Safe signers offchain if the Guardian is a Safe that is lost. **Deployer ≠ Guardian.** After genesis the deployer EOA has no protocol role.
+
+EOA one-shot after `SAFE_GENESIS` constructors: [`completeGenesis`](/docs/eoa-genesis) (issue **#85**). Safe MultiSend remains the path when `guardian()` is a Safe.
 
 There is no owner, admin, proxy admin, upgrader, governor, or treasury owner. See [Security](/docs/security) and `GUARDIAN_MODEL.md`.
 
@@ -21,7 +23,7 @@ There is no owner, admin, proxy admin, upgrader, governor, or treasury owner. Se
 - Add / quarantine **external** quotes (`QuoteAssetRegistry.register`, `setEnabled`, `setBuybackRoute`, **`setUsdPegOne`**)
 - Add / disable reviewed routing adapters (`setAdapter`)
 - One-shot deploy binds (factory, hook, vaults, protocol-vault seal) — Guardian-only, not first-caller-wins
-- Run Safe genesis batches
+- Run Safe genesis batches **or** EOA `completeGenesis` / `finalizeGenesis` (same Batch A/B work; auth-contract proxy seals after success)
 - `CoreVesting.activateLaunch()` once when constructed with `t0=0`
 
 Approve extra v4 hooks was **removed in V1**. Adapters accept hookless + official REACTOR hook only. There is no `setHook`.
@@ -62,5 +64,7 @@ Template: `deployments/safe-genesis-builder.json` (regenerate with `tsx scripts/
 2. Batch A (Guardian Safe): binds, signer, quote registry, CORE genesis — **not** `pauseLaunches(false)`.
 3. `VerifyGenesis` / auditor checklist.
 4. Batch B T0: vesting T0 + `pauseLaunches(false)` **last**.
+
+No Safe on the target chain: [EOA genesis](/docs/eoa-genesis) — `completeGenesis` then VerifyGenesis then `finalizeGenesis`.
 
 See `PRIVILEGE_MAP.md`, [Keeper](/docs/keeper), [Deployments](/docs/deployments).

@@ -34,6 +34,7 @@ Official-list freshness is fail-closed on REACTOR-operated writes. Last-known-go
 | 3.5% split | **SHIPPED** | 2% holders / 1% flywheel / 0.5% CORE. Pots isolated. CORE never Top-10. |
 | Public buyPrefunded drain | **FIXED** | Deleted. `buyRouted` pulls from bound `UserRouteExecutor` via `transferFrom` + this-call balance proof. No prefunded flag. Factory DevBuy and `buyWithUsdc` also pull/measure. `BuyPrefundedDrain.t.sol` |
 | Production Guardian Safe | **SHIPPED** | Constructor starts `launchesPaused`. `SAFE_GENESIS` deploys constructors only. Safe MultiSend (`SafeGenesisBatch.s.sol`) then `VerifyGenesis`. Deployer ≠ Guardian. `SafeGenesis.t.sol` |
+| EOA `completeGenesis` | **SHIPPED** | #85. `onlyGuardian` one-shot; transient `isGuardian(address(auth))` seals; launches paused until Batch B / `unpauseAfterVerify`. Safe path unchanged. `CompleteGenesis.t.sol` |
 
 ## Security tests (mapped)
 

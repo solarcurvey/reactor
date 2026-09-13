@@ -76,7 +76,7 @@ contract BuybackVault {
     }
 
     function bindFactory(address factory_) external {
-        if (msg.sender != auth.guardian()) revert ReactorGuardian.NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert ReactorGuardian.NotGuardian();
         if (factory != address(0) || factory_ == address(0)) revert AlreadySet();
         factory = factory_;
     }
@@ -88,7 +88,7 @@ contract BuybackVault {
     }
 
     function bindExecutor(CoreBuybackExecutor executor_) external {
-        if (msg.sender != auth.guardian()) revert ReactorGuardian.NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert ReactorGuardian.NotGuardian();
         if (address(executor) != address(0) || address(executor_) == address(0)) revert AlreadySet();
         executor = executor_;
     }

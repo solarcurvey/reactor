@@ -56,13 +56,16 @@ forge script script/Deploy.s.sol:Deploy \
 
 Use at least 20 gwei. Never commit the key. `.env.example` lists variables.
 
-Production-shaped local/testnet: set `GUARDIAN` to the **final Safe**, `KEEPER` to the designated Keeper, `SAFE_GENESIS=true` (launches stay paused). Then:
+Production-shaped local/testnet: set `GUARDIAN` to the **final Safe** (or hardware EOA if the chain has no Safe), `KEEPER` to the designated Keeper, `SAFE_GENESIS=true` (launches stay paused). Then:
+
+- **Safe exists:** MultiSend `SafeGenesisBatch.s.sol` / `pnpm safe:genesis`, then `VerifyGenesis`, then Batch B.
+- **No Safe (Arc today):** Guardian EOA `completeGenesis` — [EOA genesis](docs/eoa-genesis.md) / `script/EoaGenesis.s.sol`.
 
 ```bash
 forge script script/VerifyGenesis.s.sol:VerifyGenesis --rpc-url $RPC
 ```
 
-Never deploy with a temporary EOA Guardian and transfer later.
+Never deploy with a temporary Guardian and transfer later. `guardian` is immutable. Do not deploy to chain **5042**.
 
 ## What gets deployed
 
@@ -74,7 +77,7 @@ Never deploy with a temporary EOA Guardian and transfer later.
 6. `CoreToken` (`TestCORE` deprecated alias) genesis 100M vest + 900M LP
 7. Official hooked CORE/USDC lock (`CoreLiquidityVault`) — not hookless
 8. Vaults, router, hook CREATE2, factory, InstantCurve, UserRoute, adapters
-9. `SAFE_GENESIS=true` keeps launches paused until Safe enables
+9. `SAFE_GENESIS=true` keeps launches paused until Safe MultiSend **or** EOA `completeGenesis` / `finalizeGenesis`
 
 Addresses are appended to `deployments/<network>.json`.
 

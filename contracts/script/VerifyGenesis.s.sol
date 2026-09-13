@@ -12,7 +12,7 @@ import {CoreLiquidityVault} from "../src/CoreLiquidityVault.sol";
 import {ReactorConstants} from "../src/ReactorConstants.sol";
 import {ReactorFactory} from "../src/ReactorFactory.sol";
 
-/// @notice Post-deploy production check. Deploy with FINAL Safe as Guardian — never EOA then transfer.
+/// @notice Post-deploy production check. Deploy with FINAL Safe (or EOA if no Safe) as Guardian — never transfer later.
 ///         forge script script/VerifyGenesis.s.sol:VerifyGenesis --rpc-url $RPC
 contract VerifyGenesis is Script {
     function run() external view {

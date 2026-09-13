@@ -522,8 +522,9 @@ contract GuardianP0Test is Base {
 
     function test_42_privilegedEntrypointsEnumerated() public view {
         // Guardian-only: setKeeper, setPricingSigner, pauseLaunches, pauseKeeper,
-        // pauseTrading, setAdapter, registry.register / setEnabled / setIcon / setBuybackRoute / setUsdc,
-        // factory.bindCurve (one-shot). V1 has no setHook — hookless + official REACTOR only.
+        // pauseTrading, setAdapter, completeGenesis / finalizeGenesis, registry.register /
+        // setEnabled / setIcon / setBuybackRoute / setUsdc, factory.bindCurve (one-shot).
+        // V1 has no setHook — hookless + official REACTOR only.
         // Keeper-only: flywheel.settleQuote / submitEpoch / executeTop10Buyback / rollEpoch,
         // buyback.execute / executeCoreBuyback, selfBurn.execute.
         // Guardian one-time binds (sealed after deploy): router.setProtocolVault, hook binds, vault.bindFactory.

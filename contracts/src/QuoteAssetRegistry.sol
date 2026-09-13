@@ -54,7 +54,7 @@ contract QuoteAssetRegistry {
     error AlreadyBound();
 
     modifier onlyGuardian() {
-        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert NotGuardian();
         _;
     }
 

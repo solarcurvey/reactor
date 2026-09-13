@@ -5,8 +5,8 @@
   "rows": [
     {
       "name": "ReactorFactory",
-      "runtime": 23286,
-      "creation": 25415,
+      "runtime": 23193,
+      "creation": 25322,
       "ok": true
     },
     {
@@ -17,14 +17,14 @@
     },
     {
       "name": "InstantCurve",
-      "runtime": 18960,
-      "creation": 19644,
+      "runtime": 18920,
+      "creation": 19604,
       "ok": true
     },
     {
       "name": "ReactorHook",
-      "runtime": 10952,
-      "creation": 11813,
+      "runtime": 10912,
+      "creation": 11773,
       "ok": true
     },
     {
@@ -35,10 +35,10 @@
     },
     {
       "name": "UserRouteQuoter",
-      "runtime": 7783,
-      "creation": 8136,
+      "runtime": 8129,
+      "creation": 8489,
       "ok": true
     }
   ],
-  "at": "2026-09-12T12:31:16.572Z"
+  "at": "2026-09-13T12:18:46.560Z"
 }

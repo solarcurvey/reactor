@@ -17,7 +17,7 @@ This handbook is the in-app reading path. Root files such as `ECONOMICS.md` and 
 | Launching a token | [Creators](/docs/creators) | [Admission](/docs/admission) · [Tickers](/docs/tickers) |
 | Integrating a terminal | [Builders](/docs/builders) | [API](/docs/api) · [SDK](/docs/sdk) · [Observability](/docs/observability) · [Read path](/docs/perf) · [UI QA](/docs/qa) |
 | Reviewing economics | [Economics](/docs/economics) | [Curve](/docs/curve) · [CORE](/docs/core) · [Rewards](/docs/rewards) |
-| Reviewing trust | [Trust](/docs/trust) | [Security](/docs/security) · [Guardian](/docs/guardian) · [Keeper](/docs/keeper) · [Automation](/docs/automation) · [Operator policy](/docs/operator-policy) · [Restricted access](/docs/restricted-access) · [Address screening](/docs/sanctions) · [Geo policy](/docs/geo-policy) · [Repo publicization](/docs/publicization) |
+| Reviewing trust | [Trust](/docs/trust) | [Security](/docs/security) · [Guardian](/docs/guardian) · [EOA genesis](/docs/eoa-genesis) · [Keeper](/docs/keeper) · [Automation](/docs/automation) · [Operator policy](/docs/operator-policy) · [Restricted access](/docs/restricted-access) · [Address screening](/docs/sanctions) · [Geo policy](/docs/geo-policy) · [Repo publicization](/docs/publicization) |
 | Operating CI | [CI and cost](/docs/ci) | [Docs policy](/docs/policy) · [Repo publicization](/docs/publicization) · [UI QA](/docs/qa) |
 
 ## What REACTOR is

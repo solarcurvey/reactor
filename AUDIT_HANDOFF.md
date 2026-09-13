@@ -2,7 +2,7 @@
 
 **This software has not been audited.** Treat every contract as hostile-unreviewed. Do not deploy to Arc Mainnet (5042). No production claim. No Arc Public Testnet claim.
 
-**Protocol release:** `0.3.4` (`v0.3.4`, `docs/version.json`). **Factory version:** V1 (`FACTORY_VERSION = 1`) — immutable, not the protocol semver.
+**Protocol release:** `0.3.5` (`v0.3.5`, `docs/version.json`). **Factory version:** V1 (`FACTORY_VERSION = 1`) — immutable, not the protocol semver. **This pass (#85):** EOA `completeGenesis` / transient `isGuardian` seal. Safe MultiSend unchanged.
 
 **This pass (frontend ops / #39, squash-merged #46 / `789eb5c`):** the public Next app reports **redacted** failure telemetry (API, RPC, wallet, quote, SSE, tx, media, UI, simulation) tagged with `reactor@{protocol}+{git SHA}` **and** exact `reactorEnv` / `chainId` / `chainName` / `buildTimestamp`. Core-page Web Vitals. Operator paging runbook (render / API / RPC / quote / SSE / simulation); expected wallet `4001` never pages. User-visible errors show `ref {traceId} · chain {chainId}` (`x-request-id`). Optional Sentry DSN. No private keys, launch signatures, Turnstile tokens, or cookies. Source maps are generated, archived, and **not** served in production; first-party symbolication resolves a generated production stack to original source. Configured-DSN staging vendor proof (`obs/vendor-proof.test.ts`) POSTs that symbolicated event to a valid Sentry store mock and asserts original frames + release/env/chain tags. Exact-head CI job **`obs-ui`** is folded into `.github/workflows/ci.yml` (full / main / `ci-full`; production `next start`; public-fork harden). Landed on main `789eb5c` after #75 Restricted-access UX / #44 E2E release gate / #70 / #79 / #68 / #67 / #66 / #49 / #42 / #50 / #58 / #73 / #77 / #76 / #74. #75 `/restricted` + `policy.ensureProof` stay. #44 `e2e-release-gate` + #70 sanctions-ops docs/nav + `/ops` dataset card stay. #49 `web-qa` + #42 leftover #17 gates (`docs:links`, Playwright `web`, Safe genesis in `test:lib`) stay. `POST /api/telemetry` 429 is intended ingest backpressure (40/10s/IP in genuine production; review-fixture / `REACTOR_TELEMETRY_RELAXED` artifacts raise the cap); Chromium `Failed to load resource` on that URL is not a `web-qa` page diagnostic. Quote `?inject=quote-429` stays fail-visible. Issue **#39 stays open** until post-merge live vendor verify. Protocol stays **0.3.4** unless #54 `0.4.0` lands first — then rebase and do not restore 0.3.4. Economics and hook/Factory surface are unchanged. Not an oracle. Not mainnet.
 
@@ -60,7 +60,7 @@ Do not certify. Do not deploy. Do not propose a new curve or fee split.
 | Protocol exemption | Only sealed vaults + `ProtocolV4Adapter.protocolSwap`. User `swap` reverts `WalletExemptForbidden` if latch set | same + `ProtocolSettlement.t.sol` |
 | Vault isolation | `FlywheelVault`, `BuybackVault`, `SelfBurnVault` — isolated pots, chunk/cooldown, returned amounts | `BlastRadius.t.sol`, `KeeperReturns.t.sol` |
 | Keeper compromise | Designated only; `KEEPER_MODEL.md`; modes DRY_RUN/LOCAL/ARC_TESTNET; 5042 hard-disabled; no key logs | `GuardianP0.t.sol`, `keeper.ts` |
-| Guardian | Immutable Safe in production; `setKeeper` / `setPricingSigner` / `setUsdPegOne` / pauses / adapters. No `setHook`. Never EOA-then-transfer | `SafeGenesis.t.sol`, `FrontrunBind.t.sol` |
+| Guardian | Immutable Safe **or** EOA; `setKeeper` / `setPricingSigner` / `setUsdPegOne` / pauses / adapters / `completeGenesis`. No `setHook`. Never EOA-then-transfer | `SafeGenesis.t.sol`, `CompleteGenesis.t.sol`, `FrontrunBind.t.sol` |
 | Rewards | Magnified DPS; genesis `eligible==0` → 2% SelfBurn (not first-holder rebate) | `RewardCampaign.t.sol`, `Token.t.sol` |
 | Curve / ready / graduation | `_buy`/`_sell` revert `ReadyLocked`; `graduate` requires `ready` + revalidate | `CurveFreeze.t.sol` |
 | Signed pricing | Unique digest: factory+creator+quote+virtualQuote0+curveConfig+salt+deadline+chain. No `pricingNonce` | `LaunchPricing.t.sol` concurrent + replay |
@@ -93,7 +93,7 @@ REACTOR launches ERC-20s into Official REACTOR Pools: Uniswap v4 pools with `fee
 
 | Contract | Path | Notes |
 | --- | --- | --- |
-| `ReactorGuardian` | `contracts/src/ReactorGuardian.sol` | Immutable Guardian; replaceable Keeper; `pricingSigner`; pauses; adapters. No `setHook`. |
+| `ReactorGuardian` | `contracts/src/ReactorGuardian.sol` | Immutable Guardian; replaceable Keeper; `pricingSigner`; pauses; adapters; EOA `completeGenesis` (transient proxy, then seal). No `setHook`. |
 | `ReactorFactory` | `contracts/src/ReactorFactory.sol` | Instant + Batch Fair; priced launches for non-$1 quotes |
 | `InstantCurve` | `contracts/src/InstantCurve.sol` | Virtual-reserve bonding; ready-lock; graduate revalidate. **No public prefunded buy.** `buyRouted` is UserRouteExecutor-only + this-call `transferFrom` custody |
 | `LaunchPricing` | `contracts/src/libraries/LaunchPricing.sol` | Short-lived EIP-712 auth |
@@ -214,7 +214,7 @@ Every privileged function is **GUARDIAN** or **KEEPER** only. See `PRIVILEGE_MAP
 
 | Role | Power |
 | --- | --- |
-| Guardian | Pauses, replace Keeper / pricing signer, adapters, hooks, external quotes, one-time binds |
+| Guardian | Pauses, replace Keeper / pricing signer, adapters, hooks, external quotes, one-time binds, EOA `completeGenesis` / `finalizeGenesis` (proxy seals) |
 | Keeper | settle / submitEpoch / Top-10 buy+burn / roll / CORE execute / SelfBurn execute — all with minOut + chunks |
 | Anyone | Launch (priced if needed), bid, claim, curve buy/sell when open, graduate when ready, official swap, reward claim |
 | Nobody | Withdraw LP, mint after construct, change 2/1/0.5, redirect CORE, blacklist, upgrade, wallet fee-exemption, dead-address CORE “burn”, first-caller bind |

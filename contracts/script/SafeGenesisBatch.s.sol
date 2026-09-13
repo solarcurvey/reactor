@@ -18,6 +18,7 @@ import {CoreBuybackExecutor} from "../src/CoreBuybackExecutor.sol";
 
 /// @notice FULL Guardian MultiSend of remaining genesis ops after SAFE_GENESIS constructors.
 /// Deployer ≠ Safe. Safe executes. VerifyGenesis. Then pauseLaunches(false) LAST.
+/// EOA Guardian (no Safe): `ReactorGuardian.completeGenesis` — see EoaGenesis.s.sol / docs/eoa-genesis.md.
 ///
 /// forge script script/SafeGenesisBatch.s.sol:SafeGenesisBatch --rpc-url $RPC
 contract SafeGenesisBatch is Script {

@@ -15,6 +15,7 @@ Guardian is immutable. Keeper is replaceable by Guardian.
 | `ReactorGuardian` | `authorizeFactory` / `deprecateFactory` | New launches only; V1 tokens untouched |
 | `ReactorGuardian` | `permanentlyLockTicker` | One-way; not an oracle |
 | `TickerRegistry` | `claimOnLaunch` | Active factory only; 24h lock + consume digest |
+| `ReactorGuardian` | `completeGenesis` / `finalizeGenesis` | EOA one-shot Batch A / tiny Batch B. `onlyGuardian`. Proxy seals. Safe MultiSend still valid |
 | `ReactorGuardian` | `pauseLaunches` / `pauseKeeper` / `pauseTrading` | Brake pedal |
 | `ReactorGuardian` | `setAdapter` | Reviewed routing adapters. V1 has no `setHook`. |
 | `QuoteAssetRegistry` | `bindFactory` | One-time |
@@ -58,6 +59,7 @@ Guardian is immutable. Keeper is replaceable by Guardian.
 | `InstantCurve.selfBurn` | Factory `bindSelfBurn` | once |
 | `ReactorRouter.protocolVault` | Guardian then `sealProtocolVaults` | `Sealed` — Guardian included |
 | `ReactorGuardian.guardian` | Constructor immutable | never |
+| `ReactorGuardian.genesisSealed` | `completeGenesis` one-shot | auth `isGuardian` proxy off |
 | `ReactorGuardian.pricingSigner` | Guardian `setPricingSigner` | replaceable, never first-caller |
 | `BuybackVault.core` / hook / usdc | Constructor immutable | never |
 | `UniswapV4Adapter.officialHook` | Constructor immutable | never |

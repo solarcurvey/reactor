@@ -14,7 +14,7 @@ Fewer moving parts than a full periphery stack: no PositionManager NFT, no Unive
 | `CoreVesting` | No | 100M CORE | Immutable beneficiary; T0 launch; 30d cliff 0 then 10×30d linear |
 | `CoreLiquidityVault` | No | Official CORE/USDC LP | Single-sided 900M lock; no withdraw |
 | `CoreBuybackExecutor` | No | Transient USDC | Only fee-exempt official CORE buy |
-| `ReactorGuardian` | No | None | Immutable Guardian + replaceable Keeper + pauses + adapters |
+| `ReactorGuardian` | No | None | Immutable Guardian + replaceable Keeper + pauses + adapters + EOA `completeGenesis` (sealed) |
 | `QuoteAssetRegistry` | No | None | External quotes Guardian-curated; native quotes from graduation |
 | `ReactorHook` | No | Transient quote during swap | Official-pool identity + 3.5% quote fee |
 | `ReactorLiquidityVault` | No | Official LP positions | Lock-only v4 positions |

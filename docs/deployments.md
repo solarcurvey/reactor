@@ -2,7 +2,7 @@
 
 # Deployments
 
-> Generated from `deployments/registry.json` + address dumps. Protocol **0.3.4**. Factory **V1**. Never invent mainnet addresses.
+> Generated from `deployments/registry.json` + address dumps. Protocol **0.3.5**. Factory **V1**. Never invent mainnet addresses.
 
 | Network | Chain ID | Status | Notes |
 | --- | --- | --- | --- |
@@ -20,33 +20,33 @@ Committed `deployments/local.json` is a local demo dump. Not Arc Public Testnet.
 
 | Contract | Factory version | Protocol release | Address | Chain | Source commit/tag | Deployment date | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| ReactorGuardian | — | 0.3.4 | `0x5FbDB2315678afecb367f032d93F642f64180aa3` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| TickerRegistry | — | 0.3.4 | — (not in committed address dump) | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| ReactorFactory | V1 | 0.3.4 | `0x851356ae760d987E095750cCeb3bC6014560891C` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| InstantCurve | V1 | 0.3.4 | `0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| ReactorHook | V1 | 0.3.4 | `0xb825E9eDF7E0A6242A97aB681131bA3a0a91f0cc` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| ReactorToken (per launch) | V1 | 0.3.4 | — (per-launch / not a singleton) | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| ReactorRouter | — | 0.3.4 | `0x9A676e781A523b5d0C0e43731313A708CB607508` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| ReactorLiquidityVault | — | 0.3.4 | `0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| QuoteAssetRegistry | — | 0.3.4 | `0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| BuybackVault | — | 0.3.4 | `0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| FlywheelVault | — | 0.3.4 | `0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| SelfBurnVault | — | 0.3.4 | `0x0E801D84Fa97b50751Dbf25036d067dCf18858bF` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| FairClaimVault | — | 0.3.4 | `0xB955b6c65Ff69bfe07A557aa385055282b8a5eA3` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| UniswapV4Adapter | — | 0.3.4 | `0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| ProtocolV4Adapter | — | 0.3.4 | — (not in committed address dump) | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| RoutingRegistry | — | 0.3.4 | `0x0B306BF915C4d645ff596e518fAf3F9669b97016` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| UserRouteExecutor | — | 0.3.4 | `0xCD8a1C3ba11CF5ECfa6267617243239504a98d90` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| UserRouteQuoter | — | 0.3.4 | — (not in committed address dump) | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| InstantLaunchModule | V1 | 0.3.4 | — (not in committed address dump) | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| CoreToken (TestCORE alias) | — | 0.3.4 | `0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| CoreVesting | — | 0.3.4 | `0x4A679253410272dd5232B3Ff7cF5dbB88f295319` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| CoreLiquidityVault | — | 0.3.4 | `0x7a2088a1bFc9d81c55368AE168C2C02570cB814F` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| CoreBuybackExecutor | — | 0.3.4 | `0x36C02dA8a0983159322a80FFE9F24b1acfF8B570` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| PoolManager (v4-core, BUSL) | — | 0.3.4 | `0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| Launch Signer (EOA role) | — | 0.3.4 | — (not in committed address dump) | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| Keeper (EOA role) | — | 0.3.4 | `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
-| Pricing Signer (EOA role) | — | 0.3.4 | `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| ReactorGuardian | — | 0.3.5 | `0x5FbDB2315678afecb367f032d93F642f64180aa3` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| TickerRegistry | — | 0.3.5 | — (not in committed address dump) | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| ReactorFactory | V1 | 0.3.5 | `0x851356ae760d987E095750cCeb3bC6014560891C` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| InstantCurve | V1 | 0.3.5 | `0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| ReactorHook | V1 | 0.3.5 | `0xb825E9eDF7E0A6242A97aB681131bA3a0a91f0cc` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| ReactorToken (per launch) | V1 | 0.3.5 | — (per-launch / not a singleton) | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| ReactorRouter | — | 0.3.5 | `0x9A676e781A523b5d0C0e43731313A708CB607508` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| ReactorLiquidityVault | — | 0.3.5 | `0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| QuoteAssetRegistry | — | 0.3.5 | `0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| BuybackVault | — | 0.3.5 | `0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| FlywheelVault | — | 0.3.5 | `0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| SelfBurnVault | — | 0.3.5 | `0x0E801D84Fa97b50751Dbf25036d067dCf18858bF` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| FairClaimVault | — | 0.3.5 | `0xB955b6c65Ff69bfe07A557aa385055282b8a5eA3` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| UniswapV4Adapter | — | 0.3.5 | `0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| ProtocolV4Adapter | — | 0.3.5 | — (not in committed address dump) | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| RoutingRegistry | — | 0.3.5 | `0x0B306BF915C4d645ff596e518fAf3F9669b97016` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| UserRouteExecutor | — | 0.3.5 | `0xCD8a1C3ba11CF5ECfa6267617243239504a98d90` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| UserRouteQuoter | — | 0.3.5 | — (not in committed address dump) | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| InstantLaunchModule | V1 | 0.3.5 | — (not in committed address dump) | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| CoreToken (TestCORE alias) | — | 0.3.5 | `0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| CoreVesting | — | 0.3.5 | `0x4A679253410272dd5232B3Ff7cF5dbB88f295319` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| CoreLiquidityVault | — | 0.3.5 | `0x7a2088a1bFc9d81c55368AE168C2C02570cB814F` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| CoreBuybackExecutor | — | 0.3.5 | `0x36C02dA8a0983159322a80FFE9F24b1acfF8B570` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| PoolManager (v4-core, BUSL) | — | 0.3.5 | `0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| Launch Signer (EOA role) | — | 0.3.5 | — (not in committed address dump) | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| Keeper (EOA role) | — | 0.3.5 | `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
+| Pricing Signer (EOA role) | — | 0.3.5 | `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` | Anvil (Arc-compatible) (5042002) | `v0.1.0` | 2026-09-11 | Unverified local Anvil. No block explorer. |
 
 ## Arc Public Testnet — NOT CLAIMED
 
@@ -54,33 +54,33 @@ RPC and canonical USDC are documented in TESTNET_DEPLOYMENT.md. This repo does n
 
 | Contract | Factory version | Protocol release | Address | Chain | Source commit/tag | Deployment date | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| ReactorGuardian | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| TickerRegistry | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| ReactorFactory | V1 | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| InstantCurve | V1 | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| ReactorHook | V1 | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| ReactorToken (per launch) | V1 | 0.3.4 | — (per-launch / not a singleton) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| ReactorRouter | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| ReactorLiquidityVault | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| QuoteAssetRegistry | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| BuybackVault | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| FlywheelVault | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| SelfBurnVault | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| FairClaimVault | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| UniswapV4Adapter | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| ProtocolV4Adapter | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| RoutingRegistry | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| UserRouteExecutor | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| UserRouteQuoter | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| InstantLaunchModule | V1 | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| CoreToken (TestCORE alias) | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| CoreVesting | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| CoreLiquidityVault | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| CoreBuybackExecutor | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| PoolManager (v4-core, BUSL) | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| Launch Signer (EOA role) | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| Keeper (EOA role) | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
-| Pricing Signer (EOA role) | — | 0.3.4 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| ReactorGuardian | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| TickerRegistry | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| ReactorFactory | V1 | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| InstantCurve | V1 | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| ReactorHook | V1 | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| ReactorToken (per launch) | V1 | 0.3.5 | — (per-launch / not a singleton) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| ReactorRouter | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| ReactorLiquidityVault | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| QuoteAssetRegistry | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| BuybackVault | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| FlywheelVault | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| SelfBurnVault | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| FairClaimVault | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| UniswapV4Adapter | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| ProtocolV4Adapter | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| RoutingRegistry | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| UserRouteExecutor | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| UserRouteQuoter | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| InstantLaunchModule | V1 | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| CoreToken (TestCORE alias) | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| CoreVesting | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| CoreLiquidityVault | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| CoreBuybackExecutor | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| PoolManager (v4-core, BUSL) | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| Launch Signer (EOA role) | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| Keeper (EOA role) | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
+| Pricing Signer (EOA role) | — | 0.3.5 | — (not deployed / not claimed) | Arc Public Testnet (5042002) | — | — | No REACTOR contracts claimed on explorer. Do not invent addresses. |
 
 ## Arc Mainnet — BLOCKED
 
@@ -88,33 +88,33 @@ Never invent mainnet addresses. Chain 5042 is hard-disabled in Keeper/apps.
 
 | Contract | Factory version | Protocol release | Address | Chain | Source commit/tag | Deployment date | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| ReactorGuardian | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| TickerRegistry | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| ReactorFactory | V1 | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| InstantCurve | V1 | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| ReactorHook | V1 | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| ReactorToken (per launch) | V1 | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| ReactorRouter | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| ReactorLiquidityVault | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| QuoteAssetRegistry | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| BuybackVault | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| FlywheelVault | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| SelfBurnVault | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| FairClaimVault | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| UniswapV4Adapter | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| ProtocolV4Adapter | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| RoutingRegistry | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| UserRouteExecutor | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| UserRouteQuoter | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| InstantLaunchModule | V1 | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| CoreToken (TestCORE alias) | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| CoreVesting | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| CoreLiquidityVault | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| CoreBuybackExecutor | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| PoolManager (v4-core, BUSL) | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| Launch Signer (EOA role) | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| Keeper (EOA role) | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
-| Pricing Signer (EOA role) | — | 0.3.4 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| ReactorGuardian | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| TickerRegistry | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| ReactorFactory | V1 | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| InstantCurve | V1 | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| ReactorHook | V1 | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| ReactorToken (per launch) | V1 | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| ReactorRouter | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| ReactorLiquidityVault | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| QuoteAssetRegistry | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| BuybackVault | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| FlywheelVault | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| SelfBurnVault | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| FairClaimVault | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| UniswapV4Adapter | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| ProtocolV4Adapter | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| RoutingRegistry | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| UserRouteExecutor | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| UserRouteQuoter | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| InstantLaunchModule | V1 | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| CoreToken (TestCORE alias) | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| CoreVesting | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| CoreLiquidityVault | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| CoreBuybackExecutor | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| PoolManager (v4-core, BUSL) | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| Launch Signer (EOA role) | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| Keeper (EOA role) | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
+| Pricing Signer (EOA role) | — | 0.3.5 | — (mainnet blocked; no address) | Arc Mainnet (5042) | — | — | No addresses. Blocked pending Codex + audits + KMS/Safe rehearsal. |
 
 ## How to record a real deploy
 

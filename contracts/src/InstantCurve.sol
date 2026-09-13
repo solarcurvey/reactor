@@ -129,7 +129,7 @@ contract InstantCurve {
 
     /// @notice One-shot bind. Factory or Guardian. No public trust-by-prefunding after this.
     function bindRouteExecutor(address exec) external {
-        if (msg.sender != address(factory) && msg.sender != auth.guardian()) revert Bad();
+        if (msg.sender != address(factory) && !auth.isGuardian(msg.sender)) revert Bad();
         if (address(routeExecutor) != address(0)) revert AlreadyBound();
         if (exec == address(0)) revert Bad();
         routeExecutor = exec;

@@ -60,7 +60,7 @@ contract CoreLiquidityVault is IUnlockCallback {
 
     /// @notice Guardian once: init official CORE/USDC at ~$100k FDV and lock 900M CORE single-sided.
     function initializeAndLock() external {
-        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert NotGuardian();
         if (locked) revert Already();
         uint256 amt = IERC20MinimalExt(core).balanceOf(address(this));
         if (amt < ReactorConstants.CORE_LP_AMOUNT) revert Bad();

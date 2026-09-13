@@ -39,7 +39,7 @@ contract CoreVesting {
 
     /// @notice One-time T0 = now. Public REACTOR launch, not deploy time. Then frozen forever.
     function activateLaunch() external {
-        if (msg.sender != auth.guardian()) revert NotGuardian();
+        if (!auth.isGuardian(msg.sender)) revert NotGuardian();
         if (t0 != 0) revert Frozen();
         t0 = uint64(block.timestamp);
         emit LaunchActivated(t0);

@@ -265,6 +265,7 @@ pnpm --filter indexer watchdog
 | 17 | No double-exec on ambiguous RPC | `submitOnce` |
 | 18 | Protocol-exempt reentrancy blocked | `ProtocolExemptReentrancy.t.sol` |
 | 19 | Safe genesis payload | `SafeGenesis.t.sol`, `VerifyGenesis.s.sol` |
+| 19b | EOA `completeGenesis` one-shot + seal | `CompleteGenesis.t.sol`, `EoaGenesis.s.sol` (#85) |
 | 20 | Deployer no post-genesis privilege | same |
 | 21 | Nested hop floors from per-hop sim, not last-leg/dust | `HopFloors.t.sol`, `stampHopMinOuts`, `applyMinOuts` |
 | 22 | Public buyPrefunded drain deleted; router-only pull | `BuyPrefundedDrain.t.sol` |

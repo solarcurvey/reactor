@@ -1,6 +1,6 @@
 # GUARDIAN MODEL
 
-The Guardian is the **only** privileged security authority after deploy. It is an immutable address (production: a Safe). It is a brake pedal, not a steering wheel.
+The Guardian is the **only** privileged security authority after deploy. It is an immutable address (production: a Safe when the chain has one; otherwise a hardware EOA). It is a brake pedal, not a steering wheel.
 
 There is no owner, admin, proxy admin, upgrader, governor, or treasury owner.
 
@@ -28,6 +28,8 @@ There is no owner, admin, proxy admin, upgrader, governor, or treasury owner.
 | Approve extra v4 hooks | **Removed in V1.** Adapters accept hookless + official REACTOR hook only. |
 
 One-shot deploy binds (factory, hook, vaults, protocol-vault seal) are **Guardian-only**, not first-caller-wins and not a leftover bootstrap admin. After `sealProtocolVaults`, nobody — including Guardian — can add a fee-exempt wallet. See `PRIVILEGE_MAP.md`.
+
+EOA-friendly genesis (`completeGenesis` / `finalizeGenesis`, issue **#85**): only the immutable guardian address can start. Peripherals treat `address(auth)` as guardian **only** while a transient proxy is on during those calls; `genesisSealed` then restores EOA/Safe-only binds. Safe MultiSend is unchanged. Runbook: `docs/eoa-genesis.md`.
 
 ## Guardian MUST NEVER
 
