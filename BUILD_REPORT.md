@@ -2,8 +2,8 @@
 
 **Date:** 2026-09-12  
 **Issue:** [#17](https://github.com/solarcurvey/reactor/issues/17) (stays open until merge + post-merge verify)  
-**PR:** draft **#42**. Rebased onto `origin/main` **`300b7e5`** (#73 after #77/#76/#74). Proven exact-head: **`ded908d`** / run [`34725992605`](https://github.com/solarcurvey/reactor/actions/runs/34725992605).  
-**Scope:** Keep the #69 / #73 single-workflow three-tier `ci.yml` (PR-only feature branches, concurrency cancel, main SHA isolation, path classifier, #72/#74 `contents: read` + `persist-credentials: false`, no `pull_request_target`). Land leftover #17 gates on that file: `docs:links` + Playwright smoke + interactive. Do not restore `docs-sync.yml` / `keeper-lease-pg.yml` / `live-toasts.yml`. Frozen economics / architecture / Factory V1. Protocol version stays **0.3.3**. Visibility not flipped.  
+**PR:** **#42**. Rebased onto `origin/main` **`e5fd745`** (#50 after #58/#73/#77/#76/#74). Prior proven green on pre-#50 lineage: **`976a7da`** / [`34727037594`](https://github.com/solarcurvey/reactor/actions/runs/34727037594) — not the closer after this rebase.  
+**Scope:** Keep the #69 / #73 single-workflow three-tier `ci.yml`. Land leftover #17 gates: `docs:links`, Playwright smoke + interactive, and `scripts/safe-genesis-builder.test.ts` on cheap `test:lib`. Do not restore `docs-sync.yml` / `keeper-lease-pg.yml` / `live-toasts.yml`. Frozen economics / architecture / Factory V1. Protocol version stays **0.3.3**. Visibility not flipped.  
 **Not audited. Not mainnet.**
 
 ## This HEAD
@@ -12,9 +12,9 @@
 | --- | --- |
 | Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
-| Intent | Rebase #17 onto #73. Attack suite stays `find \| sort` + `forge test <file>` per `test/attack/*.t.sol`. |
+| Intent | Rebase #17 onto #50 / `e5fd745`. Keep `page-budget` + wire `scripts/safe-genesis-builder.test.ts` into `test:lib`. Attack suite stays `find \| sort` + `forge test <file>` per `test/attack/*.t.sol`. |
 | #73 cost controls kept | Feature-branch `push` omitted. Concurrency per PR; main keyed by SHA and not canceled. Path classifier fail-safe. Least-privilege checkouts. |
-| Fast PR | `pnpm test:lib` now includes `docs:links` + `test:web-unit` (`constants-sync` too). Targeted Foundry when Solidity paths change. |
+| Fast PR | `pnpm test:lib` includes `docs:links`, `test:web-unit`, `page-budget.test.ts`, and `safe-genesis-builder.test.ts`. Targeted Foundry when Solidity paths change. |
 | Full / main extras | Full-only jobs `docs-links` (`pnpm docs:links`) and `web` (Playwright smoke + interactive). `ci-ok` requires both (`skipped ≠ pass`). |
 | Already on #73 full gate | Foundry CI fuzz + Attack + CREATE2 + `size:guard`, `web-production-security`, `live-toasts-ui`, `postgres-ms-timestamps`. |
 | Docs | `/docs/ci` updated in place. `TESTING.md`, `CONTRIBUTING.md`, `AUDIT_HANDOFF.md`. Same-page `#accepted-residuals-non-blocking` hrefs match in-app `slugify` so `docs:links` stays green. |
@@ -31,11 +31,12 @@
 | Web unit + Playwright | Units in `test:lib` / `test:web-unit`. Smoke + interactive = full-only job `web`. |
 | Production web build / typecheck / browser security | `web-production-security` (`pnpm test:web-security`) — not duplicated |
 | Docs in CI | `docs:check` + `docs:links` in `test:lib`; full-only job `docs-links` |
+| Safe genesis builder | `scripts/safe-genesis-builder.test.ts` in `test:lib` (Safe ≠ deployer, batch A/B, MultiSend) |
 | Postgres in CI | `postgres-ms-timestamps` (`test:pg` + `test:pg-lease` + `pg-smoke`) |
 | #73 cost controls not weakened | Single workflow. No feature-branch `push`. `scripts/ci-cost.test.ts` still forbids a bare `push:`. |
 | Frozen economics / arch | No contract / tokenomics edits |
 | Docs same run | `docs/ci.md`, `TESTING.md`, `CONTRIBUTING.md`, `AUDIT_HANDOFF.md`, this report |
-| Exact-head `ci-ok` | **`ded908d`** / [`34725992605`](https://github.com/solarcurvey/reactor/actions/runs/34725992605): Attack 15 files, CREATE2 `test_hookBits` PASS, Factory runtime **23286**, `docs-links`, `web`, Postgres, production security, live-toasts. #17 stays open until merge + post-merge verify. |
+| Exact-head `ci-ok` | Required on this post-`e5fd745` SHA after Safe genesis is in `test:lib` and `page-budget` stays always-on. Pre-#50 greens (`976a7da` / `34727037594`, `4fba9f0` / `34726193759`, `ded908d` / `34725992605`) are not the closer. #17 stays open until merge + post-merge verify. |
 
 ## Billing vs real CI
 

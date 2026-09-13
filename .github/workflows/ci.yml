@@ -27,6 +27,7 @@
 #   docs:links — cheap check also in test:lib; full-only job so ci-ok
 #     cannot succeed if it is skipped.
 #   Playwright smoke + interactive — full-only job `web`.
+#   Safe genesis builder tests — required via test:lib (not a separate job).
 name: ci
 
 on:

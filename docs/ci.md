@@ -2,7 +2,7 @@
 
 Refs #69. Tokenomics, Factory V1, and architecture are **not** CI knobs. This page is the operator + cost inventory for GitHub Actions.
 
-Public-fork harden from #74 (Refs #72) is **kept** on this single workflow: `permissions: contents: read`, every `actions/checkout` has `persist-credentials: false`, no `pull_request_target`, no workflow secrets. `pnpm test:lib` runs `test:ci-cost`, `scripts/ci-public-harden.test.ts`, `docs:check`, and `docs:links`. Operator checklist: [Repo publicization](/docs/publicization).
+Public-fork harden from #74 (Refs #72) is **kept** on this single workflow: `permissions: contents: read`, every `actions/checkout` has `persist-credentials: false`, no `pull_request_target`, no workflow secrets. `pnpm test:lib` runs `test:ci-cost`, `scripts/ci-public-harden.test.ts`, `scripts/safe-genesis-builder.test.ts`, `docs:check`, and `docs:links`. Operator checklist: [Repo publicization](/docs/publicization).
 
 A **skipped job is not a pass**. Required release jobs must execute their acceptance commands. `continue-on-error` is forbidden. `ci-ok` fails if any full-gate job is `skipped`, `cancelled`, or `failure`.
 
@@ -10,7 +10,7 @@ A **skipped job is not a pass**. Required release jobs must execute their accept
 
 | Tier | When | What runs |
 | --- | --- | --- |
-| **Fast PR** | Every meaningful `pull_request` update (draft included) | `pnpm test:lib` (indexer + web unit + cheap security + `docs:check` + `docs:links` + this page’s invariants) plus visible `page-budget` (`pnpm test:page-budget`). Targeted Foundry + `size:guard` **only** when Solidity paths change. |
+| **Fast PR** | Every meaningful `pull_request` update (draft included) | `pnpm test:lib` (indexer + web unit + cheap security + Safe genesis builder + `docs:check` + `docs:links` + this page’s invariants) plus visible `page-budget` (`pnpm test:page-budget`). Targeted Foundry + `size:guard` **only** when Solidity paths change. |
 | **Full merge-candidate** | Non-draft PR (`ready_for_review` / later `synchronize`), label **`ci-full`**, or `workflow_dispatch` (default **full**) | Fast commands **plus** production Next / hostile-metadata (`pnpm test:web-security`), `live-toasts-ui`, full Foundry (`FOUNDRY_PROFILE=ci`, Attack suite, CREATE2 `test_hookBits`, `size:guard`), Postgres `test:pg` + two-worker `test:pg-lease` + `pg-smoke`, `docs:links` (explicit job), Playwright smoke + interactive (`web`). Path filters do **not** skip these. |
 | **Main post-merge** | `push` to **`main`** only | The same full gate, once, on the merged SHA. |
 
@@ -58,7 +58,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | Job | Tier | Commands (must execute) |
 | --- | --- | --- |
 | `decide-tier` | always | Classify SHA + paths. Cheap. |
-| `constants-version-deployments` | always | `pnpm test:lib` (includes `docs:check` + `docs:links`) |
+| `constants-version-deployments` | always | `pnpm test:lib` (includes `docs:check` + `docs:links` + `safe-genesis-builder.test.ts`) |
 | `page-budget` | always | `pnpm test:page-budget` (4k-market HTTP/RPC budgets; also in `test:lib`) |
 | `foundry-targeted` | fast + Solidity paths | `forge test` (default profile) + `pnpm size:guard` |
 | `solidity + size-guard` | full / main | `FOUNDRY_PROFILE=ci forge test` + Attack suite + CREATE2 `test_hookBits` + `pnpm size:guard` |
@@ -77,7 +77,7 @@ Open product issues keep their acceptance commands. Attach new heavy jobs to **t
 
 | Issue / PR | Gate | Slot |
 | --- | --- | --- |
-| #17 (PR #42) | Full GitHub CI — Foundry, size guard, Attack, CREATE2, `docs:links`, Playwright smoke | `solidity + size-guard` plus full-only `docs-links` and `web`. Cheap `docs:links` also runs in `test:lib`. Not a second workflow. |
+| #17 (PR #42) | Full GitHub CI — Foundry, size guard, Attack, CREATE2, `docs:links`, Playwright smoke, Safe genesis | `solidity + size-guard` plus full-only `docs-links` and `web`. Cheap `docs:links` and `safe-genesis-builder.test.ts` also run in `test:lib`. Not a second workflow. |
 | #15 / #35 (PR #44) | Production browser + wallet E2E | Add a full-only job (`pnpm test:e2e:release` when that script exists). |
 | #15 / #36 (PR #49) | Visual / a11y / failure-injection | Full-only job (`pnpm --filter web test:qa` when present). |
 | #15 / #18 | Production-readiness parent | Same full-tier rule. Do not move those commands to optional / `continue-on-error`. |
@@ -132,7 +132,7 @@ Tiny isolated VMs that only repeated `pnpm install` were combined (`keeper-lease
 ## Local equivalent
 
 ```bash
-pnpm test:lib          # fast gate (includes test:ci-cost + ci-public-harden + docs:check + docs:links + page-budget)
+pnpm test:lib          # fast gate (includes test:ci-cost + ci-public-harden + safe-genesis + docs:check + docs:links + page-budget)
 pnpm test:page-budget  # visible #37 fast job (same file as in test:lib)
 pnpm docs:links        # in-repo /docs slugs + relative files (no network)
 pnpm test:web-unit     # web lib unit (also inside test:lib)

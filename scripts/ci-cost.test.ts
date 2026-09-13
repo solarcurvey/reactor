@@ -82,6 +82,11 @@ for (const job of [
 }
 
 assert.match(ciYml, /pnpm test:lib/);
+assert.match(
+  readFileSync(join(root, "package.json"), "utf8"),
+  /safe-genesis-builder\.test\.ts/,
+  "#17 requires safe-genesis builder tests on the cheap test:lib path",
+);
 assert.match(ciYml, /pnpm test:web-security/);
 assert.match(ciYml, /pnpm docs:links/);
 assert.match(ciYml, /e2e\/smoke\.spec\.ts/);

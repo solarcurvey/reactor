@@ -35,6 +35,7 @@ npx --yes tsx apps/web/src/lib/security-headers.test.ts
 npx --yes tsx apps/web/src/lib/tx-guard.test.ts
 npx --yes tsx apps/web/src/lib/secret-sentinel.test.ts
 npx --yes tsx packages/reactor/src/untrusted-metadata.test.ts
+npx --yes tsx scripts/safe-genesis-builder.test.ts  # Safe ≠ deployer, batch A/B, MultiSend (#17)
 pnpm docs:check                 # fees / supply / Dev Buy / ticker lock / factory / protocol version / deployments
 pnpm docs:links                 # in-repo /docs slugs + relative files (CI docs-links job; no network)
 pnpm test:web-unit              # top10 / marketdata / limited-json / fee-legs / constants-sync
@@ -234,7 +235,7 @@ pnpm --filter indexer watchdog
 | 31 | UserRouteQuoter one eth_call; never minOut 0/1 | `quote-service.ts`, `UserRouteQuoter.sol` |
 | 32 | Nested quote without intermediate wallet balances | `UserRoute.t.sol` `test_nested_preview_without_intermediate_wallet_balances`, `quote-overrides.test.ts` |
 | 33 | Production hard gates (Turnstile + no Anvil/inline signer) | `prod-gates.test.ts` |
-| 34 | Safe Builder JSON from local artifacts; deployer ≠ Safe | `scripts/safe-genesis-builder.test.ts` |
+| 34 | Safe Builder JSON from local artifacts; deployer ≠ Safe. Required in `pnpm test:lib` | `scripts/safe-genesis-builder.test.ts` |
 | 35 | sharp required (not optional) | `sharp-check.test.ts` |
 | 36 | Postgres millisecond columns are BIGINT; Date.now() persists; v5 migrates | `pg-ms-timestamps.test.ts` (`pnpm --filter indexer test:pg`) |
 | 37 | R2/S3 object key equals public `/m/<id>.webp`; mock GET returns the object; PROD upload failure returns no StoredMedia | `media-r2.test.ts` |
@@ -256,7 +257,7 @@ pnpm --filter indexer watchdog
 | 53 | `GET /markets/:token` + `GET /page/token/:token` aggregate market/candles/swaps; invalid token rejected | `page-reads.test.ts`, `markets-query.test.ts` |
 | 54 | Search/query path + quote-asset / market row mapping | `apps/web/src/lib/indexed.test.ts` |
 | 55 | Page request/RPC budgets on 4k seeded markets; abort obsolete loads; SSE patches without invalidate; no refetch-on-focus. Required always-on CI job `page-budget` (`ci-ok` requires success) | `apps/web/src/lib/page-budget.test.ts`, `.github/workflows/ci.yml` |
-| 56 | Full GitHub CI on the #69 three-tier `ci.yml`: Solidity / size guard / Attack / CREATE2, backend + web unit via `test:lib`, `docs:check` + `docs:links`, Playwright smoke + interactive (`web`), Postgres | `.github/workflows/ci.yml`, `docs/ci.md`, `scripts/docs-links.ts` |
+| 56 | Full GitHub CI on the #69 three-tier `ci.yml`: Solidity / size guard / Attack / CREATE2, backend + web unit + Safe genesis via `test:lib`, `docs:check` + `docs:links`, Playwright smoke + interactive (`web`), Postgres | `.github/workflows/ci.yml`, `docs/ci.md`, `scripts/docs-links.ts`, `scripts/safe-genesis-builder.test.ts` |
 
 ## Arc smoke
 

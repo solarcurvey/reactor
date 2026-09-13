@@ -72,10 +72,10 @@ See `AGENTS.md`. Security > cleverness. Do not change tokenomics to make a test 
 ```bash
 pnpm docs:check          # version + constants + deployments
 pnpm docs:links          # in-repo docs slugs + relative files (no network)
-pnpm test:lib            # indexer + web unit + docs:check + docs:links + CI-cost + public-fork harden
+pnpm test:lib            # indexer + web unit + docs:check + docs:links + safe-genesis + page-budget + CI-cost + public-fork harden
 pnpm test:ci-cost        # workflow inventory / no duplicate push+PR / fail-safe paths
 pnpm test:web-unit       # web lib unit (also in test:lib)
 cd contracts && forge test
 ```
 
-GitHub Actions is three-tier (Refs #69): fast PR (`test:lib`), full merge-candidate (`ready_for_review`, label `ci-full`, or `workflow_dispatch`), main post-merge once. #17 leftover extras (`docs:links`, Playwright smoke + interactive) are full-only jobs on this same `ci.yml`. Do not add a feature-branch `push` + `pull_request` pair. Operator + before/after inventory: [`/docs/ci`](docs/ci.md).
+GitHub Actions is three-tier (Refs #69): fast PR (`test:lib` + always-on `page-budget`), full merge-candidate (`ready_for_review`, label `ci-full`, or `workflow_dispatch`), main post-merge once. #17 leftover extras (`docs:links`, Playwright smoke + interactive) are full-only jobs on this same `ci.yml`. Do not add a feature-branch `push` + `pull_request` pair. Operator + before/after inventory: [`/docs/ci`](docs/ci.md).
