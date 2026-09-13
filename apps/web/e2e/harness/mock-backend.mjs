@@ -532,7 +532,20 @@ function handleIndexer(req, res, url, bodyText) {
     return;
   }
   if (url.pathname === "/operator-policy/status") {
-    json(res, 200, { decision: "ALLOW", reason: "E2E_LOCAL", request_id: "e2e" });
+    // Official #68 / #65 public view. Invented reasons such as E2E_LOCAL
+    // fail sanitization and fail-close the launchpad as unavailable.
+    json(res, 200, {
+      ok: true,
+      decision: "allow",
+      reason: "ALLOW",
+      kind: "allow",
+      error: "",
+      disclaimer:
+        "REACTOR-operated services only. Public contracts remain callable onchain. Not a legal or OFAC-compliance opinion.",
+      policy: "reactor-operator-policy-v1",
+      writesAllowed: true,
+      source: "indexer",
+    });
     return;
   }
   // Keep-alive hello so the live-toast EventSource is not a 404 console.error.

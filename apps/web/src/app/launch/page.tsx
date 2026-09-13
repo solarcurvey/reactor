@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePublicClient, useSignMessage, useWriteContract } from "wagmi";
+import { usePublicClient, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "viem/actions";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -40,7 +40,6 @@ export default function LaunchPage() {
   const { data: quotes, isError: quotesError, error: quotesErr, refetch: refetchQuotes } = useQuotes();
   const scene = useQaScene();
   const { writeContractAsync, isPending } = useWriteContract();
-  const { signMessageAsync } = useSignMessage();
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
   const [image, setImage] = useState("");

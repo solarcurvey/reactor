@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePublicClient, useSignMessage, useWriteContract } from "wagmi";
+import { usePublicClient, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "viem/actions";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
@@ -56,7 +56,6 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   } = useOperatedWrites();
   const client = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
-  const { signMessageAsync } = useSignMessage();
   const submitLock = useRef(false);
   const [phase, setPhase] = useState<TradePhase>("idle");
   const [quotedFor, setQuotedFor] = useState<string | null>(null);
