@@ -47,6 +47,8 @@ export default function SearchPage() {
         {(["all", "bonding", "v4"] as const).map((s) => (
           <button
             key={s}
+            type="button"
+            aria-pressed={stage === s}
             onClick={() => setStage(s)}
             className={`rounded-full px-3 py-1 text-[12px] ${stage === s ? "bg-white text-zinc-950" : "bg-white/5 text-zinc-400"}`}
           >

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLaunchTokens } from "@/lib/hooks";
 import { formatUnitsSafe } from "@/lib/utils";
@@ -12,14 +12,21 @@ import { SafeTokenImage } from "@/components/safe-media";
 import { UntrustedText } from "@/components/untrusted-text";
 import { ServiceFailure } from "@/components/service-failure";
 import { isServiceUnavailable } from "@/lib/qa-inject";
+import { useQaScene } from "@/components/qa-inject-provider";
 
 const filters = ["Trending", "New", "Bonding", "Rewards", "Buy+Burn", "Batch Fair", "USDC-quoted"] as const;
 
 export default function HomePage() {
   const { data, isLoading, isError, error, refetch } = useLaunchTokens();
   const live = useReactorLive();
+  const scene = useQaScene();
   const [filter, setFilter] = useState<(typeof filters)[number]>("New");
   const [q, setQ] = useState("");
+
+  useEffect(() => {
+    if (scene.state === "search") setQ("ZCAT");
+    if (scene.state === "filter-bonding") setFilter("Bonding");
+  }, [scene.state]);
 
   const list = useMemo(() => {
     let items = [...(data ?? [])];
@@ -39,6 +46,12 @@ export default function HomePage() {
         (t.quoteSymbol ?? "").toLowerCase().includes(needle),
     );
   }, [data, filter, q]);
+
+  const showLoading = isLoading || scene.state === "loading";
+  const showEmpty =
+    !showLoading &&
+    !isError &&
+    (list.length === 0 || scene.state === "empty" || scene.inject === "empty");
 
   const vol24 = useMemo(() => {
     return (data ?? []).reduce((acc, t) => {
@@ -97,6 +110,8 @@ export default function HomePage() {
           {filters.map((f) => (
             <button
               key={f}
+              type="button"
+              aria-pressed={filter === f}
               onClick={() => setFilter(f)}
               className={`rounded-full px-3 py-1 text-[12px] ${
                 filter === f ? "bg-white text-zinc-950" : "bg-white/5 text-zinc-400"
@@ -111,6 +126,7 @@ export default function HomePage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search name / ticker / quote"
+            aria-label="Search name, ticker, or quote"
             className="h-8 w-44 rounded-full border border-white/10 bg-black/30 px-3 text-[12px] text-zinc-200 outline-none placeholder:text-zinc-400"
           />
           <span data-visual-dynamic className="text-[11px] tabular-nums text-zinc-400">
@@ -119,7 +135,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {isLoading && (
+      {showLoading && (
         <div className="mt-6 space-y-2" aria-busy="true" data-testid="markets-loading">
           <p className="text-sm text-zinc-400">Loading indexed markets…</p>
           {[0, 1, 2, 3].map((i) => (
@@ -134,15 +150,15 @@ export default function HomePage() {
           onRetry={() => refetch()}
         />
       )}
-      {!isLoading && !isError && list.length === 0 && (
+      {showEmpty && (
         <p data-testid="markets-empty" className="mt-8 text-sm text-zinc-400">
           No launches yet. Pick a quote and ignite the first official market.
         </p>
       )}
 
-      {list.length > 0 && (
+      {list.length > 0 && scene.state !== "loading" && scene.state !== "empty" && scene.inject !== "empty" && (
         <div className="mt-3 overflow-x-auto rounded-2xl border border-white/8">
-          <table className="w-full text-left text-[13px]">
+          <table className="w-full text-left text-[13px]" aria-label="Indexed markets">
             <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.16em] text-zinc-400">
               <tr>
                 <th className="px-3 py-2 font-medium">#</th>
