@@ -71,9 +71,14 @@ const errorFallback = readFileSync(
 );
 assert(errorFallback.includes("rx-kicker"), "#46 error boundary kicker uses approved-C heat");
 assert(
-  !/text-cyan|cyan-\d+|rounded-full|#7ee8ff/.test(errorFallback),
-  "#46 error fallback must not keep Direction A cyan",
+  !/text-cyan|cyan-\d+|rounded-full|#7ee8ff|text-zinc-500/.test(errorFallback),
+  "#46 error fallback must not keep Direction A cyan or sub-AA zinc-500",
 );
+const supportRef = readFileSync(
+  fileURLToPath(new URL("../components/support-ref.tsx", import.meta.url)),
+  "utf8",
+);
+assert(!/text-zinc-500/.test(supportRef), "SupportRef uses the AA muted floor");
 
 const globalError = readFileSync(fileURLToPath(new URL("../app/global-error.tsx", import.meta.url)), "utf8");
 assert(globalError.includes("#ff6b2b"), "#46 global-error uses heat");

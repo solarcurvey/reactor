@@ -28,7 +28,7 @@ export function RouteError({
         Trading, quotes, and wallet state on other routes are unchanged. Economics are not affected. This screen is an
         error boundary — not a protocol pause.
       </p>
-      <p className="mt-3 font-mono text-[12px] text-zinc-500">
+      <p className="mt-3 font-mono text-[12px] text-zinc-400">
         {pathname} · {rel.release} · {shortSha()}
         {error.digest ? ` · digest ${error.digest}` : ""}
         {event ? ` · ${formatSupportRef(event)}` : ""}
@@ -65,7 +65,7 @@ export function AppErrorFallback({
       <p className="mt-3 text-sm text-zinc-400">
         No funds moved. Retry or return to Discover. Release {rel.release}.
       </p>
-      {event ? <p className="mt-2 font-mono text-[12px] text-zinc-500">{formatSupportRef(event)}</p> : null}
+      {event ? <p className="mt-2 font-mono text-[12px] text-zinc-400">{formatSupportRef(event)}</p> : null}
       <div className="mt-6 flex gap-2">
         <Button onClick={() => reset()}>Reload view</Button>
         <Button variant="outline" asChild>

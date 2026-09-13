@@ -32,7 +32,7 @@ function PreviewInner() {
 
 export default function ErrorPreviewPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-zinc-500">…</p>}>
+    <Suspense fallback={<p className="text-sm text-zinc-400">…</p>}>
       <PreviewInner />
     </Suspense>
   );

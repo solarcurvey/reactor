@@ -185,7 +185,7 @@ export default function OpsPage() {
       </div>
 
       <Card className="mt-3 p-4">
-        <div className="text-[11px] uppercase tracking-wider text-zinc-500">Web outage paging</div>
+        <div className="rx-kicker">Web outage paging</div>
         <p className="mt-2 text-[13px] text-zinc-300">
           Encode the runbook: page on clustered render / API / RPC / quote / SSE / simulation. Expected wallet{" "}
           <code>4001</code> never pages. Release {releaseInfo().release} · {releaseInfo().reactorEnv} · chain{" "}
@@ -193,7 +193,7 @@ export default function OpsPage() {
         </p>
         <table className="mt-3 w-full text-left font-mono text-[11px] text-zinc-300">
           <thead>
-            <tr className="text-zinc-500">
+            <tr className="text-zinc-400">
               <th className="pb-1">class</th>
               <th className="pb-1">count / window</th>
               <th className="pb-1">consecutive</th>
