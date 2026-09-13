@@ -200,7 +200,15 @@
 
 # Prior — Exact official-list sanctions screening (Refs #61)
 
-**Status:** Squash-merged **#66** (`d08aa1c`) on `origin/main`. Issue **#61 closed** after post-merge [`34731099571`](https://github.com/solarcurvey/reactor/actions/runs/34731099571). Parent RELEASE GATE **#60** stays open.
+**Status:** Squash-merged **#66** (`d08aa1c`) on `origin/main`. Issue **#61 closed** after post-merge [`34731099571`](https://github.com/solarcurvey/reactor/actions/runs/34731099571). Parent RELEASE GATE **#60** stays open. Issue **#61 stays open** until post-merge verify (parent RELEASE GATE **#60**). Do not auto-close. **Status:** Merged **#42** on `origin/main` `80d3cac` after **#50** `e5fd745` / **#58** `c03c698`. Issue **#17 stays open**. **Not audited. Not mainnet.** Tokenomics unchanged. ---
+
+# Prior — Eliminate RPC waterfalls (#37 / #50)
+
+**Status:** Merged **#50** on `origin/main` `e5fd745` after **#58** `c03c698`. Issue **#37 stays open**. **Not audited. Not mainnet.** Tokenomics unchanged. ---
+
+# Prior — Exact official-list sanctions screening (Refs #61 / merged #66)
+
+**Status:** Landed on `origin/main` as **`d08aa1c`** (#66) after **#49** (UI QA) on #42 / #50 / #58. Issue **#61 stays open** until post-merge verify (parent RELEASE GATE **#60**). Do not auto-close.
 **Not audited. Not mainnet. Not a legal/OFAC compliance claim.**  
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**  
 **Protocol release remains 0.3.3** — do not restore a pre-rewrite version.
