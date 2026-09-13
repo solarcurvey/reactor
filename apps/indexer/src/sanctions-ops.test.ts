@@ -22,6 +22,7 @@ import { hashWallet } from "../../../packages/reactor/src/sanctions-audit.ts";
 import { OPERATOR_POLICY_ID } from "../../../packages/reactor/src/sanctions-policy.ts";
 import { issueWalletProofChallenge } from "../../../packages/reactor/src/wallet-proof.ts";
 import { recentAlerts } from "./alerts.ts";
+import { openSanctionsStore } from "../../../packages/sanctions/src/store.ts";
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
@@ -234,6 +235,29 @@ const t0 = Date.parse("2026-09-12T00:00:00.000Z");
     }
   }
   rmSync(root, { recursive: true, force: true });
+}
+
+{
+  const officialDir = mkdtempSync(join(tmpdir(), "idx-ops-official-local-"));
+  const opsDir = join(officialDir, "ops-pointer");
+  const store = openSanctionsStore({ dataDir: officialDir });
+  assert(!store.active(), "empty official store before LOCAL fixture bind");
+  const ops = await createSanctionsOps(
+    null,
+    { REACTOR_ENV: "LOCAL", SANCTIONS_NETWORK: "" },
+    { dataDir: opsDir, now: () => t0, officialStore: store },
+  );
+  const start = await ops.startup();
+  assert(start.refresh?.ok, "LOCAL official-store bind loads pinned #61 fixtures");
+  assert(ops.health().freshness === "current", "ops freshness is current after LOCAL fixture bind");
+  assert(store.active(), "shared #61 store activated so /sanctions/screen stays in sync");
+  const allow = ops.gateProtectedWrite({ action: "upload", recoveredWallet: WALLET });
+  assert(allow.ok, "current LOCAL fixture allows a recovered write");
+  assert(
+    !allowFixtureSanctionsRefresh({ REACTOR_ENV: "STAGING", SANCTIONS_NETWORK: "" }),
+    "STAGING official-store bind still refuses fixtures",
+  );
+  rmSync(officialDir, { recursive: true, force: true });
 }
 
 {

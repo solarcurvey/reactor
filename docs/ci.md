@@ -74,7 +74,7 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | `foundry-targeted` | fast + Solidity paths | `forge test` (default profile) + `pnpm size:guard` |
 | `solidity + size-guard` | full / main | `FOUNDRY_PROFILE=ci forge test` + Attack suite + CREATE2 `test_hookBits` + `pnpm size:guard` |
 | `web-production-security` | full / main | `pnpm test:web-security` (production Next + live headers + bundle sentinel + XSS corpus) |
-| `operator-policy-http` | full / main | `pnpm test:operator-policy-http` — real indexer + production Next HTTP matrix (#62). Required by `ci-ok`. |
+| `operator-policy-http` | full / main | `pnpm test:operator-policy-http` — real indexer + production Next HTTP matrix (#62). LOCAL `#64` freshness is pinned `#61` fixtures (no live OFAC unless `SANCTIONS_NETWORK=1`). Required by `ci-ok`. |
 | `web-qa` | full / main | `pnpm --filter web test:qa` (production Next visual / a11y / failure-injection). Pixel baselines live on PR #49. |
 | `live-toasts-ui` | full / main | `pnpm test:live-toasts` identity + Playwright |
 | `postgres-ms-timestamps` | full / main | `test:pg` + `test:pg-lease` (two-worker) + `pg-smoke` |

@@ -8,6 +8,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { opsRefreshSanctions } from "./sanctions.ts";
+import { pinnedFixtureBodies, refreshSanctions } from "../../../packages/sanctions/src/index.ts";
 import type { SanctionsStore } from "../../../packages/sanctions/src/store.ts";
 import {
   GEO_POLICY_VERSION_DEFAULT,
@@ -275,6 +276,29 @@ export function bindOfficialRefresh(
   return async () => refreshPayloadFromOfficialStore(store, await refresh(store));
 }
 
+/**
+ * Official `#61` store is the refresh target so `/sanctions/screen` stays in
+ * sync. LOCAL / explicit test loads pinned OFAC XML into that store — never
+ * live treasury.gov — unless `SANCTIONS_NETWORK=1`. Production-like envs keep
+ * the official HTTPS path and fail closed when it is missing or broken.
+ */
+export function bindOfficialRefreshForEnv(
+  store: OfficialStoreLike,
+  env: NodeJS.ProcessEnv = process.env,
+): () => Promise<RefreshPayload> {
+  return bindOfficialRefresh(store, (s) => refreshOfficialStoreForEnv(s, env));
+}
+
+export async function refreshOfficialStoreForEnv(
+  store: OfficialStoreLike,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<OfficialRefreshResult> {
+  if (allowFixtureSanctionsRefresh(env) && env.SANCTIONS_NETWORK !== "1") {
+    return refreshSanctions(store as SanctionsStore, { bodies: pinnedFixtureBodies() });
+  }
+  return opsRefreshSanctions(store as SanctionsStore);
+}
+
 function defaultOpsDataDir(env: NodeJS.ProcessEnv): string {
   const explicit = env.SANCTIONS_OPS_DATA_DIR?.trim();
   if (explicit) return explicit;
@@ -306,7 +330,7 @@ export async function createSanctionsOps(
   const dataDir = opts.dataDir ?? defaultOpsDataDir(env);
   const official =
     opts.fetchOfficialList ??
-    (opts.officialStore ? bindOfficialRefresh(opts.officialStore) : undefined) ??
+    (opts.officialStore ? bindOfficialRefreshForEnv(opts.officialStore, env) : undefined) ??
     defaultFetcher(env);
   const ops = new SanctionsOps({
     dataDir,

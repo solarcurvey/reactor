@@ -196,6 +196,8 @@ function assertPastGate(res: Hit, label: string): void {
   assert(res.json.reason !== "DENY_GEO_BLOCKED", `${label} must not be geo deny ${res.raw}`);
   assert(res.json.reason !== "UNAVAILABLE_WALLET_MISSING", `${label} must not be missing proof ${res.raw}`);
   assert(res.json.reason !== "UNAVAILABLE_WALLET_PROOF", `${label} must not be bad proof ${res.raw}`);
+  assert(res.json.reason !== "UNAVAILABLE_DATASET_MISSING", `${label} must not be missing dataset ${res.raw}`);
+  assert(res.json.reason !== "UNAVAILABLE_DATASET_STALE", `${label} must not be stale dataset ${res.raw}`);
 }
 
 function indexerEnv(port: number, dataDir: string, extra: Record<string, string> = {}): NodeJS.ProcessEnv {
@@ -207,6 +209,7 @@ function indexerEnv(port: number, dataDir: string, extra: Record<string, string>
     INDEXER_PORT: String(port),
     INDEXER_DB: join(dataDir, "reactor.sqlite"),
     SANCTIONS_DATA_DIR: join(dataDir, "sanctions"),
+    SANCTIONS_FIXTURE: "1",
     OPERATOR_POLICY_BLOCKED_WALLETS: BLOCKED,
     OPERATOR_POLICY_DATASET_FRESHNESS: extra.OPERATOR_POLICY_DATASET_FRESHNESS ?? "current",
     OPERATOR_POLICY_HMAC_SECRET: HMAC,
@@ -245,6 +248,11 @@ async function main() {
 
     const health = await hit(indexerUrl, { path: "/health" });
     assert(health.status === 200 && health.json.ok === true, `real /health ${health.raw}`);
+    const sanctionsHealth = await hit(indexerUrl, { path: "/sanctions/health" });
+    assert(
+      sanctionsHealth.status === 200 && sanctionsHealth.json.freshness === "current",
+      `LOCAL #64 freshness current ${sanctionsHealth.raw}`,
+    );
     const markets = await hit(indexerUrl, { path: "/markets" });
     assert(markets.status === 200 && !("reason" in markets.json && String(markets.json.reason).startsWith("DENY_")), `public /markets ${markets.raw}`);
     const ticker = await hit(indexerUrl, { path: "/ticker/CAT" });

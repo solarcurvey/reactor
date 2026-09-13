@@ -26,7 +26,7 @@ When the official `#61` module is present, `adaptOfficialRefreshPayload` keeps t
 
 Refresh runs at **process start** and on a **6 hour** schedule (`SANCTIONS_REFRESH_INTERVAL_MS`). A bad, partial, or gutted replacement does **not** swing `current.json`. Last-known-good stays active; health is **degraded**. Completeness floor: keep ≥85% of prior addresses; each source body must stay ≥50% of prior bytes. `allowCatastrophicShrink` is an explicit operator exception, not a complaint path.
 
-When the official `#61` module is present, refresh binds to it. **Fixture fallback is LOCAL / explicit test only** (`REACTOR_ENV=LOCAL` or `SANCTIONS_FIXTURE=1` outside production-like envs). `PROD`, `PRODUCTION`, `STAGING`, and `TESTNET` (and `NODE_ENV=production`) require the official source; a missing or broken plugin reports unavailable/stale. `SANCTIONS_FIXTURE=1` cannot override those hard-gated envs.
+When the official `#61` module is present, refresh binds to that shared in-memory store (so `GET /sanctions/screen` stays in sync) and adapts the snapshot into the ops registry. **Fixture fallback is LOCAL / explicit test only** (`REACTOR_ENV=LOCAL` or `SANCTIONS_FIXTURE=1` outside production-like envs). On LOCAL, the bound store is loaded from pinned `#61` OFAC XML unless `SANCTIONS_NETWORK=1` — indexer start does not hit treasury.gov. `PROD`, `PRODUCTION`, `STAGING`, and `TESTNET` (and `NODE_ENV=production`) require the official HTTPS source; a missing or broken fetch reports unavailable/stale. `SANCTIONS_FIXTURE=1` cannot override those hard-gated envs.
 
 ## Health
 
