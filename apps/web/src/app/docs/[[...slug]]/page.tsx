@@ -49,7 +49,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
         </p>
       </article>
       <aside className="hidden lg:block">
-        <div className="sticky top-20 text-[12px] text-zinc-500">
+        <div className="sticky top-20 text-[12px] text-zinc-400">
           <div className="uppercase tracking-wider">On this page</div>
           <ul className="mt-2 space-y-1">
             {toc.map((h) => (

@@ -38,7 +38,7 @@ export function DocsChrome({
           {" · "}
           <span data-testid="badge-factory">Factory {release.factoryVersionLabel}</span>
         </p>
-        <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-zinc-500" data-testid="docs-release-badges">
+        <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-zinc-400" data-testid="docs-release-badges">
           <span data-testid="badge-api">API {release.apiVersion}</span>
           {" · "}
           <span data-testid="badge-sdk">SDK {release.sdkVersion}</span>
@@ -77,7 +77,7 @@ export function DocsChrome({
           ))}
         </nav>
         {q.trim() && groups.length === 0 ? (
-          <p className="mt-3 text-[12px] text-zinc-500">No handbook pages match that search.</p>
+          <p className="mt-3 text-[12px] text-zinc-400">No handbook pages match that search.</p>
         ) : null}
       </aside>
       <div>{children}</div>

@@ -121,4 +121,19 @@ assert.match(index, /2% holders/);
 assert.match(index, /1B/);
 assert.match(index, /24h/);
 
+const webSrc = join(root, "apps", "web", "src");
+const handbookSurfaces = [
+  "components/docs-chrome.tsx",
+  "app/docs/[[...slug]]/page.tsx",
+  "components/docs-md.tsx",
+  "app/docs/layout.tsx",
+];
+for (const rel of handbookSurfaces) {
+  const src = readFileSync(join(webSrc, rel), "utf8");
+  assert.ok(
+    !/\b(?:placeholder:)?text-zinc-(?:500|600|700)\b/.test(src),
+    `${rel} must use the AA muted floor (text-zinc-400), not zinc-500+`,
+  );
+}
+
 console.log(`docs handbook pages ok (${DOCS.length} nav entries)`);
