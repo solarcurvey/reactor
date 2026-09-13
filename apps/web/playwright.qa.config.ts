@@ -54,6 +54,7 @@ export default defineConfig({
         ...process.env,
         NEXT_PUBLIC_REVIEW_FIXTURES: "1",
         NEXT_PUBLIC_QA_INJECT: "1",
+        REACTOR_TELEMETRY_RELAXED: "1",
         NODE_ENV: "production",
       },
     },

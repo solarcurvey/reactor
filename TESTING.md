@@ -37,6 +37,10 @@ npx --yes tsx apps/web/src/lib/operator-policy-status.test.ts
 npx --yes tsx packages/reactor/src/operator-policy-ux.test.ts
 npx --yes tsx apps/web/src/lib/secret-sentinel.test.ts
 npx --yes tsx packages/reactor/src/untrusted-metadata.test.ts
+npx --yes tsx apps/web/src/lib/obs/redact.test.ts
+npx --yes tsx apps/web/src/lib/obs/telemetry.test.ts
+npx --yes tsx apps/web/src/lib/obs/failure-injection.test.ts
+npx --yes tsx apps/web/src/lib/obs/sourcemap.test.ts
 npx --yes tsx scripts/safe-genesis-builder.test.ts  # Safe ≠ deployer, batch A/B, MultiSend (#17)
 pnpm --filter @reactor/sanctions test   # #61 exact official-list parser/store/screen (pinned fixtures, no network)
 # SANCTIONS_NETWORK=1 pnpm test:sanctions:network   # isolated live OFAC HTTPS; not unit CI
@@ -53,11 +57,13 @@ npx --yes tsx scripts/ci-public-harden.test.ts  # #72: permissions / persist-cre
 # CI: .github/workflows/ci.yml contents:read; actions/checkout persist-credentials:false.
 pnpm --filter web test          # Playwright smoke + interactive + live-toasts (dev server; not visual/a11y/failures)
 pnpm --filter web test:qa       # prod next build + screenshot matrix + axe + keyboard + ?inject= (CI ci.yml job web-qa)
+pnpm test:obs                   # #39 gate: obs unit + source-map + configured-DSN vendor proof + production next start Playwright (Vitals / runbook / inject)
 pnpm test:live-toasts           # #38 gate: identity unit + Playwright dismiss / multi-log / reconnect / safe-area / reduced-motion
 tsx apps/web/src/lib/qa-inject.test.ts
 tsx apps/web/e2e/console-gate.test.ts
 tsx apps/web/e2e/contrast.test.ts
 # CI full/main: .github/workflows/ci.yml job live-toasts-ui. Fast PR: identity unit via test:lib. #38 stays open until post-merge verify.
+# CI full/main: .github/workflows/ci.yml job obs-ui. Fast PR: obs unit via test:lib. #39 stays open until merge + post-merge verify.
 pnpm test:web-security          # production next build/start: live headers, bundle sentinel, XSS corpus
 # CI full/main: .github/workflows/ci.yml job web-production-security
 # CI full/main: .github/workflows/ci.yml job web-qa. #36 closed after #49 post-merge `ad7b457` / 34729758795.

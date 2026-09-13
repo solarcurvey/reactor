@@ -11,7 +11,7 @@ A **skipped job is not a pass**. Required release jobs must execute their accept
 | Tier | When | What runs |
 | --- | --- | --- |
 | **Fast PR** | Every meaningful `pull_request` update (draft included) | `pnpm test:lib` (indexer + web unit + cheap security + Safe genesis builder + `docs:check` + `docs:links` + this page’s invariants + #61 sanctions fixtures + #63 geo-policy tests) plus visible `page-budget` (`pnpm test:page-budget`). Targeted Foundry + `size:guard` **only** when Solidity paths change. |
-| **Full merge-candidate** | Non-draft PR (`ready_for_review` / later `synchronize`), label **`ci-full`**, or `workflow_dispatch` (default **full**) | Fast commands **plus** production Next / hostile-metadata (`pnpm test:web-security`), `web-qa` (visual / a11y / failure-injection), `live-toasts-ui`, full Foundry (`FOUNDRY_PROFILE=ci`, Attack suite, CREATE2 `test_hookBits`, `size:guard`), Postgres `test:pg` + two-worker `test:pg-lease` + `pg-smoke`, `docs:links` (explicit job), Playwright smoke + interactive (`web`), #35 `e2e-release-gate` (`pnpm test:e2e:release`). Path filters do **not** skip these. |
+| **Full merge-candidate** | Non-draft PR (`ready_for_review` / later `synchronize`), label **`ci-full`**, or `workflow_dispatch` (default **full**) | Fast commands **plus** production Next / hostile-metadata (`pnpm test:web-security`), `web-qa` (visual / a11y / failure-injection), `live-toasts-ui`, `obs-ui`, full Foundry (`FOUNDRY_PROFILE=ci`, Attack suite, CREATE2 `test_hookBits`, `size:guard`), Postgres `test:pg` + two-worker `test:pg-lease` + `pg-smoke`, `docs:links` (explicit job), Playwright smoke + interactive (`web`), #35 `e2e-release-gate` (`pnpm test:e2e:release`). Path filters do **not** skip these. |
 | **Main post-merge** | `push` to **`main`** only | The same full gate, once, on the merged SHA. |
 
 Docs-only / Solidity-only / web-only drafts do not launch unrelated heavy matrices (no production `next build`, Playwright, Postgres, or CI-fuzz Foundry). On a **final merge candidate** those filters are ignored so #15 / #17 / #18 gates still run.
@@ -77,11 +77,12 @@ A new force-push cancels the obsolete PR run. Main post-merge verification is ke
 | `operator-policy-http` | full / main | `pnpm test:operator-policy-http` — real indexer + production Next HTTP matrix (#62). LOCAL `#64` freshness is pinned `#61` fixtures (no live OFAC unless `SANCTIONS_NETWORK=1`). Required by `ci-ok`. |
 | `web-qa` | full / main | `pnpm --filter web test:qa` (production Next visual / a11y / failure-injection). Pixel baselines live on PR #49. |
 | `live-toasts-ui` | full / main | `pnpm test:live-toasts` identity + Playwright |
+| `obs-ui` | full / main | obs unit + first-party source-map symbolication + configured-DSN vendor proof (`vendor-proof.test.ts`) + production `next start` Playwright `obs-failure-injection.spec.ts` (Web Vitals / six-class runbook / redacted inject) |
 | `postgres-ms-timestamps` | full / main | `test:pg` + `test:pg-lease` (two-worker) + `pg-smoke` |
 | `docs-links` | full / main | `pnpm docs:links` (in-repo slugs/files only; no network). Also in `test:lib` on the fast gate. |
 | `web` | full / main | Playwright smoke + interactive (`e2e/smoke.spec.ts`, `e2e/interactive.spec.ts`). Capture shots stay `CAPTURE=1` local-only. Live-toasts Playwright stays on `live-toasts-ui`. |
 | `e2e-release-gate` | full / main | `pnpm test:e2e:release` (production Next + EIP-1193 / MV3 wallet; `xvfb-run`) |
-| `ci-ok` | full / main | All of the above full jobs **and** `page-budget` `== success` (including `web-qa` and `e2e-release-gate`) |
+| `ci-ok` | full / main | All of the above full jobs **and** `page-budget` `== success` (including `web-qa`, `obs-ui`, and `e2e-release-gate`) |
 
 `keeper-lease-pg` / `two-worker-postgres` is **folded** into `postgres-ms-timestamps` (`test:pg-lease` still runs). Do not add a second Postgres lease workflow.
 
@@ -95,8 +96,8 @@ Open product issues keep their acceptance commands. Attach new heavy jobs to **t
 | #15 / #35 (PR #44) | Production browser + wallet E2E | `e2e-release-gate` (full) — `pnpm test:e2e:release`. Do **not** add `e2e-release.yml`. |
 | #15 / #36 (merged #49, closed) | Visual / a11y / failure-injection | `web-qa` (full). Closed after `ad7b457` / `34729758795`. Do not re-add `.github/workflows/web-qa.yml`. |
 | #15 / #18 | Production-readiness parent | Same full-tier rule. Do not move those commands to optional / `continue-on-error`. |
-| #37 (merged #50, closed) | RPC page-budget | Required always-on `page-budget`. Closed after `e5fd745` / `34727279555`. |
-| #39 (PR #46) | Observability | Full-only `obs-ui` job. |
+| #37 (merged #50, closed) | RPC page-budget | Required always-on `page-budget` (`pnpm test:page-budget` plus the same file in `test:lib`; required by `ci-ok`). Closed after `e5fd745` / `34727279555`. |
+| #39 (PR #46) | Observability | `obs-ui` (full). Units also run in `test:lib` on the fast gate. Folded from `observability.yml` — do not restore a second workflow. |
 | #38 | Live toasts | `live-toasts-ui` (full). Units also run in `test:lib` on the fast gate. |
 | #41 / TESTING row 51 | Hostile metadata / CSP | Cheap units in `test:lib`; production build + Playwright corpus in `web-production-security`. |
 | #61 (merged #66, closed) | Exact official-list OFAC screening fixtures | Cheap units in `test:lib` (`@reactor/sanctions` + `sanctions-api.test.ts`). Closed after `d08aa1c` / `34731099571`. Live HTTPS is `SANCTIONS_NETWORK=1` / `test:sanctions:network` only — not a CI job. |
@@ -162,6 +163,7 @@ FOUNDRY_PROFILE=ci bash -lc 'cd contracts && forge test -vv'
 pnpm test:web-security
 pnpm test:operator-policy-http  # #62 real indexer + production Next HTTP matrix (CI job operator-policy-http)
 pnpm test:live-toasts
+pnpm test:obs
 # pnpm --filter web exec playwright test e2e/smoke.spec.ts e2e/interactive.spec.ts
 pnpm --filter web test:qa   # #36 visual / a11y / failure-injection (CI job web-qa)
 pnpm test:e2e:release   # #35 full-only; Chromium/Firefox/WebKit + extension

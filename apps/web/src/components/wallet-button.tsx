@@ -8,12 +8,13 @@ import { shortAddress } from "@/lib/utils";
 import { arcLocal } from "@/lib/chain";
 import { useQaInject, useQaState } from "./qa-inject-provider";
 import { FAILURE_COPY } from "@/lib/qa-inject";
+import { isUserRejection, reportFailure } from "@/lib/obs";
 
 export function WalletButton() {
   const { address, isConnected, chainId } = useAccount();
-  const { connect, connectors, isPending } = useConnect();
+  const { connect, connectors, isPending, error: connectError } = useConnect();
   const { disconnect } = useDisconnect();
-  const { switchChain } = useSwitchChain();
+  const { switchChain, error: switchError } = useSwitchChain();
   const inject = useQaInject();
   const state = useQaState();
   const [menu, setMenu] = useState(false);
@@ -22,6 +23,23 @@ export function WalletButton() {
   // Keep the first client paint on the SSR "Connect wallet" tree unless the
   // QA fixture URL already opted into a connected chrome (React 418).
   const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    if (connectError) {
+      reportFailure("wallet", connectError, {
+        action: "connect",
+        page: isUserRejection(connectError) ? false : undefined,
+      });
+    }
+  }, [connectError]);
+  useEffect(() => {
+    if (switchError) {
+      reportFailure("wallet", switchError, {
+        action: "switch",
+        page: isUserRejection(switchError) ? false : undefined,
+      });
+    }
+  }, [switchError]);
 
   const fixtureConnected = state === "wallet-menu" || state === "wallet-connected";
   const shownAddress = address ?? (fixtureConnected ? "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" : undefined);
@@ -45,7 +63,12 @@ export function WalletButton() {
               setReject(FAILURE_COPY["wallet-reject"].body);
               return;
             }
-            connect({ connector: connectors[0] });
+            const c = connectors[0];
+            if (!c) {
+              reportFailure("wallet", new Error("no injected connector"), { action: "connect" });
+              return;
+            }
+            connect({ connector: c });
           }}
           disabled={isPending || (connectors.length === 0 && !inject)}
         >

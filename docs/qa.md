@@ -6,7 +6,7 @@ CI job `web-qa` (`.github/workflows/ci.yml`, full merge-candidate + main) runs `
 
 Draft PR updates stay on the cheap `test:lib` gate; add label `ci-full`, mark ready for review, or `workflow_dispatch` tier **full** to run `web-qa`. Do not re-add `.github/workflows/web-qa.yml` or a second `push` + `pull_request` pair. Pixel baselines stay on PR #49. GitHub billing / spending-limit reds are not a Playwright AC fail.
 
-The shared fixture (`e2e/qa-fixture.ts`, installed from `e2e/helpers.ts`) listens on `page.on('console')` and `page.on('pageerror')` for every visual / state / a11y / failure spec. Hydration warnings never pass. `?inject=` may match only the narrow `INJECT_CONSOLE_ALLOWS` patterns for that kind (`empty` has none — empty is not an outage). Failures attach `page-diagnostics.json` / `.txt` to the Playwright report.
+The shared fixture (`e2e/qa-fixture.ts`, installed from `e2e/helpers.ts`) listens on `page.on('console')` and `page.on('pageerror')` for every visual / state / a11y / failure spec. Hydration warnings never pass. `?inject=` may match only the narrow `INJECT_CONSOLE_ALLOWS` patterns for that kind (`empty` has none — empty is not an outage). Chromium `Failed to load resource` **429** on `/api/telemetry` is best-effort ingest backpressure and is **not** a blocking diagnostic (quote/indexer 429s on other URLs still fail unless that inject is active). The QA harness sets `REACTOR_TELEMETRY_RELAXED=1` so the shared-IP farm does not starve ingest. Failures attach `page-diagnostics.json` / `.txt` to the Playwright report.
 
 ```bash
 pnpm --filter web test:qa

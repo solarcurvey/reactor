@@ -13,6 +13,8 @@ import { useQuotes, useTicketWallet, type LaunchToken } from "@/lib/hooks";
 import { readTicketWallet } from "@/lib/wallet-reads";
 import { addresses } from "@/lib/addresses";
 import { INDEXER_URL } from "@/lib/chain";
+import { newTraceId, reactorFetch, userVisibleFailure, type TelemetryEvent } from "@/lib/obs";
+import { SupportRef } from "./support-ref";
 import {
   buildQuoteDenomCatalog,
   formatOfficialFeeDisclosure,
@@ -68,6 +70,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
   const [quotedAt, setQuotedAt] = useState<number>(0);
   const [minQuoteOut, setMinQuoteOut] = useState<bigint | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [support, setSupport] = useState<TelemetryEvent | null>(null);
   const [hash, setHash] = useState<string | null>(null);
   const [liveHops, setLiveHops] = useState<
     { adapter: `0x${string}`; tokenIn: `0x${string}`; tokenOut: `0x${string}`; minOut: bigint; data: `0x${string}` }[]
@@ -136,6 +139,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
 
   async function refreshQuote() {
     setError(null);
+    setSupport(null);
     if (isQuoteInject(inject)) {
       if (inject === "quote-stale") {
         setQuotedOut(10n ** 16n);
@@ -156,10 +160,13 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       return;
     }
     setPhase("quoting");
+    const traceId = newTraceId();
     try {
       const proof = await policy.ensureProof();
-      const res = await fetch(`${INDEXER_URL}/quote`, {
+      const res = await reactorFetch(`${INDEXER_URL}/quote`, {
         method: "POST",
+        kind: "quote",
+        traceId,
         headers: { "content-type": "application/json", ...proof },
         body: JSON.stringify({
           kind: side === "buy" ? "BUY" : "SELL",
@@ -205,9 +212,11 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       else if (side === "sell" && q.minOut) setMinQuoteOut(BigInt(q.minOut));
       else setMinQuoteOut(null);
     } catch (e) {
+      const visible = userVisibleFailure("quote", e, { path: "/quote", side, traceId });
       setQuotedOut(null);
       setPhase("idle");
-      setError(e instanceof Error ? e.message : "Quote failed. Size may be larger than remaining depth.");
+      setError(visible.message || "Quote failed. Size may be larger than remaining depth.");
+      setSupport(visible.event);
     }
   }
 
@@ -215,6 +224,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
     if (submitLock.current) return;
     submitLock.current = true;
     setError(null);
+    setSupport(null);
     setHash(null);
     if (inject === "wallet-reject") {
       setError(FAILURE_COPY["wallet-reject"].body);
@@ -356,12 +366,17 @@ export function TradePanel({ t }: { t: LaunchToken }) {
       setHash(tx);
       setPhase("confirmed");
     } catch (e) {
-      const msg = e instanceof TxGuardError || e instanceof Error ? e.message : "Trade failed.";
+      const visible = userVisibleFailure("tx", e, {
+        path: "trade",
+        side,
+        bonding: Boolean(t.bonding && !t.marketLive),
+      });
       setPhase("idle");
-      if (/timed out|timeout/i.test(msg)) {
+      setSupport(visible.event);
+      if (/timed out|timeout/i.test(visible.message)) {
         setError("Transaction dropped or replaced. Re-quote and retry.");
       } else {
-        setError(msg);
+        setError(visible.message || (e instanceof TxGuardError ? e.message : "Trade failed."));
       }
     } finally {
       submitLock.current = false;
@@ -515,19 +530,22 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         {PHASE_LABEL[phase]}
       </p>
       {error && (
-        <p
-          role="alert"
-          data-testid={
-            inject === "wallet-reject" || inject === "wallet-revert" || isQuoteInject(inject)
-              ? `failure-${inject}`
-              : "failure-quote"
-          }
-          className="mt-3 text-sm text-red-300"
-        >
-          <UntrustedText as="span" field="toast">
-            {error}
-          </UntrustedText>
-        </p>
+        <div className="mt-3">
+          <p
+            role="alert"
+            data-testid={
+              inject === "wallet-reject" || inject === "wallet-revert" || isQuoteInject(inject)
+                ? `failure-${inject}`
+                : "failure-quote"
+            }
+            className="text-sm text-red-300"
+          >
+            <UntrustedText as="span" field="toast">
+              {error}
+            </UntrustedText>
+          </p>
+          <SupportRef event={support} />
+        </div>
       )}
       {!matched && isConnected && (
         <UntrustedText as="p" field="toast" className="mt-3 text-sm text-red-300">
@@ -568,7 +586,9 @@ export function TradePanel({ t }: { t: LaunchToken }) {
               await waitForTransactionReceipt(client, { hash: tx });
               setHash(tx);
             } catch (e) {
-              setError(e instanceof Error ? e.message : "Graduation failed");
+              const visible = userVisibleFailure("tx", e, { path: "graduate" });
+              setError(visible.message || "Graduation failed");
+              setSupport(visible.event);
             }
           }}
           disabled={!writesEnabled || isPending}
@@ -596,6 +616,7 @@ export function RewardsModule({ t }: { t: LaunchToken }) {
   });
   const pending = ticketWallet?.pendingRewards ?? null;
   const [msg, setMsg] = useState<string | null>(null);
+  const [support, setSupport] = useState<TelemetryEvent | null>(null);
 
   async function refresh() {
     await refetch();
@@ -627,7 +648,9 @@ export function RewardsModule({ t }: { t: LaunchToken }) {
       setMsg(`Claimed. ${hash}`);
       refresh();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Claim failed");
+      const visible = userVisibleFailure("tx", e, { path: "claimRewards" });
+      setMsg(visible.message || "Claim failed");
+      setSupport(visible.event);
     }
   }
 
@@ -654,6 +677,7 @@ export function RewardsModule({ t }: { t: LaunchToken }) {
           {msg}
         </UntrustedText>
       )}
+      <SupportRef event={support} />
     </Card>
   );
 }

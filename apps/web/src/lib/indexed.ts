@@ -4,6 +4,7 @@ import { INDEXER_URL } from "./chain";
 import type { MarketListOpts } from "./query";
 import { FIXTURE_REACTOR_EVENTS, FIXTURE_TOKENS, FIXTURE_XSS_SWAPS, REVIEW_FIXTURES } from "./review-fixtures";
 import { sanitizeAddress, sanitizeLaunchFields } from "./untrusted-metadata";
+import { reportFailure } from "./obs";
 
 export type QuoteAsset = {
   token: `0x${string}`;
@@ -59,11 +60,15 @@ export async function fetchIndexerJson<T>(path: string, init?: RequestInit): Pro
   try {
     const res = await fetch(`${INDEXER_URL}${path}`, init);
     throwIfAborted(init?.signal);
-    if (!res?.ok) return { ok: false };
+    if (!res?.ok) {
+      reportFailure("api", new Error(`indexer ${path} ${res?.status ?? "offline"}`), { path, status: res?.status });
+      return { ok: false };
+    }
     return { ok: true, body: (await res.json()) as T };
   } catch (e) {
     throwIfAborted(init?.signal);
     if (e instanceof Error && e.name === "AbortError") throw e;
+    reportFailure("api", e, { path });
     return { ok: false };
   }
 }

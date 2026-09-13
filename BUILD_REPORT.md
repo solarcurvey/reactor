@@ -1,12 +1,61 @@
-# BUILD REPORT — Restricted-access UX (Refs #65)
+# BUILD REPORT — Protocol 0.3.4 frontend observability
 
-**Status:** Draft PR **#75** on `cursor/restricted-access-ux-f91b` rebasing onto `origin/main` `b190e86` (squash-merged **#44** after **#70** / **#79** / **#68**). Refs **#65** (child of RELEASE GATE **#60**). **Do not close #65, #63, or #60.** Keep **DRAFT**. Frozen economics. No mainnet.
+**Status:** Rebased onto latest `origin/main` `4207356` (**#75** Restricted-access UX after **#44** E2E release gate / #70 / #79 / #68 / #67 / #66 / #49 / #50 / #42 / #58). Same PR **#46** / issue **#39**. This pass keeps **`obs-ui`** (production `next start`), first-party resolve, configured-DSN **staging vendor proof** (`obs/vendor-proof.test.ts`), and `/api/telemetry` **429 backpressure** so #49 `web-qa` does not treat Chromium ingest 429 as a page diagnostic (quote `?inject=quote-429` stays fail-visible). Live org/project still post-merge. **#39 stays open until merge + post-merge verify.** #75 `/restricted` + disabled write CTAs stay from main. #70 sanctions ops docs/nav + #79 #17 evidence + #68 operator-policy + #67 geo + #66 OFAC stay from main. #44 `e2e-release-gate` stays from main.
+
+**Not audited. Not mainnet.**  
+**Economics / 3.5% / curve / Top-10 ranking / Keeper routing / Factory V1 constants: unchanged.**  
+**#75 restricted-access UX (`/restricted`, `policy.ensureProof`, `test:restricted`): kept from main.**  
+**#49 `web-qa` visual / a11y / `?inject=` + #42 leftover #17 gates (`docs:links`, Playwright `web`, `safe-genesis-builder.test.ts` in `test:lib`): kept.**  
+**#47 CSP / tx-guard / untrusted metadata: kept.**  
+**#68 operator-policy + recovered-wallet proof on Launch/trade: kept.**  
+**#44 production-build browser + wallet E2E release gate (`e2e-release-gate`): kept.**  
+**#50 indexed board + always-on `page-budget`: kept.**  
+
+**#58 live-toasts / typecheck (`ohlcv-chart` `IChartApi` / `UTCTimestamp`): kept from main.**  
+**#70 sanctions freshness SLA / `/ops` dataset card / sanctions-ops docs+nav: kept.**  
+
+**#73 three-tier CI + #74 / #76 / #77 public-fork harden + rewrite + advertised-ref residual notes: kept.**  
+**Merge train:** this branch owns **0.3.4** and lands independently before docs PR **#48** (do not fold handbook work here). Later branches rebase onto 0.3.4 unless #54 `0.4.0` lands first. Do not restore **0.3.3**.
+
+**Rebase (`4207356`):** mechanical replay of #39 onto #75 / #44 / #70 / #79 / #68. Shared `docs/*` / `docs-nav` / `/ops` / `package.json` / `TESTING` / `AUDIT_HANDOFF` / `trust.md` / `ci.yml` keep main's restricted-access UX, `e2e-release-gate`, operator-policy, sanctions freshness, #17 evidence cites, geo HMAC, and `@reactor/sanctions` fixtures; observability (`obs-ui`, error boundaries, vendor-proof, outage paging) stays. Launch/trade keep `policy.ensureProof` **and** `reactorFetch` / `SupportRef` plus #44 phase / submit-lock / receipt polling. Do not weaken restricted-access, operator-policy, or e2e-release-gate. No economics / Factory / hook rewrite.
+
+| Item | Value |
+| --- | --- |
+| Protocol release | **0.3.4** (`docs/version.json`) |
+| Factory | **V1** (`FACTORY_VERSION = 1`, immutable) |
+| Intent | Production web observability AC closure: Web Vitals, operator alert runbook, production failure-injection + redaction, user↔backend `traceId` correlation, wallet `4001` paging suppress, exact env/chain/build tags. Addresses #39 (do not close). `/api/reactor/top10` stays the #33 indexer proxy (no `discoverTop10`). |
+| Foundry | Unchanged this pass (frontend ops only). Last recorded **326 passed**, 1 skipped on 0.3.1 |
+| Indexer / lib | `pnpm test:lib` adds `obs/redact.test.ts` + `obs/telemetry.test.ts` + `obs/failure-injection.test.ts` + `obs/sourcemap.test.ts` + `obs/vendor-proof.test.ts` plus #75 `operator-policy-status` / `operator-policy-ux` / `operator-policy-evaluate` + `test:ci-cost` + `ci-public-harden.test.ts` + `pnpm docs:check`. Visible CI: **`obs-ui`**. |
+| Review shots | Error-boundary + observability docs |
+| Mainnet | **Blocked** |
+
+## Closed this run (#39 ACs — issue stays open)
+
+| Item | Closed? | Evidence |
+| --- | --- | --- |
+| Sentry-or-equivalent + source maps / release SHA | **Yes — first-party + configured-DSN staging vendor proof; live org still a #39 close gate** | Optional Sentry store API (`sentry.ts`) now ships symbolicated `exception.stacktrace.frames`. Hidden maps + `*.map` 404. First-party VLQ resolve (`obs/sourcemap.ts`) maps a deliberate production throw to `obs-probe.ts`. `obs/vendor-proof.test.ts` POSTs that event to a valid DSN whose store is an in-process mock and asserts original filename + `reactor@0.3.4+SHA` / `LOCAL` / `5042002` / ISO build time. Uploader archives maps; `REACTOR_SOURCEMAPS_REQUIRE=1` fails closed. Live vendor UI verify stays post-merge. |
+| Instrument API / RPC / wallet / quote / SSE / tx / media / simulation | **Yes** | `reactorFetch` + `reportFailure` / `maybeSimulation` in hooks, trade-panel, wallet-button, launch, sse, ops, BFF, Top-10 proxy |
+| Privacy redaction (no secrets) | **Yes** | `redact.ts` — keys, mnemonic, JWT/Bearer, Turnstile, 65-byte sigs, cookies. BFF `acceptIngestedEvent` drops residual secrets. Tests |
+| App + route error boundaries | **Yes** | `app/error.tsx`, `global-error.tsx`, `AppErrorBoundary`, per-route `error.tsx`. LOCAL `/error-preview` |
+| Web Vitals / core-page performance | **Yes** | First-party `PerformanceObserver` (`web-vitals.ts`) rebinds on route. Kind `perf`. Core pages only. Production Playwright asserts a `perf` event on `/trade`. |
+| Operator alert thresholds / runbook | **Yes** | `alerts.ts` + `/ops` table + `/docs/observability` runbook. Classes: render / api / rpc / quote / sse / simulation. Production Playwright asserts all six rows. |
+| Production E2E failure-injection + redaction | **Yes** | `obs/failure-injection.test.ts` (PROD-shaped env) + Playwright `playwright.obs.config.ts` (`next start`, `REVIEW_FIXTURES=1`) clicks every outage-class inject. Anvil PK / mnemonic / sig sentinels stay redacted. Exact-head CI: `.github/workflows/ci.yml` job **`obs-ui`** (full / main). |
+| User-visible ↔ backend/chain correlation | **Yes** | `traceId` + `x-request-id`. Trade / launch / fair / boundaries show `ref … · chain 5042002` |
+| Wallet `4001` never pages | **Yes** | `isUserRejection` + `shouldPageOperator`. Unit + Playwright assert `page: false` |
+| Exact env / chain / build timestamp tags | **Yes** | `releaseInfo()` + `/api/version` + Sentry tags. Tests assert exact `LOCAL` / `5042002` / `REACTOR local (Arc-compatible)` / ISO `buildTimestamp`, not only `reactor@0.3.4+SHA` |
+| Docs / version | **Yes** | Still **0.3.4** (not 0.3.5, not restored 0.3.3). If #54 AutomationGateway `0.4.0` lands first, rebase onto that tip and do not restore 0.3.4. Parent `4207356` #75 / #44 / #70. `/docs/observability` staging vendor checklist. Trust + API + UX. `pnpm docs:check` |
+
+---
+
+# Prior — Restricted-access UX (merged #75, Refs #65)
+
+**Status:** Squash-merged **#75** (`4207356`) on `origin/main`. Refs **#65** (child of RELEASE GATE **#60**). **Do not close #65, #63, or #60.** Frozen economics. No mainnet.
 **Not audited. Not mainnet.**
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
-Official **#62 / PR #68** and **#64 / PR #70** are on `main`. This branch binds launchpad UX to `GET /operator-policy/status` (same `evaluateOperatorPolicy` as write gates) and `GET /operator-policy/challenge` (signing helper only). Disclosure matches merged #64: stale/missing official-list fail-closes operated writes and surfaces as temporarily unavailable. **#63** geo core is accepted on #67; founder **reopened #63** until this user-visible restricted state lands via #65 / #75.
+Official **#62 / PR #68** and **#64 / PR #70** are on `main`. Launchpad UX binds to `GET /operator-policy/status` (same `evaluateOperatorPolicy` as write gates) and `GET /operator-policy/challenge` (signing helper only). Disclosure matches merged #64: stale/missing official-list fail-closes operated writes and surfaces as temporarily unavailable. **#63** geo core is accepted on #67; founder **reopened #63** until this user-visible restricted state lands via #65 / #75.
 
-## This HEAD (#65)
+## That HEAD (#65)
 
 | Item | Value |
 | --- | --- |
@@ -20,7 +69,7 @@ Official **#62 / PR #68** and **#64 / PR #70** are on `main`. This branch binds 
 
 | Mainnet | **Blocked** |
 
-## Closed this run (#65 ACs — issue stays open)
+## Closed that run (#65 ACs — issue stays open)
 
 | Item | Closed? | Evidence |
 | --- | --- | --- |

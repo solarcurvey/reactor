@@ -1,6 +1,13 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { EXPENSIVE_REFETCH_ON_FOCUS } from "./page-budget";
 import { ServiceUnavailableError } from "./qa-inject";
+import { reportFailure, type FailureKind } from "./obs";
+
+function queryKind(queryKey: readonly unknown[]): FailureKind {
+  const head = String(queryKey[0] ?? "");
+  if (head === "quotes" || head === "quote-assets" || head === "core-stats") return "rpc";
+  return "api";
+}
 
 /** Catalog / board data. Live `POST /quote` tickets are not cached here. */
 export const INDEXED_STALE_MS = 4_000;
@@ -37,6 +44,14 @@ export const qk = {
 
 export function createAppQueryClient(): QueryClient {
   return new QueryClient({
+    queryCache: new QueryCache({
+      onError: (error, query) => {
+        if (error instanceof ServiceUnavailableError) return;
+        reportFailure(queryKind(query.queryKey), error, {
+          queryKey: query.queryKey.map((k) => String(k)).slice(0, 6),
+        });
+      },
+    }),
     defaultOptions: {
       queries: {
         staleTime: INDEXED_STALE_MS,

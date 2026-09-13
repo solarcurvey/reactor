@@ -31,6 +31,7 @@ function extraConnectSrc(): string[] {
     process.env.NEXT_PUBLIC_INDEXER_URL,
     process.env.NEXT_PUBLIC_EXPLORER_URL,
     process.env.NEXT_PUBLIC_MEDIA_CDN_BASE,
+    process.env.NEXT_PUBLIC_SENTRY_DSN,
   ]) {
     if (!raw) continue;
     try {

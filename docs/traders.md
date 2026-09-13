@@ -63,4 +63,6 @@ Holder rewards are **same-quote**, no staking. Claim on the token page. When Rew
 
 CORE never ranks in Top-10. Ranks are an **offchain API** — contracts check structure only. See [Trust](/docs/trust).
 
+If a page fails to render, the **error boundary** keeps the rest of the app (nav, other routes). No funds move from that screen. Quote / trade / launch errors show a short `ref` operators can match to backend logs. See [Observability](/docs/observability).
+
 Continue: [Quoter](/docs/quoting) · [Fees](/docs/fees) · [Markets API](/docs/markets) · [Valuation](/docs/valuation).

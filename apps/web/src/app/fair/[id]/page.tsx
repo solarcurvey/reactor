@@ -17,6 +17,8 @@ import { resolveTradeWrite } from "@/lib/tx-guard";
 import { useOperatedWrites } from "@/lib/use-operated-writes";
 import { RestrictedNotice } from "@/components/restricted-notice";
 import { UntrustedText } from "@/components/untrusted-text";
+import { userVisibleFailure, type TelemetryEvent } from "@/lib/obs";
+import { SupportRef } from "@/components/support-ref";
 
 export default function FairPage() {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +30,7 @@ export default function FairPage() {
   const { writeContractAsync, isPending } = useWriteContract();
   const [amount, setAmount] = useState("100");
   const [error, setError] = useState<string | null>(null);
+  const [support, setSupport] = useState<TelemetryEvent | null>(null);
 
   const { data: fl, refetch, isError } = useReadContract({
     ...factory,
@@ -56,6 +59,7 @@ export default function FairPage() {
 
   async function bid() {
     setError(null);
+    setSupport(null);
     if (policyBlocked || !writesEnabled) {
       setError(writeBlockMessage ?? mismatchMessage);
       return;
@@ -95,12 +99,15 @@ export default function FairPage() {
       await waitForTransactionReceipt(client, { hash: tx });
       refetch();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Bid failed");
+      const visible = userVisibleFailure("tx", e, { path: "fair.bid" });
+      setError(visible.message || "Bid failed");
+      setSupport(visible.event);
     }
   }
 
   async function finalize() {
     setError(null);
+    setSupport(null);
     if (!client) return;
     if (policyBlocked || !writesEnabled) {
       setError(writeBlockMessage ?? mismatchMessage);
@@ -125,7 +132,9 @@ export default function FairPage() {
       refetch();
       if (launch) router.push(tokenPath(launch.token));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Finalize failed");
+      const visible = userVisibleFailure("tx", e, { path: "fair.finalize" });
+      setError(visible.message || "Finalize failed");
+      setSupport(visible.event);
     }
   }
 
@@ -135,21 +144,27 @@ export default function FairPage() {
       return;
     }
     if (!address) return;
-    const write = resolveTradeWrite({
-      chainId,
-      connected: address,
-      token,
-      quote,
-      kind: "factory",
-      metadata: { name: launch?.name, image: launch?.image },
-    });
-    const tx = await writeContractAsync({
-      address: write.to,
-      abi: factory.abi,
-      functionName: "claimFairTokens",
-      args: [fairId, write.recipient],
-    });
-    if (client) await waitForTransactionReceipt(client, { hash: tx });
+    try {
+      const write = resolveTradeWrite({
+        chainId,
+        connected: address,
+        token,
+        quote,
+        kind: "factory",
+        metadata: { name: launch?.name, image: launch?.image },
+      });
+      const tx = await writeContractAsync({
+        address: write.to,
+        abi: factory.abi,
+        functionName: "claimFairTokens",
+        args: [fairId, write.recipient],
+      });
+      if (client) await waitForTransactionReceipt(client, { hash: tx });
+    } catch (e) {
+      const visible = userVisibleFailure("tx", e, { path: "fair.claim" });
+      setError(visible.message || "Claim failed");
+      setSupport(visible.event);
+    }
   }
 
   return (
@@ -209,11 +224,12 @@ export default function FairPage() {
         </div>
       )}
       {error && (
-        <p role="alert" className="mt-3 text-sm text-red-300">
-          <UntrustedText as="span" field="toast">
+        <div className="mt-3">
+          <UntrustedText as="p" field="toast" className="text-sm text-red-300">
             {error}
           </UntrustedText>
-        </p>
+          <SupportRef event={support} />
+        </div>
       )}
     </div>
   );

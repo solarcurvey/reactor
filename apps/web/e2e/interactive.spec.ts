@@ -39,6 +39,16 @@ test("reactor + core + quote ecosystem", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /ZEC ecosystem/i })).toBeVisible();
 });
 
+test("route error boundary keeps chrome", async ({ page }) => {
+  await page.goto("/error-preview");
+  await expect(page.getByRole("heading", { name: /Error-boundary preview/i })).toBeVisible();
+  await page.getByRole("button", { name: /Trip route boundary/i }).click();
+  await expect(page.getByRole("heading", { name: /Something broke on this page/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Try again/i })).toBeVisible();
+  await expect(page.locator("header")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Discover/i }).first()).toBeVisible();
+});
+
 test("ops is gated and not linked from Discover", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("link", { name: /^Ops$/ })).toHaveCount(0);

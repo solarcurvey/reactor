@@ -37,7 +37,8 @@ export default function ReactorPage() {
     queryKey: qk.top10,
     refetchOnWindowFocus: false,
     queryFn: async ({ signal }): Promise<ApiPayload> => {
-      const res = await fetch("/api/reactor/top10", { signal });
+      const { reactorFetch } = await import("@/lib/obs");
+      const res = await reactorFetch("/api/reactor/top10", { kind: "api", signal });
       if (!res.ok) throw new Error("api");
       return res.json();
     },

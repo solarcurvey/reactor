@@ -3,6 +3,7 @@ import {
   formatDiagnosticReport,
   INJECT_CONSOLE_ALLOWS,
   isAllowedDiagnostic,
+  isBestEffortTelemetryBackpressure,
   isBlockingDiagnostic,
   isHydrationWarning,
   parseInjectFromUrl,
@@ -89,5 +90,29 @@ const report = formatDiagnosticReport(
 );
 assert(report.includes("Unexpected page diagnostics (1)"), "summary count");
 assert(report.includes("[console:error] Failed to load resource"), "formatted row");
+
+const telemetry429 = diag({
+  text: "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+  location: "http://127.0.0.1:43147/api/telemetry:0:0",
+});
+assert(isBestEffortTelemetryBackpressure(telemetry429), "telemetry 429 is ingest backpressure");
+assert(!isBlockingDiagnostic(telemetry429), "telemetry 429 is not a page diagnostic");
+assert(
+  unexpectedDiagnostics([telemetry429], []).length === 0,
+  "telemetry ingest 429 is never unexpected",
+);
+assert(
+  isBlockingDiagnostic(
+    diag({
+      text: "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      location: "http://127.0.0.1:43147/api/quote:0:0",
+    }),
+  ),
+  "quote 429 still blocks without an inject allow",
+);
+assert(
+  !isBestEffortTelemetryBackpressure(diag({ text: "Failed to load resource: 429", location: "http://127.0.0.1:43147/quote:0:0" })),
+  "non-telemetry 429 is not ingest backpressure",
+);
 
 console.log("console-gate ok");
