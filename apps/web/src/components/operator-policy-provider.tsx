@@ -9,7 +9,7 @@ import {
   type PublicOperatorPolicyView,
   type RestrictedUxKind,
 } from "@/lib/operator-policy";
-import { fetchWalletProofChallenge, type WalletProofHeader } from "@/lib/wallet-proof";
+import { fetchWalletProofMessage, type WalletProofHeader } from "@/lib/wallet-proof";
 
 export type OperatorPolicyUx = {
   kind: RestrictedUxKind;
@@ -72,7 +72,7 @@ export function OperatorPolicyProvider({ children }: { children: React.ReactNode
       return { "x-reactor-wallet-proof": cached.header };
     }
     try {
-      const challenge = await fetchWalletProofChallenge();
+      const challenge = await fetchWalletProofMessage();
       const signature = await signMessageAsync({ message: challenge.message });
       const header = JSON.stringify({ token: challenge.token, signature });
       proofRef.current = {
