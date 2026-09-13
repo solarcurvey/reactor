@@ -86,7 +86,7 @@ GitHub Actions is three-tier (fast PR / full merge-candidate / main). Docs-only 
 
 **Media:** `sharp` is required. On a fresh host, `pnpm approve-builds` (allow `sharp`) if the install asks.
 
-**Arc Public Testnet:** #16 2026-09-12 Factory + Instant/Fair smoke is on [testnet.arcscan.app](https://testnet.arcscan.app) but **SUPERSEDED** (immutable guardian = lost disposable `0xbeD4…`). Isolated redeploy uses `SAFE_GENESIS=true` + Davis hardware EOA as `EXPECTED_SAFE` — see `scripts/arc-testnet-eoa-genesis-runbook.md`. New Guardian/Factory addresses are not invented here. `claimedProdPath` stays false. Keep issue #16 open. No mainnet (5042).
+**Arc Public Testnet:** #16 2026-09-12 Factory + Instant/Fair smoke is on [testnet.arcscan.app](https://testnet.arcscan.app) but **SUPERSEDED** (immutable guardian = lost disposable `0xbeD4…`). Isolated constructors are live: Guardian `0xc04ceecDC38e73c52aB6c3Cdc6552Be089d3a934`, Factory `0x94a6DBEB77E346BA7c7532DA01c11DB14A3b95CA` — HW genesis + Instant/Fair smoke pending. See `scripts/arc-testnet-eoa-genesis-runbook.md`. `claimedProdPath` stays false. Keep issue #16 open. No mainnet (5042).
 
 ## Protocol notes
 

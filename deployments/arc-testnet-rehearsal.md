@@ -1,6 +1,6 @@
 # Arc Public Testnet rehearsal — issue #16
 
-**Historical claimed: true on explorer API** (Blockscout `status=ok`, `result=success`). **SUPERSEDED / non-PROD-isolated** — immutable guardian is the lost disposable `0xbeD4…`. Davis chose REDEPLOY. New Guardian/Factory addresses are pending ops-box broadcast (`deployments/arc-testnet-isolated.json`). Keep #16 open for human AC. Not audited. No mainnet.
+**Historical claimed: true on explorer API** (Blockscout `status=ok`, `result=success`). **SUPERSEDED / non-PROD-isolated** — immutable guardian is the lost disposable `0xbeD4…`. Davis chose REDEPLOY. Isolated constructors are live (Guardian `0xc04c…` / Factory `0x94a6…` in `deployments/arc-testnet-isolated.json`). HW genesis pending. Keep #16 open for human AC. Not audited. No mainnet.
 
 | Field | Value |
 | --- | --- |

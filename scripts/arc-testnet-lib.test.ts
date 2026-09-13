@@ -10,6 +10,7 @@ import {
   mergeJourneyStandingBlockers,
   LOCAL_AUTHORIZE_STANDING_BLOCKERS,
   ISOLATED_PROD_ROLES,
+  ISOLATED_PROD_CONTRACTS,
   PUBLIC_WEB_ENV,
   SUPERSEDED_TESTNET,
   redactSecrets,
@@ -144,21 +145,37 @@ assert.ok(prodFile.blockers.some((b) => /0x2CdF/i.test(b) || /lost disposable/i.
 const isolated = JSON.parse(readFileSync(join(import.meta.dirname, "../deployments/arc-testnet-isolated.json"), "utf8")) as {
   claimedArcTestnet: boolean;
   claimedProdPath: boolean;
+  constructorsLive: boolean;
+  pendingHwGenesis: boolean;
   expectedSafe: string;
+  deployer: string;
+  smoke: unknown;
   addresses: Record<string, string | null | undefined>;
-  pendingAddresses: { Guardian: string | null; ReactorFactory: string | null };
+  pendingAddresses: { hwGenesis: string; instantFairSmoke: string | null };
+  onChain: { launchesPaused: boolean; launchSigner: string; pricingSigner: string; keeper: string; guardian: string };
+  roles: { launchSigner: string; pricingSigner: string };
   publicEnv: Record<string, string>;
 };
 assert.equal(isolated.claimedArcTestnet, false);
 assert.equal(isolated.claimedProdPath, false);
+assert.equal(isolated.constructorsLive, true);
+assert.equal(isolated.pendingHwGenesis, true);
+assert.equal(isolated.smoke, null, "do not invent Instant/Fair smoke hashes");
+assert.equal(isolated.pendingAddresses.instantFairSmoke, null);
+assert.equal(isolated.pendingAddresses.hwGenesis, "pending");
 assert.equal(isolated.expectedSafe.toLowerCase(), ISOLATED_PROD_ROLES.expectedSafe.toLowerCase());
-assert.equal(isolated.addresses.LaunchSigner.toLowerCase(), ISOLATED_PROD_ROLES.launchSigner.toLowerCase());
-assert.equal(isolated.addresses.PricingSigner.toLowerCase(), ISOLATED_PROD_ROLES.pricingSigner.toLowerCase());
+assert.equal(isolated.deployer.toLowerCase(), ISOLATED_PROD_ROLES.deployer.toLowerCase());
+assert.equal(isolated.addresses.Guardian.toLowerCase(), ISOLATED_PROD_CONTRACTS.guardian.toLowerCase());
+assert.equal(isolated.addresses.ReactorFactory.toLowerCase(), ISOLATED_PROD_CONTRACTS.factory.toLowerCase());
 assert.equal(isolated.addresses.Keeper.toLowerCase(), ISOLATED_PROD_ROLES.keeper.toLowerCase());
-assert.equal(isolated.pendingAddresses.Guardian, null);
-assert.equal(isolated.pendingAddresses.ReactorFactory, null);
-assert.ok(!isolated.addresses.Guardian, "do not invent new ReactorGuardian");
-assert.ok(!isolated.addresses.ReactorFactory, "do not invent new Factory");
+assert.equal(isolated.roles.launchSigner.toLowerCase(), ISOLATED_PROD_ROLES.launchSigner.toLowerCase());
+assert.equal(isolated.roles.pricingSigner.toLowerCase(), ISOLATED_PROD_ROLES.pricingSigner.toLowerCase());
+assert.equal(isolated.onChain.launchesPaused, true);
+assert.equal(isolated.onChain.guardian.toLowerCase(), ISOLATED_PROD_ROLES.expectedSafe.toLowerCase());
+assert.equal(isolated.onChain.launchSigner.toLowerCase(), isolated.onChain.keeper.toLowerCase());
+assert.equal(isolated.onChain.pricingSigner.toLowerCase(), isolated.onChain.keeper.toLowerCase());
+assert.ok(!isolated.addresses.LaunchSigner, "on-chain launchSigner still=keeper; keep target in roles only");
+assert.ok(!isolated.addresses.PricingSigner, "on-chain pricingSigner still=keeper; keep target in roles only");
 assert.equal(isolated.publicEnv.NEXT_PUBLIC_WALLETCONNECT_ID, PUBLIC_WEB_ENV.NEXT_PUBLIC_WALLETCONNECT_ID);
 assert.equal(isolated.publicEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY, PUBLIC_WEB_ENV.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 

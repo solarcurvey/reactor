@@ -54,7 +54,7 @@
 
 **Where is the Safe JSON?** `deployments/safe-genesis-builder.json`. Deployer ≠ Guardian. Fill env and regenerate (`pnpm safe:genesis`). Isolated Arc Public Testnet this round has **no Gnosis Safe**: `EXPECTED_SAFE` is Davis's hardware EOA. Use `SafeGenesisBatch.s.sol` calldata (`scripts/arc-testnet-eoa-genesis-runbook.md`). `pauseLaunches(false)` last after VerifyGenesis.
 
-**Why redeploy 5042002?** The 2026-09-12 Guardian `0x2CdF…` / Factory `0xB48D…` stack is SUPERSEDED / non-PROD-isolated. Immutable `guardian()` is the lost disposable `0xbeD4…`. Guardian cannot rotate. New contract addresses stay empty until the ops box broadcasts — do not invent them.
+**Why redeploy 5042002?** The 2026-09-12 Guardian `0x2CdF…` / Factory `0xB48D…` stack is SUPERSEDED / non-PROD-isolated. Immutable `guardian()` is the lost disposable `0xbeD4…`. Guardian cannot rotate. Isolated constructors are live: Guardian `0xc04ceecDC38e73c52aB6c3Cdc6552Be089d3a934`, Factory `0x94a6DBEB77E346BA7c7532DA01c11DB14A3b95CA`. HW genesis and Instant/Fair smoke are not done. `claimedProdPath` stays false.
 
 **Can I change the 3.5% split?** No. Different split = V2 factory deploy.
 

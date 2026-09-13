@@ -41,8 +41,10 @@ Constructors: `SAFE_GENESIS=true` + `GUARDIAN=0x4583F9b7a06aB8B5b7B4A7dD27e77435
 
 ```bash
 export EXPECTED_SAFE=0x4583F9b7a06aB8B5b7B4A7dD27e774356015d406   # Davis HW EOA, ≠ DEPLOYER
-export DEPLOYER=0x…                                              # ops-box constructor EOA
-# fill GUARDIAN_CONTRACT, REGISTRY, FACTORY, USDC, … from the NEW broadcast (do not invent)
+export DEPLOYER=0x3E00CE2Dc40FaFB0D2dA4A5e6004278Fdf65AAF5
+export GUARDIAN_CONTRACT=0xc04ceecDC38e73c52aB6c3Cdc6552Be089d3a934
+export FACTORY=0x94a6DBEB77E346BA7c7532DA01c11DB14A3b95CA
+# remaining addresses: scripts/arc-testnet-eoa-genesis-runbook.md
 forge script script/SafeGenesisBatch.s.sol:SafeGenesisBatch --rpc-url "$ARC_TESTNET_RPC"
 # Davis HW-sends Batch A calldata, then:
 forge script script/VerifyGenesis.s.sol:VerifyGenesis --rpc-url "$ARC_TESTNET_RPC"

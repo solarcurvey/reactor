@@ -1,6 +1,6 @@
 # Arc Public Testnet — full deploy + production web runbook (#16)
 
-Use this after `pnpm arc:rehearsal`. **Keep issue #16 open** until Instant launch + BUY/SELL have explorer hashes **on the isolated redeploy**. The 2026-09-12 `0x2CdF…` / `0xB48D…` dump is **SUPERSEDED** (lost immutable guardian key). Isolated path: `scripts/arc-testnet-eoa-genesis-runbook.md`. Never invent addresses. Never deploy chain `5042`.
+Use this after `pnpm arc:rehearsal`. **Keep issue #16 open** until Instant launch + BUY/SELL have explorer hashes **on the isolated redeploy**. Isolated constructors are live (Guardian `0xc04c…` / Factory `0x94a6…`). The 2026-09-12 `0x2CdF…` / `0xB48D…` dump is **SUPERSEDED**. Isolated path: `scripts/arc-testnet-eoa-genesis-runbook.md`. Never invent Instant/Fair smoke hashes. Never deploy chain `5042`.
 
 ## 0. Disposable key (VM)
 
