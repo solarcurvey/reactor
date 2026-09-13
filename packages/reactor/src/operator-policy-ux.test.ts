@@ -171,6 +171,7 @@ const ALL_REASONS = Object.keys(USER_POLICY_MESSAGES) as OperatorPolicyReason[];
   assert(view.includes("initialKind"), "client hydrates the server kind prop");
   const provider = readFileSync(join(webRoot, "components/operator-policy-provider.tsx"), "utf8");
   assert(provider.includes("hydrated"), "provider delays policy refresh until after mount");
+  assert(provider.includes("if (!ready)"), "useOperatorPolicy stays pending until the consumer mounted");
 }
 
 console.log("operator-policy-ux ok");

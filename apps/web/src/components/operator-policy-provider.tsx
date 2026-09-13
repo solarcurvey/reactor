@@ -155,6 +155,17 @@ export function OperatorPolicyProvider({ children }: { children: React.ReactNode
   return <OperatorPolicyContext.Provider value={value}>{children}</OperatorPolicyContext.Provider>;
 }
 
+/**
+ * First client paint matches SSR (pending). A mocked deny can resolve on the
+ * provider before a Suspense sibling/child hydrates; returning the live view
+ * on that first paint is React #418 (server text vs deny HTML).
+ */
 export function useOperatorPolicy(): OperatorPolicyUx {
-  return useContext(OperatorPolicyContext);
+  const value = useContext(OperatorPolicyContext);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    setReady(true);
+  }, []);
+  if (!ready) return { ...pending, refresh: value.refresh, applyWriteError: value.applyWriteError, ensureProof: value.ensureProof };
+  return value;
 }
