@@ -322,16 +322,28 @@ export async function connectWallet(page: Page) {
   await expect(disconnect.first()).toBeVisible({ timeout: 15_000 });
 }
 
+/** Mobile viewports can leave Quote / the USDC-route label over Confirm after scroll. */
+export async function clickTradeAction(page: Page, name: RegExp) {
+  const btn = page.getByRole("button", { name });
+  await expect(btn).toBeVisible();
+  await btn.scrollIntoViewIfNeeded();
+  try {
+    await btn.click({ timeout: 8_000 });
+  } catch {
+    await btn.click({ force: true });
+  }
+}
+
 export async function quoteAndConfirm(page: Page, side: "buy" | "sell") {
   if (side === "sell") {
-    await page.getByRole("button", { name: /^sell$/i }).click();
+    await clickTradeAction(page, /^sell$/i);
   } else {
-    await page.getByRole("button", { name: /^buy$/i }).click();
+    await clickTradeAction(page, /^buy$/i);
   }
   await page.getByPlaceholder("0.0").fill("1");
-  await page.getByRole("button", { name: /^Quote$/ }).click();
+  await clickTradeAction(page, /^Quote$/);
   await expect(page.locator("body")).toContainText(/Quoted out:\s+\d/i, { timeout: 15_000 });
-  await page.getByRole("button", { name: new RegExp(`Confirm ${side}`, "i") }).click();
+  await clickTradeAction(page, new RegExp(`Confirm ${side}`, "i"));
   await expect(page.getByText(/tx 0x/i)).toBeVisible({ timeout: 20_000 });
 }
 

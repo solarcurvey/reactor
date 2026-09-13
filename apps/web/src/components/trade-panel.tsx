@@ -469,7 +469,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         />{" "}
         %
       </div>
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <Button variant="outline" className="flex-1" onClick={refreshQuote} disabled={!writesEnabled || parsed === 0n || phase === "awaiting_wallet" || phase === "pending"}>
           Quote
         </Button>

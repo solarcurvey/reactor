@@ -188,7 +188,7 @@ pnpm --filter web test:update-screenshots   # Linux Chromium only — same as Ac
 
 ### Production-build browser + wallet gate (issue #35)
 
-Release gate against **`next build` + `next start`**, not `next dev`. Chromium / Firefox / WebKit. Deterministic EIP-1193 fixture (Anvil #0 **address only** — no private key, no mainnet keys). Mock JSON-RPC `:18545` + indexer `:18448` so CI does not need Anvil, a Factory deploy, or the isolated signer.
+Release gate against **`next build` + `next start`**, not `next dev`. Chromium / Firefox / WebKit. Deterministic EIP-1193 fixture (Anvil #0 **address only** — no private key, no mainnet keys). Mock JSON-RPC `:18545` + indexer `:18448` so CI does not need Anvil, a Factory deploy, or the isolated signer. After #50 the mock serves the indexed read path (`GET /quote-assets`, `GET /markets/:token`, `GET /page/token/:token`) so Chromium does not log those as 404 `console.error`.
 
 ```bash
 pnpm test:e2e:release

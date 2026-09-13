@@ -2,6 +2,7 @@ import { toFunctionSelector } from "viem";
 import { ADDR, TOKENS } from "../harness/constants.mjs";
 import {
   ANVIL_ACCOUNT_0,
+  clickTradeAction,
   connectWallet,
   expect,
   quoteAndConfirm,
@@ -179,9 +180,9 @@ test.describe("wrong chain + user reject", () => {
       await page.goto(`/token/${TOKENS.NEON}`);
       await connectWallet(page);
       await page.getByPlaceholder("0.0").fill("1");
-      await page.getByRole("button", { name: /^Quote$/ }).click();
+      await clickTradeAction(page, /^Quote$/);
       await expect(page.locator("body")).toContainText(/Quoted out:\s+\d/i, { timeout: 15_000 });
-      await page.getByRole("button", { name: /Confirm buy/i }).click();
+      await clickTradeAction(page, /Confirm buy/i);
       await expect(page.getByText(/rejected|User rejected|4001/i)).toBeVisible({ timeout: 15_000 });
       await expect(page.getByText(/tx 0x/i)).toHaveCount(0);
     });

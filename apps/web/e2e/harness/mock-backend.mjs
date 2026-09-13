@@ -317,6 +317,142 @@ function quoteTicket(body) {
   };
 }
 
+const BILLION = "1000000000000000000000000000";
+
+function marketRow(partial) {
+  return {
+    token: partial.token,
+    quote: partial.quote,
+    creator: partial.creator ?? ANVIL_ACCOUNT_0,
+    fair_id: partial.fair_id ?? "0",
+    market_live: partial.market_live ?? 0,
+    stage: partial.stage ?? (partial.market_live ? "graduated" : "bonding"),
+    bonding_bps: partial.bonding_bps ?? 0,
+    real_quote: partial.real_quote ?? "10",
+    grad_target: partial.grad_target ?? "20",
+    symbol: partial.symbol,
+    name: partial.name,
+    ticker: partial.ticker ?? partial.symbol,
+    decimals: 18,
+    current_supply: BILLION,
+    supply: BILLION,
+    quote_symbol: partial.quote_symbol,
+    quote_decimals: partial.quote_decimals,
+    lifetime_rewards: partial.lifetime_rewards ?? "0",
+    rewards_mode: partial.rewards_mode ?? 1,
+    price_quote_x18: partial.price_quote_x18 ?? "20000000000000000",
+    fdv_usd6: partial.fdv_usd6 ?? "412000000000",
+    volume_24h_usd6: partial.volume_24h_usd6 ?? "88000000000",
+    image: partial.image ?? "/icons/usdc.svg",
+    description: partial.description ?? "",
+  };
+}
+
+/** Same fixture set as `review-fixtures.ts`, shaped as #50 indexer market rows. */
+const MARKETS = [
+  marketRow({
+    token: TOKENS.ZCAT,
+    quote: ADDR.ZEC,
+    name: "Zcash Cat",
+    symbol: "ZCAT",
+    market_live: 1,
+    stage: "graduated",
+    quote_symbol: "ZEC",
+    quote_decimals: 8,
+    image: "/icons/zec.svg",
+    lifetime_rewards: "11564651717",
+  }),
+  marketRow({
+    token: TOKENS.GIGA,
+    quote: ADDR.USDC,
+    name: "Giga",
+    symbol: "GIGA",
+    market_live: 1,
+    stage: "graduated",
+    quote_symbol: "USDC",
+    quote_decimals: 6,
+  }),
+  marketRow({
+    token: TOKENS.FCAT,
+    quote: ADDR.ZEC,
+    name: "Fair Cat",
+    symbol: "FCAT",
+    fair_id: "1",
+    stage: "fair",
+    quote_symbol: "ZEC",
+    quote_decimals: 8,
+    image: "/icons/zec.svg",
+  }),
+  marketRow({
+    token: TOKENS.NEON,
+    quote: ADDR.USDC,
+    name: "Neon",
+    symbol: "NEON",
+    stage: "bonding",
+    bonding_bps: 1640,
+    quote_symbol: "USDC",
+    quote_decimals: 6,
+  }),
+  marketRow({
+    token: TOKENS.CAT,
+    quote: TOKENS.ZCAT,
+    name: "Cat",
+    symbol: "CAT",
+    stage: "bonding",
+    bonding_bps: 4120,
+    quote_symbol: "ZCAT",
+    quote_decimals: 18,
+  }),
+  marketRow({
+    token: TOKENS.BOND,
+    quote: ADDR.USDC,
+    name: "Bond",
+    symbol: "BOND",
+    stage: "bonding",
+    bonding_bps: 6100,
+    quote_symbol: "USDC",
+    quote_decimals: 6,
+  }),
+  marketRow({
+    token: TOKENS.RDY,
+    quote: ADDR.USDC,
+    name: "Ready",
+    symbol: "RDY",
+    stage: "ready",
+    bonding_bps: 10_000,
+    quote_symbol: "USDC",
+    quote_decimals: 6,
+  }),
+];
+
+function findMarket(addr) {
+  const a = String(addr ?? "").toLowerCase();
+  return MARKETS.find((m) => m.token.toLowerCase() === a);
+}
+
+const QUOTE_ASSETS = [
+  {
+    token: ADDR.USDC,
+    symbol: "USDC",
+    name: "USD Coin",
+    decimals: 6,
+    category: 4,
+    enabled: 1,
+    usd_peg_one: 1,
+    exists: 1,
+  },
+  {
+    token: ADDR.ZEC,
+    symbol: "ZEC",
+    name: "Zcash",
+    decimals: 8,
+    category: 1,
+    enabled: 1,
+    usd_peg_one: 0,
+    exists: 1,
+  },
+];
+
 function launchAuth(body) {
   const creator = body.creator ?? body.wallet ?? ANVIL_ACCOUNT_0;
   const ticker = String(body.ticker ?? "E2E").toUpperCase();
@@ -369,9 +505,48 @@ function handleIndexer(req, res, url, bodyText) {
     req.on("close", () => clearInterval(ping));
     return;
   }
+  if (url.pathname === "/quote-assets") {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ items: QUOTE_ASSETS }));
+    return;
+  }
+  const marketOne = url.pathname.match(/^\/markets\/(0x[a-fA-F0-9]{40})$/i);
+  if (marketOne) {
+    const item = findMarket(marketOne[1]);
+    if (!item) {
+      res.writeHead(404, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "market not found" }));
+      return;
+    }
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ item }));
+    return;
+  }
+  const tokenPage = url.pathname.match(/^\/page\/token\/(0x[a-fA-F0-9]{40})$/i);
+  if (tokenPage) {
+    const market = findMarket(tokenPage[1]);
+    if (!market) {
+      res.writeHead(404, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "market not found" }));
+      return;
+    }
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(
+      JSON.stringify({
+        ok: true,
+        token: market.token,
+        market,
+        candles: [],
+        interval: url.searchParams.get("interval") ?? "5m",
+        sparse: true,
+        swaps: [],
+      }),
+    );
+    return;
+  }
   if (url.pathname === "/markets") {
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ items: [] }));
+    res.end(JSON.stringify({ items: MARKETS }));
     return;
   }
   if (url.pathname === "/quote" && req.method === "POST") {
