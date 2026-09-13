@@ -2,6 +2,7 @@ import { ADDR, TOKENS } from "../harness/constants.mjs";
 import {
   ANVIL_ACCOUNT_1,
   connectWallet,
+  disconnectWallet,
   expect,
   recordedTxs,
   resetMock,
@@ -38,7 +39,7 @@ test.describe("wallet edge cases", () => {
   test("disconnect then reconnect", async ({ page }) => {
     await page.goto("/wallet");
     await connectWallet(page);
-    await page.getByTestId("wallet-disconnect").first().click();
+    await disconnectWallet(page);
     await expect(page.getByTestId("wallet-connect").first()).toBeVisible();
     await connectWallet(page);
     await expect(page.locator("main").getByText(/0xf39F/i).first()).toBeVisible();

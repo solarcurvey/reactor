@@ -71,11 +71,6 @@ export function WalletButton() {
   return (
     <div className="flex items-center gap-2">
       <span className="hidden font-mono text-xs text-zinc-400 sm:inline">{shortAddress(shownAddress)}</span>
-      {isConnected ? (
-        <Button size="sm" variant="outline" data-testid="wallet-disconnect" onClick={() => disconnect()}>
-          Disconnect
-        </Button>
-      ) : null}
       <Modal
         open={menu}
         onOpenChange={setMenu}
@@ -97,7 +92,7 @@ export function WalletButton() {
           </div>
         </dl>
         {isConnected ? (
-          <Button size="sm" variant="outline" className="mt-3" onClick={() => disconnect()}>
+          <Button size="sm" variant="outline" className="mt-3" data-testid="wallet-disconnect" onClick={() => disconnect()}>
             Disconnect
           </Button>
         ) : null}
