@@ -15,7 +15,7 @@ export default function RestrictedPage() {
   const policy = useOperatorPolicy();
   /* `useSearchParams` + Suspense fallback vs content is a React 418 on this route.
    * Apply `?kind=` after mount so SSR and the first client paint stay the same tree. */
-  const [queryKind, setQueryKind] = useState<ReturnType<typeof parseUxKind>>(null);
+  const [queryKind, setQueryKind] = useState<ReturnType<typeof parseUxKind>>(undefined);
 
   useEffect(() => {
     setQueryKind(parseUxKind(new URLSearchParams(window.location.search).get("kind")));
