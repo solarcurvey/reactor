@@ -182,7 +182,7 @@ Publicizing the repository makes these **open draft PRs** world-readable (titles
 
 #75 restricted-access UX (#65), #70 sanctions freshness (#64), #54 AutomationGateway, #52 Arc testnet rehearsal, #48 handbook docs, #46 observability, #45 discovery UX, #44 E2E release gate.
 
-Later merged: #42 full GitHub CI (#17 product-landed; issue stays open until docs evidence PR + post-merge docs/CI), #49 UI QA (#36 closed), #50 RPC waterfalls (#37 closed), #66 OFAC dataset (#61 closed), #67 trusted geo (#63 closed), #68 operator policy (#62 closed). **#60 / #64 / #65 / #69 stay open.**
+Later merged: #42 full GitHub CI (#17 product-landed; issue stays open until #79 post-merge docs/CI), #49 UI QA (#36 closed), #50 RPC waterfalls (#37 closed), #66 OFAC dataset (#61 closed), #67 trusted geo (#63 closed), #68 operator policy (#62 closed), #79 docs evidence (`35552f6`). **#60 / #64 / #65 / #69 stay open.**
 
 Also open (not draft): #73 CI cost (#69), #58 live-toasts import, #79 #17 CI evidence docs.
 

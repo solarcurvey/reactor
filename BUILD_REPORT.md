@@ -1,6 +1,6 @@
 # BUILD REPORT — Sanctions freshness, audit, alerts, runbook (Refs #64)
 
-**Status:** Same PR **#70** / same branch `cursor/sanctions-ops-freshness-8fcc`, rebased onto `origin/main` after **#79** (#17 evidence docs) and **#68** (`2002aed`, #62 operator policy) and **#67** (#63 trusted geo/IP) and **#66** (#61 official-list screening) on #49 / #42 / #50. Independent audit follow-ups: recovered-identity-only gate + LOCAL/test-only fixture fallback; same-address refresh generation is restart-safe. Issue **#64 stays open** — use `Refs #64`, do not auto-close. Official `#61` refresh binds via `apps/indexer/src/sanctions.ts`. Official `#62` `operator-policy.ts` is the gated subject (not the wallet-proof fallback).
+**Status:** Same PR **#70** / same branch `cursor/sanctions-ops-freshness-8fcc`, rebased onto `origin/main` `35552f6` after **#79** (#17 evidence docs) and **#68** (`2002aed`, #62 operator policy) and **#67** (#63 trusted geo/IP) and **#66** (#61 official-list screening) on #49 / #42 / #50. Independent audit follow-ups: recovered-identity-only gate + LOCAL/test-only fixture fallback; same-address refresh generation is restart-safe. Issue **#64 stays open** — use `Refs #64`, do not auto-close. Official `#61` refresh binds via `apps/indexer/src/sanctions.ts`. Official `#62` `operator-policy.ts` is the gated subject (not the wallet-proof fallback).
 **Not audited. Not mainnet.**
 **Architecture / economics / 3.5% / curve / Top-10 / Keeper routing / Factory V1 constants: unchanged.**
 
@@ -11,7 +11,7 @@
 | Protocol release | **0.3.3** (`docs/version.json`) — **unchanged** |
 | Factory | **V1** — **unchanged** |
 | Intent | Persist official-list version/hash/retrieved/last-success; 7-day SLA fail-closed; startup + scheduled refresh keeps last-known-good; health + `/ops` name dataset + policy versions; minimized audit; alerts; operator runbook. HTTP identity is #62 recovered EIP-191 only. Fixture refresh LOCAL/test-only. Same-address refresh writes a new #61-style generation so restart freshness ages from t1. |
-| Rebase | Onto `origin/main` `2002aed` after **#68** (#62) / **#67** (#63) / **#66** (#61). Docs conflicts kept #62 `gateProtectedWrite` + challenge/status, #67 `evaluateRequestGeo`, #61 lookup, **and** #64 freshness. `applySanctionsOpsGate` loads merged `operator-policy.ts` (`recoverSubjectWallet` / `gateProtectedWrite`). Shared `#61` store is rebound via `bindOperatorPolicyProviders` so the gate does not construct a second ingest. Ops persist is `SANCTIONS_DATA_DIR/ops`. TESTING row 59 geo; 60 #62; 61 #64. |
+| Rebase | Onto `origin/main` `35552f6` after **#79** (#17 evidence) / **#68** (#62) / **#67** (#63) / **#66** (#61). Docs conflicts kept #79 accepted #17/#42 runs + closed #36/#37/#61/#62/#63 status, #62 `gateProtectedWrite` + challenge/status, #67 `evaluateRequestGeo`, #61 lookup, **and** #64 freshness. `applySanctionsOpsGate` loads merged `operator-policy.ts` (`recoverSubjectWallet` / `gateProtectedWrite`). Shared `#61` store is rebound via `bindOperatorPolicyProviders` so the gate does not construct a second ingest. Ops persist is `SANCTIONS_DATA_DIR/ops`. TESTING row 59 geo; 60 #62; 61 #64. |
 | Indexer / lib | `sanctions-ops.test.ts` + `sanctions-audit.test.ts` + indexer `sanctions-ops.test.ts` + `pnpm docs:check` |
 | Foundry | Not re-run this pass (ops/docs only) |
 | Docs | `/docs/sanctions-ops`, runbook, incident-response, trust, API, builders, TESTING row 61 |
@@ -55,7 +55,7 @@
 | #61 / #66 | **Closed.** Merged `d08aa1c` / [`34731099571`](https://github.com/solarcurvey/reactor/actions/runs/34731099571) |
 | #63 / #67 | **Closed.** Founder closed after post-merge verify. Merged `e712617` / [`34731788819`](https://github.com/solarcurvey/reactor/actions/runs/34731788819) |
 | #62 / #68 | **Closed.** Merged `2002aed` / [`34733128955`](https://github.com/solarcurvey/reactor/actions/runs/34733128955) |
-| #17 | **Stays open** until the docs evidence PR merges + post-merge docs/CI |
+| #17 | **Stays open** until #79 post-merge docs/CI |
 | #60 / #64 / #65 / #69 | **Stay open.** |
 | Mainnet | **Blocked** |
 
@@ -66,7 +66,7 @@
 | Cite accepted #17 / #42 runs | **Yes** | Merge-candidate `11fdadb` / `34727535121`; post-merge `80d3cac` / `34727638255`. Older greens are **not** the closer. |
 | Record #37 / #36 / #61 / #63 / #62 closed | **Yes** | #50 `e5fd745` / `34727279555`; #49 `ad7b457` / `34729758795`; #66 `d08aa1c` / `34731099571`; #67 `e712617` / `34731788819`; #68 `2002aed` / `34733128955` |
 | Preserve #66 / #67 / #68 docs | **Yes** | Operator-policy / geo / screening Priors below keep #68 AC table, HMAC / revision 3 / SY / FAQ 1009, and #61 parser / 85% floor / `screen()`. |
-| `Fixes #17` | **No** | Refs only. Close #17 after the docs evidence PR merges and post-merge docs/CI is green. |
+| `Fixes #17` | **No** | Refs only. Close #17 after #79 post-merge docs/CI is green. |
 | Claim #60 / #64 / #65 / #69 closed | **No** | Stay open. |
 | Frozen economics / arch | **Yes** | No contract / fee / Factory / hook edits |
 
