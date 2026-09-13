@@ -17,7 +17,7 @@
 | Close #55 | **No** — keep open for independent audit |
 | #36 | **Closed** after `ad7b457` + post-merge `34729758795`. Approved-C + #44 chrome baselines are on this PR; `web-qa` stays required |
 | Voice | One AI rule: `BRAND_AI_DISAMBIGUATION` in first-use metadata only; chrome/OG stay AI-free. Description is mode-correct: Rewards pay holders; Standard burns — not “every launch pays holders.” |
-| Rebase | Onto `789eb5c` after **#46**. Keep #39 `obs-ui` / error boundaries / release SHA / vendor-proof, #65 `/restricted` routes and `text-zinc-400` muted floor, #35 `e2e-release-gate`, #70 freshness/runbook, #79 CI-evidence docs, and #66/#67/#68 policy layers. Overlapping `web-qa` goldens recaptured as approved-C Industrial Forge **plus** #44 visible phase / stacked Quote-Confirm / wallet chrome (CI Chromium actuals from [`34737657863`](https://github.com/solarcurvey/reactor/actions/runs/34737657863)). Do not weaken the gate. Brand chrome is additive. |
+| Rebase | Onto `789eb5c` after **#46**. Same PR **#80** / same branch. Keep #39 `obs-ui` / error boundaries / release SHA / vendor-proof, #65 `/restricted` routes, amber banner, and `text-zinc-400` muted floor, #35 `e2e-release-gate`, #70 freshness/runbook, #79 CI-evidence docs, and #66/#67/#68 policy layers. Overlapping `web-qa` goldens recaptured as approved-C Industrial Forge **plus** #44 visible phase / stacked Quote-Confirm / wallet chrome (CI Chromium actuals from [`34737657863`](https://github.com/solarcurvey/reactor/actions/runs/34737657863)). Do not weaken the gate. Brand chrome is additive. #55 stays open. |
 
 ## Founder decision
 
