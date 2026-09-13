@@ -9,6 +9,7 @@ import Link from "next/link";
 import { tokenPath } from "@/lib/untrusted-metadata";
 import { ServiceFailure } from "@/components/service-failure";
 import { isServiceUnavailable } from "@/lib/qa-inject";
+import { UntrustedText } from "@/components/untrusted-text";
 
 export default function RewardsPage() {
   const { address, isConnected } = useAccount();
@@ -52,7 +53,9 @@ export default function RewardsPage() {
             <tbody>
               {(rows ?? []).map((r) => (
                 <tr key={r.token} className="border-t border-white/6">
-                  <td className="px-3 py-2 font-medium text-white">${r.symbol}</td>
+                  <td className="px-3 py-2 font-medium text-white">
+                    <UntrustedText field="ticker">${r.symbol}</UntrustedText>
+                  </td>
                   <td className="px-3 py-2 font-mono text-zinc-300">
                     {formatUnitsSafe(r.pending, r.dec, 6)} {r.quote}
                   </td>
