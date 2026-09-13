@@ -1,70 +1,82 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useLaunchTokens } from "@/lib/hooks";
-import { formatUnitsSafe } from "@/lib/utils";
-import { REVIEW_FIXTURES } from "@/lib/review-fixtures";
-import { useReactorLive } from "@/lib/sse";
-import { launchPath, quotePath } from "@/lib/untrusted-metadata";
-import { SafeTokenImage } from "@/components/safe-media";
-import { UntrustedText } from "@/components/untrusted-text";
+import { FeaturedRail } from "@/components/featured-rail";
+import { LiveFeed } from "@/components/live-feed";
+import { RankedRail } from "@/components/ranked-rail";
 import { ServiceFailure } from "@/components/service-failure";
-import { isServiceUnavailable } from "@/lib/qa-inject";
+import { SurfaceState, useSurfaceFlags } from "@/components/query-state";
+import { TokenCard } from "@/components/token-card";
 import { useQaScene } from "@/components/qa-inject-provider";
+import { BRAND_COPY } from "@/lib/brand";
+import { useCandles, useFeaturedMarkets, useMarketsInfinite } from "@/lib/hooks";
+import { formatUsd6Compact, sparkCloses, type BoardFilter } from "@/lib/market-ui";
+import { FACTORY_VERSION_LABEL, PROTOCOL_VERSION } from "@/lib/protocol-version";
+import { isServiceUnavailable } from "@/lib/qa-inject";
+import { FIXTURE_RANKS, REVIEW_FIXTURES } from "@/lib/review-fixtures";
+import { useReactorStream } from "@/lib/sse";
 
-const filters = ["Trending", "New", "Bonding", "Rewards", "Buy+Burn", "Batch Fair", "USDC-quoted"] as const;
+const filters: BoardFilter[] = ["Trending", "New", "Bonding", "Rewards", "Buy+Burn", "Batch Fair", "USDC-quoted"];
 
 export default function HomePage() {
-  const { data, isLoading, isError, error, refetch } = useLaunchTokens();
-  const live = useReactorLive();
+  const live = useReactorStream();
   const scene = useQaScene();
-  const [filter, setFilter] = useState<(typeof filters)[number]>("New");
+  const [filter, setFilter] = useState<BoardFilter>("New");
   const [q, setQ] = useState("");
+  const deferredQ = useDeferredValue(q);
+  const board = useMarketsInfinite({ q: deferredQ, board: filter });
+  const featured = useFeaturedMarkets();
+  const list = useMemo(() => board.data?.pages.flatMap((p) => p.items) ?? [], [board.data]);
+  const total = board.data?.pages[0]?.total ?? 0;
+  const vol24 = board.data?.pages[0]?.volume24hUsd6Total ?? "0";
+  const sparkA = useCandles(featured.data?.bonding?.token, "15m");
+  const sparkB = useCandles(featured.data?.volume?.token, "15m");
+  const sparks = useMemo(() => {
+    const out: Record<string, number[]> = {};
+    if (featured.data?.bonding) out[featured.data.bonding.token.toLowerCase()] = sparkCloses(sparkA.data?.candles);
+    if (featured.data?.volume) out[featured.data.volume.token.toLowerCase()] = sparkCloses(sparkB.data?.candles);
+    return out;
+  }, [featured.data, sparkA.data?.candles, sparkB.data?.candles]);
 
   useEffect(() => {
     if (scene.state === "search") setQ("ZCAT");
     if (scene.state === "filter-bonding") setFilter("Bonding");
   }, [scene.state]);
 
-  const list = useMemo(() => {
-    let items = [...(data ?? [])];
-    if (filter === "Batch Fair") items = items.filter((t) => t.mode === 1);
-    else if (filter === "Bonding") items = items.filter((t) => t.bonding);
-    else if (filter === "Rewards") items = items.filter((t) => t.mode === 0 && t.rewardsMode !== false);
-    else if (filter === "Buy+Burn") items = items.filter((t) => t.mode === 0 && t.rewardsMode === false);
-    else if (filter === "USDC-quoted") items = items.filter((t) => t.quoteSymbol === "USDC");
-    else if (filter === "Trending") items = items.filter((t) => t.marketLive);
-    const needle = q.trim().toLowerCase();
-    if (!needle) return items;
-    return items.filter(
-      (t) =>
-        t.name.toLowerCase().includes(needle) ||
-        t.symbol.toLowerCase().includes(needle) ||
-        t.token.toLowerCase().includes(needle) ||
-        (t.quoteSymbol ?? "").toLowerCase().includes(needle),
-    );
-  }, [data, filter, q]);
-
-  const showLoading = isLoading || scene.state === "loading";
+  const showLoading = board.isLoading || scene.state === "loading";
   const showEmpty =
     !showLoading &&
-    !isError &&
+    !board.isError &&
     (list.length === 0 || scene.state === "empty" || scene.inject === "empty");
+  const showCards = list.length > 0 && scene.state !== "loading" && scene.state !== "empty" && scene.inject !== "empty";
 
-  const vol24 = useMemo(() => {
-    return (data ?? []).reduce((acc, t) => {
-      const v = t.volume24hUsd6 && t.volume24hUsd6 !== "0" ? BigInt(t.volume24hUsd6) : 0n;
-      return acc + v;
-    }, 0n);
-  }, [data]);
+  const moreRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = moreRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting) && board.hasNextPage && !board.isFetchingNextPage) {
+        void board.fetchNextPage();
+      }
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [board.hasNextPage, board.isFetchingNextPage, board.fetchNextPage]);
+
+  const flags = useSurfaceFlags({
+    isLoading: showLoading,
+    isError: board.isError,
+    empty: showEmpty,
+    error: board.error,
+  });
 
   return (
     <div>
       <section className="flex flex-wrap items-end justify-between gap-4 border-b border-white/8 pb-5">
         <div>
-          <p className="rx-kicker">Launch. Reflect. Burn.</p>
+          <p className="rx-kicker">{BRAND_COPY.tagline}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
             Choose what your token earns.
           </h1>
@@ -75,13 +87,13 @@ export default function HomePage() {
           </p>
           <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
             <span className="rounded-[2px] border border-white/10 bg-white/[0.04] px-2.5 py-1 text-zinc-300">
-              Protocol 0.3.3
+              Protocol {PROTOCOL_VERSION}
             </span>
             <span className="rounded-[2px] border border-white/10 bg-white/[0.04] px-2.5 py-1 text-zinc-300">
-              Factory V1
+              Factory {FACTORY_VERSION_LABEL}
             </span>
             <span className="rounded-[2px] border border-white/10 bg-white/[0.04] px-2.5 py-1 tabular-nums text-zinc-300">
-              24h vol ${formatUnitsSafe(vol24, 6, 0)}
+              24h vol {formatUsd6Compact(vol24)}
             </span>
             <span className="rounded-[2px] border border-rx-warn/30 bg-rx-warn/10 px-2.5 py-1 text-rx-warn">
               Not audited · no mainnet
@@ -105,8 +117,16 @@ export default function HomePage() {
         <p className="mt-3 text-[11px] uppercase tracking-wider text-amber-200/80">Review fixtures — not on-chain</p>
       )}
 
+      <FeaturedRail bonding={featured.data?.bonding} volume={featured.data?.volume} sparks={sparks} />
+      {REVIEW_FIXTURES && (
+        <RankedRail
+          rows={FIXTURE_RANKS}
+          note="Review fixtures · #1–#10 rail. Distance to #11 is not invented — floor stays $250k. Not a trustless oracle."
+        />
+      )}
+
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Board filters">
           {filters.map((f) => (
             <button
               key={f}
@@ -121,7 +141,7 @@ export default function HomePage() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -130,113 +150,59 @@ export default function HomePage() {
             className="h-8 w-44 rounded-[2px] border border-white/10 bg-black/30 px-3 text-[12px] text-zinc-200 outline-none placeholder:text-zinc-400"
           />
           <span data-visual-dynamic className="text-[11px] tabular-nums text-zinc-400">
-            {list.length} markets · {live.ok ? "live" : "polling"}
+            {total} markets · {live.ok ? "live" : "polling"}
           </span>
+          <LiveFeed last={live.last} ok={live.ok} />
         </div>
       </div>
 
-      {showLoading && (
-        <div className="mt-6 space-y-2" aria-busy="true" data-testid="markets-loading">
-          <p className="text-sm text-zinc-400">Loading indexed markets…</p>
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-11 animate-pulse rounded-[4px] bg-white/[0.04]" />
-          ))}
-        </div>
-      )}
-      {isError && (
+      {showLoading && <SurfaceState kind="loading" title="Loading indexed markets…" testId="markets-loading" />}
+      {board.isError && (
         <ServiceFailure
-          kind={isServiceUnavailable(error) ? error.kind : "indexer"}
-          detail={error instanceof Error ? error.message : undefined}
-          onRetry={() => refetch()}
+          kind={isServiceUnavailable(board.error) ? board.error.kind : "indexer"}
+          detail={board.error instanceof Error ? board.error.message : undefined}
+          onRetry={() => void board.refetch()}
+        />
+      )}
+      {flags.kind === "offline" && !board.isError && (
+        <SurfaceState
+          kind="offline"
+          title={flags.online ? "Indexer unreachable" : "You’re offline"}
+          body="Discover is indexer-backed (GET /markets + cursor). Reconnect — we will not invent a local catalog."
+          onRetry={() => void board.refetch()}
         />
       )}
       {showEmpty && (
-        <p data-testid="markets-empty" className="mt-8 text-sm text-zinc-400">
-          No launches yet. Pick a quote and ignite the first official market.
-        </p>
+        <SurfaceState
+          kind="empty"
+          testId="markets-empty"
+          title={deferredQ ? "No matches" : "No launches yet"}
+          body={
+            deferredQ
+              ? "This search ran on the indexer, not the loaded page. Try another ticker or quote."
+              : "Pick a quote and ignite the first official market."
+          }
+        />
       )}
 
-      {list.length > 0 && scene.state !== "loading" && scene.state !== "empty" && scene.inject !== "empty" && (
-        <div className="mt-3 overflow-x-auto rounded-[4px] border border-white/8">
-          <table className="w-full text-left text-[13px]" aria-label="Indexed markets">
-            <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.16em] text-zinc-400">
-              <tr>
-                <th className="px-3 py-2 font-medium">#</th>
-                <th className="px-3 py-2 font-medium">Token</th>
-                <th className="px-3 py-2 font-medium">Earns</th>
-                <th className="hidden px-3 py-2 font-medium sm:table-cell">Mode</th>
-                <th className="hidden px-3 py-2 font-medium md:table-cell">Price</th>
-                <th className="hidden px-3 py-2 font-medium lg:table-cell">24h USD</th>
-                <th className="hidden px-3 py-2 font-medium xl:table-cell">FDV</th>
-                <th className="hidden px-3 py-2 font-medium md:table-cell">Holder rewards</th>
-                <th className="px-3 py-2 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((t, i) => {
-                const href = launchPath(t);
-                return (
-                  <tr key={t.token} className="border-t border-white/6 hover:bg-white/[0.03]">
-                    <td className="px-3 py-2 tabular-nums text-zinc-400">{i + 1}</td>
-                    <td className="px-3 py-2">
-                      <Link href={href} className="flex items-center gap-2">
-                        <span className="rx-avatar h-7 w-7 text-[10px]">
-                          <SafeTokenImage src={t.image} className="h-full w-full object-cover" />
-                          {!t.image ? t.symbol.slice(0, 2) : null}
-                        </span>
-                        <span>
-                          <UntrustedText field="name" className="font-medium text-white">
-                            {t.name}
-                          </UntrustedText>
-                          <UntrustedText field="ticker" className="ml-1.5 font-mono text-[11px] text-zinc-400">
-                            ${t.symbol}
-                          </UntrustedText>
-                        </span>
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2">
-                      <Link
-                        href={quotePath(t.quoteSymbol ?? "x")}
-                        className="rx-chip"
-                      >
-                        {t.rewardsMode === false ? "BUY+BURN" : `EARNS ${t.quoteSymbol ?? "X"}`}
-                      </Link>
-                    </td>
-                    <td className="hidden px-3 py-2 text-zinc-400 sm:table-cell">
-                      {t.mode === 1
-                        ? t.marketLive
-                          ? "Fair · live"
-                          : "Fair · auction"
-                        : t.bonding
-                          ? `${((t.bondingBps ?? 0) / 100).toFixed(0)}% bonded`
-                          : "Instant · v4"}
-                    </td>
-                    <td className="hidden px-3 py-2 font-mono text-[12px] text-zinc-300 md:table-cell">
-                      {t.priceQuoteX18 && t.priceQuoteX18 !== "0"
-                        ? formatUnitsSafe(BigInt(t.priceQuoteX18), 18, 6)
-                        : "—"}
-                    </td>
-                    <td className="hidden px-3 py-2 font-mono text-[12px] text-zinc-400 lg:table-cell">
-                      {t.volume24hUsd6 && t.volume24hUsd6 !== "0"
-                        ? `$${formatUnitsSafe(BigInt(t.volume24hUsd6), 6, 0)}`
-                        : "—"}
-                    </td>
-                    <td className="hidden px-3 py-2 font-mono text-[12px] text-zinc-400 xl:table-cell">
-                      {t.fdvUsd6 && t.fdvUsd6 !== "0" ? `$${formatUnitsSafe(BigInt(t.fdvUsd6), 6, 0)}` : "—"}
-                    </td>
-                    <td className="hidden px-3 py-2 font-mono text-[12px] text-zinc-300 md:table-cell">
-                      {formatUnitsSafe(t.lifetimeRewards ?? 0n, t.quoteDecimals ?? 18, 3)} {t.quoteSymbol}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <Link href={href} className="text-[11px] font-semibold uppercase tracking-wider text-rx-ember hover:underline">
-                        {t.mode === 1 && !t.marketLive ? "Auction" : "Trade"}
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {showCards && (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {list.map((t) => (
+            <TokenCard key={t.token} t={t} spark={sparks[t.token.toLowerCase()] ?? []} />
+          ))}
+        </div>
+      )}
+      <div ref={moreRef} className="h-8" />
+      {board.hasNextPage && showCards && (
+        <div className="mt-2 flex justify-center">
+          <button
+            type="button"
+            className="rounded-[2px] border border-white/10 px-4 py-1.5 text-[12px] text-zinc-300"
+            onClick={() => void board.fetchNextPage()}
+            disabled={board.isFetchingNextPage}
+          >
+            {board.isFetchingNextPage ? "Loading more…" : "Load more"}
+          </button>
         </div>
       )}
     </div>

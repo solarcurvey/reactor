@@ -7,11 +7,22 @@ import { OhlcvChart } from "@/components/ohlcv-chart";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { RewardsModule, TradePanel } from "@/components/trade-panel";
+import { SurfaceState } from "@/components/query-state";
 import { useCoreStats, useTokenPage } from "@/lib/hooks";
+import {
+  bondingPct,
+  change24hTone,
+  earnsLabel,
+  formatChange24h,
+  formatPriceX18,
+  formatUsd6Compact,
+  isReadyFrozen,
+} from "@/lib/market-ui";
 import { explorerAddress, formatUnitsSafe, shortAddress } from "@/lib/utils";
 import { addresses } from "@/lib/addresses";
-import { quotePath } from "@/lib/untrusted-metadata";
+import { quotePath, sanitizeTicker, sanitizeTokenName } from "@/lib/untrusted-metadata";
 import { SafeExternalLink } from "@/components/safe-link";
+import { SafeTokenImage } from "@/components/safe-media";
 import { UntrustedText } from "@/components/untrusted-text";
 import { sanitizeDisplayText } from "@/lib/untrusted-metadata";
 import { ServiceFailure } from "@/components/service-failure";
@@ -42,26 +53,24 @@ export default function TokenPage() {
   }
 
   if (isLoading) {
-    return (
-      <div aria-busy="true">
-        <p className="text-sm text-zinc-400">Loading token…</p>
-        <div className="mt-4 h-48 animate-pulse rounded-2xl bg-white/[0.04]" />
-      </div>
-    );
+    return <SurfaceState kind="loading" title="Loading token…" />;
   }
   if (isError) {
     return (
       <ServiceFailure
         kind={isServiceUnavailable(error) ? error.kind : "indexer"}
-        onRetry={() => refetch()}
+        onRetry={() => void refetch()}
       />
     );
   }
   if (!t) {
     return (
       <div>
-        <h1 className="text-2xl font-semibold">Token not found</h1>
-        <p className="mt-2 text-sm text-zinc-400">This address is not a factory launch on the connected chain.</p>
+        <SurfaceState
+          kind="empty"
+          title="Token not found"
+          body="This address is not a factory launch on the connected chain."
+        />
         <Link href="/" className="mt-4 inline-block text-sm rx-link">
           Back to the board
         </Link>
@@ -69,30 +78,35 @@ export default function TokenPage() {
     );
   }
 
+  const frozen = isReadyFrozen(t);
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/8 pb-3">
         <div className="flex flex-wrap items-center gap-2">
+          <span className="rx-avatar h-11 w-11 text-[11px]">
+            <SafeTokenImage src={t.image} className="h-full w-full object-cover" />
+            {!t.image ? (sanitizeTicker(t.symbol) || "TK").slice(0, 2) : null}
+          </span>
           <UntrustedText as="h1" field="name" className="text-2xl font-semibold">
-            {t.name}
+            {sanitizeTokenName(t.name)}
           </UntrustedText>
           <UntrustedText field="ticker" className="font-mono text-sm text-zinc-400">
-            ${t.symbol}
+            ${sanitizeTicker(t.symbol) || "TKN"}
           </UntrustedText>
-          <Link
-            href={quotePath(t.quoteSymbol ?? "x")}
-            className="rx-chip"
-          >
-            {t.rewardsMode === false ? "BUY+BURN" : `EARNS ${t.quoteSymbol}`}
+          <Link href={quotePath(t.quoteSymbol ?? "x")} className="rx-chip">
+            {earnsLabel(t)}
           </Link>
           {t.marketLive ? (
             <Badge>Official v4</Badge>
+          ) : frozen ? (
+            <Badge className="border-rx-warn/30 bg-rx-warn/10 text-rx-warn">Frozen · ready</Badge>
           ) : t.bonding ? (
-            <Badge>
-              {((t.bondingBps ?? 0) / 100).toFixed(1)}% bonded
+            <Badge className="border-rx-heat/30 bg-rx-heat/10 text-rx-ember">
+              {bondingPct(t).toFixed(1)}% bonded
             </Badge>
           ) : t.mode === 1 ? (
-            <Badge className="border-amber-300/30 bg-amber-300/10 text-amber-100">Batch Fair</Badge>
+            <Badge className="border-rx-warn/30 bg-rx-warn/10 text-rx-warn">Batch Fair</Badge>
           ) : null}
         </div>
         <div className="flex flex-wrap gap-3 text-[11px] uppercase tracking-wider">
@@ -106,6 +120,24 @@ export default function TokenPage() {
             All markets
           </Link>
         </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <TokenStat k="Price" v={formatPriceX18(t.priceQuoteX18)} s={t.quoteSymbol} />
+        <TokenStat
+          k="24h %"
+          v={formatChange24h(t.change24hBps)}
+          s="mark vs ≥24h-ago trade"
+          tone={change24hTone(t.change24hBps)}
+        />
+        <TokenStat k="FDV" v={formatUsd6Compact(t.fdvUsd6)} s="current_supply × mark" />
+        <TokenStat k="Liq" v={formatUsd6Compact(t.liquidityUsd6)} s="quote-side USD" />
+        <TokenStat k="24h vol" v={formatUsd6Compact(t.volume24hUsd6)} s={t.trades24h ? `${t.trades24h} prints` : "indexed"} />
+        <TokenStat
+          k="Holder rewards"
+          v={`${formatUnitsSafe(t.lifetimeRewards ?? 0n, t.quoteDecimals ?? 18, 3)} ${t.quoteSymbol ?? ""}`}
+          s="2% bucket only"
+        />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.35fr_0.85fr]">
@@ -219,6 +251,28 @@ export default function TokenPage() {
         </div>
         <RewardsModule t={t} />
       </div>
+    </div>
+  );
+}
+
+function TokenStat({
+  k,
+  v,
+  s,
+  tone,
+}: {
+  k: string;
+  v: string;
+  s?: string;
+  tone?: "up" | "down" | "flat";
+}) {
+  const color =
+    tone === "up" ? "text-rx-up" : tone === "down" ? "text-rx-down" : "text-zinc-200";
+  return (
+    <div className="rounded-[4px] border border-white/8 bg-white/[0.03] px-3 py-2">
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{k}</div>
+      <div className={`mt-0.5 font-mono text-[13px] tabular-nums ${color}`}>{v}</div>
+      {s ? <div className="text-[10px] text-zinc-400">{s}</div> : null}
     </div>
   );
 }

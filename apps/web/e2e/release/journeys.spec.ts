@@ -146,8 +146,9 @@ test.describe("production build — wallet journeys", () => {
     await expect(page.getByText(/\$ZCAT|\$NEON|\$BOND/i).first()).toBeVisible();
 
     await page.goto(`/token/${TOKENS.ZCAT}`);
-    await expect(page.getByText(/Holder rewards/i)).toBeVisible();
-    await expect(page.getByRole("button", { name: /^Claim$/i })).toBeEnabled({ timeout: 15_000 });
+    // Token terminal shows both a "Holder rewards" stat and the claim card heading.
+    await expect(page.getByTestId("rewards-claim")).toBeVisible();
+    await expect(page.getByTestId("rewards-claim")).toBeEnabled({ timeout: 15_000 });
     await clickTradeAction(page, /^Claim$/i);
     await expect(page.getByText(/Claimed\.|tx 0x/i)).toBeVisible({ timeout: 20_000 });
     const txs = await recordedTxs(page);

@@ -25,7 +25,9 @@ curl -s http://127.0.0.1:43148/launch/authorize -H 'content-type: application/js
 ## Markets keyset
 
 ```bash
+curl -s 'http://127.0.0.1:43148/markets?q=zlate&board=new&sort=new&limit=20'
 curl -s 'http://127.0.0.1:43148/markets?sort=vol&limit=20&cursor_ts=0&cursor_token=0x…'
+curl -s 'http://127.0.0.1:43148/markets?featured=1'
 ```
 
 `sort=vol` / `sort=price` are NUMERIC casts. Next page uses `next_cursor.cursor_ts` + `next_cursor.cursor_token` — and `cursor_ts` is that sort’s key (`volume_24h_usd6` / `price_usd6` / `updated_ts`), not a mismatched timestamp.

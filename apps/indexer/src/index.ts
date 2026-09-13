@@ -21,7 +21,7 @@ import {
 } from "./top10-rank.ts";
 import { buildQuote } from "./quote-service.ts";
 import { indexCalls, readContractsBatched } from "../../../packages/reactor/src/rpc-batch.ts";
-import { getMarket, listMarkets, normalizeMarketToken } from "./markets-query.ts";
+import { getMarket, listFeaturedMarkets, listMarkets, normalizeMarketToken } from "./markets-query.ts";
 import { aggregateTokenPage, listCandles, listSwaps } from "./page-reads.ts";
 import { raiseAlert, recentAlerts } from "./alerts.ts";
 import type { ValuationService } from "../../../packages/reactor/src/valuation.ts";
@@ -432,10 +432,20 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
     return;
   }
   if (url.pathname === "/markets") {
+    if (url.searchParams.get("featured") === "1") {
+      const featured = await listFeaturedMarkets(store);
+      json(res, 200, { ...featured, request_id: rid }, rid);
+      return;
+    }
     const page = await listMarkets(store, {
       q: url.searchParams.get("q") ?? "",
       stage: url.searchParams.get("stage") ?? "",
       quote: url.searchParams.get("quote") ?? "",
+      board: url.searchParams.get("board"),
+      mode: url.searchParams.get("mode"),
+      rewards: url.searchParams.get("rewards"),
+      quoteSymbol: url.searchParams.get("quote_symbol"),
+      live: url.searchParams.get("live"),
       sort: url.searchParams.get("sort"),
       limit: Number(url.searchParams.get("limit") ?? 40),
       cursorTs: url.searchParams.get("cursor_ts"),
@@ -448,8 +458,10 @@ async function handle(store: Store, req: IncomingMessage, res: ServerResponse) {
       {
         items: page.items,
         total: page.total,
+        volume_24h_usd6_total: page.volume_24h_usd6_total,
         sort: page.sort,
         next_cursor: page.next_cursor,
+        has_more: page.has_more,
         request_id: rid,
       },
       rid,

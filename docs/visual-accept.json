@@ -1,0 +1,27 @@
+{
+  "issue": 40,
+  "coordinateIssue": 36,
+  "coordinatePr": 49,
+  "viewports": [
+    1440,
+    390
+  ],
+  "surfaces": [
+    "discover",
+    "search",
+    "reactor",
+    "core",
+    "quote-usdc",
+    "token-terminal"
+  ],
+  "states": [
+    "loading",
+    "empty",
+    "error",
+    "offline"
+  ],
+  "pixelBaselines": "Merged #49 owns Chromium screenshot baselines. #36 is independently closed after #49 + green post-merge verification. This file gates #40 desktop/mobile visual acceptance to an exact UI hash. It does not close #40.",
+  "acceptedCommit": "4915f3e8b70c24b85f88bd877f7856e2b5c80a12",
+  "acceptedUiHash": "d51bb17fd9e711a9a15fbf04a9a047ee49f516985b8dac99a6bb639807112c03",
+  "status": "hash-gated after #80 branded replay; #36 closed; #40 open until integrated AC verify"
+}

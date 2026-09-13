@@ -6,8 +6,8 @@ Catalog and board pages prefer **indexed HTTP**. Independent on-chain views are 
 
 | Surface | Before | After |
 | --- | --- | --- |
-| Home `/` | `GET /markets?limit=80` (already indexed) | Same. Shared TanStack key `["markets", opts]`, 4s stale, 8s refetch. |
-| Search `/search` | Loaded the 80-row board, then filtered in the browser | `GET /markets?q=&stage=` after 200ms debounce. SQL search/filter. |
+| Home `/` | `GET /markets?limit=80` then chip/q filter in the browser | `useMarketsInfinite` → `GET /markets?q=&board=&cursor_*` (page size 24). Chips are indexer SQL. Featured is `GET /markets?featured=1`. |
+| Search `/search` | Loaded the 80-row board, then filtered in the browser | `useMarketsInfinite` → `GET /markets?q=&board=&stage=&cursor_*`. Global catalog, not page-1. |
 | Token `/token/:addr` | `GET /markets` (all rows) + `/candles` + `/swaps` + 6 CORE RPCs | `GET /page/token/:addr?interval=` (market + candles + tape in **one** SQL-parallel response). CORE stats stay a batched global query. |
 | Launch `/launch` | Sequential registry RPC: `count` → `list(i)` → `get` per quote; ticker `useEffect` fetch | `GET /quote-assets`. Ticker is `useTickerStatus` (TanStack). RPC fallback is two batched waves, not 2N sequential calls. |
 | Trade `/trade` + ticket | Board from `/markets`; fee catalog from sequential quote RPC | Board indexed. Fee catalog from cached `/quote-assets`. **`POST /quote` is not cached** (30s client TTL, fail-closed). |

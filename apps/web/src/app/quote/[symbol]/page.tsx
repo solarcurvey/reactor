@@ -1,35 +1,52 @@
 "use client";
 
-import Link from "next/link";
+import { useMemo, useRef, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
-import { useLaunchTokens, useQuotes } from "@/lib/hooks";
+import { SurfaceState, useSurfaceFlags } from "@/components/query-state";
+import { TokenCard } from "@/components/token-card";
+import { useMarketsInfinite, useQuotes } from "@/lib/hooks";
 import { formatUnitsSafe } from "@/lib/utils";
-import { tokenPath } from "@/lib/untrusted-metadata";
 
 /**
  * Quote-ecosystem metrics (no double-count):
- * - Markets = launches whose quote token matches this symbol.
+ * - Markets = launches whose quote token matches this symbol (indexer `quote_symbol`).
  * - Holder rewards in X = sum of token.lifetimeRewards only (the 2% bucket).
  *   Flywheel 1% and CORE 0.5% are NOT added here — they are other pots.
  * - Bonding / graduated are partitions of Instant markets, not extra volume.
  */
 export default function QuotePage() {
   const { symbol } = useParams<{ symbol: string }>();
-  const { data: quotes } = useQuotes();
+  const { data: quotes, isLoading: quotesLoading, isError: quotesError, refetch: refetchQuotes } = useQuotes();
   const sym = decodeURIComponent(symbol ?? "").toUpperCase();
   const quote = quotes?.find((q) => q.symbol.toUpperCase() === sym);
-  const { data: tokens, isLoading } = useLaunchTokens(
-    { quote: quote?.token, limit: 80 },
-    { enabled: !!quote },
-  );
-  const markets = tokens ?? [];
+  const board = useMarketsInfinite({ quoteSymbol: sym.toLowerCase(), enabled: Boolean(sym) });
+  const markets = useMemo(() => board.data?.pages.flatMap((p) => p.items) ?? [], [board.data]);
   const holderRewards = markets.reduce((s, t) => s + (t.lifetimeRewards ?? 0n), 0n);
   const bonding = markets.filter((t) => t.bonding).length;
   const graduated = markets.filter((t) => t.mode === 0 && t.marketLive).length;
   const rewardsN = markets.filter((t) => t.rewardsMode !== false && t.mode === 0).length;
   const burnN = markets.filter((t) => t.rewardsMode === false && t.mode === 0).length;
   const dec = quote?.decimals ?? markets[0]?.quoteDecimals ?? 18;
+  const moreRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = moreRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting) && board.hasNextPage && !board.isFetchingNextPage) {
+        void board.fetchNextPage();
+      }
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [board.hasNextPage, board.isFetchingNextPage, board.fetchNextPage]);
+
+  const flags = useSurfaceFlags({
+    isLoading: board.isLoading || quotesLoading,
+    isError: board.isError || quotesError,
+    empty: !board.isLoading && !board.isError && markets.length === 0,
+    error: board.error,
+  });
 
   return (
     <div>
@@ -38,43 +55,47 @@ export default function QuotePage() {
       <p className="mt-1 max-w-2xl text-[13px] text-zinc-400">
         Markets priced in {sym}. Holder-reward total is the conserved 2% bucket only — we do not add Top-10 or CORE
         (that would triple-count the 3.5%). Instant starts on a bonding curve; ungraduated names are not Top-10
-        eligible.
+        eligible. Catalog is `GET /markets?quote_symbol=` with cursor pages.
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat k="Markets" v={String(markets.length)} />
+        <Stat k="Markets" v={String(board.data?.pages[0]?.total ?? markets.length)} />
         <Stat k={`Holder rewards in ${sym}`} v={`${formatUnitsSafe(holderRewards, dec, 3)} ${sym}`} />
         <Stat k="Bonding / graduated" v={`${bonding} / ${graduated}`} />
         <Stat k="Rewards / Buy+Burn" v={`${rewardsN} / ${burnN}`} />
       </div>
 
-      {isLoading && <p className="mt-6 text-sm text-zinc-400">Reading markets…</p>}
-      {!isLoading && markets.length === 0 && (
-        <p data-testid="quote-empty" className="mt-6 text-sm text-zinc-400">
-          No launches quoted in {sym} yet.
-        </p>
+      {flags.kind === "loading" && <SurfaceState kind="loading" title={`Reading ${sym} markets…`} />}
+      {flags.kind === "offline" && (
+        <SurfaceState
+          kind="offline"
+          title={flags.online ? "Indexer unreachable" : "You’re offline"}
+          onRetry={() => {
+            void board.refetch();
+            void refetchQuotes();
+          }}
+        />
+      )}
+      {flags.kind === "error" && !flags.offline && (
+        <SurfaceState kind="error" title={`${sym} ecosystem failed`} onRetry={() => void board.refetch()} />
+      )}
+      {flags.kind === "empty" && (
+        <SurfaceState
+          kind="empty"
+          testId="quote-empty"
+          title={`No launches quoted in ${sym}`}
+          body="This list is indexer-filtered by quote symbol, not a client slice of Discover."
+        />
       )}
 
-      <div className="mt-6 space-y-2">
-        {markets.map((t) => (
-          <Link key={t.token} href={tokenPath(t.token)}>
-            <Card className="flex items-center justify-between p-3 hover:border-rx-heat/30">
-              <div>
-                <div className="font-medium text-white">
-                  {t.name} <span className="font-mono text-xs text-zinc-400">${t.symbol}</span>
-                </div>
-                <div className="text-[11px] uppercase tracking-wider text-zinc-400">
-                  {t.rewardsMode === false ? "BUY+BURN" : `EARNS ${sym}`}
-                  {t.bonding ? ` · ${((t.bondingBps ?? 0) / 100).toFixed(0)}% bonded` : t.marketLive ? " · v4" : ""}
-                </div>
-              </div>
-              <div className="font-mono text-[12px] text-zinc-300">
-                {formatUnitsSafe(t.lifetimeRewards ?? 0n, dec, 3)} {sym}
-              </div>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      {markets.length > 0 && (
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          {markets.map((t) => (
+            <TokenCard key={t.token} t={t} />
+          ))}
+        </div>
+      )}
+      <div ref={moreRef} className="h-8" />
     </div>
   );
 }

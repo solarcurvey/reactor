@@ -10,7 +10,7 @@
     "test:web": "pnpm --filter web test",
     "test:web:qa": "pnpm --filter web test:qa",
     "test:live-toasts": "tsx apps/web/src/lib/live-toasts.test.ts && pnpm --filter web exec playwright test e2e/live-toasts.spec.ts",
-    "test:web-unit": "tsx apps/web/src/lib/top10.test.ts && tsx apps/web/src/lib/marketdata.test.ts && tsx apps/web/src/lib/limited-json.test.ts && tsx apps/web/src/lib/fee-legs.test.ts && tsx apps/web/src/lib/constants-sync.test.ts && tsx apps/web/src/lib/brand.test.ts",
+    "test:web-unit": "tsx apps/web/src/lib/top10.test.ts && tsx apps/web/src/lib/marketdata.test.ts && tsx apps/web/src/lib/limited-json.test.ts && tsx apps/web/src/lib/fee-legs.test.ts && tsx apps/web/src/lib/constants-sync.test.ts && tsx apps/web/src/lib/brand.test.ts && tsx apps/web/src/lib/market-ui.test.ts && tsx apps/web/src/lib/markets-api.test.ts && tsx apps/web/src/lib/discover-search-backend.test.ts && tsx apps/web/src/lib/visual-accept.test.ts && tsx apps/web/src/lib/protocol-version.test.ts",
     "test:e2e:release": "pnpm --filter web test:release",
     "test:obs": "tsx apps/web/src/lib/obs/redact.test.ts && tsx apps/web/src/lib/obs/telemetry.test.ts && tsx apps/web/src/lib/obs/failure-injection.test.ts && tsx apps/web/src/lib/obs/sourcemap.test.ts && tsx apps/web/src/lib/obs/vendor-proof.test.ts && NEXT_PUBLIC_REVIEW_FIXTURES=1 pnpm --filter web build && pnpm --filter web exec playwright test -c playwright.obs.config.ts e2e/obs-failure-injection.spec.ts",
     "docs:gen": "tsx scripts/sync-docs.ts generate",
