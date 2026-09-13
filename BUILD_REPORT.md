@@ -1,9 +1,9 @@
 # BUILD REPORT — AutomationGateway (#51)
 
-**Status:** Draft PR for issue **#51** (refs #18), replaying onto `origin/main` `922f909` (squash-merged **#48** handbook after **#80** Industrial Forge / Refs #55 / **#81** `ff444cb` / **#46** / **#75** / **#70**). **Re-audit draft** — not an #18 freeze SHA. Same PR **#54** / same branch. AutomationGateway signed jobs + dual-relayer / autonomous failover rehearsal + CRE WASM compile evidence preserved. Handbook body search / badge matrix / nav blurbs from #48 preserved. Industrial Forge production chrome/assets from #80 preserved. After that rebase, `pnpm docs:gen` rewrote `docs/llms.txt` + `apps/web/public/llms.txt` to protocol **0.4.0** (leftover handbook `0.3.4` failed `constants-version-deployments` on `e428af4` / run `34748671476`). `e2e/protocol-version.ts` reads `docs/version.json` via cwd only (no `import.meta` / `docs.ts`). Issue **#51 stays open**.
+**Status:** Draft PR for issue **#51** (refs #18, #83), replaying onto `origin/main` `922f909` (squash-merged **#48** handbook after **#80** Industrial Forge / Refs #55 / **#81** `ff444cb` / **#46** / **#75** / **#70**). **Re-audit draft** — not an #18 freeze SHA. Same PR **#54** / same branch. AutomationGateway signed jobs + dual-relayer / autonomous failover rehearsal + CRE WASM compile evidence preserved. **#83** is the production AWS KMS authorizer + dual managed-relay path; authenticated CRE simulate is **optional interoperability**, not a #54 merge blocker. Handbook body search / badge matrix / nav blurbs from #48 preserved. Industrial Forge production chrome/assets from #80 preserved. After that rebase, `pnpm docs:gen` rewrote `docs/llms.txt` + `apps/web/public/llms.txt` to protocol **0.4.0** (leftover handbook `0.3.4` failed `constants-version-deployments` on `e428af4` / run `34748671476`). `e2e/protocol-version.ts` reads `docs/version.json` via cwd only (no `import.meta` / `docs.ts`). Issue **#51 stays open**.
 
 **Not audited. Not mainnet.**  
-**Economics / 3.5% / curve / Factory V1 constants: unchanged.** Merged #80 Industrial Forge (Direction C), #81 `ci-decide.sh` / cheap docs-only path, #46 `obs-ui` / redacted telemetry / error boundaries, #75 `/restricted` + official `GET /operator-policy/status`, #44 `e2e-release-gate`, #70 sanctions-ops freshness, #68 operator-policy, #67 geo/IP, and #66 `@reactor/sanctions` are preserved. Privileged Keeper EOA is **not** restored. **#17 / #39 / #51 / #60 / #63 / #64 / #65 / #69 stay open.** **#39 is open/reopened** — merged #46 landed repo CI; close still requires the real configured telemetry-provider symbolication proof. **#35** closed after merged #44. **#55** closed/completed on `main` after the #48 post-merge handbook/visual proof.
+**Economics / 3.5% / curve / Factory V1 constants: unchanged.** Merged #80 Industrial Forge (Direction C), #81 `ci-decide.sh` / cheap docs-only path, #46 `obs-ui` / redacted telemetry / error boundaries, #75 `/restricted` + official `GET /operator-policy/status`, #44 `e2e-release-gate`, #70 sanctions-ops freshness, #68 operator-policy, #67 geo/IP, and #66 `@reactor/sanctions` are preserved. Privileged Keeper EOA is **not** restored. **#17 / #39 / #51 / #60 / #63 / #64 / #65 / #69 / #83 stay open.** **#39 is open/reopened** — merged #46 landed repo CI; close still requires the real configured telemetry-provider symbolication proof. **#35** closed after merged #44. **#55** closed/completed on `main` after the #48 post-merge handbook/visual proof. **#83** owns the hardened KMS / dual managed-relay production path.
 
 
 ## This HEAD
@@ -15,7 +15,7 @@
 | Intent | Replace privileged Keeper EOA with `AutomationGateway` + short-lived signed `MaintenanceJob`. Relayers (CRE / Gelato / any) deliver only. |
 | Foundry | `AutomationGateway.t.sol` + `AutomationGatewayAuth.t.sol` + `MaintenanceFailover.t.sol` |
 | Indexer / lib | `maintenance-job.test.ts` + #46 obs units + #80 `brand.test.ts` in `test:web-unit` |
-| CRE | Official `cre workflow build` compiled the signed-job courier (WASM hash in `cre-workflow-build.json`). Public CI `--verify` pin-checks committed evidence / `cre-tenant-blocker.json` — it is **not** a successful `cre workflow simulate`. Auth-blocked simulate remains the Arc Testnet CRE AC. |
+| CRE | Official `cre workflow build` compiled the signed-job courier (WASM hash in `cre-workflow-build.json`). Public CI `--verify` pin-checks committed evidence / `cre-tenant-blocker.json` — it is **not** a successful `cre workflow simulate`. Authenticated simulate is **optional interoperability** (not a #54 merge blocker). Production autonomous path is **#83**. |
 | Replay | Onto `origin/main` `922f909` (#48 handbook after #80 / #81). `pnpm docs:gen` after that rebase (llms.txt twins only; versioning/deployments/changelog already matched 0.4.0). Restore exact-head `ci-full` so `solidity + size-guard` (failover rehearsal) runs. Playwright `web` / `obs-ui` pins read `docs/version.json` via CJS-safe `e2e/protocol-version.ts` (do not import `release-identity` / `import.meta`). |
 
 | Mainnet | **Blocked** |
@@ -27,7 +27,7 @@
 | Gateway is `keeper`; typed jobs only | **Yes** | `AutomationGateway.sol` — no `target.call` |
 | EIP-712 job bind + first consume wins | **Yes** | `MaintenanceJob.sol` + auth tests |
 | Dual-relayer failover rehearsal | **Yes** | `MaintenanceFailover.t.sol` + full-tier `solidity + size-guard` |
-| CRE PoC + honest 5042 status | **Partial** | Official `cre workflow build` WASM compile recorded. Authenticated Arc Testnet `cre workflow simulate` remains the external blocker. |
+| CRE PoC + honest 5042 status | **Optional / partial** | Official `cre workflow build` WASM compile recorded. Authenticated `cre workflow simulate` remains unrun (`cre-tenant-blocker.json` `closed:false`) and is **optional interoperability**, not a #54 merge blocker. Production courier is **#83**. |
 | Factory V1 | **Yes** | No Factory bytecode change |
 | #48 handbook preserved | **Yes** | Merged `922f909`: body search, badge matrix, nav blurbs, `docs:links`, docs-copy/visual. **#14** close is a founder decision. |
 | #80 Industrial Forge preserved | **Yes** | Merged `4915f3e`: Direction C tokens/chrome/assets/docs. **#55 closed/completed** on `main` after the #48 post-merge handbook/visual proof. |
@@ -40,9 +40,10 @@
 | Blocker | Why |
 | --- | --- |
 | Public mainnet (5042) | Hard blocked. No addresses. |
-| Authenticated `cre workflow simulate` | **Remaining #51 AC / external blocker.** Official `cre workflow build` is compile-only (`ops/cre/simulation/cre-workflow-build.json`) and does not close this. Public CI `--verify` pin-checks committed evidence / tenant-blocker — not a simulate PoC. Evidence: `ops/cre/simulation/cre-tenant-blocker.json` (`closed:false`). |
-| Close #51 | Stays open until post-merge `Guardian.keeper == AutomationGateway` verify. |
-| Exact-head GitHub Actions | Watch `ci-ok` on the post-`docs:gen` SHA (label `ci-full`). Prior `e428af4` failed `constants-version-deployments` on stale `llms.txt` (`0.3.4`) and `obs-ui` on CJS `import.meta` via `loadProtocolVersion()`. Prior heads on `4915f3e` are superseded. |
+| Authenticated `cre workflow simulate` | **Optional interoperability** — not a #54 merge blocker after the #83 reconcile. Official `cre workflow build` is compile-only. Public CI `--verify` pin-checks committed evidence / tenant-blocker (`closed:false`). Do not treat a green `--verify` as a Workflow Simulation Result. |
+| Close #51 | Stays open through the real **#83** autonomous testnet/failover proof **and** post-deploy `Guardian.keeper == AutomationGateway`. Local Anvil failover is Gateway evidence, not #83 KMS production proof. |
+| #83 production KMS / dual relay | Not implemented on this PR. Issue **#83** owns AWS KMS secp256k1 authorizer, dual managed relays, OIDC IaC, and Arc Public Testnet real-KMS evidence. |
+| Exact-head GitHub Actions | #54 becomes merge-ready only after this requirements reconcile **and** exact-head full `ci-ok` (label `ci-full`). Prior `e428af4` failed `constants-version-deployments` on stale `llms.txt` (`0.3.4`) and `obs-ui` on CJS `import.meta` via `loadProtocolVersion()`. |
 
 ---
 

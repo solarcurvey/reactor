@@ -1,8 +1,10 @@
 {
   "recorded": "2026-09-13",
   "kind": "external-blocker-cre-tenant-auth",
-  "ac": "Arc Testnet CRE workflow/simulation PoC (#51)",
+  "ac": "Optional CRE interoperability — authenticated cre workflow simulate (not a #54 merge blocker; production path is #83)",
   "closed": false,
+  "mergeBlocker": false,
+  "productionPath": "#83 AWS KMS authorizer + dual managed relays",
   "officialWasmCompile": {
     "closed": true,
     "command": "cre workflow build",
@@ -16,7 +18,7 @@
     "ops/cre/simulation/cre-workflow-build.json",
     "ops/cre/simulation/arc-testnet-poc.json"
   ],
-  "required": "Authenticated `cre workflow simulate` with compiled=true and a Workflow Simulation Result, using the signed MaintenanceJob HTTP payload on CRE catalog arc-testnet (EIP-155 1883). Live DON not required. Arc Mainnet 5042 production-write remains unclaimed.",
+  "required": "Optional interoperability: authenticated `cre workflow simulate` with compiled=true and a Workflow Simulation Result, using the signed MaintenanceJob HTTP payload on CRE catalog arc-testnet (EIP-155 1883). Live DON not required. Not a #54 merge blocker after #83. Production autonomous path and KMS/key model live in #83. This file stays closed:false until a real simulate artifact is committed. Arc Mainnet 5042 production-write remains unclaimed.",
   "blocker": {
     "creCli": "v1.33.0",
     "creWhoami": "not logged in and no CRE_API_KEY set",

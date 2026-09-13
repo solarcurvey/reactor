@@ -5,6 +5,8 @@
  * Public CI `--verify` does **not** run a secret-bearing `cre workflow simulate`.
  * It pin-checks committed courier hashes plus `cre-tenant-blocker.json`.
  * A green CI step is not a successful Chainlink CRE simulation.
+ * After #83, authenticated simulate is optional interoperability — not a
+ * #54 merge blocker. Production autonomous path is KMS + dual managed relays.
  *
  * --write (default): refresh committed evidence (may try official CLI locally).
  * --verify: pin-check committed JSON/log + tenant-blocker (CI / test:lib).

@@ -23,7 +23,7 @@ Top-10 jobs execute the **frozen onchain epoch**, not a later API refresh. The d
 
 `submitOnce` — if the RPC is ambiguous (timeout after broadcast), do not resubmit.
 
-Dual relayers of the same signed `jobId` are first-wins on `AutomationGateway`. The second is `Replay` and does not move pots. Local-forge evidence: `ops/cre/simulation/failover-rehearsal.json` via `scripts/maintenance-failover.ts`. Autonomous deployed-Gateway evidence (signer service + failover liveness + simultaneous race, no AI): `ops/cre/simulation/autonomous-relay-failover.json` via `scripts/autonomous-relay-failover.ts`.
+Dual relayers of the same signed `jobId` are first-wins on `AutomationGateway`. The second is `Replay` and does not move pots. Local-forge evidence: `ops/cre/simulation/failover-rehearsal.json` via `scripts/maintenance-failover.ts`. Autonomous deployed-Gateway evidence (signer service + failover liveness + simultaneous race, no AI): `ops/cre/simulation/autonomous-relay-failover.json` via `scripts/autonomous-relay-failover.ts`. Those rehearsals are Gateway consume/Replay proofs. Production KMS authorizer + dual managed relays live in **#83**. Authenticated CRE simulate is optional interoperability, not the production path.
 
 ## Leadership
 
