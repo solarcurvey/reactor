@@ -58,6 +58,13 @@ assert(
   "OG stays mode-neutral and must not say pay holders",
 );
 
+const restricted = readFileSync(
+  fileURLToPath(new URL("../app/restricted/restricted-view.tsx", import.meta.url)),
+  "utf8",
+);
+assert(restricted.includes("rx-kicker"), "/restricted kicker uses approved-C heat");
+assert(!/text-cyan|cyan-\d+|rounded-full/.test(restricted), "/restricted must not keep Direction A cyan or pill links");
+
 const layout = readFileSync(fileURLToPath(new URL("../app/layout.tsx", import.meta.url)), "utf8");
 assert(layout.includes("BRAND_COPY.description"), "layout uses canonical description");
 const ogBlock = layout.slice(layout.indexOf("openGraph:"), layout.indexOf("twitter:"));

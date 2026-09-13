@@ -26,7 +26,7 @@ export function RestrictedView({ initialKind }: { initialKind?: RestrictedUxKind
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-200/80">Access</p>
+        <p className="rx-kicker">Access</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">
           {copy?.title ?? "REACTOR-operated access"}
         </h1>
@@ -89,13 +89,13 @@ export function RestrictedView({ initialKind }: { initialKind?: RestrictedUxKind
       </Card>
 
       <div className="flex flex-wrap gap-3 text-[13px]">
-        <Link href="/" className="rounded-full bg-white/8 px-4 py-2 text-white hover:bg-white/12">
+        <Link href="/" className="rounded-[4px] border border-white/10 bg-white/8 px-4 py-2 text-white hover:bg-white/12">
           Public markets
         </Link>
-        <Link href="/docs" className="rounded-full bg-white/8 px-4 py-2 text-white hover:bg-white/12">
+        <Link href="/docs" className="rounded-[4px] border border-white/10 bg-white/8 px-4 py-2 text-white hover:bg-white/12">
           Docs
         </Link>
-        <Link href="/docs/restricted-access" className="rounded-full bg-white/8 px-4 py-2 text-white hover:bg-white/12">
+        <Link href="/docs/restricted-access" className="rounded-[4px] border border-white/10 bg-white/8 px-4 py-2 text-white hover:bg-white/12">
           Access disclosure
         </Link>
       </div>

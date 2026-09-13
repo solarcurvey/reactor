@@ -502,7 +502,7 @@ export function TradePanel({ t }: { t: LaunchToken }) {
         />{" "}
         %
       </div>
-      <RestrictedNotice className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/8 px-3 py-2 text-[12px] text-amber-50" />
+      <RestrictedNotice className="mt-3 rounded-[4px] border border-amber-300/20 bg-amber-300/8 px-3 py-2 text-[12px] text-amber-50" />
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <Button variant="outline" className="flex-1" onClick={refreshQuote} disabled={!writesEnabled || parsed === 0n || phase === "awaiting_wallet" || phase === "pending"}>
           {policyBlocked ? writeButtonLabel("Quote") : "Quote"}

@@ -370,7 +370,7 @@ export default function LaunchPage() {
         </Link>
       </p>
 
-      <RestrictedNotice className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/8 px-4 py-3 text-[13px] text-amber-50" />
+      <RestrictedNotice className="mt-4 rounded-[4px] border border-amber-300/20 bg-amber-300/8 px-4 py-3 text-[13px] text-amber-50" />
 
       <Card className="mt-4 space-y-3 p-4">
         <div className="grid gap-2 sm:grid-cols-2">

@@ -194,7 +194,7 @@ export default function FairPage() {
         {utcStamp(start)} → {utcStamp(end)}
       </p>
       <p className="mt-1 break-all font-mono text-[11px] text-zinc-400">{token}</p>
-      <RestrictedNotice className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/8 px-4 py-3 text-[13px] text-amber-50" />
+      <RestrictedNotice className="mt-4 rounded-[4px] border border-amber-300/20 bg-amber-300/8 px-4 py-3 text-[13px] text-amber-50" />
       {!finalized && (
         <Card className="mt-4 space-y-2 p-4">
           <label htmlFor="fair-bid" className="block text-[11px] uppercase tracking-wider text-zinc-400">
