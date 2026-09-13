@@ -49,5 +49,8 @@ const relaySleep = handler.indexOf("if (delay) await");
 assert(idleReturn >= 0 && relaySleep > idleReturn, "relay B must not pay its grace delay on idle ticks");
 assert(build.includes("pnpm --filter indexer deploy --prod"), "bundle uses locked indexer production deps");
 assert(build.includes("apps/indexer/src/aws-relay/handler.mjs"), "bundle includes managed handler");
+assert(build.includes("rm -f \"$OUT\""), "bundle build must start from a fresh zip rather than update stale contents");
+assert(build.includes("MAX_ZIP_BYTES=$((50 * 1024 * 1024))"), "bundle guards direct-upload zip size");
+assert(build.includes("MAX_UNZIPPED_BYTES=$((250 * 1024 * 1024))"), "bundle guards Lambda unzipped size");
 
 console.log("aws relay IaC static tests ok");
