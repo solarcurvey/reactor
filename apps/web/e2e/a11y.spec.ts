@@ -1,4 +1,5 @@
 import { assertAxe, assertBrandPaletteContrast, assertNoHorizontalOverflow, expect, NEON, test, ZCAT } from "./helpers";
+import { CTA, POLICY, mockPolicy } from "./restricted-policy";
 
 const pages = [
   { name: "home", path: "/" },
@@ -13,6 +14,7 @@ const pages = [
   { name: "wallet", path: "/wallet" },
   { name: "docs", path: "/docs" },
   { name: "quote-zec", path: "/quote/ZEC" },
+  { name: "restricted", path: "/restricted" },
 ];
 
 test("brand palette tokens meet WCAG AA", () => {
@@ -112,6 +114,33 @@ test("confirm dialog trap", async ({ page }) => {
   await expect(dialog).toHaveCount(0);
 });
 
+test("axe restricted page under geo deny", async ({ page }) => {
+  await mockPolicy(page, POLICY.geo);
+  await page.goto("/restricted");
+  await expect(page.getByRole("heading").first()).toBeVisible();
+  await expect(page.getByTestId("restricted-banner")).toHaveAttribute("data-kind", "geo");
+  await expect(page.getByTestId("restricted-live")).toBeVisible();
+  await assertAxe(page);
+});
+
+test("axe launch under geo deny", async ({ page }) => {
+  await mockPolicy(page, POLICY.geo);
+  await page.goto("/launch");
+  await expect(page.getByTestId("restricted-banner")).toHaveAttribute("data-kind", "geo");
+  await expect(page.getByTestId("launch-submit")).toBeDisabled();
+  await expect(page.getByTestId("launch-submit")).toHaveText(CTA.geo);
+  await assertAxe(page);
+});
+
+test("axe token ticket under geo deny", async ({ page }) => {
+  await mockPolicy(page, POLICY.geo);
+  await page.goto(ZCAT);
+  await expect(page.getByTestId("restricted-banner")).toHaveAttribute("data-kind", "geo");
+  await expect(page.getByTestId("trade-confirm")).toBeDisabled();
+  await expect(page.getByTestId("trade-confirm")).toHaveText(CTA.geo);
+  await assertAxe(page);
+});
+
 test("200% zoom reflow at 640 CSS px", async ({ page }) => {
   await page.setViewportSize({ width: 640, height: 400 });
   await page.goto("/");
@@ -123,6 +152,9 @@ test("200% zoom reflow at 640 CSS px", async ({ page }) => {
   await page.goto(ZCAT);
   await expect(page.getByRole("heading", { name: /Zcash Cat/i })).toBeVisible();
   await assertNoHorizontalOverflow(page);
+  await page.goto("/restricted");
+  await expect(page.getByRole("heading").first()).toBeVisible();
+  await assertNoHorizontalOverflow(page);
 });
 
 test("320 CSS px reflow", async ({ page }) => {
@@ -132,6 +164,32 @@ test("320 CSS px reflow", async ({ page }) => {
   await assertNoHorizontalOverflow(page);
   await page.goto("/launch");
   await expect(page.getByLabel("Name")).toBeVisible();
+  await assertNoHorizontalOverflow(page);
+  await page.goto("/restricted");
+  await expect(page.getByRole("heading").first()).toBeVisible();
+  await assertNoHorizontalOverflow(page);
+});
+
+test("denied operator-policy reflow at 320 CSS px and 200% zoom", async ({ page }) => {
+  await mockPolicy(page, POLICY.geo);
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto("/restricted");
+  await expect(page.getByTestId("restricted-banner")).toHaveAttribute("data-kind", "geo");
+  await expect(page.getByRole("heading").first()).toBeVisible();
+  await assertNoHorizontalOverflow(page);
+  await page.goto("/launch");
+  await expect(page.getByTestId("launch-submit")).toBeDisabled();
+  await assertNoHorizontalOverflow(page);
+  await page.goto(ZCAT);
+  await expect(page.getByTestId("trade-confirm")).toBeDisabled();
+  await assertNoHorizontalOverflow(page);
+
+  await page.setViewportSize({ width: 640, height: 400 });
+  await page.goto("/restricted");
+  await expect(page.getByTestId("restricted-banner")).toHaveAttribute("data-kind", "geo");
+  await assertNoHorizontalOverflow(page);
+  await page.goto("/launch");
+  await expect(page.getByTestId("launch-submit")).toHaveText(CTA.geo);
   await assertNoHorizontalOverflow(page);
 });
 

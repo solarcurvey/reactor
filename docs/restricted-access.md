@@ -21,7 +21,7 @@ The indexer process uses official `apps/indexer/src/operator-policy.ts`. `operat
 
 **LOCAL** continues to allow writes when the indexer status path is missing; **production-like** environments fail closed as temporarily unavailable. LOCAL-only demo fixtures: `OPERATOR_POLICY_UX_FIXTURE`, `x-reactor-ux-fixture`, or a page `?fixture=` query (the provider forwards it to the BFF; production ignores it).
 
-Production `next build` + `next start` coverage lives in `e2e/restricted-prod.spec.ts` (`pnpm test:web-security`): blocked wallet, blocked geo, stale/unavailable, and allowed user on desktop and 390px mobile (CTA/banner layout), plus fail-closed / ignored LOCAL flags and the real #62 client-allow → write-gate 403 bypass. Dev/`next dev` coverage stays in `e2e/restricted.spec.ts` (`pnpm test:restricted`).
+Production `next build` + `next start` coverage lives in `e2e/restricted-prod.spec.ts` (`pnpm test:web-security`): blocked wallet, blocked geo, stale/unavailable, and allowed user on desktop and 390px mobile (CTA/banner layout), plus fail-closed / ignored LOCAL flags and the real #62 client-allow → write-gate 403 bypass. The production visual/a11y/reflow gate (`e2e/a11y.spec.ts` via `pnpm --filter web test:qa`) covers `/restricted` and a denied launch/token state with axe, `assertNoSubAaMutedText`, and 320px / 200% reflow. `/restricted` muted copy uses the approved AA floor (`text-zinc-400`). Dev/`next dev` coverage stays in `e2e/restricted.spec.ts` (`pnpm test:restricted`).
 
 ## What the user sees
 

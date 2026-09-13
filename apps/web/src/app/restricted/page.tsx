@@ -51,7 +51,7 @@ function RestrictedState() {
       )}
 
       <Card className="space-y-3 p-5 text-[14px] leading-relaxed text-zinc-300">
-        <h2 className="text-sm font-medium uppercase tracking-[0.16em] text-zinc-500">Why this can happen</h2>
+        <h2 className="text-sm font-medium uppercase tracking-[0.16em] text-zinc-400">Why this can happen</h2>
         <ul className="list-disc space-y-2 pl-5">
           <li>
             <span className="text-white">Account.</span> The hosted wallet-list check refused this account for
@@ -65,26 +65,26 @@ function RestrictedState() {
             operated writes fail closed until they return.
           </li>
         </ul>
-        <p className="text-[12px] text-zinc-500">
+        <p className="text-[12px] text-zinc-400">
           The UI names only these three states. It does not show IP addresses, screening-entry details, or other
           internal records.
         </p>
       </Card>
 
       <Card className="space-y-4 p-5 text-[14px] leading-relaxed text-zinc-300">
-        <h2 className="text-sm font-medium uppercase tracking-[0.16em] text-zinc-500">What these controls are</h2>
+        <h2 className="text-sm font-medium uppercase tracking-[0.16em] text-zinc-400">What these controls are</h2>
         <ul className="list-disc space-y-2 pl-5">
           {RESTRICTED_DISCLOSURE.whatExists.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
-        <h2 className="text-sm font-medium uppercase tracking-[0.16em] text-zinc-500">What they cannot do</h2>
+        <h2 className="text-sm font-medium uppercase tracking-[0.16em] text-zinc-400">What they cannot do</h2>
         <ul className="list-disc space-y-2 pl-5">
           {RESTRICTED_DISCLOSURE.whatCannot.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
-        <p className="text-[12px] text-zinc-500">{OPERATOR_POLICY_DISCLAIMER}</p>
+        <p className="text-[12px] text-zinc-400">{OPERATOR_POLICY_DISCLAIMER}</p>
       </Card>
 
       <div className="flex flex-wrap gap-3 text-[13px]">
@@ -104,7 +104,7 @@ function RestrictedState() {
 
 export default function RestrictedPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-zinc-500">Loading access state…</p>}>
+    <Suspense fallback={<p className="text-sm text-zinc-400">Loading access state…</p>}>
       <RestrictedState />
     </Suspense>
   );
