@@ -9,7 +9,7 @@ const root = process.cwd();
 const main = readFileSync(join(root, "infra/aws-relay/main.tf"), "utf8");
 const vars = readFileSync(join(root, "infra/aws-relay/variables.tf"), "utf8");
 const build = readFileSync(join(root, "scripts/build-aws-relay-bundle.sh"), "utf8");
-const handler = readFileSync(join(root, "ops/aws-relay/runtime/handler.mjs"), "utf8");
+const handler = readFileSync(join(root, "apps/indexer/src/aws-relay/handler.mjs"), "utf8");
 
 assert((main.match(/ECC_SECG_P256K1/g) ?? []).length === 3, "exactly three secp256k1 KMS keys");
 assert((main.match(/key_usage\s*=\s*"SIGN_VERIFY"/g) ?? []).length === 3, "all KMS keys are sign/verify only");
@@ -27,6 +27,6 @@ assert(handler.includes('relayDelayMs(role'), "relay B delay is enforced by runt
 assert(handler.includes('functionName: "usedJob"'), "relay checks onchain replay state before spending gas");
 assert(handler.includes("client.call"), "relay simulates exact Gateway call before KMS transaction signing");
 assert(build.includes("pnpm --filter indexer deploy --prod"), "bundle uses locked indexer production deps");
-assert(build.includes("ops/aws-relay/runtime/handler.mjs"), "bundle includes managed handler");
+assert(build.includes("apps/indexer/src/aws-relay/handler.mjs"), "bundle includes managed handler");
 
 console.log("aws relay IaC static tests ok");

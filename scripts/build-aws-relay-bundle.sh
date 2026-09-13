@@ -15,9 +15,9 @@ mkdir -p "$STAGE" "$(dirname "$OUT")"
 # are provided by the managed Node.js Lambda runtime.
 pnpm --filter indexer deploy --prod "$STAGE"
 rm -rf "$STAGE/src" "$STAGE/data" || true
-cp "$ROOT/ops/aws-relay/runtime/handler.mjs" "$STAGE/handler.mjs"
-cp "$ROOT/ops/aws-relay/runtime/kms.mjs" "$STAGE/kms.mjs"
-cp "$ROOT/ops/aws-relay/runtime/job.mjs" "$STAGE/job.mjs"
+cp "$ROOT/apps/indexer/src/aws-relay/handler.mjs" "$STAGE/handler.mjs"
+cp "$ROOT/apps/indexer/src/aws-relay/kms.mjs" "$STAGE/kms.mjs"
+cp "$ROOT/apps/indexer/src/aws-relay/job.mjs" "$STAGE/job.mjs"
 
 (
   cd "$STAGE"

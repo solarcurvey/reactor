@@ -16,15 +16,15 @@ import {
   parseDerEcdsaSignature,
   publicKeyDerToAddress,
   signDigestWithKms,
-} from "../ops/aws-relay/runtime/kms.mjs";
+} from "../apps/indexer/src/aws-relay/kms.mjs";
 import {
   makeSignedEnvelope,
   maintenanceDomainSeparator,
   maintenanceJobDigest,
   relayDelayMs,
   verifySignedEnvelope,
-} from "../ops/aws-relay/runtime/job.mjs";
-import { __handlerTest } from "../ops/aws-relay/runtime/handler.mjs";
+} from "../apps/indexer/src/aws-relay/job.mjs";
+import { __handlerTest } from "../apps/indexer/src/aws-relay/handler.mjs";
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
